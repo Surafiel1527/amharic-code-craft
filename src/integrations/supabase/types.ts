@@ -38,6 +38,41 @@ export type Database = {
         }
         Relationships: []
       }
+      generated_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_data: string
+          project_id: string | null
+          prompt: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_data: string
+          project_id?: string | null
+          prompt: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_data?: string
+          project_id?: string | null
+          prompt?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_images_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -103,33 +138,104 @@ export type Database = {
       projects: {
         Row: {
           created_at: string
+          forked_from: string | null
           html_code: string
           id: string
+          is_favorite: boolean | null
+          is_public: boolean | null
           prompt: string
+          share_token: string | null
+          tags: string[] | null
           title: string
           updated_at: string
           usage_count: number | null
           user_id: string | null
+          views_count: number | null
         }
         Insert: {
           created_at?: string
+          forked_from?: string | null
           html_code: string
           id?: string
+          is_favorite?: boolean | null
+          is_public?: boolean | null
           prompt: string
+          share_token?: string | null
+          tags?: string[] | null
           title: string
           updated_at?: string
           usage_count?: number | null
           user_id?: string | null
+          views_count?: number | null
         }
         Update: {
           created_at?: string
+          forked_from?: string | null
           html_code?: string
           id?: string
+          is_favorite?: boolean | null
+          is_public?: boolean | null
           prompt?: string
+          share_token?: string | null
+          tags?: string[] | null
           title?: string
           updated_at?: string
           usage_count?: number | null
           user_id?: string | null
+          views_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_forked_from_fkey"
+            columns: ["forked_from"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      templates: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          html_code: string
+          id: string
+          is_featured: boolean | null
+          preview_image: string | null
+          prompt: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+          usage_count: number | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          html_code: string
+          id?: string
+          is_featured?: boolean | null
+          preview_image?: string | null
+          prompt: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          html_code?: string
+          id?: string
+          is_featured?: boolean | null
+          preview_image?: string | null
+          prompt?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          usage_count?: number | null
         }
         Relationships: []
       }
@@ -162,6 +268,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_share_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
