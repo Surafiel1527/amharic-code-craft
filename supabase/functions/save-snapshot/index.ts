@@ -22,7 +22,7 @@ serve(async (req) => {
       }
     );
 
-    const { name, description } = await req.json();
+    const { name, description, screenshot } = await req.json();
 
     if (!name) {
       return new Response(
@@ -60,6 +60,38 @@ serve(async (req) => {
 
     console.log(`Found ${customizations?.length || 0} customizations to snapshot`);
 
+    let screenshotUrl = null;
+
+    // Upload screenshot if provided
+    if (screenshot) {
+      try {
+        // Convert base64 to blob
+        const base64Data = screenshot.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        
+        const fileName = `${user.id}/${Date.now()}.png`;
+        
+        const { data: uploadData, error: uploadError } = await supabaseClient.storage
+          .from('theme-screenshots')
+          .upload(fileName, buffer, {
+            contentType: 'image/png',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Screenshot upload error:', uploadError);
+        } else {
+          const { data: { publicUrl } } = supabaseClient.storage
+            .from('theme-screenshots')
+            .getPublicUrl(fileName);
+          screenshotUrl = publicUrl;
+          console.log('Screenshot uploaded:', screenshotUrl);
+        }
+      } catch (error) {
+        console.error('Screenshot processing error:', error);
+      }
+    }
+
     // Save snapshot
     const { data: snapshot, error: saveError } = await supabaseClient
       .from('customization_snapshots')
@@ -67,7 +99,8 @@ serve(async (req) => {
         user_id: user.id,
         name,
         description: description || null,
-        customizations: customizations || []
+        customizations: customizations || [],
+        screenshot_url: screenshotUrl
       })
       .select()
       .single();

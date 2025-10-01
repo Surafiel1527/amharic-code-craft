@@ -21,6 +21,7 @@ import AdminCustomizationsList from "@/components/AdminCustomizationsList";
 import { PreviewModeToggle } from "@/components/PreviewModeToggle";
 import { ModificationHistory } from "@/components/ModificationHistory";
 import { SnapshotManager } from "@/components/SnapshotManager";
+import { ThemeGallery } from "@/components/ThemeGallery";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -421,18 +422,45 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="customize" className="space-y-4">
-            <div className="grid gap-4">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <AdminSelfModifyChat onCustomizationApplied={() => {
-                  toast.success("🎨 Changes ready for review");
-                }} />
-                <AdminCustomizationsList />
-              </div>
-              <div className="grid gap-4 lg:grid-cols-2">
+            <Tabs defaultValue="chat" className="flex-1">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="chat">AI Modify</TabsTrigger>
+                <TabsTrigger value="themes">Themes</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
+                <TabsTrigger value="versions">Versions</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="chat" className="mt-6">
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <AdminSelfModifyChat onCustomizationApplied={() => {
+                    toast.success("🎨 Changes ready for review");
+                  }} />
+                  <AdminCustomizationsList />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="themes" className="mt-6">
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold mb-2">Dashboard Themes</h2>
+                    <p className="text-muted-foreground">
+                      Browse and apply saved dashboard configurations. Each theme captures a complete snapshot of your customizations.
+                    </p>
+                  </div>
+                  <ThemeGallery 
+                    onPreview={handleSnapshotPreview}
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="history" className="mt-6">
                 <ModificationHistory />
+              </TabsContent>
+
+              <TabsContent value="versions" className="mt-6">
                 <SnapshotManager onPreview={handleSnapshotPreview} />
-              </div>
-            </div>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       </div>

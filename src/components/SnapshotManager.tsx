@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Save, Download, Trash2, Camera, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import html2canvas from 'html2canvas';
 import {
   Dialog,
   DialogContent,
@@ -72,6 +73,26 @@ export function SnapshotManager({ onPreview }: SnapshotManagerProps) {
     fetchSnapshots();
   }, []);
 
+  const captureScreenshot = async (): Promise<string | null> => {
+    try {
+      // Find the main content area to capture
+      const mainContent = document.querySelector('main') || document.body;
+      
+      const canvas = await html2canvas(mainContent as HTMLElement, {
+        backgroundColor: null,
+        scale: 0.5, // Reduce quality for smaller file size
+        logging: false,
+        windowWidth: 1280,
+        windowHeight: 800,
+      });
+      
+      return canvas.toDataURL('image/png');
+    } catch (error) {
+      console.error('Error capturing screenshot:', error);
+      return null;
+    }
+  };
+
   const handleSaveSnapshot = async () => {
     if (!name.trim()) {
       toast.error('Please enter a name for the snapshot');
@@ -80,20 +101,27 @@ export function SnapshotManager({ onPreview }: SnapshotManagerProps) {
 
     setSaving(true);
     try {
+      toast.info('Capturing screenshot...');
+      const screenshot = await captureScreenshot();
+
       const { error } = await supabase.functions.invoke('save-snapshot', {
-        body: { name: name.trim(), description: description.trim() || null }
+        body: { 
+          name: name.trim(), 
+          description: description.trim() || null,
+          screenshot 
+        }
       });
 
       if (error) throw error;
 
-      toast.success('Snapshot saved successfully');
+      toast.success('Theme saved successfully');
       setName('');
       setDescription('');
       setIsDialogOpen(false);
       fetchSnapshots();
     } catch (error) {
       console.error('Error saving snapshot:', error);
-      toast.error('Failed to save snapshot');
+      toast.error('Failed to save theme');
     } finally {
       setSaving(false);
     }
@@ -152,30 +180,30 @@ export function SnapshotManager({ onPreview }: SnapshotManagerProps) {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Camera className="h-5 w-5" />
-                Saved Versions
+                Quick Save
               </CardTitle>
               <CardDescription>
-                Save and restore complete dashboard configurations
+                Save current configuration as a named theme
               </CardDescription>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Current State
+                  Save as Theme
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Save Current Dashboard State</DialogTitle>
+                  <DialogTitle>Save Current Configuration as Theme</DialogTitle>
                   <DialogDescription>
-                    Create a named snapshot of your current dashboard configuration
+                    Create a named theme with a screenshot. You can switch between themes instantly.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <label htmlFor="name" className="text-sm font-medium">
-                      Version Name *
+                      Theme Name *
                     </label>
                     <Input
                       id="name"
@@ -202,7 +230,7 @@ export function SnapshotManager({ onPreview }: SnapshotManagerProps) {
                     Cancel
                   </Button>
                   <Button onClick={handleSaveSnapshot} disabled={saving}>
-                    {saving ? 'Saving...' : 'Save Snapshot'}
+                    {saving ? 'Saving...' : 'Save Theme'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
