@@ -1,5 +1,6 @@
 import { ReactElement, cloneElement } from 'react';
 import { useDynamicCustomizations } from '@/hooks/useDynamicCustomizations';
+import { EditableWrapper } from './EditableWrapper';
 
 interface DynamicComponentProps {
   name: string;
@@ -54,5 +55,12 @@ export function DynamicComponent({ name, children, defaultOrder = 0 }: DynamicCo
   });
   
   // Clone the child element with merged props
-  return cloneElement(children, mergedProps);
+  const modifiedChild = cloneElement(children, mergedProps);
+  
+  // Wrap in EditableWrapper for visual editing mode
+  return (
+    <EditableWrapper componentName={name}>
+      {modifiedChild}
+    </EditableWrapper>
+  );
 }

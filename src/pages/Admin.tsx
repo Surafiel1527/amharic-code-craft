@@ -11,7 +11,7 @@ import { DynamicContainer } from "@/components/DynamicContainer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain, Sparkles, LogOut, Menu } from "lucide-react";
+import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain, Sparkles, LogOut, Menu, Edit3, Check, Info } from "lucide-react";
 import { toast } from "sonner";
 import { AIAnalytics } from "@/components/AIAnalytics";
 import { NotificationCenter } from "@/components/NotificationCenter";
@@ -25,6 +25,7 @@ import { ThemeGallery } from "@/components/ThemeGallery";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { EditModeProvider, useEditMode } from "@/contexts/EditModeContext";
 import {
   Table,
   TableBody,
@@ -54,7 +55,7 @@ interface Stats {
   totalConversations: number;
 }
 
-export default function Admin() {
+function AdminContent() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole(user?.id);
   const { t } = useLanguage();
@@ -63,6 +64,7 @@ export default function Admin() {
   const [previewSnapshotId, setPreviewSnapshotId] = useState<string | undefined>(undefined);
   const [previewSnapshotName, setPreviewSnapshotName] = useState<string>('');
   const [pendingCount, setPendingCount] = useState(0);
+  const { isEditMode, setIsEditMode } = useEditMode();
   
   // Debug preview mode changes
   useEffect(() => {
@@ -209,9 +211,21 @@ export default function Admin() {
       style={Object.keys(dynamicInlineStyles).length > 0 ? dynamicInlineStyles : { background: defaultGradient }}
     >
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
+        {/* Edit Mode Alert */}
+        {isEditMode && (
+          <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950">
+            <Edit3 className="h-4 w-4" />
+            <AlertDescription>
+              ✏️ <strong>Edit Mode Active:</strong> Click on any highlighted element to edit it. 
+              Click "Exit Edit Mode" when done.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Preview Mode Alert */}
         {previewMode && (
           <Alert className="border-primary bg-primary/5">
+            <Info className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between">
               {previewSnapshotId ? (
                 <span className="text-sm">
@@ -250,11 +264,29 @@ export default function Admin() {
           
           {/* Desktop Actions */}
           <div className="hidden sm:flex items-center gap-2">
-                <PreviewModeToggle 
-                  isPreviewMode={previewMode}
-                  onToggle={handlePreviewToggle}
-                  pendingCount={pendingCount}
-                />
+            <Button
+              variant={isEditMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsEditMode(!isEditMode)}
+              className="gap-2"
+            >
+              {isEditMode ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  Exit Edit Mode
+                </>
+              ) : (
+                <>
+                  <Edit3 className="h-4 w-4" />
+                  Edit Page
+                </>
+              )}
+            </Button>
+            <PreviewModeToggle 
+              isPreviewMode={previewMode}
+              onToggle={handlePreviewToggle}
+              pendingCount={pendingCount}
+            />
             <DynamicSlot name="header-actions">
               {isVisible('NotificationCenter') && <NotificationCenter />}
             </DynamicSlot>
@@ -275,11 +307,29 @@ export default function Admin() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px]">
               <div className="flex flex-col gap-4 mt-8">
-            <PreviewModeToggle 
-              isPreviewMode={previewMode}
-              onToggle={handlePreviewToggle}
-              pendingCount={pendingCount}
-            />
+                <Button
+                  variant={isEditMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsEditMode(!isEditMode)}
+                  className="gap-2 w-full"
+                >
+                  {isEditMode ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Exit Edit Mode
+                    </>
+                  ) : (
+                    <>
+                      <Edit3 className="h-4 w-4" />
+                      Edit Page
+                    </>
+                  )}
+                </Button>
+                <PreviewModeToggle 
+                  isPreviewMode={previewMode}
+                  onToggle={handlePreviewToggle}
+                  pendingCount={pendingCount}
+                />
                 <DynamicSlot name="mobile-menu">
                   {isVisible('NotificationCenter') && <NotificationCenter />}
                 </DynamicSlot>
@@ -465,5 +515,13 @@ export default function Admin() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+export default function Admin() {
+  return (
+    <EditModeProvider>
+      <AdminContent />
+    </EditModeProvider>
   );
 }
