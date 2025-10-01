@@ -109,31 +109,15 @@ export const useDynamicCustomizations = (previewMode = false) => {
       return styles;
     }
     
-    // Match gradient patterns like: bg-gradient-to-br from-red-50 to-red-200
-    const gradientMatch = tailwindClasses.match(/bg-gradient-to-(\w+)/);
-    const fromMatch = tailwindClasses.match(/from-([\w-]+)/);
-    const viaMatch = tailwindClasses.match(/via-([\w-]+)/);
-    const toMatch = tailwindClasses.match(/to-([\w-]+)/);
-    
-    if (gradientMatch && fromMatch && toMatch) {
-      const direction = gradientMatch[1];
-      const fromColor = fromMatch[1];
-      const toColor = toMatch[1];
-      const viaColor = viaMatch ? viaMatch[1] : null;
+    // Helper function to extract color (supports both named colors and hex codes)
+    const extractColor = (colorString: string): string => {
+      // Check for hex color in brackets: [#RRGGBB]
+      const hexMatch = colorString.match(/\[#([0-9A-Fa-f]{6})\]/);
+      if (hexMatch) {
+        return `#${hexMatch[1]}`;
+      }
       
-      // Map Tailwind directions to CSS gradient directions
-      const directionMap: Record<string, string> = {
-        'br': 'to bottom right',
-        'tr': 'to top right',
-        'bl': 'to bottom left',
-        'tl': 'to top left',
-        't': 'to top',
-        'b': 'to bottom',
-        'l': 'to left',
-        'r': 'to right',
-      };
-      
-      // Map Tailwind color names to HSL values
+      // Otherwise use color map for named colors
       const colorMap: Record<string, string> = {
         'red-50': 'hsl(0, 85%, 97%)',
         'red-100': 'hsl(0, 93%, 94%)',
@@ -155,17 +139,51 @@ export const useDynamicCustomizations = (previewMode = false) => {
         'green-800': 'hsl(142, 76%, 26%)',
         'green-900': 'hsl(143, 85%, 20%)',
         'green-950': 'hsl(144, 90%, 12%)',
+        'yellow-50': 'hsl(55, 92%, 95%)',
+        'yellow-200': 'hsl(48, 95%, 76%)',
+        'purple-50': 'hsl(270, 100%, 98%)',
+        'purple-200': 'hsl(270, 67%, 90%)',
+        'purple-800': 'hsl(271, 81%, 35%)',
+        'violet-200': 'hsl(252, 100%, 91%)',
+        'violet-800': 'hsl(251, 91%, 35%)',
+      };
+      
+      return colorMap[colorString] || 'hsl(0, 0%, 50%)';
+    };
+    
+    // Match gradient patterns - supports both named colors and hex codes
+    // Examples: 
+    //   - bg-gradient-to-br from-red-50 to-red-200
+    //   - bg-gradient-to-br from-[#B62D26] to-[#8B1F1F]
+    const gradientMatch = tailwindClasses.match(/bg-gradient-to-(\w+)/);
+    const fromMatch = tailwindClasses.match(/from-([\w-]+|\[#[0-9A-Fa-f]{6}\])/);
+    const viaMatch = tailwindClasses.match(/via-([\w-]+|\[#[0-9A-Fa-f]{6}\])/);
+    const toMatch = tailwindClasses.match(/to-([\w-]+|\[#[0-9A-Fa-f]{6}\])/);
+    
+    if (gradientMatch && fromMatch && toMatch) {
+      const direction = gradientMatch[1];
+      const fromColor = extractColor(fromMatch[1]);
+      const toColor = extractColor(toMatch[1]);
+      const viaColor = viaMatch ? extractColor(viaMatch[1]) : null;
+      
+      // Map Tailwind directions to CSS gradient directions
+      const directionMap: Record<string, string> = {
+        'br': 'to bottom right',
+        'tr': 'to top right',
+        'bl': 'to bottom left',
+        'tl': 'to top left',
+        't': 'to top',
+        'b': 'to bottom',
+        'l': 'to left',
+        'r': 'to right',
       };
       
       const cssDirection = directionMap[direction] || 'to bottom right';
-      const fromHsl = colorMap[fromColor] || `hsl(0, 0%, 50%)`;
-      const toHsl = colorMap[toColor] || `hsl(0, 0%, 80%)`;
       
       if (viaColor) {
-        const viaHsl = colorMap[viaColor] || `hsl(0, 0%, 65%)`;
-        styles.background = `linear-gradient(${cssDirection}, ${fromHsl}, ${viaHsl}, ${toHsl})`;
+        styles.background = `linear-gradient(${cssDirection}, ${fromColor}, ${viaColor}, ${toColor})`;
       } else {
-        styles.background = `linear-gradient(${cssDirection}, ${fromHsl}, ${toHsl})`;
+        styles.background = `linear-gradient(${cssDirection}, ${fromColor}, ${toColor})`;
       }
     }
     

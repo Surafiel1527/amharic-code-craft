@@ -162,11 +162,12 @@ RESPONSE FORMAT (JSON):
 
 IMPORTANT RULES:
 1. **Color Styles**: 
-   - For BACKGROUND COLORS: Always use Tailwind color utility classes (e.g., from-pink-50, via-red-100, to-purple-200)
-   - When user requests specific colors, use those exact Tailwind color names
+   - **HEX COLOR CODES**: When user provides hex colors like #B62D26, use Tailwind arbitrary values: bg-[#B62D26], from-[#B62D26], to-[#B62D26]
+   - **NAMED COLORS**: For color names (pink, blue, red), use Tailwind classes: from-pink-50, to-pink-200
+   - **EXACT MATCH PRIORITY**: Always use the EXACT color provided by the user
    - For UI components (buttons, text, borders): Use semantic tokens (bg-primary, text-foreground, etc.)
-   - ALWAYS include dark mode variants using dark: prefix (e.g., dark:from-pink-950)
-   - For gradients, use format: bg-gradient-to-[direction] from-[color] via-[color] to-[color]
+   - ALWAYS include dark mode variants using dark: prefix (e.g., dark:from-[#B62D26] or dark:from-pink-950)
+   - For gradients with hex codes: bg-gradient-to-[direction] from-[#HEX1] to-[#HEX2]
 2. **Components**: Only reference components from the registry above
 3. **Slots**: Use designated slot names for content injection
 4. **Safety**: Never suggest changes that could break authentication or security
@@ -178,16 +179,35 @@ IMPORTANT RULES:
 10. **Validation**: Ensure all prop changes match component interfaces
 
 COLOR EXAMPLES:
+- Hex code (#B62D26): bg-gradient-to-br from-[#B62D26] to-[#8B1F1F] dark:from-[#B62D26] dark:to-[#5A0F0F]
+- Hex code (#4A90E2): bg-gradient-to-br from-[#4A90E2] to-[#2E5C8A] dark:from-[#4A90E2] dark:to-[#1A3552]
 - Pink: from-pink-50 to-pink-200 dark:from-pink-950 dark:to-pink-800
 - Blue: from-blue-50 to-blue-200 dark:from-blue-950 dark:to-blue-800
 - Red: from-red-50 to-red-200 dark:from-red-950 dark:to-red-800
 - Purple: from-purple-50 to-purple-200 dark:from-purple-950 dark:to-purple-800
 - White: from-white to-gray-50 dark:from-gray-950 dark:to-gray-900
 - Pink + Red: from-pink-50 via-pink-100 to-red-200 dark:from-pink-950 dark:via-red-900 dark:to-red-800
+- Mixed (hex + named): from-[#FF6B9D] via-pink-100 to-red-200 dark:from-[#8B0040] dark:via-red-900 dark:to-red-800
 
 EXAMPLES:
 
-Example 1 - Background color change (Pink and Red):
+Example 1a - Background color with HEX code:
+{
+  "customization_type": "style",
+  "analysis": "User wants exact hex color #B62D26 as background",
+  "changes": {
+    "description": "Change AdminPage background to exact color #B62D26",
+    "component": "AdminPage",
+    "modifications": [{
+      "type": "modify",
+      "target": "main container",
+      "styles": "bg-gradient-to-br from-[#B62D26] to-[#8B1F1F] dark:from-[#B62D26] dark:to-[#5A0F0F]"
+    }]
+  },
+  "confidence": 1.0
+}
+
+Example 1b - Background color change (Named colors):
 {
   "customization_type": "style",
   "analysis": "User wants pink and red gradient background",
