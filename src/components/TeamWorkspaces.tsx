@@ -84,6 +84,30 @@ export default function TeamWorkspaces() {
 
       if (ownedError || memberError) {
         console.error("Error:", ownedError || memberError);
+        
+        // Report to self-healing system
+        const error = ownedError || memberError;
+        try {
+          await supabase.functions.invoke('report-error', {
+            body: {
+              errorType: 'DatabaseAccessError',
+              errorMessage: error?.message || 'Failed to fetch workspaces',
+              source: 'frontend',
+              filePath: 'TeamWorkspaces.tsx',
+              functionName: 'fetchWorkspaces',
+              severity: 'high',
+              context: {
+                operation: error === ownedError ? 'fetch_owned_workspaces' : 'fetch_member_workspaces',
+                errorCode: error?.code,
+                errorDetails: error?.details,
+                errorHint: error?.hint
+              }
+            }
+          });
+        } catch (reportErr) {
+          console.error('Failed to report error to self-healing:', reportErr);
+        }
+        
         // Only show toast if it's not an auth error
         if (!ownedError?.message?.includes('JWT') && !memberError?.message?.includes('JWT')) {
           toast({ title: "Error fetching workspaces", variant: "destructive" });
@@ -115,6 +139,28 @@ export default function TeamWorkspaces() {
       }
     } catch (error: any) {
       console.error("Unexpected error:", error);
+      
+      // Report to self-healing system
+      try {
+        await supabase.functions.invoke('report-error', {
+          body: {
+            errorType: error?.name || 'UnexpectedError',
+            errorMessage: error?.message || 'Unexpected error in fetchWorkspaces',
+            stackTrace: error?.stack,
+            source: 'frontend',
+            filePath: 'TeamWorkspaces.tsx',
+            functionName: 'fetchWorkspaces',
+            severity: 'high',
+            context: {
+              operation: 'fetch_workspaces_catch_all',
+              errorDetails: error
+            }
+          }
+        });
+      } catch (reportErr) {
+        console.error('Failed to report error to self-healing:', reportErr);
+      }
+      
       // Only show toast if it's not an auth error
       if (!error?.message?.includes('JWT') && !error?.message?.includes('session')) {
         toast({ title: "Error fetching workspaces", variant: "destructive" });
