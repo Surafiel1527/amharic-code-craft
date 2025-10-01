@@ -56,6 +56,11 @@ export default function Admin() {
   const navigate = useNavigate();
   const [previewMode, setPreviewMode] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  
+  // Debug preview mode changes
+  useEffect(() => {
+    console.log('📱 Preview Mode Changed:', previewMode);
+  }, [previewMode]);
   const { getDynamicStyles, isVisible, customizations } = useDynamicCustomizations(previewMode);
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalProjects: 0, totalConversations: 0 });
@@ -166,8 +171,11 @@ export default function Admin() {
   }
 
   // Get dynamic styles for AdminPage component (check multiple possible component names)
-  const dynamicStyles = getDynamicStyles('AdminPage') || getDynamicStyles('Admin') || getDynamicStyles('main container');
+  console.log('🔍 Admin.tsx checking for dynamic styles...');
+  const dynamicStyles = getDynamicStyles('AdminPage') || getDynamicStyles('Admin') || getDynamicStyles('AdminDashboard') || getDynamicStyles('main container') || getDynamicStyles('background');
+  console.log('🎨 Admin.tsx received styles:', dynamicStyles);
   const backgroundStyles = dynamicStyles || 'bg-gradient-to-br from-green-50 via-green-100 to-green-200 dark:from-green-950 dark:via-green-900 dark:to-green-800';
+  console.log('✅ Final background styles:', backgroundStyles);
 
   return (
     <div className={`min-h-screen ${backgroundStyles} p-4 sm:p-8`}>
@@ -223,6 +231,11 @@ export default function Admin() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px]">
               <div className="flex flex-col gap-4 mt-8">
+                <PreviewModeToggle 
+                  isPreviewMode={previewMode}
+                  onToggle={() => setPreviewMode(!previewMode)}
+                  pendingCount={pendingCount}
+                />
                 <DynamicSlot name="mobile-menu">
                   {isVisible('NotificationCenter') && <NotificationCenter />}
                 </DynamicSlot>

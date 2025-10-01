@@ -352,7 +352,7 @@ const translations = {
   },
 };
 
-export const LanguageProvider = ({ children }: { children: ReactNode }) => {
+export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
     const saved = localStorage.getItem("language");
     return (saved === "en" || saved === "am") ? saved : "en";
@@ -376,7 +376,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </LanguageContext.Provider>
   );
-};
+}
 
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
