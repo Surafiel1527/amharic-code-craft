@@ -78,9 +78,12 @@ export const ChatInterface = ({
 
   const createNewConversation = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const { data, error } = await supabase
         .from("conversations")
-        .insert({ title: "አዲስ ውይይት" })
+        .insert({ title: "አዲስ ውይይት", user_id: user.id })
         .select()
         .single();
 
