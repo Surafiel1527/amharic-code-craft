@@ -5,13 +5,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, Plus, LogOut, User, Download, Share2 } from "lucide-react";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatInterface } from "@/components/ChatInterface";
 import { ConversationSidebar } from "@/components/ConversationSidebar";
+import { ProjectsGrid } from "@/components/ProjectsGrid";
 import { useAuth } from "@/hooks/useAuth";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { downloadHTML } from "@/utils/downloadHelpers";
@@ -87,8 +87,7 @@ const Index = () => {
       const { data, error } = await supabase
         .from("projects")
         .select("*")
-        .order("created_at", { ascending: false })
-        .limit(4);
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setRecentProjects(data || []);
@@ -284,7 +283,11 @@ const Index = () => {
                 </span>
                 የአማርኛ AI ቴክኖሎጂ - ዘመናዊ እና ብልህ
               </div>
-              <div className="flex-1 flex justify-end">
+              <div className="flex-1 flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => navigate("/settings")} className="gap-2">
+                  <Settings className="h-4 w-4" />
+                  ማስተካከያ
+                </Button>
                 <Button variant="outline" size="sm" onClick={signOut} className="gap-2">
                   <LogOut className="h-4 w-4" />
                   ውጣ
@@ -487,28 +490,21 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Recent Projects */}
+      {/* Projects Section */}
       {recentProjects.length > 0 && (
         <section className="container mx-auto px-4 py-8">
           <div className="max-w-7xl mx-auto">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              የቅርብ ጊዜ ፕሮጀክቶች
-            </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
-              {recentProjects.map((project) => (
-                <Card
-                  key={project.id}
-                  className="p-4 cursor-pointer hover:border-primary/50 transition-all"
-                  onClick={() => loadProject(project)}
-                >
-                  <h3 className="font-semibold text-sm mb-1 truncate">{project.title}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {project.prompt}
-                  </p>
-                </Card>
-              ))}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <Clock className="h-6 w-6 text-primary" />
+                የእርስዎ ፕሮጀክቶች
+              </h2>
             </div>
+            <ProjectsGrid
+              projects={recentProjects}
+              onLoadProject={loadProject}
+              onProjectsChange={fetchRecentProjects}
+            />
           </div>
         </section>
       )}
