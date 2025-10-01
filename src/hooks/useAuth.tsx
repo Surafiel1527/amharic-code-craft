@@ -10,40 +10,22 @@ export const useAuth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log('🔐 Auth: Initializing authentication...');
-    
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('🔐 Auth event:', event, {
-          hasSession: !!session,
-          userId: session?.user?.id,
-          email: session?.user?.email
-        });
-
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Handle auth events
         if (event === 'SIGNED_IN') {
-          console.log('✅ Auth: User signed in successfully');
           navigate("/");
         } else if (event === 'SIGNED_OUT') {
-          console.log('👋 Auth: User signed out');
           navigate("/auth");
-        } else if (event === 'TOKEN_REFRESHED') {
-          console.log('🔄 Auth: Token refreshed successfully');
         }
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
-        console.error('❌ Auth: Error getting session:', error);
-        
-        // Report authentication error to self-healing system
         supabase.functions.invoke('report-error', {
           body: {
             errorType: 'AuthError',
@@ -60,35 +42,21 @@ export const useAuth = () => {
         }).catch(err => console.error('Failed to report auth error:', err));
       }
       
-      console.log('🔐 Auth: Initial session check:', {
-        hasSession: !!session,
-        userId: session?.user?.id
-      });
-      
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
     return () => {
-      console.log('🔐 Auth: Cleaning up auth listener');
       subscription.unsubscribe();
     };
   }, [navigate]);
 
   const signOut = async () => {
-    console.log('👋 Auth: Signing out user...');
     try {
       const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('❌ Auth: Sign out error:', error);
-        throw error;
-      }
-      console.log('✅ Auth: Sign out successful');
+      if (error) throw error;
     } catch (error) {
-      console.error('❌ Auth: Sign out failed:', error);
-      
-      // Report sign out error
       supabase.functions.invoke('report-error', {
         body: {
           errorType: 'AuthError',

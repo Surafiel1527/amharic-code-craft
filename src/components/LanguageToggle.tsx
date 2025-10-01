@@ -15,6 +15,7 @@ export const LanguageToggle = () => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1 sm:gap-2 transition-all hover-scale text-xs sm:text-sm px-2 sm:px-3">
+          <Languages className="h-3 w-3 sm:h-4 sm:w-4" />
           <span className="hidden sm:inline">{language === "en" ? "English" : "አማርኛ"}</span>
           <span className="sm:hidden">{language === "en" ? "EN" : "አማ"}</span>
         </Button>
