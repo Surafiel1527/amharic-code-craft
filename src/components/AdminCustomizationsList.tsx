@@ -85,8 +85,8 @@ export default function AdminCustomizationsList() {
       if (error) throw error;
 
       toast({
-        title: '✅ Approved & Applied',
-        description: 'Customization is now live!',
+        title: '✅ Approved',
+        description: 'Turn OFF preview mode to see the applied change on the page.',
       });
 
       loadCustomizations();

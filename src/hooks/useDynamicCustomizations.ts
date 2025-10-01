@@ -62,9 +62,11 @@ export const useDynamicCustomizations = (previewMode = false) => {
         .order('created_at', { ascending: false });
       
       if (previewMode) {
+        console.log('🔍 PREVIEW MODE: Loading pending + applied');
         // Load pending AND applied (pending will override applied)
         query = query.in('status', ['pending', 'applied']);
       } else {
+        console.log('✅ NORMAL MODE: Loading only applied');
         // Only load applied customizations
         query = query.eq('status', 'applied');
       }
