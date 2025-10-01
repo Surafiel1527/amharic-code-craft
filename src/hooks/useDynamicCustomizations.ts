@@ -332,46 +332,43 @@ export const useDynamicCustomizations = (previewMode = false) => {
 
   // Get dynamic props for a component
   const getDynamicProps = (componentName: string): Record<string, any> => {
-    const props: Record<string, any> = {};
+    const propsModifications = customizations
+      .filter(c => c.status === 'applied' || (previewMode && c.status === 'pending'))
+      .flatMap(c => c.applied_changes?.modifications || [])
+      .filter(mod => mod.target === componentName && (mod.type === 'props' || mod.props));
     
-    customizations.forEach(custom => {
-      try {
-        const changes = custom.applied_changes;
-        if (changes?.component === componentName && changes?.modifications) {
-          changes.modifications.forEach((mod: any) => {
-            if (mod.props) {
-              Object.assign(props, mod.props);
-            }
-          });
-        }
-      } catch (e) {
-        console.error('Error parsing customization:', e);
-      }
-    });
-
-    return props;
+    // Merge all props (later ones override earlier ones)
+    const mergedProps = propsModifications.reduce((acc, mod) => {
+      return { ...acc, ...(mod.props || {}) };
+    }, {});
+    
+    if (Object.keys(mergedProps).length > 0) {
+      console.log(`📦 Props for ${componentName}:`, mergedProps);
+    }
+    
+    return mergedProps;
   };
 
   // Get sort order for components
   const getOrder = (componentName: string): number | undefined => {
-    let order: number | undefined;
+    const reorderModifications = customizations
+      .filter(c => c.status === 'applied' || (previewMode && c.status === 'pending'))
+      .flatMap(c => c.applied_changes?.modifications || [])
+      .filter(mod => mod.target === componentName && (mod.type === 'reorder' || mod.order !== undefined))
+      .sort((a, b) => {
+        const timeA = new Date(a.created_at || 0).getTime();
+        const timeB = new Date(b.created_at || 0).getTime();
+        return timeB - timeA; // Most recent first
+      });
     
-    customizations.forEach(custom => {
-      try {
-        const changes = custom.applied_changes;
-        if (changes?.component === componentName && changes?.modifications) {
-          changes.modifications.forEach((mod: any) => {
-            if (mod.order !== undefined) {
-              order = mod.order;
-            }
-          });
-        }
-      } catch (e) {
-        console.error('Error parsing customization:', e);
-      }
-    });
-
-    return order;
+    const latestOrder = reorderModifications[0]?.order;
+    
+    if (latestOrder !== undefined) {
+      console.log(`🔢 Order for ${componentName}:`, latestOrder);
+      return latestOrder;
+    }
+    
+    return undefined;
   };
 
   return {

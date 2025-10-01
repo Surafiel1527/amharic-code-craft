@@ -104,6 +104,12 @@ CRITICAL COLOR HANDLING RULES:
 CURRENT ADMIN PAGE STATE:
 ${JSON.stringify(currentState, null, 2)}
 
+COMPONENT STRUCTURE FOR PROPS & REORDERING:
+- Stats Cards: "StatsCard-Users", "StatsCard-Projects", "StatsCard-Conversations" (wrapped in DynamicComponent)
+- Action Buttons: "Button-SignOut", "Button-BackToHome" (can modify variant, size, etc.)
+- Tabs: "Tab-Users", "Tab-AI", "Tab-Healing", "Tab-Customize" (can reorder)
+- Any component wrapped in <DynamicComponent name="ComponentName"> can be modified
+
 PROJECT ARCHITECTURE:
 - Frontend: React with TypeScript
 - Styling: Tailwind CSS with HSL color system AND arbitrary hex values [#HEXCODE]
@@ -130,9 +136,15 @@ AVAILABLE FEATURES IN THE APP:
 YOUR CAPABILITIES:
 1. **Style Changes**: Modify any component's CSS classes
 2. **Content Injection**: Add HTML/components to designated slots
-3. **Visibility Control**: Show/hide existing components
-4. **Reordering**: Change the display order of elements
-5. **Props Modification**: Update component properties dynamically
+3. **Props Modification**: Modify component properties (NEW!)
+   - Change button variants: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
+   - Change button sizes: "default" | "sm" | "lg" | "icon"
+   - Modify any component prop (className, disabled, etc.)
+4. **Component Reordering**: Change layout order (NEW!)
+   - Reorder stats cards (set order: 1, 2, 3)
+   - Move tabs around (Tab-Users, Tab-AI, etc.)
+   - Lower numbers appear first (order: 1 comes before order: 2)
+5. **Visibility Control**: Show/hide existing components
 
 YOUR TASK:
 Analyze the user's request and generate the necessary changes to implement it in the admin page.
@@ -229,7 +241,89 @@ Example 1b - Background color with EXACT HEX code (user provided #B62D26):
   "confidence": 1.0
 }
 
-Example 1c - Background color change (Named colors):
+Example 1c - Props modification (change button variant):
+{
+  "customization_type": "props",
+  "analysis": "User wants sign out button to be more prominent with destructive style",
+  "changes": {
+    "description": "Change sign-out button to destructive variant and larger size",
+    "component": "Button-SignOut",
+    "modifications": [{
+      "type": "props",
+      "target": "Button-SignOut",
+      "props": {
+        "variant": "destructive",
+        "size": "lg"
+      }
+    }]
+  },
+  "confidence": 1.0
+}
+
+Example 1d - Reordering (move stats cards):
+{
+  "customization_type": "layout",
+  "analysis": "User wants to see conversations count first, then projects, then users",
+  "changes": {
+    "description": "Reorder stats cards: Conversations first, Projects second, Users third",
+    "component": "StatsCards",
+    "modifications": [
+      {
+        "type": "reorder",
+        "target": "StatsCard-Conversations",
+        "order": 1
+      },
+      {
+        "type": "reorder",
+        "target": "StatsCard-Projects",
+        "order": 2
+      },
+      {
+        "type": "reorder",
+        "target": "StatsCard-Users",
+        "order": 3
+      }
+    ]
+  },
+  "confidence": 1.0
+}
+
+Example 1e - Background color change (Named colors):
+      }
+    }]
+  },
+  "confidence": 1.0
+}
+
+Example 1d - Reordering (move stats cards):
+{
+  "customization_type": "layout",
+  "analysis": "User wants to see conversations count first, then projects, then users",
+  "changes": {
+    "description": "Reorder stats cards: Conversations first, Projects second, Users third",
+    "component": "StatsCards",
+    "modifications": [
+      {
+        "type": "reorder",
+        "target": "StatsCard-Conversations",
+        "order": 1
+      },
+      {
+        "type": "reorder",
+        "target": "StatsCard-Projects",
+        "order": 2
+      },
+      {
+        "type": "reorder",
+        "target": "StatsCard-Users",
+        "order": 3
+      }
+    ]
+  },
+  "confidence": 1.0
+}
+
+Example 1e - Background color change (Named colors):
 {
   "customization_type": "style",
   "analysis": "User wants pink and red gradient background",
@@ -245,7 +339,27 @@ Example 1c - Background color change (Named colors):
   "confidence": 1.0
 }
 
-Example 2 - Add new stat card:
+Example 2 - Combined props and style:
+{
+  "customization_type": "props",
+  "analysis": "User wants back button to be larger and have accent color",
+  "changes": {
+    "description": "Make back button larger with accent background",
+    "component": "Button-BackToHome",
+    "modifications": [{
+      "type": "props",
+      "target": "Button-BackToHome",
+      "props": {
+        "size": "lg",
+        "variant": "default"
+      },
+      "styles": "bg-accent hover:bg-accent/90"
+    }]
+  },
+  "confidence": 1.0
+}
+
+Example 3 - Add new stat card:
 {
   "customization_type": "content",
   "analysis": "User wants to display total revenue",

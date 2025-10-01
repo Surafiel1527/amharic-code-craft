@@ -6,6 +6,8 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useDynamicCustomizations } from "@/hooks/useDynamicCustomizations";
 import { DynamicSlot } from "@/components/DynamicSlot";
+import { DynamicComponent } from "@/components/DynamicComponent";
+import { DynamicContainer } from "@/components/DynamicContainer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -199,9 +201,11 @@ export default function Admin() {
         {/* Mobile Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-            <Button variant="outline" size="icon" onClick={() => navigate("/")} className="shrink-0">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+            <DynamicComponent name="Button-BackToHome">
+              <Button variant="outline" size="icon" onClick={() => navigate("/")} className="shrink-0">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </DynamicComponent>
             <div className="min-w-0 flex-1">
               <h1 className="text-xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent truncate">
                 {t("admin.title")}
@@ -220,10 +224,12 @@ export default function Admin() {
             <DynamicSlot name="header-actions">
               {isVisible('NotificationCenter') && <NotificationCenter />}
             </DynamicSlot>
-            <Button variant="outline" size="sm" onClick={signOut} className="gap-2">
-              <LogOut className="h-4 w-4" />
-              {t("admin.signOut")}
-            </Button>
+            <DynamicComponent name="Button-SignOut">
+              <Button variant="outline" size="sm" onClick={signOut} className="gap-2">
+                <LogOut className="h-4 w-4" />
+                {t("admin.signOut")}
+              </Button>
+            </DynamicComponent>
           </div>
 
           {/* Mobile Menu */}
@@ -256,38 +262,44 @@ export default function Admin() {
           </Sheet>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card className="glass-effect border-primary/20">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.totalUsers")}</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            </CardContent>
-          </Card>
+        {/* Stats Cards - Wrapped for AI reordering */}
+        <DynamicContainer className="grid gap-6 md:grid-cols-3">
+          <DynamicComponent name="StatsCard-Users" defaultOrder={1}>
+            <Card className="glass-effect border-primary/20">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">{t("admin.totalUsers")}</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalUsers}</div>
+              </CardContent>
+            </Card>
+          </DynamicComponent>
 
-          <Card className="glass-effect border-primary/20">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.totalProjects")}</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalProjects}</div>
-            </CardContent>
-          </Card>
+          <DynamicComponent name="StatsCard-Projects" defaultOrder={2}>
+            <Card className="glass-effect border-primary/20">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">{t("admin.totalProjects")}</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalProjects}</div>
+              </CardContent>
+            </Card>
+          </DynamicComponent>
 
-          <Card className="glass-effect border-primary/20">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.totalConversations")}</CardTitle>
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalConversations}</div>
-            </CardContent>
-          </Card>
-        </div>
+          <DynamicComponent name="StatsCard-Conversations" defaultOrder={3}>
+            <Card className="glass-effect border-primary/20">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">{t("admin.totalConversations")}</CardTitle>
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalConversations}</div>
+              </CardContent>
+            </Card>
+          </DynamicComponent>
+        </DynamicContainer>
 
         {/* Dynamic Extra Stats Slot */}
         <DynamicSlot name="stats-extra" className="grid gap-6 md:grid-cols-3" />
