@@ -10,16 +10,23 @@ export const useAuth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let isInitialLoad = true;
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        if (event === 'SIGNED_IN') {
+        // Only navigate on actual sign in/out events, not on token refresh
+        if (event === 'SIGNED_IN' && isInitialLoad) {
           navigate("/");
+          isInitialLoad = false;
         } else if (event === 'SIGNED_OUT') {
           navigate("/auth");
+        } else if (event === 'SIGNED_IN') {
+          // Token refresh or other auth update - don't navigate
+          isInitialLoad = false;
         }
       }
     );
