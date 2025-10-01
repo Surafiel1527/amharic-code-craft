@@ -50,17 +50,26 @@ export const useDynamicCustomizations = () => {
 
   const loadCustomizations = async () => {
     try {
+      console.log('🔄 LOADING CUSTOMIZATIONS...');
       const { data, error } = await supabase
         .from('admin_customizations')
         .select('*')
         .eq('status', 'applied')
         .order('applied_at', { ascending: false });
 
-      if (error) throw error;
-      console.log('📦 Loaded customizations:', data);
+      if (error) {
+        console.error('❌ Error loading customizations:', error);
+        throw error;
+      }
+      
+      console.log('📦 LOADED CUSTOMIZATIONS:', {
+        count: data?.length || 0,
+        data: data
+      });
+      
       setCustomizations(data || []);
     } catch (error) {
-      console.error('Error loading customizations:', error);
+      console.error('❌ FATAL Error loading customizations:', error);
     } finally {
       setLoading(false);
     }
@@ -68,45 +77,62 @@ export const useDynamicCustomizations = () => {
 
   // Generate dynamic styles from customizations
   const getDynamicStyles = (component: string) => {
+    console.log(`\n🎨 ========== GET DYNAMIC STYLES ==========`);
+    console.log(`🎯 Looking for component: "${component}"`);
+    console.log(`📚 Total customizations available: ${customizations.length}`);
+    
     const styles: string[] = [];
     
-    console.log(`🎨 Getting styles for component: "${component}"`);
-    console.log(`📚 Available customizations:`, customizations.length);
-    
-    customizations.forEach(custom => {
+    customizations.forEach((custom, index) => {
       try {
         const changes = custom.applied_changes;
-        console.log(`   Checking customization:`, {
-          component: changes?.component,
-          target: changes?.target,
-          hasModifications: !!changes?.modifications,
-          hasDirectStyles: !!changes?.styles,
-          fullChanges: changes
-        });
+        console.log(`\n   [${index + 1}/${customizations.length}] Checking customization:`);
+        console.log(`   - ID: ${custom.id}`);
+        console.log(`   - Type: ${custom.customization_type}`);
+        console.log(`   - Component in changes: "${changes?.component}"`);
+        console.log(`   - Target in changes: "${changes?.target}"`);
+        console.log(`   - Has modifications: ${!!changes?.modifications}`);
+        console.log(`   - Full changes object:`, JSON.stringify(changes, null, 2));
         
-        // Check if the component matches directly or if modifications target this component
-        if (changes?.component === component || changes?.target === component) {
-          console.log(`   ✅ Match found for "${component}"`);
-          if (changes?.modifications) {
-            changes.modifications.forEach((mod: any) => {
+        // Check if the component matches
+        const componentMatches = changes?.component === component;
+        const targetMatches = changes?.target === component;
+        
+        console.log(`   - Component match: ${componentMatches}`);
+        console.log(`   - Target match: ${targetMatches}`);
+        
+        if (componentMatches || targetMatches) {
+          console.log(`   ✅ MATCH FOUND!`);
+          
+          if (changes?.modifications && Array.isArray(changes.modifications)) {
+            console.log(`   - Processing ${changes.modifications.length} modifications...`);
+            changes.modifications.forEach((mod: any, modIndex: number) => {
+              console.log(`      Modification [${modIndex + 1}]:`, mod);
               if (mod.styles) {
-                console.log(`      Adding styles from modification:`, mod.styles);
+                console.log(`      ✅ Adding styles: "${mod.styles}"`);
                 styles.push(mod.styles);
+              } else {
+                console.log(`      ⚠️ No styles in this modification`);
               }
             });
           } else if (changes?.styles) {
-            // Handle direct styles on changes object
-            console.log(`      Adding direct styles:`, changes.styles);
+            console.log(`   ✅ Adding direct styles: "${changes.styles}"`);
             styles.push(changes.styles);
+          } else {
+            console.log(`   ⚠️ No styles found in this customization`);
           }
+        } else {
+          console.log(`   ❌ No match`);
         }
       } catch (e) {
-        console.error('Error parsing customization:', e);
+        console.error(`   ❌ Error parsing customization:`, e);
       }
     });
 
     const result = styles.length > 0 ? styles.join(' ') : '';
-    console.log(`🎨 Final styles for "${component}":`, result);
+    console.log(`\n🎨 ========== RESULT ==========`);
+    console.log(`Final styles for "${component}": "${result}"`);
+    console.log(`==========================================\n`);
     return result;
   };
 
