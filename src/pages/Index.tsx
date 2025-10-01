@@ -65,35 +65,36 @@ interface Conversation {
   updated_at: string;
 }
 
-const EXAMPLE_PROMPTS = [
-  {
-    title: "የቡና ቤት ድህረ ገፅ",
-    prompt: "ለቡና ቤቴ ቆንጆ ድህረ ገፅ ፍጠር። የቡና ምስሎች፣ የቡና አይነቶች እና ዋጋዎች፣ የመገኛ አድራሻ እና የድህረ ገፁ ቆንጆ ዲዛይን ይኑረው። የኢትዮጵያ ባህላዊ ቀለሞችን ተጠቀም።",
-    emoji: "☕"
-  },
-  {
-    title: "የግል ብሎግ",
-    prompt: "ለግል ብሎግ ድህረ ገፅ ፍጠር። የብሎግ ፖስቶች፣ ስለኔ ክፍል፣ የመገናኛ ቅጽ እና ማህበራዊ ሚዲያ አገናኞች ይኑሩት። ዘመናዊ እና ንፁህ ዲዛይን ተጠቀም።",
-    emoji: "📝"
-  },
-  {
-    title: "የንግድ ማሳያ ገፅ",
-    prompt: "ለትንሽ ንግድ ማሳያ ገፅ ፍጠር። የምርቶች ክፍል፣ አገልግሎቶች፣ የደንበኛ ግምገማዎች፣ እና የመገናኛ መረጃ ይኑረው። ሙያዊ እና አስተማማኝ ዲዛይን።",
-    emoji: "🏢"
-  },
-  {
-    title: "የፖርትፎሊዮ ድህረ ገፅ",
-    prompt: "ለአርቲስት ወይም ፎቶግራፈር የፖርትፎሊዮ ድህረ ገፅ ፍጠር። የስራ ማሳያ ክፍል፣ ስለኔ፣ እና የመገናኛ ቅጽ። ጥበባዊ እና ውበት ያለው ዲዛይን።",
-    emoji: "🎨"
-  },
-];
-
 const Index = () => {
   const { user, loading, signOut } = useAuth();
   const { isAdmin } = useUserRole(user?.id);
   const isOnline = useNetworkStatus();
   const { t } = useLanguage();
+
   const navigate = useNavigate();
+  
+  const EXAMPLE_PROMPTS = [
+    {
+      titleKey: "examples.coffee",
+      promptKey: "examples.coffeePrompt",
+      emoji: "☕"
+    },
+    {
+      titleKey: "examples.blog",
+      promptKey: "examples.blogPrompt",
+      emoji: "📝"
+    },
+    {
+      titleKey: "examples.business",
+      promptKey: "examples.businessPrompt",
+      emoji: "🏢"
+    },
+    {
+      titleKey: "examples.portfolio",
+      promptKey: "examples.portfolioPrompt",
+      emoji: "🎨"
+    },
+  ];
   const [mode, setMode] = useState<"quick" | "chat">("quick");
   const [prompt, setPrompt] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
@@ -150,7 +151,7 @@ const Index = () => {
         setPrompt("");
         toast.success(t("toast.newProject"));
       },
-      description: "አዲስ ፕሮጀክት",
+      description: t("shortcuts.newProject"),
     },
     {
       key: "s",
@@ -160,7 +161,7 @@ const Index = () => {
           setSaveDialogOpen(true);
         }
       },
-      description: "ፕሮጀክት አስቀምጥ",
+      description: t("shortcuts.saveProject"),
     },
     {
       key: "k",
@@ -170,7 +171,7 @@ const Index = () => {
           copyCode();
         }
       },
-      description: "ኮድ ቅዳ",
+      description: t("shortcuts.copyCode"),
     },
     {
       key: "b",
@@ -180,7 +181,7 @@ const Index = () => {
           setShowAIFeatures(!showAIFeatures);
         }
       },
-      description: "AI ባህሪያት",
+      description: t("shortcuts.aiFeatures"),
     },
     {
       key: "/",
@@ -188,7 +189,7 @@ const Index = () => {
       handler: () => {
         setShowShortcuts(!showShortcuts);
       },
-      description: "የቁልፍ ቦርድ አቋራጮች",
+      description: t("shortcuts.show"),
     },
   ]);
 
@@ -355,7 +356,7 @@ const Index = () => {
     try {
       const { data, error } = await supabase
         .from("conversations")
-        .insert({ title: "አዲስ ውይይት", user_id: user.id })
+        .insert({ title: t("projects.new"), user_id: user.id })
         .select()
         .single();
 
@@ -472,10 +473,10 @@ const Index = () => {
                   variant="outline"
                   className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50 transition-all text-xs hover-scale animate-fade-in"
                   style={{ animationDelay: `${index * 50}ms` }}
-                  onClick={() => useExamplePrompt(example.prompt)}
+                  onClick={() => useExamplePrompt(t(example.promptKey))}
                 >
                   <span className="text-2xl">{example.emoji}</span>
-                  <span className="text-center">{example.title}</span>
+                  <span className="text-center">{t(example.titleKey)}</span>
                 </Button>
               ))}
             </div>

@@ -26,9 +26,13 @@ const translations = {
     // Examples
     "examples.title": "Examples",
     "examples.coffee": "Coffee Shop Website",
+    "examples.coffeePrompt": "Create a beautiful website for my coffee shop. Include coffee images, coffee types and prices, location address, and beautiful design. Use Ethiopian traditional colors.",
     "examples.blog": "Personal Blog",
+    "examples.blogPrompt": "Create a personal blog website. Include blog posts, about me section, contact form and social media links. Use modern and clean design.",
     "examples.business": "Business Landing",
+    "examples.businessPrompt": "Create a landing page for a small business. Include products section, services, customer reviews, and contact information. Professional and trustworthy design.",
     "examples.portfolio": "Portfolio Website",
+    "examples.portfolioPrompt": "Create a portfolio website for an artist or photographer. Include work showcase section, about me, and contact form. Artistic and beautiful design.",
     
     // Tabs
     "tabs.quick": "Quick",
@@ -125,9 +129,13 @@ const translations = {
     // Examples
     "examples.title": "ምሳሌዎች",
     "examples.coffee": "የቡና ቤት ድህረ ገፅ",
+    "examples.coffeePrompt": "ለቡና ቤቴ ቆንጆ ድህረ ገፅ ፍጠር። የቡና ምስሎች፣ የቡና አይነቶች እና ዋጋዎች፣ የመገኛ አድራሻ እና የድህረ ገፁ ቆንጆ ዲዛይን ይኑረው። የኢትዮጵያ ባህላዊ ቀለሞችን ተጠቀም።",
     "examples.blog": "የግል ብሎግ",
+    "examples.blogPrompt": "ለግል ብሎግ ድህረ ገፅ ፍጠር። የብሎግ ፖስቶች፣ ስለኔ ክፍል፣ የመገናኛ ቅጽ እና ማህበራዊ ሚዲያ አገናኞች ይኑሩት። ዘመናዊ እና ንፁህ ዲዛይን ተጠቀም።",
     "examples.business": "የንግድ ማሳያ ገፅ",
+    "examples.businessPrompt": "ለትንሽ ንግድ ማሳያ ገፅ ፍጠር። የምርቶች ክፍል፣ አገልግሎቶች፣ የደንበኛ ግምገማዎች፣ እና የመገናኛ መረጃ ይኑረው። ሙያዊ እና አስተማማኝ ዲዛይን።",
     "examples.portfolio": "የፖርትፎሊዮ ድህረ ገፅ",
+    "examples.portfolioPrompt": "ለአርቲስት ወይም ፎቶግራፈር የፖርትፎሊዮ ድህረ ገፅ ፍጠር። የስራ ማሳያ ክፍል፣ ስለኔ፣ እና የመገናኛ ቅጽ። ጥበባዊ እና ውበት ያለው ዲዛይን።",
     
     // Tabs
     "tabs.quick": "ፈጣን",
