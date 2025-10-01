@@ -60,20 +60,55 @@ export default function TeamWorkspaces() {
   const fetchWorkspaces = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
-    const { data, error } = await supabase
-      .from("team_workspaces")
-      .select("*")
-      .or(`owner_id.eq.${user.id},id.in.(select workspace_id from team_members where user_id = ${user.id})`);
+    try {
+      // Fetch workspaces where user is owner
+      const { data: ownedWorkspaces, error: ownedError } = await supabase
+        .from("team_workspaces")
+        .select("*")
+        .eq("owner_id", user.id);
 
-    if (error) {
-      toast({ title: "Error fetching workspaces", variant: "destructive" });
-    } else {
-      setWorkspaces(data || []);
-      if (data && data.length > 0 && !selectedWorkspace) {
-        setSelectedWorkspace(data[0]);
+      // Fetch workspace IDs where user is a member
+      const { data: memberWorkspaceIds, error: memberError } = await supabase
+        .from("team_members")
+        .select("workspace_id")
+        .eq("user_id", user.id);
+
+      if (ownedError || memberError) {
+        console.error("Error:", ownedError || memberError);
+        toast({ title: "Error fetching workspaces", variant: "destructive" });
+        setLoading(false);
+        return;
       }
+
+      // Fetch member workspaces if user is a member of any
+      let memberWorkspaces: Workspace[] = [];
+      if (memberWorkspaceIds && memberWorkspaceIds.length > 0) {
+        const workspaceIds = memberWorkspaceIds.map(m => m.workspace_id);
+        const { data: memberWs } = await supabase
+          .from("team_workspaces")
+          .select("*")
+          .in("id", workspaceIds);
+        memberWorkspaces = memberWs || [];
+      }
+
+      // Combine and deduplicate workspaces
+      const allWorkspaces = [...(ownedWorkspaces || []), ...memberWorkspaces];
+      const uniqueWorkspaces = Array.from(
+        new Map(allWorkspaces.map(ws => [ws.id, ws])).values()
+      );
+
+      setWorkspaces(uniqueWorkspaces);
+      if (uniqueWorkspaces.length > 0 && !selectedWorkspace) {
+        setSelectedWorkspace(uniqueWorkspaces[0]);
+      }
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      toast({ title: "Error fetching workspaces", variant: "destructive" });
     }
     setLoading(false);
   };

@@ -15,6 +15,11 @@ self.addEventListener('install', (event) => {
 
 // Fetch with cache-first strategy
 self.addEventListener('fetch', (event) => {
+  // Skip chrome-extension and non-http(s) requests
+  if (!event.request.url.startsWith('http')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -34,6 +39,26 @@ self.addEventListener('fetch', (event) => {
             });
 
           return response;
+        }).catch((error) => {
+          console.log('Fetch failed:', error.message);
+          // Return a basic offline response
+          return new Response('Offline', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: new Headers({
+              'Content-Type': 'text/plain'
+            })
+          });
+        });
+      })
+      .catch((error) => {
+        console.error('Cache match failed:', error);
+        // Try to fetch anyway
+        return fetch(event.request).catch(() => {
+          return new Response('Offline', {
+            status: 503,
+            statusText: 'Service Unavailable'
+          });
         });
       })
   );
