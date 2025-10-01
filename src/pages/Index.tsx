@@ -3,11 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Loader2, Copy, Check, Save, Clock, Sparkles } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ChatInterface } from "@/components/ChatInterface";
 
 interface Project {
   id: string;
@@ -15,6 +17,12 @@ interface Project {
   prompt: string;
   html_code: string;
   created_at: string;
+}
+
+interface Conversation {
+  id: string;
+  title: string;
+  updated_at: string;
 }
 
 const EXAMPLE_PROMPTS = [
@@ -38,19 +46,10 @@ const EXAMPLE_PROMPTS = [
     prompt: "ለአርቲስት ወይም ፎቶግራፈር የፖርትፎሊዮ ድህረ ገፅ ፍጠር። የስራ ማሳያ ክፍል፣ ስለኔ፣ እና የመገናኛ ቅጽ። ጥበባዊ እና ውበት ያለው ዲዛይን።",
     emoji: "🎨"
   },
-  {
-    title: "የምግብ ትዕዛዝ ገፅ",
-    prompt: "ለምግብ ቤት የምግብ ትዕዛዝ ድህረ ገፅ ፍጠር። የምግብ ምናሌ፣ ዋጋዎች፣ ምስሎች፣ እና የማዘዝ ቁልፍ ይኑረው। አበላሽ እና ቀለም ያለ ዲዛይን።",
-    emoji: "🍽️"
-  },
-  {
-    title: "የወጣቶች ክበብ",
-    prompt: "ለወጣቶች ክበብ ድህረ ገፅ ፍጠር። ስለ ክበቡ መረጃ፣ ክስተቶች፣ ፎቶ ማሳያ፣ እና የምዝገባ ቅጽ። ወጣታዊ እና ሕያው ዲዛይን።",
-    emoji: "🎯"
-  }
 ];
 
 const Index = () => {
+  const [mode, setMode] = useState<"quick" | "chat">("quick");
   const [prompt, setPrompt] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -59,10 +58,12 @@ const Index = () => {
   const [projectTitle, setProjectTitle] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [recentProjects, setRecentProjects] = useState<Project[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversation, setActiveConversation] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRecentProjects();
+    fetchConversations();
   }, []);
 
   const fetchRecentProjects = async () => {
@@ -71,18 +72,31 @@ const Index = () => {
         .from("projects")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(6);
+        .limit(4);
 
       if (error) throw error;
       setRecentProjects(data || []);
     } catch (error) {
       console.error("Error fetching projects:", error);
-    } finally {
-      setLoadingProjects(false);
     }
   };
 
-  const handleGenerate = async () => {
+  const fetchConversations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("*")
+        .order("updated_at", { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setConversations(data || []);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+    }
+  };
+
+  const handleQuickGenerate = async () => {
     if (!prompt.trim()) {
       toast.error("እባክዎ መግለጫ ያስገቡ");
       return;
@@ -147,7 +161,7 @@ const Index = () => {
 
   const useExamplePrompt = (examplePrompt: string) => {
     setPrompt(examplePrompt);
-    toast.success("ምሳሌ ተጫነ - አሁን 'ድህረ ገፅ ፍጠር' ይጫኑ");
+    toast.success("ምሳሌ ተጫነ");
   };
 
   const copyCode = () => {
@@ -157,6 +171,35 @@ const Index = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const createNewConversation = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("conversations")
+        .insert({ title: "አዲስ ውይይት" })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setActiveConversation(data.id);
+      setGeneratedCode("");
+      fetchConversations();
+      toast.success("አዲስ ውይይት ተፈጠረ");
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      toast.error("ውይይት መፍጠር አልተቻለም");
+    }
+  };
+
+  const handleCodeGenerated = (code: string) => {
+    setGeneratedCode(code);
+  };
+
+  const handleConversationChange = (id: string) => {
+    setActiveConversation(id);
+    fetchConversations();
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -164,176 +207,214 @@ const Index = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(271_91%_65%/0.15),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,hsl(142_76%_36%/0.1),transparent_50%)]" />
         
-        <div className="container mx-auto px-4 py-16 relative">
-          <div className="max-w-4xl mx-auto text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <div className="container mx-auto px-4 py-12 relative">
+          <div className="max-w-4xl mx-auto text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary mb-4">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
               </span>
-              የአማርኛ AI ቴክኖሎጂ
+              የአማርኛ AI ቴክኖሎጂ - ዘመናዊ እና ብልህ
             </div>
             
-            <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent leading-tight">
+            <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent leading-tight">
               በአማርኛ ድህረ ገፆችን ይፍጠሩ
             </h1>
             
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              የእርስዎን ሀሳብ በአማርኛ ይግለጹ፣ AI የእርስዎን ድህረ ገፅ በጥቂት ሰከንዶች ውስጥ ይገነባል።
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              AI ጋር በመወያየት ወይም በቀላል መግለጫ ድህረ ገፅዎን ይገንቡ። እንደ Lovable እና Replit!
             </p>
           </div>
         </div>
       </section>
 
       {/* Example Prompts */}
-      <section className="container mx-auto px-4 py-8 border-b border-border">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            ምሳሌዎች - ይምረጡ እና ይሞክሩ
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {EXAMPLE_PROMPTS.map((example, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                className="h-auto py-4 flex flex-col items-center gap-2 hover:border-primary/50 transition-all"
-                onClick={() => useExamplePrompt(example.prompt)}
-              >
-                <span className="text-3xl">{example.emoji}</span>
-                <span className="text-xs text-center">{example.title}</span>
-              </Button>
-            ))}
+      {mode === "quick" && (
+        <section className="container mx-auto px-4 py-6 border-b border-border">
+          <div className="max-w-7xl mx-auto">
+            <h2 className="text-sm font-semibold mb-3 flex items-center gap-2 text-muted-foreground">
+              <Sparkles className="h-4 w-4" />
+              ምሳሌዎች
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {EXAMPLE_PROMPTS.map((example, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50 transition-all text-xs"
+                  onClick={() => useExamplePrompt(example.prompt)}
+                >
+                  <span className="text-2xl">{example.emoji}</span>
+                  <span className="text-center">{example.title}</span>
+                </Button>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* Main Editor Section */}
-      <section className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-6 max-w-7xl mx-auto">
-          {/* Input Panel */}
-          <Card className="p-6 space-y-4 bg-card border-border shadow-lg">
-            <div className="space-y-2">
-              <label className="text-lg font-semibold flex items-center gap-2">
-                <span className="text-primary">📝</span>
-                የእርስዎን ድህረ ገፅ ይግለጹ
-              </label>
-              <p className="text-sm text-muted-foreground">
-                እንደ "ለንግዴ ገጽ ፍጠር" ወይም "የግል ብሎግ ገጽ አዘጋጅ" ይፃፉ
-              </p>
-            </div>
-            
-            <Textarea
-              placeholder="ምሳሌ: ለቡና ቤቴ ቆንጆ ድህረ ገፅ ፍጠር። ምስሎች፣ ዋጋዎች እና የመገኛ አድራሻ ይኑረው።"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="min-h-[300px] resize-none bg-background/50 border-border focus:border-primary transition-colors text-base"
-              dir="auto"
-            />
-            
-            <div className="flex gap-2">
-              <Button
-                onClick={handleGenerate}
-                disabled={isGenerating || !prompt.trim()}
-                className="flex-1 h-12 text-base font-semibold bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg hover:shadow-primary/20 transition-all"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    በመፍጠር ላይ...
-                  </>
-                ) : (
-                  <>
-                    <span className="mr-2">✨</span>
-                    ድህረ ገፅ ፍጠር
-                  </>
-                )}
-              </Button>
-
-              {generatedCode && (
-                <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-12 w-12">
-                      <Save className="h-5 w-5" />
+      {/* Main Content */}
+      <section className="container mx-auto px-4 py-6">
+        <div className="grid lg:grid-cols-[300px_1fr_1fr] gap-4 max-w-7xl mx-auto">
+          {/* Sidebar - Conversations List */}
+          {mode === "chat" && (
+            <Card className="p-4 space-y-4 h-[calc(100vh-350px)] flex flex-col">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-sm">ውይይቶች</h3>
+                <Button size="sm" variant="ghost" onClick={createNewConversation}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="space-y-2">
+                  {conversations.map((conv) => (
+                    <Button
+                      key={conv.id}
+                      variant={activeConversation === conv.id ? "secondary" : "ghost"}
+                      className="w-full justify-start text-left h-auto py-2"
+                      onClick={() => setActiveConversation(conv.id)}
+                    >
+                      <div className="truncate">
+                        <div className="text-sm font-medium truncate">{conv.title}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(conv.updated_at).toLocaleDateString("am-ET")}
+                        </div>
+                      </div>
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>ፕሮጀክት አስቀምጥ</DialogTitle>
-                      <DialogDescription>
-                        የፕሮጀክት ስም ያስገቡ
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 pt-4">
-                      <Input
-                        placeholder="የፕሮጀክት ስም"
-                        value={projectTitle}
-                        onChange={(e) => setProjectTitle(e.target.value)}
-                      />
-                      <Button
-                        onClick={handleSaveProject}
-                        disabled={isSaving}
-                        className="w-full"
-                      >
-                        {isSaving ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            በማስቀመጥ ላይ...
-                          </>
-                        ) : (
-                          "አስቀምጥ"
-                        )}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              )}
-            </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </Card>
+          )}
+
+          {/* Editor Panel */}
+          <Card className={`p-6 space-y-4 bg-card border-border shadow-lg ${mode === "chat" ? "" : "lg:col-span-2"}`}>
+            <Tabs value={mode} onValueChange={(v) => setMode(v as "quick" | "chat")}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="quick" className="gap-2">
+                  <Zap className="h-4 w-4" />
+                  ፈጣን ሁነታ
+                </TabsTrigger>
+                <TabsTrigger value="chat" className="gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  የውይይት ሁነታ
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="quick" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">የእርስዎን ድህረ ገፅ ይግለጹ</label>
+                </div>
+                
+                <Textarea
+                  placeholder="ምሳሌ: ለቡና ቤቴ ቆንጆ ድህረ ገፅ ፍጠር። ምስሎች፣ ዋጋዎች እና የመገኛ አድራሻ ይኑረው።"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  className="min-h-[200px] resize-none"
+                  dir="auto"
+                />
+                
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleQuickGenerate}
+                    disabled={isGenerating || !prompt.trim()}
+                    className="flex-1"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        በመፍጠር ላይ...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        ድህረ ገፅ ፍጠር
+                      </>
+                    )}
+                  </Button>
+
+                  {generatedCode && (
+                    <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="icon">
+                          <Save className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>ፕሮጀክት አስቀምጥ</DialogTitle>
+                          <DialogDescription>የፕሮጀክት ስም ያስገቡ</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 pt-4">
+                          <Input
+                            placeholder="የፕሮጀክት ስም"
+                            value={projectTitle}
+                            onChange={(e) => setProjectTitle(e.target.value)}
+                          />
+                          <Button onClick={handleSaveProject} disabled={isSaving} className="w-full">
+                            {isSaving ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                በማስቀመጥ ላይ...
+                              </>
+                            ) : (
+                              "አስቀምጥ"
+                            )}
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="chat" className="mt-4 h-[calc(100vh-400px)]">
+                <ChatInterface
+                  conversationId={activeConversation}
+                  onCodeGenerated={handleCodeGenerated}
+                  currentCode={generatedCode}
+                  onConversationChange={handleConversationChange}
+                />
+              </TabsContent>
+            </Tabs>
           </Card>
 
           {/* Preview Panel */}
           <Card className="p-6 space-y-4 bg-card border-border shadow-lg">
             <div className="flex items-center justify-between">
-              <label className="text-lg font-semibold flex items-center gap-2">
-                <span className="text-accent">🎨</span>
-                ቅድመ እይታ
+              <label className="text-sm font-semibold flex items-center gap-2">
+                🎨 ቅድመ እይታ
               </label>
               {generatedCode && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={copyCode}
-                  className="gap-2"
-                >
+                <Button variant="outline" size="sm" onClick={copyCode} className="gap-2">
                   {copied ? (
                     <>
-                      <Check className="h-4 w-4" />
+                      <Check className="h-3 w-3" />
                       ተቀድቷል
                     </>
                   ) : (
                     <>
-                      <Copy className="h-4 w-4" />
-                      ኮድ ቅዳ
+                      <Copy className="h-3 w-3" />
+                      ቅዳ
                     </>
                   )}
                 </Button>
               )}
             </div>
 
-            <div className="relative rounded-lg border border-border bg-background/50 overflow-hidden min-h-[500px]">
+            <div className="relative rounded-lg border border-border bg-background/50 overflow-hidden h-[calc(100vh-400px)]">
               {generatedCode ? (
                 <iframe
                   srcDoc={generatedCode}
-                  className="w-full h-[500px] border-0"
-                  title="Generated Website Preview"
+                  className="w-full h-full border-0"
+                  title="Preview"
                   sandbox="allow-scripts"
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-                  <div className="text-center space-y-4 p-8">
-                    <div className="text-6xl opacity-20">🌐</div>
-                    <p className="text-lg">የእርስዎ ድህረ ገፅ እዚህ ይታያል</p>
-                    <p className="text-sm">በግራ በኩል መግለጫ ያስገቡ እና "ድህረ ገፅ ፍጠር" ይጫኑ</p>
+                  <div className="text-center space-y-3 p-6">
+                    <div className="text-5xl opacity-20">🌐</div>
+                    <p className="text-sm">የእርስዎ ድህረ ገፅ እዚህ ይታያል</p>
                   </div>
                 </div>
               )}
@@ -344,71 +425,29 @@ const Index = () => {
 
       {/* Recent Projects */}
       {recentProjects.length > 0 && (
-        <section className="container mx-auto px-4 py-12">
+        <section className="container mx-auto px-4 py-8">
           <div className="max-w-7xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <Clock className="h-6 w-6 text-primary" />
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
               የቅርብ ጊዜ ፕሮጀክቶች
             </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
               {recentProjects.map((project) => (
                 <Card
                   key={project.id}
                   className="p-4 cursor-pointer hover:border-primary/50 transition-all"
                   onClick={() => loadProject(project)}
                 >
-                  <h3 className="font-semibold mb-2 truncate">{project.title}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                  <h3 className="font-semibold text-sm mb-1 truncate">{project.title}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-2">
                     {project.prompt}
                   </p>
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(project.created_at).toLocaleDateString("am-ET", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </div>
                 </Card>
               ))}
             </div>
           </div>
         </section>
       )}
-
-      {/* Features Section */}
-      <section className="container mx-auto px-4 py-20 border-t border-border">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            ለምን ይህን መጠቀም አለብዎ?
-          </h2>
-          
-          <div className="grid md:grid-cols-3 gap-6">
-            <Card className="p-6 space-y-3 bg-card border-border hover:border-primary/50 transition-all">
-              <div className="text-4xl">⚡</div>
-              <h3 className="text-xl font-semibold">በጣም ፈጣን</h3>
-              <p className="text-muted-foreground">
-                በሰከንዶች ውስጥ ሙሉ በሙሉ የሚሰራ ድህረ ገፅ ይቀበሉ
-              </p>
-            </Card>
-
-            <Card className="p-6 space-y-3 bg-card border-border hover:border-primary/50 transition-all">
-              <div className="text-4xl">🎯</div>
-              <h3 className="text-xl font-semibold">ቀላል ለመጠቀም</h3>
-              <p className="text-muted-foreground">
-                በአማርኛ ብቻ ይፃፉ። ምንም ፕሮግራም ኮድ አያስፈልግም
-              </p>
-            </Card>
-
-            <Card className="p-6 space-y-3 bg-card border-border hover:border-primary/50 transition-all">
-              <div className="text-4xl">🚀</div>
-              <h3 className="text-xl font-semibold">AI የተደገፈ</h3>
-              <p className="text-muted-foreground">
-                የላቀ AI ቴክኖሎጂ የእርስዎን ሀሳብ ወደ እውነታ ይለውጣል
-              </p>
-            </Card>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };
