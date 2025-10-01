@@ -34,6 +34,8 @@ import { UsageInsights } from "@/components/UsageInsights";
 import PremiumTemplates from "@/components/PremiumTemplates";
 import TeamWorkspaces from "@/components/TeamWorkspaces";
 import APIAccessManager from "@/components/APIAccessManager";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -107,6 +109,36 @@ const Index = () => {
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [showAIFeatures, setShowAIFeatures] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+
+  // PWA install prompt
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallPrompt(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      toast.success('App installed successfully!');
+    }
+    
+    setDeferredPrompt(null);
+    setShowInstallPrompt(false);
+  };
 
   // Keyboard shortcuts
   useKeyboardShortcuts([
@@ -174,6 +206,7 @@ const Index = () => {
   }, [user]);
 
   const fetchRecentProjects = async () => {
+    setIsLoadingProjects(true);
     try {
       const { data, error } = await supabase
         .from("projects")
@@ -184,6 +217,8 @@ const Index = () => {
       setRecentProjects(data || []);
     } catch (error) {
       console.error("Error fetching projects:", error);
+    } finally {
+      setIsLoadingProjects(false);
     }
   };
 
@@ -359,6 +394,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Offline Indicator */}
+      <OfflineIndicator />
+      
       {/* Hero Section */}
       <section className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(271_91%_65%/0.15),transparent_50%)]" />
@@ -794,6 +832,7 @@ const Index = () => {
               projects={recentProjects}
               onLoadProject={loadProject}
               onProjectsChange={fetchRecentProjects}
+              isLoading={isLoadingProjects}
             />
           </div>
         </section>
@@ -893,6 +932,14 @@ const Index = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* PWA Install Prompt */}
+      {showInstallPrompt && (
+        <PWAInstallPrompt
+          onInstall={handleInstallPWA}
+          onDismiss={() => setShowInstallPrompt(false)}
+        />
+      )}
     </div>
   );
 };
