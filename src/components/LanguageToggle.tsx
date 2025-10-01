@@ -14,12 +14,13 @@ export const LanguageToggle = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2 transition-all hover-scale">
-          <Languages className="h-4 w-4" />
-          {language === "en" ? "English" : "አማርኛ"}
+        <Button variant="outline" size="sm" className="gap-1 sm:gap-2 transition-all hover-scale text-xs sm:text-sm px-2 sm:px-3">
+          <Languages className="h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="hidden sm:inline">{language === "en" ? "English" : "አማርኛ"}</span>
+          <span className="sm:hidden">{language === "en" ? "EN" : "አማ"}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="bg-popover border-border z-50 animate-fade-in">
+      <DropdownMenuContent align="end" className="bg-popover border-border z-50 animate-fade-in min-w-[150px]">
         <DropdownMenuItem 
           onClick={() => setLanguage("en")}
           className="cursor-pointer hover:bg-accent transition-colors"
@@ -30,7 +31,7 @@ export const LanguageToggle = () => {
           onClick={() => setLanguage("am")}
           className="cursor-pointer hover:bg-accent transition-colors"
         >
-          🇪🇹 አማርኛ (Amharic)
+          🇪🇹 አማርኛ
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

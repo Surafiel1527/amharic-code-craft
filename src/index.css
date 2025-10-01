@@ -242,4 +242,52 @@ All colors MUST be HSL.
   .animate-pulse-slow {
     animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
+  
+  /* Mobile-specific improvements */
+  /* Ensure touch targets are at least 44x44px for better mobile UX */
+  @media (max-width: 768px) {
+    button, a, input, textarea, select {
+      min-height: 44px;
+    }
+    
+    /* Better text sizing on mobile */
+    body {
+      font-size: 16px; /* Prevents iOS zoom on input focus */
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* Touch-friendly spacing */
+    .touch-target {
+      padding: 0.75rem;
+    }
+    
+    /* Prevent horizontal scroll */
+    body {
+      overflow-x: hidden;
+    }
+    
+    /* Better tap highlight */
+    * {
+      -webkit-tap-highlight-color: hsl(var(--primary) / 0.1);
+    }
+    
+    /* Smoother scrolling on mobile */
+    * {
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Adjust modal/dialog on mobile */
+    [role="dialog"] {
+      max-width: calc(100vw - 2rem);
+      max-height: calc(100vh - 2rem);
+    }
+  }
+  
+  /* Safe area for notched devices */
+  @supports (padding: env(safe-area-inset-bottom)) {
+    body {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
 }

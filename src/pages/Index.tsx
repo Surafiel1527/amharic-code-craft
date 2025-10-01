@@ -36,6 +36,7 @@ import TeamWorkspaces from "@/components/TeamWorkspaces";
 import APIAccessManager from "@/components/APIAccessManager";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
+import { MobileNav } from "@/components/MobileNav";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -403,27 +404,31 @@ const Index = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(271_91%_65%/0.15),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,hsl(142_76%_36%/0.1),transparent_50%)]" />
         
-        <div className="container mx-auto px-4 py-12 relative">
+        <div className="container mx-auto px-4 py-6 md:py-12 relative">
           <div className="max-w-4xl mx-auto text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            {/* Mobile Header */}
             <div className="flex items-center justify-between mb-4">
-              <div className="flex-1" />
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary animate-fade-in">
+              <LanguageToggle />
+              
+              {/* Desktop Badge - Hidden on Mobile */}
+              <div className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-xs sm:text-sm text-primary animate-fade-in">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                 </span>
                 {t("header.badge")}
               </div>
-              <div className="flex-1 flex justify-end gap-2 animate-fade-in" style={{ animationDelay: "100ms" }}>
-                <LanguageToggle />
+
+              {/* Desktop Navigation - Hidden on Mobile */}
+              <div className="hidden md:flex items-center gap-2 animate-fade-in" style={{ animationDelay: "100ms" }}>
                 <Button variant="outline" size="sm" onClick={() => navigate("/explore")} className="gap-2 hover-scale">
                   <TrendingUp className="h-4 w-4" />
-                  {t("header.explore")}
+                  <span className="hidden lg:inline">{t("header.explore")}</span>
                 </Button>
                 {isAdmin && (
                   <Button variant="outline" size="sm" onClick={() => navigate("/admin")} className="gap-2 hover-scale">
                     <Shield className="h-4 w-4" />
-                    {t("header.admin")}
+                    <span className="hidden lg:inline">{t("header.admin")}</span>
                   </Button>
                 )}
                 <Button
@@ -438,20 +443,27 @@ const Index = () => {
                 <ThemeToggle />
                 <Button variant="outline" size="sm" onClick={() => navigate("/settings")} className="gap-2 hover-scale">
                   <Settings className="h-4 w-4" />
-                  {t("header.settings")}
+                  <span className="hidden lg:inline">{t("header.settings")}</span>
                 </Button>
                 <Button variant="outline" size="sm" onClick={signOut} className="gap-2 hover-scale">
                   <LogOut className="h-4 w-4" />
-                  {t("header.logout")}
+                  <span className="hidden lg:inline">{t("header.logout")}</span>
                 </Button>
               </div>
+
+              {/* Mobile Navigation */}
+              <MobileNav 
+                isAdmin={isAdmin}
+                onShowShortcuts={() => setShowShortcuts(!showShortcuts)}
+                onSignOut={signOut}
+              />
             </div>
             
-            <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent leading-tight px-2">
               {t("hero.title")}
             </h1>
             
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
               {t("hero.subtitle")}
             </p>
           </div>
@@ -485,11 +497,11 @@ const Index = () => {
       )}
 
       {/* Main Content */}
-      <section className="container mx-auto px-4 py-6">
-        <div className={`grid ${showAIFeatures ? 'lg:grid-cols-[300px_1fr_1fr_350px]' : 'lg:grid-cols-[300px_1fr_1fr]'} gap-4 max-w-full mx-auto`}>
-          {/* Sidebar - Conversations List */}
+      <section className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+        <div className={`grid ${showAIFeatures ? 'lg:grid-cols-[1fr_1fr_350px]' : 'lg:grid-cols-[300px_1fr_1fr]'} gap-4 max-w-full mx-auto`}>
+          {/* Sidebar - Conversations List - Hidden on Mobile */}
           {mode === "chat" && (
-            <Card className="p-4 space-y-4 h-[calc(100vh-350px)] flex flex-col">
+            <Card className="hidden lg:block p-4 space-y-4 h-[calc(100vh-350px)] flex-col">
               <h3 className="font-semibold text-sm">ውይይቶች</h3>
               <ConversationSidebar
                 conversations={conversations}
