@@ -6,11 +6,13 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain } from "lucide-react";
+import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { AIAnalytics } from "@/components/AIAnalytics";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { SelfHealingMonitor } from "@/components/SelfHealingMonitor";
+import AdminSelfModifyChat from "@/components/AdminSelfModifyChat";
+import AdminCustomizationsList from "@/components/AdminCustomizationsList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -197,6 +199,10 @@ export default function Admin() {
               <Shield className="h-4 w-4" />
               Self-Healing
             </TabsTrigger>
+            <TabsTrigger value="customize" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              Self-Modify
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="space-y-6">
@@ -255,6 +261,15 @@ export default function Admin() {
 
           <TabsContent value="healing">
             <SelfHealingMonitor />
+          </TabsContent>
+
+          <TabsContent value="customize" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <AdminSelfModifyChat onCustomizationApplied={() => {
+                toast.success("🎨 Changes ready for review");
+              }} />
+              <AdminCustomizationsList />
+            </div>
           </TabsContent>
         </Tabs>
       </div>

@@ -14,6 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          customization_id: string | null
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          customization_id?: string | null
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          customization_id?: string | null
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_chat_messages_customization_id_fkey"
+            columns: ["customization_id"]
+            isOneToOne: false
+            referencedRelation: "admin_customizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_customizations: {
+        Row: {
+          applied_at: string | null
+          applied_changes: Json
+          code_changes: string | null
+          created_at: string
+          customization_type: string
+          id: string
+          prompt: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_changes?: Json
+          code_changes?: string | null
+          created_at?: string
+          customization_type: string
+          id?: string
+          prompt: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          applied_changes?: Json
+          code_changes?: string | null
+          created_at?: string
+          customization_type?: string
+          id?: string
+          prompt?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_improvements: {
         Row: {
           after_metrics: Json | null

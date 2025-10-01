@@ -45,6 +45,9 @@ verify_jwt = false
 [functions.scheduled-improvement]
 verify_jwt = false
 
+[functions.admin-self-modify]
+verify_jwt = true
+
 [functions.report-error]
 verify_jwt = false
 
