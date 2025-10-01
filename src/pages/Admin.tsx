@@ -10,6 +10,7 @@ import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain } from "lucide
 import { toast } from "sonner";
 import { AIAnalytics } from "@/components/AIAnalytics";
 import { NotificationCenter } from "@/components/NotificationCenter";
+import { SelfHealingMonitor } from "@/components/SelfHealingMonitor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -192,6 +193,10 @@ export default function Admin() {
               <Brain className="h-4 w-4" />
               AI System
             </TabsTrigger>
+            <TabsTrigger value="healing" className="gap-2">
+              <Shield className="h-4 w-4" />
+              Self-Healing
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="space-y-6">
@@ -246,6 +251,10 @@ export default function Admin() {
 
           <TabsContent value="ai">
             <AIAnalytics />
+          </TabsContent>
+
+          <TabsContent value="healing">
+            <SelfHealingMonitor />
           </TabsContent>
         </Tabs>
       </div>

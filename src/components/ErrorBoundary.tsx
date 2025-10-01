@@ -2,6 +2,7 @@ import { Component, ErrorInfo, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,32 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
+    
+    // Report to self-healing system
+    this.reportErrorToSystem(error, errorInfo);
+  }
+
+  private async reportErrorToSystem(error: Error, errorInfo: ErrorInfo) {
+    try {
+      await supabase.functions.invoke('report-error', {
+        body: {
+          errorType: error.name,
+          errorMessage: error.message,
+          stackTrace: error.stack,
+          source: 'frontend',
+          severity: 'critical',
+          context: {
+            componentStack: errorInfo.componentStack,
+            userAgent: navigator.userAgent,
+            url: window.location.href,
+            timestamp: new Date().toISOString()
+          }
+        }
+      });
+      console.log('Error reported to self-healing system');
+    } catch (reportError) {
+      console.error('Failed to report error:', reportError);
+    }
   }
 
   private handleReset = () => {

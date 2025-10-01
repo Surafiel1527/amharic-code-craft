@@ -219,6 +219,62 @@ export type Database = {
           },
         ]
       }
+      auto_fixes: {
+        Row: {
+          ai_confidence: number | null
+          applied_at: string | null
+          created_at: string
+          error_id: string
+          explanation: string
+          fix_type: string
+          fixed_code: string
+          id: string
+          original_code: string | null
+          rolled_back_at: string | null
+          status: string
+          verification_result: Json | null
+          verified_at: string | null
+        }
+        Insert: {
+          ai_confidence?: number | null
+          applied_at?: string | null
+          created_at?: string
+          error_id: string
+          explanation: string
+          fix_type: string
+          fixed_code: string
+          id?: string
+          original_code?: string | null
+          rolled_back_at?: string | null
+          status?: string
+          verification_result?: Json | null
+          verified_at?: string | null
+        }
+        Update: {
+          ai_confidence?: number | null
+          applied_at?: string | null
+          created_at?: string
+          error_id?: string
+          explanation?: string
+          fix_type?: string
+          fixed_code?: string
+          id?: string
+          original_code?: string | null
+          rolled_back_at?: string | null
+          status?: string
+          verification_result?: Json | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_fixes_error_id_fkey"
+            columns: ["error_id"]
+            isOneToOne: false
+            referencedRelation: "detected_errors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       code_analysis: {
         Row: {
           analysis_type: string
@@ -278,6 +334,60 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      detected_errors: {
+        Row: {
+          auto_fix_enabled: boolean | null
+          created_at: string
+          error_context: Json | null
+          error_message: string
+          error_type: string
+          file_path: string | null
+          fix_attempts: number | null
+          function_name: string | null
+          id: string
+          line_number: number | null
+          resolved_at: string | null
+          severity: string
+          source: string
+          stack_trace: string | null
+          status: string
+        }
+        Insert: {
+          auto_fix_enabled?: boolean | null
+          created_at?: string
+          error_context?: Json | null
+          error_message: string
+          error_type: string
+          file_path?: string | null
+          fix_attempts?: number | null
+          function_name?: string | null
+          id?: string
+          line_number?: number | null
+          resolved_at?: string | null
+          severity?: string
+          source: string
+          stack_trace?: string | null
+          status?: string
+        }
+        Update: {
+          auto_fix_enabled?: boolean | null
+          created_at?: string
+          error_context?: Json | null
+          error_message?: string
+          error_type?: string
+          file_path?: string | null
+          fix_attempts?: number | null
+          function_name?: string | null
+          id?: string
+          line_number?: number | null
+          resolved_at?: string | null
+          severity?: string
+          source?: string
+          stack_trace?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -354,6 +464,41 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: true
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fix_verifications: {
+        Row: {
+          created_at: string
+          details: Json | null
+          fix_id: string
+          id: string
+          passed: boolean
+          verification_type: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          fix_id: string
+          id?: string
+          passed: boolean
+          verification_type: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          fix_id?: string
+          id?: string
+          passed?: boolean
+          verification_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fix_verifications_fix_id_fkey"
+            columns: ["fix_id"]
+            isOneToOne: false
+            referencedRelation: "auto_fixes"
             referencedColumns: ["id"]
           },
         ]
@@ -865,6 +1010,30 @@ export type Database = {
         }
         Relationships: []
       }
+      system_health: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          metric_type: string
+          metric_value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          metric_type: string
+          metric_value: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          metric_type?: string
+          metric_value?: number
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           id: string
@@ -1066,6 +1235,10 @@ export type Database = {
       generate_share_token: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_error_rate: {
+        Args: { time_window?: unknown }
+        Returns: number
       }
       has_role: {
         Args: {

@@ -44,3 +44,12 @@ verify_jwt = false
 
 [functions.scheduled-improvement]
 verify_jwt = false
+
+[functions.report-error]
+verify_jwt = false
+
+[functions.auto-fix-engine]
+verify_jwt = false
+
+[functions.apply-fix]
+verify_jwt = false

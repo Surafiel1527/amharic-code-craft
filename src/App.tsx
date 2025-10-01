@@ -1,4 +1,6 @@
 import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { useErrorMonitor } from "./hooks/useErrorMonitor";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
@@ -9,8 +11,12 @@ import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
-const App = () => (
-  <ErrorBoundary>
+const App = () => {
+  // Enable global error monitoring for autonomous self-healing
+  useErrorMonitor();
+
+  return (
+    <ErrorBoundary>
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
@@ -23,6 +29,7 @@ const App = () => (
       <Route path="*" element={<NotFound />} />
     </Routes>
   </ErrorBoundary>
-);
+  );
+};
 
 export default App;
