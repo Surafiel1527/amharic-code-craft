@@ -19,6 +19,8 @@ import { SelfHealingMonitor } from "@/components/SelfHealingMonitor";
 import AdminSelfModifyChat from "@/components/AdminSelfModifyChat";
 import AdminCustomizationsList from "@/components/AdminCustomizationsList";
 import { PreviewModeToggle } from "@/components/PreviewModeToggle";
+import { ModificationHistory } from "@/components/ModificationHistory";
+import { SnapshotManager } from "@/components/SnapshotManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -388,11 +390,17 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="customize" className="space-y-4">
-            <div className="grid gap-4 lg:grid-cols-2">
-              <AdminSelfModifyChat onCustomizationApplied={() => {
-                toast.success("🎨 Changes ready for review");
-              }} />
-              <AdminCustomizationsList />
+            <div className="grid gap-4">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <AdminSelfModifyChat onCustomizationApplied={() => {
+                  toast.success("🎨 Changes ready for review");
+                }} />
+                <AdminCustomizationsList />
+              </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <ModificationHistory />
+                <SnapshotManager />
+              </div>
             </div>
           </TabsContent>
         </Tabs>

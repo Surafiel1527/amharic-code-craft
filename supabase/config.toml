@@ -48,6 +48,15 @@ verify_jwt = false
 [functions.admin-self-modify]
 verify_jwt = true
 
+[functions.rollback-customization]
+verify_jwt = true
+
+[functions.save-snapshot]
+verify_jwt = true
+
+[functions.restore-snapshot]
+verify_jwt = true
+
 [functions.report-error]
 verify_jwt = false
 
