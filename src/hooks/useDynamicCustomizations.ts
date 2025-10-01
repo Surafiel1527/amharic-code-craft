@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Customization {
@@ -92,6 +93,73 @@ export const useDynamicCustomizations = (previewMode = false) => {
     }
   };
 
+  // Helper function to convert Tailwind gradient classes to inline CSS
+  const convertTailwindToInlineStyles = (tailwindClasses: string): CSSProperties => {
+    const styles: CSSProperties = {};
+    
+    // Match gradient patterns like: bg-gradient-to-br from-red-50 to-red-200
+    const gradientMatch = tailwindClasses.match(/bg-gradient-to-(\w+)/);
+    const fromMatch = tailwindClasses.match(/from-([\w-]+)/);
+    const viaMatch = tailwindClasses.match(/via-([\w-]+)/);
+    const toMatch = tailwindClasses.match(/to-([\w-]+)/);
+    
+    if (gradientMatch && fromMatch && toMatch) {
+      const direction = gradientMatch[1];
+      const fromColor = fromMatch[1];
+      const toColor = toMatch[1];
+      const viaColor = viaMatch ? viaMatch[1] : null;
+      
+      // Map Tailwind directions to CSS gradient directions
+      const directionMap: Record<string, string> = {
+        'br': 'to bottom right',
+        'tr': 'to top right',
+        'bl': 'to bottom left',
+        'tl': 'to top left',
+        't': 'to top',
+        'b': 'to bottom',
+        'l': 'to left',
+        'r': 'to right',
+      };
+      
+      // Map Tailwind color names to HSL values
+      const colorMap: Record<string, string> = {
+        'red-50': 'hsl(0, 85%, 97%)',
+        'red-100': 'hsl(0, 93%, 94%)',
+        'red-200': 'hsl(0, 96%, 89%)',
+        'red-500': 'hsl(0, 84%, 60%)',
+        'red-800': 'hsl(0, 70%, 35%)',
+        'red-950': 'hsl(0, 75%, 15%)',
+        'pink-50': 'hsl(330, 85%, 97%)',
+        'pink-100': 'hsl(326, 78%, 95%)',
+        'pink-200': 'hsl(326, 85%, 90%)',
+        'pink-400': 'hsl(330, 81%, 60%)',
+        'pink-800': 'hsl(336, 74%, 35%)',
+        'pink-950': 'hsl(336, 84%, 17%)',
+        'blue-200': 'hsl(214, 95%, 93%)',
+        'blue-800': 'hsl(214, 80%, 35%)',
+        'green-50': 'hsl(138, 76%, 97%)',
+        'green-100': 'hsl(141, 84%, 93%)',
+        'green-200': 'hsl(141, 79%, 85%)',
+        'green-800': 'hsl(142, 76%, 26%)',
+        'green-900': 'hsl(143, 85%, 20%)',
+        'green-950': 'hsl(144, 90%, 12%)',
+      };
+      
+      const cssDirection = directionMap[direction] || 'to bottom right';
+      const fromHsl = colorMap[fromColor] || `hsl(0, 0%, 50%)`;
+      const toHsl = colorMap[toColor] || `hsl(0, 0%, 80%)`;
+      
+      if (viaColor) {
+        const viaHsl = colorMap[viaColor] || `hsl(0, 0%, 65%)`;
+        styles.background = `linear-gradient(${cssDirection}, ${fromHsl}, ${viaHsl}, ${toHsl})`;
+      } else {
+        styles.background = `linear-gradient(${cssDirection}, ${fromHsl}, ${toHsl})`;
+      }
+    }
+    
+    return styles;
+  };
+
   // Generate dynamic styles from customizations
   // IMPORTANT: When multiple customizations target the same component,
   // only use the MOST RECENT one to avoid style conflicts
@@ -160,6 +228,16 @@ export const useDynamicCustomizations = (previewMode = false) => {
     console.log(`Final styles for "${component}": "${result}"`);
     console.log(`==========================================\n`);
     return result;
+  };
+
+  // Get inline CSS styles (converted from Tailwind classes)
+  const getDynamicInlineStyles = (component: string): CSSProperties => {
+    const tailwindClasses = getDynamicStyles(component);
+    if (!tailwindClasses) return {};
+    
+    const inlineStyles = convertTailwindToInlineStyles(tailwindClasses);
+    console.log(`🎨 Converted to inline styles:`, inlineStyles);
+    return inlineStyles;
   };
 
   // Get dynamic content modifications
@@ -256,6 +334,7 @@ export const useDynamicCustomizations = (previewMode = false) => {
     customizations,
     loading,
     getDynamicStyles,
+    getDynamicInlineStyles,
     getDynamicContent,
     isVisible,
     getDynamicProps,

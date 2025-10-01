@@ -61,7 +61,7 @@ export default function Admin() {
   useEffect(() => {
     console.log('📱 Preview Mode Changed:', previewMode);
   }, [previewMode]);
-  const { getDynamicStyles, isVisible, customizations } = useDynamicCustomizations(previewMode);
+  const { getDynamicStyles, getDynamicInlineStyles, isVisible, customizations } = useDynamicCustomizations(previewMode);
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalProjects: 0, totalConversations: 0 });
   const [loading, setLoading] = useState(true);
@@ -170,15 +170,19 @@ export default function Admin() {
     return null;
   }
 
-  // Get dynamic styles for AdminPage component (check multiple possible component names)
+  // Get dynamic inline styles for AdminPage component
   console.log('🔍 Admin.tsx checking for dynamic styles...');
-  const dynamicStyles = getDynamicStyles('AdminPage') || getDynamicStyles('Admin') || getDynamicStyles('AdminDashboard') || getDynamicStyles('main container') || getDynamicStyles('background');
-  console.log('🎨 Admin.tsx received styles:', dynamicStyles);
-  const backgroundStyles = dynamicStyles || 'bg-gradient-to-br from-green-50 via-green-100 to-green-200 dark:from-green-950 dark:via-green-900 dark:to-green-800';
-  console.log('✅ Final background styles:', backgroundStyles);
+  const dynamicInlineStyles = getDynamicInlineStyles('AdminPage');
+  console.log('🎨 Admin.tsx received inline styles:', dynamicInlineStyles);
+  
+  // Fallback gradient
+  const defaultGradient = 'linear-gradient(to bottom right, hsl(138, 76%, 97%), hsl(141, 84%, 93%), hsl(141, 79%, 85%))';
 
   return (
-    <div className={`min-h-screen ${backgroundStyles} p-4 sm:p-8`}>
+    <div 
+      className="min-h-screen p-4 sm:p-8"
+      style={Object.keys(dynamicInlineStyles).length > 0 ? dynamicInlineStyles : { background: defaultGradient }}
+    >
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
         {/* Preview Mode Alert */}
         {previewMode && pendingCount > 0 && (
