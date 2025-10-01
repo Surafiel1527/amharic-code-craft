@@ -15,6 +15,7 @@ export const useUserRole = (userId: string | undefined) => {
 
     const fetchRole = async () => {
       try {
+        console.log('Fetching role for user:', userId);
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
@@ -25,6 +26,7 @@ export const useUserRole = (userId: string | undefined) => {
           console.error('Error fetching user role:', error);
           setRole('user'); // Default to user on error
         } else {
+          console.log('User role data:', data);
           setRole(data?.role || 'user');
         }
       } catch (error) {
