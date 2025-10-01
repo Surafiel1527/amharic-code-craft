@@ -85,11 +85,12 @@ The admin page has designated "slots" where you can inject content:
 - "sidebar-items": Sidebar menu items
 
 USAGE EXAMPLES:
-- Style change: { "type": "modify", "component": "AdminPage", "styles": "bg-blue-500" }
-- Add content: { "type": "add", "component": "header-actions", "content": "<Badge>New</Badge>" }
-- Hide element: { "type": "hide", "component": "notifications" }
-- Show element: { "type": "show", "component": "notifications" }
-- Reorder: { "type": "modify", "component": "stats-card", "order": 2 }
+- Style change: { "type": "modify", "target": "AdminPage", "styles": "bg-blue-500" }
+- Add content: { "type": "add", "target": "header-actions", "content": "<Badge variant='destructive'>Urgent</Badge>" }
+- Props change: { "type": "modify", "target": "Button-SignOut", "props": { "variant": "destructive" } }
+- Reorder: { "type": "modify", "target": "StatsCard-Projects", "order": 1 }
+- Hide element: { "type": "hide", "target": "notifications" }
+- Show element: { "type": "show", "target": "notifications" }
 `;
 
     // Prepare AI prompt with comprehensive context
@@ -135,48 +136,63 @@ AVAILABLE FEATURES IN THE APP:
 
 YOUR CAPABILITIES:
 1. **Style Changes**: Modify any component's CSS classes
+   Example: { "type": "modify", "target": "AdminPage", "styles": "bg-gradient-to-br from-blue-50 to-blue-200" }
+
 2. **Content Injection**: Add HTML/components to designated slots
-3. **Props Modification**: Modify component properties (NEW!)
+   Example: { "type": "add", "target": "header-actions", "content": "<Badge variant='destructive'>Urgent</Badge>" }
+
+3. **Props Modification**: Modify component properties
    - Change button variants: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
    - Change button sizes: "default" | "sm" | "lg" | "icon"
+   - Change badge variants: "default" | "secondary" | "destructive" | "outline"
    - Modify any component prop (className, disabled, etc.)
-4. **Component Reordering**: Change layout order (NEW!)
-   - Reorder stats cards (set order: 1, 2, 3)
-   - Move tabs around (Tab-Users, Tab-AI, etc.)
-   - Lower numbers appear first (order: 1 comes before order: 2)
+   Example: { "type": "modify", "target": "Button-SignOut", "props": { "variant": "destructive", "size": "sm" } }
+
+4. **Component Reordering**: Change visual display order of grouped elements
+   - Reorder stats cards: "StatsCard-Users", "StatsCard-Projects", "StatsCard-Conversations"
+   - Set order values (1, 2, 3, etc.) - lower numbers appear first
+   - Order 1 comes before order 2, order 2 comes before order 3, etc.
+   Example: { "type": "modify", "target": "StatsCard-Conversations", "order": 1 }
+
 5. **Visibility Control**: Show/hide existing components
+   Example: { "type": "hide", "target": "NotificationCenter" }
 
 YOUR TASK:
 Analyze the user's request and generate the necessary changes to implement it in the admin page.
 
 RESPONSE FORMAT (JSON):
 {
-  "customization_type": "style" | "feature" | "content" | "layout" | "visibility",
+  "customization_type": "style" | "props" | "reorder" | "content" | "visibility",
   "analysis": "Brief explanation of what changes are needed and why",
   "changes": {
     "description": "Human-readable description of changes",
-    "component": "Component/slot name to modify (e.g., AdminPage, header-actions, stats-card)",
+    "component": "Component/slot name being modified",
     "modifications": [
       {
-        "type": "add" | "modify" | "remove" | "hide" | "show",
-        "target": "specific element or section",
-        "styles": "Tailwind CSS classes (for style changes)",
-        "content": "HTML/JSX content (for content injection)",
-        "props": { "key": "value" } (for prop changes),
-        "order": 1 (for reordering),
-        "visibility": true/false (for visibility)
+        "type": "modify",
+        "target": "exact component name (e.g., Button-SignOut, StatsCard-Users)",
+        "styles": "Tailwind CSS classes (optional)",
+        "content": "HTML content (optional)",
+        "props": { "variant": "destructive" } (optional - for props changes),
+        "order": 1 (optional - for reordering)
       }
     ]
   },
   "implementation_steps": [
-    "Detailed step explaining what will happen",
-    "Another step",
-    "Final step"
+    "Step 1: What will be changed",
+    "Step 2: How it will look",
+    "Step 3: Result"
   ],
-  "requires_database": false | true,
-  "database_changes": "SQL if database changes needed (usually false for UI changes)",
-  "confidence": 0.0 to 1.0
+  "requires_database": false,
+  "database_changes": null,
+  "confidence": 0.9
 }
+
+CRITICAL: For Props and Reordering modifications:
+- "target" MUST be the exact DynamicComponent name (e.g., "Button-SignOut", "StatsCard-Users")
+- For props: Include "props": { "key": "value" } in the modification
+- For reordering: Include "order": <number> in the modification
+- "type" should always be "modify" for both props and reordering changes
 
 IMPORTANT RULES:
 1. **Color Styles**: 
