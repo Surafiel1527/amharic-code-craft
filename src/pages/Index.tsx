@@ -38,6 +38,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { downloadHTML } from "@/utils/downloadHelpers";
 
 interface Project {
@@ -88,6 +90,7 @@ const Index = () => {
   const { user, loading, signOut } = useAuth();
   const { isAdmin } = useUserRole(user?.id);
   const isOnline = useNetworkStatus();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"quick" | "chat">("quick");
   const [prompt, setPrompt] = useState("");
@@ -113,7 +116,7 @@ const Index = () => {
       handler: () => {
         setGeneratedCode("");
         setPrompt("");
-        toast.success("አዲስ ፕሮጀክት ተፈጠረ");
+        toast.success(t("toast.newProject"));
       },
       description: "አዲስ ፕሮጀክት",
     },
@@ -201,12 +204,12 @@ const Index = () => {
 
   const handleQuickGenerate = async () => {
     if (!prompt.trim()) {
-      toast.error("እባክዎ መግለጫ ያስገቡ");
+      toast.error(t("toast.promptRequired"));
       return;
     }
 
     if (!isOnline) {
-      toast.error("ከመስመር ጋር መገናኘት ይፈልጋል");
+      toast.error(t("toast.offline"));
       return;
     }
 
@@ -218,17 +221,17 @@ const Index = () => {
 
       if (error) {
         if (error.message.includes("429")) {
-          toast.error("በጣም ብዙ ጥያቄዎች። እባክዎ ትንሽ ይቆዩ።");
+          toast.error(t("toast.rateLimitTitle"), { description: t("toast.rateLimitDesc") });
         } else if (error.message.includes("402")) {
-          toast.error("ክፍያ ያስፈልጋል። እባክዎ የእርስዎን መለያ ይሙሉ።");
+          toast.error(t("toast.paymentRequired"), { description: t("toast.paymentDesc") });
         } else {
-          toast.error("ስህተት ተከስቷል። እባክዎ እንደገና ይሞክሩ።");
+          toast.error("Error occurred. Please try again.");
         }
         throw error;
       }
 
       setGeneratedCode(data.html);
-      toast.success("ድህረ ገፅ በተሳካ ሁኔታ ተፈጥሯል!");
+      toast.success(t("toast.generated"));
     } catch (error) {
       console.error("Error generating website:", error);
     } finally {
@@ -238,17 +241,17 @@ const Index = () => {
 
   const handleSaveProject = async () => {
     if (!projectTitle.trim()) {
-      toast.error("እባክዎ የፕሮጀክት ስም ያስገቡ");
+      toast.error(t("toast.promptRequired"));
       return;
     }
 
     if (!generatedCode) {
-      toast.error("ምንም የተፈጠረ ኮድ የለም");
+      toast.error(t("toast.noCode"));
       return;
     }
 
     if (!user) {
-      toast.error("እባክዎ ይግቡ");
+      toast.error(t("toast.loginRequired"));
       return;
     }
 
@@ -263,13 +266,13 @@ const Index = () => {
 
       if (error) throw error;
 
-      toast.success("ፕሮጀክት በተሳካ ሁኔታ ተቀምጧል!");
+      toast.success(t("toast.saved"));
       setSaveDialogOpen(false);
       setProjectTitle("");
       fetchRecentProjects();
     } catch (error) {
       console.error("Error saving project:", error);
-      toast.error("ፕሮጀክትን ማስቀመጥ አልተቻለም");
+      toast.error("Failed to save project");
     } finally {
       setIsSaving(false);
     }
@@ -279,24 +282,24 @@ const Index = () => {
     setPrompt(project.prompt);
     setGeneratedCode(project.html_code);
     setCurrentProjectId(project.id);
-    toast.success(`"${project.title}" ተጫነ`);
+    toast.success(`"${project.title}" ${t("toast.projectLoaded")}`);
   };
 
   const useExamplePrompt = (examplePrompt: string) => {
     setPrompt(examplePrompt);
-    toast.success("ምሳሌ ተጫነ");
+    toast.success(t("toast.exampleLoaded"));
   };
 
   const copyCode = () => {
     navigator.clipboard.writeText(generatedCode);
     setCopied(true);
-    toast.success("ኮድ ተቀድቷል!");
+    toast.success(t("toast.copied"));
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownload = () => {
     if (!generatedCode) {
-      toast.error("ምንም የተፈጠረ ኮድ የለም");
+      toast.error(t("toast.noCode"));
       return;
     }
 
@@ -305,12 +308,12 @@ const Index = () => {
       : "website.html";
     
     downloadHTML(generatedCode, filename);
-    toast.success("ፋይል ወረደ!");
+    toast.success(t("toast.downloaded"));
   };
 
   const createNewConversation = async () => {
     if (!user) {
-      toast.error("እባክዎ ይግቡ");
+      toast.error(t("toast.loginRequired"));
       return;
     }
 
@@ -326,10 +329,10 @@ const Index = () => {
       setActiveConversation(data.id);
       setGeneratedCode("");
       fetchConversations();
-      toast.success("አዲስ ውይይት ተፈጠረ");
+      toast.success(t("toast.conversationCreated"));
     } catch (error) {
       console.error("Error creating conversation:", error);
-      toast.error("ውይይት መፍጠር አልተቻለም");
+      toast.error("Failed to create conversation");
     }
   };
 
@@ -370,17 +373,18 @@ const Index = () => {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                 </span>
-                የአማርኛ AI ቴክኖሎጂ - ዘመናዊ እና ብልህ
+                {t("header.badge")}
               </div>
               <div className="flex-1 flex justify-end gap-2">
+                <LanguageToggle />
                 <Button variant="outline" size="sm" onClick={() => navigate("/explore")} className="gap-2">
                   <TrendingUp className="h-4 w-4" />
-                  አስስ
+                  {t("header.explore")}
                 </Button>
                 {isAdmin && (
                   <Button variant="outline" size="sm" onClick={() => navigate("/admin")} className="gap-2">
                     <Shield className="h-4 w-4" />
-                    አስተዳዳሪ
+                    {t("header.admin")}
                   </Button>
                 )}
                 <Button
@@ -395,21 +399,21 @@ const Index = () => {
                 <ThemeToggle />
                 <Button variant="outline" size="sm" onClick={() => navigate("/settings")} className="gap-2">
                   <Settings className="h-4 w-4" />
-                  ማስተካከያ
+                  {t("header.settings")}
                 </Button>
                 <Button variant="outline" size="sm" onClick={signOut} className="gap-2">
                   <LogOut className="h-4 w-4" />
-                  ውጣ
+                  {t("header.logout")}
                 </Button>
               </div>
             </div>
             
             <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent leading-tight">
-              በአማርኛ ድህረ ገፆችን ይፍጠሩ
+              {t("hero.title")}
             </h1>
             
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              AI ጋር በመወያየት ወይም በቀላል መግለጫ ድህረ ገፅዎን ይገንቡ። እንደ Lovable እና Replit!
+              {t("hero.subtitle")}
             </p>
           </div>
         </div>
@@ -421,7 +425,7 @@ const Index = () => {
           <div className="max-w-7xl mx-auto">
             <h2 className="text-sm font-semibold mb-3 flex items-center gap-2 text-muted-foreground">
               <Sparkles className="h-4 w-4" />
-              ምሳሌዎች
+              {t("examples.title")}
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {EXAMPLE_PROMPTS.map((example, index) => (
@@ -782,7 +786,7 @@ const Index = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold flex items-center gap-2">
                 <Clock className="h-6 w-6 text-primary" />
-                የእርስዎ ፕሮጀክቶች
+                {t("projects.title")}
               </h2>
             </div>
             <ProjectsGrid
@@ -806,7 +810,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
             <Database className="h-6 w-6 text-primary" />
-            ምትኪ እና መመለሻ
+            {t("section.backup")}
           </h2>
           <BackupRestore />
         </div>
@@ -817,7 +821,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
             <TrendingUp className="h-6 w-6 text-primary" />
-            የአጠቃቀም ግንዛቤዎች
+            {t("section.usage")}
           </h2>
           <UsageInsights />
         </div>
@@ -830,7 +834,7 @@ const Index = () => {
           <div>
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
               <DollarSign className="h-6 w-6 text-primary" />
-              የአብነት ገበያ
+              {t("section.marketplace")}
             </h2>
             <PremiumTemplates />
           </div>
@@ -839,7 +843,7 @@ const Index = () => {
           <div>
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
               <Users className="h-6 w-6 text-primary" />
-              የቡድን ስራ ቦታዎች
+              {t("section.workspaces")}
             </h2>
             <TeamWorkspaces />
           </div>
@@ -848,7 +852,7 @@ const Index = () => {
           <div>
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
               <Key className="h-6 w-6 text-primary" />
-              API መዳረሻ
+              {t("section.apiAccess")}
             </h2>
             <APIAccessManager />
           </div>
@@ -859,29 +863,29 @@ const Index = () => {
       <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>የቁልፍ ቦርድ አቋራጮች</DialogTitle>
-            <DialogDescription>ፈጣን አሰራርን ለማሻሻል የቁልፍ ቦርድ አቋራጮችን ይጠቀሙ</DialogDescription>
+            <DialogTitle>{t("shortcuts.title")}</DialogTitle>
+            <DialogDescription>{t("shortcuts.description")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
               <div className="flex justify-between items-center py-2 border-b border-border">
-                <span className="text-sm">አዲስ ፕሮጀክት</span>
+                <span className="text-sm">{t("shortcuts.newProject")}</span>
                 <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + N</kbd>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-border">
-                <span className="text-sm">ፕሮጀክት አስቀምጥ</span>
+                <span className="text-sm">{t("shortcuts.saveProject")}</span>
                 <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + S</kbd>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-border">
-                <span className="text-sm">ኮድ ቅዳ</span>
+                <span className="text-sm">{t("shortcuts.copyCode")}</span>
                 <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + K</kbd>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-border">
-                <span className="text-sm">AI ባህሪያት</span>
+                <span className="text-sm">{t("shortcuts.aiFeatures")}</span>
                 <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + B</kbd>
               </div>
               <div className="flex justify-between items-center py-2">
-                <span className="text-sm">አቋራጮች አሳይ</span>
+                <span className="text-sm">{t("shortcuts.show")}</span>
                 <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + /</kbd>
               </div>
             </div>
