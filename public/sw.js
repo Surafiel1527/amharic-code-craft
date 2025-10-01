@@ -1,4 +1,4 @@
-const CACHE_NAME = 'amharic-code-craft-v1';
+const CACHE_NAME = 'amharic-code-craft-v2';
 const urlsToCache = [
   '/',
   '/index.html',
