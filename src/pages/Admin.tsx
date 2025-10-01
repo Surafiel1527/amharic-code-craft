@@ -6,8 +6,10 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Users, FileText, MessageSquare, Shield } from "lucide-react";
+import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain } from "lucide-react";
 import { toast } from "sonner";
+import { AIAnalytics } from "@/components/AIAnalytics";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -177,53 +179,73 @@ export default function Admin() {
           </Card>
         </div>
 
-        {/* Users Table */}
-        <Card className="glass-effect border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              የተጠቃሚዎች አስተዳደር
-            </CardTitle>
-            <CardDescription>
-              የተጠቃሚዎችን ሚናዎች ይመልከቱ እና ያስተዳድሩ
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ኢሜል</TableHead>
-                  <TableHead>ሙሉ ስም</TableHead>
-                  <TableHead>የተመዘገበበት ቀን</TableHead>
-                  <TableHead>ሚና</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.email}</TableCell>
-                    <TableCell>{user.full_name || '-'}</TableCell>
-                    <TableCell>{new Date(user.created_at).toLocaleDateString('am-ET')}</TableCell>
-                    <TableCell>
-                      <Select
-                        onValueChange={(value) => handleRoleChange(user.id, value as 'admin' | 'user')}
-                        defaultValue="user"
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue placeholder="ሚና ይምረጡ" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="user">ተጠቃሚ</SelectItem>
-                          <SelectItem value="admin">አስተዳዳሪ</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="users" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="users" className="gap-2">
+              <Shield className="h-4 w-4" />
+              Users & Stats
+            </TabsTrigger>
+            <TabsTrigger value="ai" className="gap-2">
+              <Brain className="h-4 w-4" />
+              AI System
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="users" className="space-y-6">
+            {/* Users Table */}
+            <Card className="glass-effect border-primary/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  የተጠቃሚዎች አስተዳደር
+                </CardTitle>
+                <CardDescription>
+                  የተጠቃሚዎችን ሚናዎች ይመልከቱ እና ያስተዳድሩ
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ኢሜል</TableHead>
+                      <TableHead>ሙሉ ስም</TableHead>
+                      <TableHead>የተመዘገበበት ቀን</TableHead>
+                      <TableHead>ሚና</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">{user.email}</TableCell>
+                        <TableCell>{user.full_name || '-'}</TableCell>
+                        <TableCell>{new Date(user.created_at).toLocaleDateString('am-ET')}</TableCell>
+                        <TableCell>
+                          <Select
+                            onValueChange={(value) => handleRoleChange(user.id, value as 'admin' | 'user')}
+                            defaultValue="user"
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue placeholder="ሚና ይምረጡ" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="user">ተጠቃሚ</SelectItem>
+                              <SelectItem value="admin">አስተዳዳሪ</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="ai">
+            <AIAnalytics />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
