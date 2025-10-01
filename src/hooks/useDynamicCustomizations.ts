@@ -57,6 +57,7 @@ export const useDynamicCustomizations = () => {
         .order('applied_at', { ascending: false });
 
       if (error) throw error;
+      console.log('📦 Loaded customizations:', data);
       setCustomizations(data || []);
     } catch (error) {
       console.error('Error loading customizations:', error);
@@ -69,19 +70,33 @@ export const useDynamicCustomizations = () => {
   const getDynamicStyles = (component: string) => {
     const styles: string[] = [];
     
+    console.log(`🎨 Getting styles for component: "${component}"`);
+    console.log(`📚 Available customizations:`, customizations.length);
+    
     customizations.forEach(custom => {
       try {
         const changes = custom.applied_changes;
+        console.log(`   Checking customization:`, {
+          component: changes?.component,
+          target: changes?.target,
+          hasModifications: !!changes?.modifications,
+          hasDirectStyles: !!changes?.styles,
+          fullChanges: changes
+        });
+        
         // Check if the component matches directly or if modifications target this component
         if (changes?.component === component || changes?.target === component) {
+          console.log(`   ✅ Match found for "${component}"`);
           if (changes?.modifications) {
             changes.modifications.forEach((mod: any) => {
               if (mod.styles) {
+                console.log(`      Adding styles from modification:`, mod.styles);
                 styles.push(mod.styles);
               }
             });
           } else if (changes?.styles) {
             // Handle direct styles on changes object
+            console.log(`      Adding direct styles:`, changes.styles);
             styles.push(changes.styles);
           }
         }
@@ -90,7 +105,9 @@ export const useDynamicCustomizations = () => {
       }
     });
 
-    return styles.length > 0 ? styles.join(' ') : '';
+    const result = styles.length > 0 ? styles.join(' ') : '';
+    console.log(`🎨 Final styles for "${component}":`, result);
+    return result;
   };
 
   // Get dynamic content modifications
