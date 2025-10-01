@@ -4,8 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Brain, TrendingUp, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Brain, TrendingUp, AlertCircle, CheckCircle2, Loader2, BarChart3, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AIMetricsChart } from "@/components/AIMetricsChart";
+import { AISystemDocs } from "@/components/AISystemDocs";
 
 export const AIAnalytics = () => {
   const [analytics, setAnalytics] = useState<any[]>([]);
@@ -124,50 +126,65 @@ export const AIAnalytics = () => {
         </Button>
       </div>
 
-      {/* Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.successRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              {analytics.filter(a => a.status === 'success').length} of {metrics.totalGenerations}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">User Satisfaction</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.avgSatisfaction}/5</div>
-            <p className="text-xs text-muted-foreground">Average rating</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Generations</CardTitle>
-            <Brain className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalGenerations}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="improvements" className="space-y-4">
+      <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="charts">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Charts
+          </TabsTrigger>
           <TabsTrigger value="improvements">AI Improvements</TabsTrigger>
           <TabsTrigger value="patterns">Error Patterns</TabsTrigger>
           <TabsTrigger value="analytics">Recent Generations</TabsTrigger>
+          <TabsTrigger value="docs">
+            <BookOpen className="h-4 w-4 mr-2" />
+            Documentation
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          {/* Metrics Cards */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{metrics.successRate}%</div>
+                <p className="text-xs text-muted-foreground">
+                  {analytics.filter(a => a.status === 'success').length} of {metrics.totalGenerations}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">User Satisfaction</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{metrics.avgSatisfaction}/5</div>
+                <p className="text-xs text-muted-foreground">Average rating</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Generations</CardTitle>
+                <Brain className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{metrics.totalGenerations}</div>
+                <p className="text-xs text-muted-foreground">All time</p>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="charts">
+          <AIMetricsChart />
+        </TabsContent>
 
         <TabsContent value="improvements" className="space-y-4">
           {improvements.length === 0 ? (
@@ -269,6 +286,10 @@ export const AIAnalytics = () => {
               </CardContent>
             </Card>
           ))}
+        </TabsContent>
+
+        <TabsContent value="docs">
+          <AISystemDocs />
         </TabsContent>
       </Tabs>
     </div>
