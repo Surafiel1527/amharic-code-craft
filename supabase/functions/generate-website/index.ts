@@ -50,15 +50,33 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    // Get active prompt version
-    const { data: promptVersion } = await supabaseClient
+    // A/B Testing: Select prompt based on traffic percentage
+    const { data: activePrompts } = await supabaseClient
       .from('prompt_versions')
-      .select('version, system_prompt')
-      .eq('is_active', true)
-      .maybeSingle();
+      .select('system_prompt, version, traffic_percentage')
+      .gt('traffic_percentage', 0)
+      .order('version', { ascending: false });
+
+    let selectedPrompt = activePrompts?.[0];
+    
+    if (activePrompts && activePrompts.length > 1) {
+      // Weighted random selection based on traffic_percentage
+      const random = Math.random() * 100;
+      let cumulative = 0;
+      
+      for (const prompt of activePrompts) {
+        cumulative += prompt.traffic_percentage;
+        if (random <= cumulative) {
+          selectedPrompt = prompt;
+          break;
+        }
+      }
+    }
+
+    const promptVersion = selectedPrompt?.version || 'v1.0.0';
 
     // Use versioned prompt if available, otherwise use default
-    const systemPrompt = promptVersion?.system_prompt || `You are an expert web developer. Generate complete, beautiful, and modern HTML/CSS code based on the user's description.
+    const systemPrompt = selectedPrompt?.system_prompt || `You are an expert web developer. Generate complete, beautiful, and modern HTML/CSS code based on the user's description.
 
 CRITICAL LANGUAGE REQUIREMENT:
 - **IMPORTANT**: If the user's prompt is in Amharic, generate ALL website content (text, headings, buttons, navigation, descriptions) in AMHARIC
@@ -136,9 +154,9 @@ IMPORTANT: Return ONLY the raw HTML code without any markdown formatting, code b
       await supabaseClient
         .from('generation_analytics')
         .insert({
-          user_id: userId,
-          project_id: projectId,
-          prompt_version: promptVersion?.version || 'v1.0.0',
+        user_id: userId,
+        project_id: projectId,
+        prompt_version: promptVersion,
           model_used: 'google/gemini-2.5-flash',
           user_prompt: prompt,
           system_prompt: systemPrompt,

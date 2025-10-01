@@ -8,6 +8,7 @@ import { Brain, TrendingUp, AlertCircle, CheckCircle2, Loader2, BarChart3, BookO
 import { useToast } from "@/hooks/use-toast";
 import { AIMetricsChart } from "@/components/AIMetricsChart";
 import { AISystemDocs } from "@/components/AISystemDocs";
+import { PromptVersionManager } from "@/components/PromptVersionManager";
 
 export const AIAnalytics = () => {
   const [analytics, setAnalytics] = useState<any[]>([]);
@@ -133,6 +134,7 @@ export const AIAnalytics = () => {
             <BarChart3 className="h-4 w-4 mr-2" />
             Charts
           </TabsTrigger>
+          <TabsTrigger value="ab-testing">A/B Testing</TabsTrigger>
           <TabsTrigger value="improvements">AI Improvements</TabsTrigger>
           <TabsTrigger value="patterns">Error Patterns</TabsTrigger>
           <TabsTrigger value="analytics">Recent Generations</TabsTrigger>
@@ -184,6 +186,10 @@ export const AIAnalytics = () => {
 
         <TabsContent value="charts">
           <AIMetricsChart />
+        </TabsContent>
+
+        <TabsContent value="ab-testing">
+          <PromptVersionManager />
         </TabsContent>
 
         <TabsContent value="improvements" className="space-y-4">
