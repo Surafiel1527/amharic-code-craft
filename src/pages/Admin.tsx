@@ -278,24 +278,26 @@ function AdminContent() {
           
           {/* Desktop Actions */}
           <div className="hidden sm:flex items-center gap-2">
-            <Button
-              variant={isEditMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsEditMode(!isEditMode)}
-              className="gap-2"
-            >
-              {isEditMode ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  Exit Edit Mode
-                </>
-              ) : (
-                <>
-                  <Edit3 className="h-4 w-4" />
-                  Edit Page
-                </>
-              )}
-            </Button>
+            <DynamicComponent name="Button-EditPage">
+              <Button
+                variant={isEditMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setIsEditMode(!isEditMode)}
+                className="gap-2"
+              >
+                {isEditMode ? (
+                  <>
+                    <Check className="h-4 w-4" />
+                    Exit Edit Mode
+                  </>
+                ) : (
+                  <>
+                    <Edit3 className="h-4 w-4" />
+                    Edit Page
+                  </>
+                )}
+              </Button>
+            </DynamicComponent>
             <PreviewModeToggle 
               isPreviewMode={previewMode}
               onToggle={handlePreviewToggle}
@@ -365,11 +367,15 @@ function AdminContent() {
           <DynamicComponent name="StatsCard-Users" defaultOrder={1}>
             <Card className="glass-effect border-primary/20">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{t("admin.totalUsers")}</CardTitle>
+                <DynamicComponent name="StatsCard-Users-Label">
+                  <CardTitle className="text-sm font-medium">{t("admin.totalUsers")}</CardTitle>
+                </DynamicComponent>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalUsers}</div>
+                <DynamicComponent name="StatsCard-Users-Value">
+                  <div className="text-2xl font-bold">{stats.totalUsers}</div>
+                </DynamicComponent>
               </CardContent>
             </Card>
           </DynamicComponent>
@@ -377,11 +383,15 @@ function AdminContent() {
           <DynamicComponent name="StatsCard-Projects" defaultOrder={2}>
             <Card className="glass-effect border-primary/20">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{t("admin.totalProjects")}</CardTitle>
+                <DynamicComponent name="StatsCard-Projects-Label">
+                  <CardTitle className="text-sm font-medium">{t("admin.totalProjects")}</CardTitle>
+                </DynamicComponent>
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalProjects}</div>
+                <DynamicComponent name="StatsCard-Projects-Value">
+                  <div className="text-2xl font-bold">{stats.totalProjects}</div>
+                </DynamicComponent>
               </CardContent>
             </Card>
           </DynamicComponent>
@@ -389,11 +399,15 @@ function AdminContent() {
           <DynamicComponent name="StatsCard-Conversations" defaultOrder={3}>
             <Card className="glass-effect border-primary/20">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{t("admin.totalConversations")}</CardTitle>
+                <DynamicComponent name="StatsCard-Conversations-Label">
+                  <CardTitle className="text-sm font-medium">{t("admin.totalConversations")}</CardTitle>
+                </DynamicComponent>
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalConversations}</div>
+                <DynamicComponent name="StatsCard-Conversations-Value">
+                  <div className="text-2xl font-bold">{stats.totalConversations}</div>
+                </DynamicComponent>
               </CardContent>
             </Card>
           </DynamicComponent>

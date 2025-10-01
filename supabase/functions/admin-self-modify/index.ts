@@ -105,18 +105,56 @@ CRITICAL COLOR HANDLING RULES:
 CURRENT ADMIN PAGE STATE:
 ${JSON.stringify(currentState, null, 2)}
 
-COMPONENT STRUCTURE FOR PROPS & REORDERING:
-- Header Elements: "Header-Title" (dashboard title), "Header-Subtitle" (system overview text)
-- Stats Cards: "StatsCard-Users", "StatsCard-Projects", "StatsCard-Conversations" (wrapped in DynamicComponent)
-- Action Buttons: "Button-SignOut", "Button-BackToHome" (can modify variant, size, etc.)
-- Tabs: "Tab-Users", "Tab-AI", "Tab-Healing", "Tab-Customize" (can reorder)
-- Any component wrapped in <DynamicComponent name="ComponentName"> can be modified
+COMPONENT STRUCTURE - ALL TARGETABLE ELEMENTS:
 
-CRITICAL TARGETING RULES:
-1. **Text Color Changes**: ALWAYS target specific text elements like "Header-Title", "Header-Subtitle", NOT vague targets like "header text"
-2. **Background Changes**: Target containers like "AdminPage", "main container", specific card names
-3. **Text classes**: text-[color], font-[weight], text-[size]
-4. **Background classes**: bg-[color], bg-gradient-to-[direction]
+**Header Elements:**
+- "Header-Title" - Main "Admin Dashboard" title
+- "Header-Subtitle" - "System overview and user management" text
+
+**Stats Cards:**
+- "StatsCard-Users", "StatsCard-Projects", "StatsCard-Conversations"
+- "StatsCard-Users-Label", "StatsCard-Projects-Label", "StatsCard-Conversations-Label" (card titles)
+- "StatsCard-Users-Value", "StatsCard-Projects-Value", "StatsCard-Conversations-Value" (card numbers)
+
+**Buttons:**
+- "Button-SignOut", "Button-BackToHome", "Button-EditPage", "Button-PreviewMode"
+
+**Tabs:**
+- "Tab-Users", "Tab-AI", "Tab-Healing", "Tab-SelfModify"
+- "TabLabel-Users", "TabLabel-AI", "TabLabel-Healing", "TabLabel-SelfModify"
+
+**Sections:**
+- "Section-UserManagement" - User table section
+- "Section-SystemStats" - Stats overview section
+- "Section-AIChat" - Admin self-modify chat section
+- "Section-RecentCustomizations" - Recent customizations list
+
+**Text Elements:**
+- Any visible text can be targeted by describing its context (e.g., "user table header", "total users text")
+
+CRITICAL AI UNDERSTANDING RULES:
+1. **Parse Intent First**: Understand WHAT the user wants to change before deciding HOW
+2. **Identify Element Type**: Is it a heading, button, number, label, background, entire section?
+3. **Choose Correct Target**: Map the user's description to the exact component name
+4. **Apply Right Classes**: Use text-* for text color, bg-* for backgrounds, font-* for typography
+
+**Natural Language → Target Mapping:**
+- "dashboard title" → "Header-Title"
+- "subtitle" / "description under title" → "Header-Subtitle"  
+- "total users" / "user count" → "StatsCard-Users-Value"
+- "user card title" → "StatsCard-Users-Label"
+- "sign out button" → "Button-SignOut"
+- "background" / "page background" → "AdminPage" or "main container"
+- "edit button" → "Button-EditPage"
+- "users tab" → "Tab-Users"
+
+**Class Type Rules:**
+- Text color: text-blue-500, text-[#HEX], dark:text-blue-400
+- Background: bg-blue-500, bg-[#HEX], bg-gradient-to-br from-blue-50 to-blue-200
+- Font size: text-sm, text-base, text-lg, text-xl, text-2xl, text-3xl, text-4xl
+- Font weight: font-normal, font-medium, font-semibold, font-bold
+- Borders: border-blue-500, border-2, rounded-lg
+- Spacing: p-4, m-2, gap-2
 
 PROJECT ARCHITECTURE:
 - Frontend: React with TypeScript
@@ -383,17 +421,64 @@ Example 1f - TEXT COLOR change (THIS IS DIFFERENT FROM BACKGROUND):
   "confidence": 1.0
 }
 
-Example 1g - SUBTITLE TEXT COLOR change:
+Example 1g - MULTIPLE text elements (Understanding context):
 {
   "customization_type": "style",
-  "analysis": "User wants to change the subtitle text to gray",
+  "analysis": "User wants to make all stat numbers larger and green",
   "changes": {
-    "description": "Change the subtitle 'System overview and user management' to gray",
-    "component": "Header-Subtitle",
+    "description": "Increase size and change color of all stat card numbers to green",
+    "component": "StatsCards",
+    "modifications": [
+      {
+        "type": "modify",
+        "target": "StatsCard-Users-Value",
+        "styles": "text-4xl font-bold text-green-600 dark:text-green-400"
+      },
+      {
+        "type": "modify",
+        "target": "StatsCard-Projects-Value",
+        "styles": "text-4xl font-bold text-green-600 dark:text-green-400"
+      },
+      {
+        "type": "modify",
+        "target": "StatsCard-Conversations-Value",
+        "styles": "text-4xl font-bold text-green-600 dark:text-green-400"
+      }
+    ]
+  },
+  "confidence": 1.0
+}
+
+Example 1h - Button styling:
+{
+  "customization_type": "style",
+  "analysis": "User wants the sign out button to be red and larger",
+  "changes": {
+    "description": "Make sign out button red (destructive variant) and larger",
+    "component": "Button-SignOut",
     "modifications": [{
       "type": "modify",
-      "target": "Header-Subtitle",
-      "styles": "text-gray-600 dark:text-gray-400"
+      "target": "Button-SignOut",
+      "props": {
+        "variant": "destructive",
+        "size": "lg"
+      }
+    }]
+  },
+  "confidence": 1.0
+}
+
+Example 1i - Font size change:
+{
+  "customization_type": "style",
+  "analysis": "User wants the dashboard title to be smaller",
+  "changes": {
+    "description": "Reduce the size of the 'Admin Dashboard' title",
+    "component": "Header-Title",
+    "modifications": [{
+      "type": "modify",
+      "target": "Header-Title",
+      "styles": "text-2xl sm:text-3xl"
     }]
   },
   "confidence": 1.0
