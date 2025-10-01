@@ -62,13 +62,24 @@ export default function Admin() {
   }, [authLoading, user, navigate]);
 
   useEffect(() => {
-    if (!authLoading && !roleLoading && user && isAdmin !== null) {
-      if (!isAdmin) {
-        toast.error(t("toast.notAuthorized"));
-        navigate("/");
-      } else {
-        fetchDashboardData();
-      }
+    // Only check authorization after both auth and role are fully loaded
+    if (authLoading || roleLoading) {
+      return;
+    }
+
+    if (!user) {
+      return; // Will be handled by the auth redirect effect
+    }
+
+    if (isAdmin === null) {
+      return; // Still loading role
+    }
+
+    if (!isAdmin) {
+      toast.error(t("toast.notAuthorized"));
+      navigate("/");
+    } else {
+      fetchDashboardData();
     }
   }, [authLoading, roleLoading, isAdmin, user, navigate, t]);
 
@@ -119,20 +130,26 @@ export default function Admin() {
     }
   };
 
-  if (authLoading || roleLoading || loading) {
+  // Show loading state while checking auth and permissions
+  if (authLoading || roleLoading || loading || !user || isAdmin === null) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <Skeleton className="h-12 w-64" />
-          <div className="grid gap-6 md:grid-cols-3">
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 sm:p-8">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
+          <Skeleton className="h-12 w-48 sm:w-64" />
+          <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
+            <Skeleton className="h-24 sm:h-32" />
+            <Skeleton className="h-24 sm:h-32" />
+            <Skeleton className="h-24 sm:h-32" />
           </div>
-          <Skeleton className="h-96" />
+          <Skeleton className="h-64 sm:h-96" />
         </div>
       </div>
     );
+  }
+
+  // If not admin after loading, don't render anything (redirect will happen)
+  if (!isAdmin) {
+    return null;
   }
 
   return (
