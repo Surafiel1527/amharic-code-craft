@@ -153,7 +153,7 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 sm:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-green-100 to-green-200 dark:from-green-950 dark:via-green-900 dark:to-green-800 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
         {/* Mobile Header */}
         <div className="flex items-center justify-between">
