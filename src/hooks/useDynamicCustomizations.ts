@@ -97,6 +97,18 @@ export const useDynamicCustomizations = (previewMode = false) => {
   const convertTailwindToInlineStyles = (tailwindClasses: string): CSSProperties => {
     const styles: CSSProperties = {};
     
+    // Check for solid background colors first
+    if (tailwindClasses.includes('bg-black')) {
+      styles.background = '#000000';
+      styles.color = '#ffffff'; // white text on black
+      return styles;
+    }
+    if (tailwindClasses.includes('bg-white')) {
+      styles.background = '#ffffff';
+      styles.color = '#000000'; // black text on white
+      return styles;
+    }
+    
     // Match gradient patterns like: bg-gradient-to-br from-red-50 to-red-200
     const gradientMatch = tailwindClasses.match(/bg-gradient-to-(\w+)/);
     const fromMatch = tailwindClasses.match(/from-([\w-]+)/);
@@ -155,6 +167,13 @@ export const useDynamicCustomizations = (previewMode = false) => {
       } else {
         styles.background = `linear-gradient(${cssDirection}, ${fromHsl}, ${toHsl})`;
       }
+    }
+    
+    // Handle text color if specified
+    if (tailwindClasses.includes('text-white')) {
+      styles.color = '#ffffff';
+    } else if (tailwindClasses.includes('text-black')) {
+      styles.color = '#000000';
     }
     
     return styles;
