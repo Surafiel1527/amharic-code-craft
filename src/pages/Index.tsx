@@ -407,14 +407,14 @@ const Index = () => {
         <div className="container mx-auto px-4 py-6 md:py-12 relative">
           <div className="max-w-4xl mx-auto text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
             {/* Mobile Header */}
-            <div className="flex items-center justify-between mb-4 w-full">
+            <div className="flex items-center justify-between mb-4 w-full gap-2">
               {/* Mobile-only Language Toggle */}
-              <div className="md:hidden">
+              <div className="md:hidden flex-shrink-0">
                 <LanguageToggle />
               </div>
 
-              {/* Desktop Badge - Hidden on Mobile */}
-              <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-xs sm:text-sm text-primary animate-fade-in mx-auto">
+              {/* Desktop Badge - Hidden on Mobile, Centered on Desktop */}
+              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-xs sm:text-sm text-primary animate-fade-in mx-auto">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
@@ -422,8 +422,8 @@ const Index = () => {
                 {t("header.badge")}
               </div>
 
-              {/* Desktop Navigation - Hidden on Mobile */}
-              <div className="hidden md:flex items-center gap-2 animate-fade-in" style={{ animationDelay: "100ms" }}>
+              {/* Desktop Navigation - Absolutely Hidden on Mobile */}
+              <div className="hidden md:flex items-center gap-2 animate-fade-in flex-shrink-0" style={{ animationDelay: "100ms" }}>
                 <LanguageToggle />
                 <Button variant="outline" size="sm" onClick={() => navigate("/explore")} className="gap-2 hover-scale">
                   <TrendingUp className="h-4 w-4" />
@@ -455,12 +455,14 @@ const Index = () => {
                 </Button>
               </div>
 
-              {/* Mobile Navigation */}
-              <MobileNav 
-                isAdmin={isAdmin}
-                onShowShortcuts={() => setShowShortcuts(!showShortcuts)}
-                onSignOut={signOut}
-              />
+              {/* Mobile Navigation - Only Visible on Mobile */}
+              <div className="md:hidden flex-shrink-0">
+                <MobileNav 
+                  isAdmin={isAdmin}
+                  onShowShortcuts={() => setShowShortcuts(!showShortcuts)}
+                  onSignOut={signOut}
+                />
+              </div>
             </div>
             
             <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent leading-tight px-2">
