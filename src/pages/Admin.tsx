@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,6 +66,7 @@ function AdminContent() {
   const [previewSnapshotName, setPreviewSnapshotName] = useState<string>('');
   const [pendingCount, setPendingCount] = useState(0);
   const { isEditMode, setIsEditMode } = useEditMode();
+  const hasCheckedAuthRef = useRef(false);
   
   // Debug preview mode changes
   useEffect(() => {
@@ -121,10 +122,18 @@ function AdminContent() {
       return; // Still loading role
     }
 
-    if (!isAdmin) {
-      toast.error(t("toast.notAuthorized"));
-      navigate("/");
-    } else {
+    // Only check authorization once on initial mount
+    if (!hasCheckedAuthRef.current) {
+      hasCheckedAuthRef.current = true;
+      if (!isAdmin) {
+        toast.error(t("toast.notAuthorized"));
+        navigate("/");
+        return;
+      }
+    }
+    
+    // Only fetch data if user is admin
+    if (isAdmin) {
       fetchDashboardData();
     }
   }, [authLoading, roleLoading, isAdmin, user, navigate, t]);
