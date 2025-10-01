@@ -53,14 +53,17 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Redirect to auth if not logged in
     if (!authLoading && !user) {
+      console.log('❌ Admin: No user found, redirecting to auth');
       navigate("/auth");
+      return;
     }
   }, [authLoading, user, navigate]);
 
   useEffect(() => {
-    // Only check admin status after both auth and role are fully loaded
-    if (!authLoading && !roleLoading) {
+    // Check admin status only after everything is loaded
+    if (!authLoading && !roleLoading && user) {
       console.log('🔒 Admin page access check:', { 
         isAdmin, 
         userId: user?.id, 
@@ -74,15 +77,10 @@ export default function Admin() {
         navigate("/");
       } else {
         console.log('✅ Admin access granted');
+        fetchDashboardData();
       }
     }
-  }, [authLoading, roleLoading, isAdmin, navigate, user]);
-
-  useEffect(() => {
-    if (isAdmin) {
-      fetchDashboardData();
-    }
-  }, [isAdmin]);
+  }, [authLoading, roleLoading, isAdmin, user, navigate]);
 
   const fetchDashboardData = async () => {
     try {
