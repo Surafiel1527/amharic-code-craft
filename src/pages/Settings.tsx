@@ -9,10 +9,12 @@ import { Loader2, ArrowLeft, User, Mail, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Settings = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -46,7 +48,7 @@ const Settings = () => {
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
-      toast.error("የመገለጫ መረጃ ማምጣት አልተቻለም");
+      toast.error(t("settings.profileLoadError"));
     } finally {
       setLoading(false);
     }
@@ -67,10 +69,10 @@ const Settings = () => {
 
       if (error) throw error;
 
-      toast.success("መገለጫ በተሳካ ሁኔታ ተቀምጧል!");
+      toast.success(t("settings.profileSaved"));
     } catch (error) {
       console.error("Error updating profile:", error);
-      toast.error("መገለጫ ማስቀመጥ አልተቻለም");
+      toast.error(t("settings.profileSaveError"));
     } finally {
       setSaving(false);
     }
@@ -97,16 +99,16 @@ const Settings = () => {
           className="mb-6 gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
-          ወደ ቤት
+          {t("settings.backToHome")}
         </Button>
 
         <Card className="p-8 space-y-6 glass-effect">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              ማስተካከያዎች
+              {t("settings.title")}
             </h1>
             <p className="text-muted-foreground mt-2">
-              የመገለጫ መረጃዎን ያስተካክሉ
+              {t("settings.subtitle")}
             </p>
           </div>
 
@@ -118,7 +120,7 @@ const Settings = () => {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <p className="font-semibold">{fullName || "ስም የለም"}</p>
+              <p className="font-semibold">{fullName || t("settings.noName")}</p>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <Mail className="h-3 w-3" />
                 {user.email}
@@ -128,17 +130,17 @@ const Settings = () => {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName">ሙሉ ስም</Label>
+              <Label htmlFor="fullName">{t("settings.fullName")}</Label>
               <Input
                 id="fullName"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="የእርስዎን ሙሉ ስም ያስገቡ"
+                placeholder={t("settings.fullNamePlaceholder")}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="avatarUrl">የፕሮፋይል ምስል URL</Label>
+              <Label htmlFor="avatarUrl">{t("settings.avatarUrl")}</Label>
               <Input
                 id="avatarUrl"
                 value={avatarUrl}
@@ -146,7 +148,7 @@ const Settings = () => {
                 placeholder="https://example.com/avatar.jpg"
               />
               <p className="text-xs text-muted-foreground">
-                የእርስዎን የፕሮፋይል ምስል URL ያስገቡ
+                {t("settings.avatarUrlHelp")}
               </p>
             </div>
           </div>
@@ -159,12 +161,12 @@ const Settings = () => {
             {saving ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                በማስቀመጥ ላይ...
+                {t("settings.saving")}
               </>
             ) : (
               <>
                 <Save className="h-4 w-4" />
-                መገለጫ አስቀምጥ
+                {t("settings.saveProfile")}
               </>
             )}
           </Button>

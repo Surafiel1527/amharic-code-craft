@@ -70,29 +70,35 @@ export default function Admin() {
         isAdmin, 
         userId: user?.id, 
         authLoading, 
-        roleLoading 
+        roleLoading,
+        userEmail: user?.email
       });
       
-      if (!isAdmin) {
-        console.log('❌ Access denied - not admin');
+      if (isAdmin === false) {
+        console.log('❌ Access denied - not admin, redirecting to home');
         toast.error(t("toast.notAuthorized"));
         navigate("/");
-      } else {
-        console.log('✅ Admin access granted');
+      } else if (isAdmin === true) {
+        console.log('✅ Admin access granted, fetching dashboard data');
         fetchDashboardData();
       }
     }
-  }, [authLoading, roleLoading, isAdmin, user, navigate]);
+  }, [authLoading, roleLoading, isAdmin, user, navigate, t]);
 
   const fetchDashboardData = async () => {
     try {
+      console.log('📊 Fetching dashboard data...');
       // Fetch users from profiles
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, email, full_name, created_at')
         .order('created_at', { ascending: false });
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error('❌ Error fetching profiles:', profilesError);
+        throw profilesError;
+      }
+      console.log('✅ Profiles fetched:', profilesData?.length);
 
       // Fetch stats
       const { count: projectsCount } = await supabase
@@ -109,8 +115,9 @@ export default function Admin() {
         totalProjects: projectsCount || 0,
         totalConversations: conversationsCount || 0,
       });
+      console.log('✅ Dashboard data loaded successfully');
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('❌ Error fetching dashboard data:', error);
       toast.error(t("toast.dataFetchError"));
     } finally {
       setLoading(false);

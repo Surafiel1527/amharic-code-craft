@@ -9,13 +9,13 @@ export const useUserRole = (userId: string | undefined) => {
 
   useEffect(() => {
     if (!userId) {
-      console.log('No userId provided, setting role to null');
+      console.log('⚠️ No userId provided, setting role to null');
       setRole(null);
       setLoading(false);
       return;
     }
 
-    console.log('Starting role fetch for userId:', userId);
+    console.log('🔍 Starting role fetch for userId:', userId);
     const fetchRole = async () => {
       try {
         const { data, error } = await supabase
@@ -25,16 +25,20 @@ export const useUserRole = (userId: string | undefined) => {
           .maybeSingle();
 
         if (error) {
-          console.error('Error fetching user role:', error);
+          console.error('❌ Error fetching user role:', error);
           setRole('user'); // Default to user on error
+        } else if (!data) {
+          console.log('⚠️ No role found for user:', userId, '- defaulting to user');
+          setRole('user');
         } else {
-          console.log('✅ Successfully fetched role:', data?.role || 'user', 'for user:', userId);
-          setRole(data?.role as UserRole || 'user');
+          console.log('✅ Successfully fetched role:', data.role, 'for user:', userId);
+          setRole(data.role as UserRole);
         }
       } catch (error) {
         console.error('❌ Exception while fetching user role:', error);
         setRole('user');
       } finally {
+        console.log('🏁 Role fetch completed. Final role:', role, 'Loading:', false);
         setLoading(false);
       }
     };
