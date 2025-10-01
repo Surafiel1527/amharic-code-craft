@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp } from "lucide-react";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -17,9 +17,12 @@ import { ImageGenerator } from "@/components/ImageGenerator";
 import { CodeAnalysis } from "@/components/CodeAnalysis";
 import { AIAssistant } from "@/components/AIAssistant";
 import { VersionHistory } from "@/components/VersionHistory";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { DevicePreview } from "@/components/DevicePreview";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { downloadHTML } from "@/utils/downloadHelpers";
 
 interface Project {
@@ -85,6 +88,59 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<"quick" | "templates" | "images">("quick");
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [showAIFeatures, setShowAIFeatures] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: "n",
+      ctrl: true,
+      handler: () => {
+        setGeneratedCode("");
+        setPrompt("");
+        toast.success("አዲስ ፕሮጀክት ተፈጠረ");
+      },
+      description: "አዲስ ፕሮጀክት",
+    },
+    {
+      key: "s",
+      ctrl: true,
+      handler: () => {
+        if (generatedCode) {
+          setSaveDialogOpen(true);
+        }
+      },
+      description: "ፕሮጀክት አስቀምጥ",
+    },
+    {
+      key: "k",
+      ctrl: true,
+      handler: () => {
+        if (generatedCode) {
+          copyCode();
+        }
+      },
+      description: "ኮድ ቅዳ",
+    },
+    {
+      key: "b",
+      ctrl: true,
+      handler: () => {
+        if (generatedCode) {
+          setShowAIFeatures(!showAIFeatures);
+        }
+      },
+      description: "AI ባህሪያት",
+    },
+    {
+      key: "/",
+      ctrl: true,
+      handler: () => {
+        setShowShortcuts(!showShortcuts);
+      },
+      description: "የቁልፍ ቦርድ አቋራጮች",
+    },
+  ]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -312,6 +368,16 @@ const Index = () => {
                     አስተዳዳሪ
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowShortcuts(!showShortcuts)}
+                  title="Keyboard Shortcuts (Ctrl+/)"
+                  className="gap-2"
+                >
+                  <Keyboard className="h-4 w-4" />
+                </Button>
+                <ThemeToggle />
                 <Button variant="outline" size="sm" onClick={() => navigate("/settings")} className="gap-2">
                   <Settings className="h-4 w-4" />
                   ማስተካከያ
@@ -545,23 +611,7 @@ const Index = () => {
               )}
             </div>
 
-            <div className="relative rounded-lg border border-border bg-background/50 overflow-hidden h-[calc(100vh-400px)]">
-              {generatedCode ? (
-                <iframe
-                  srcDoc={generatedCode}
-                  className="w-full h-full border-0"
-                  title="Preview"
-                  sandbox="allow-scripts"
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-                  <div className="text-center space-y-3 p-6">
-                    <div className="text-5xl opacity-20">🌐</div>
-                    <p className="text-sm">የእርስዎ ድህረ ገፅ እዚህ ይታያል</p>
-                  </div>
-                </div>
-              )}
-            </div>
+            <DevicePreview generatedCode={generatedCode} />
           </Card>
 
           {/* AI Features Panel */}
@@ -635,6 +685,40 @@ const Index = () => {
           </div>
         </section>
       )}
+
+      {/* Keyboard Shortcuts Dialog */}
+      <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>የቁልፍ ቦርድ አቋራጮች</DialogTitle>
+            <DialogDescription>ፈጣን አሰራርን ለማሻሻል የቁልፍ ቦርድ አቋራጮችን ይጠቀሙ</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-sm">አዲስ ፕሮጀክት</span>
+                <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + N</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-sm">ፕሮጀክት አስቀምጥ</span>
+                <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + S</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-sm">ኮድ ቅዳ</span>
+                <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + K</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-sm">AI ባህሪያት</span>
+                <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + B</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-sm">አቋራጮች አሳይ</span>
+                <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + /</kbd>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
