@@ -91,12 +91,15 @@ export const useDynamicCustomizations = (previewMode = false) => {
   };
 
   // Generate dynamic styles from customizations
+  // IMPORTANT: When multiple customizations target the same component,
+  // only use the MOST RECENT one to avoid style conflicts
   const getDynamicStyles = (component: string) => {
     console.log(`\n🎨 ========== GET DYNAMIC STYLES ==========`);
     console.log(`🎯 Looking for component: "${component}"`);
     console.log(`📚 Total customizations available: ${customizations.length}`);
     
-    const styles: string[] = [];
+    // Find the most recent matching customization
+    let latestMatch: Customization | null = null;
     
     customizations.forEach((custom, index) => {
       try {
@@ -104,12 +107,10 @@ export const useDynamicCustomizations = (previewMode = false) => {
         console.log(`\n   [${index + 1}/${customizations.length}] Checking customization:`);
         console.log(`   - ID: ${custom.id}`);
         console.log(`   - Type: ${custom.customization_type}`);
+        console.log(`   - Status: ${custom.status}`);
+        console.log(`   - Created: ${custom.created_at}`);
         console.log(`   - Component in changes: "${changes?.component}"`);
-        console.log(`   - Target in changes: "${changes?.target}"`);
-        console.log(`   - Has modifications: ${!!changes?.modifications}`);
-        console.log(`   - Full changes object:`, JSON.stringify(changes, null, 2));
         
-        // Check if the component matches
         const componentMatches = changes?.component === component;
         const targetMatches = changes?.target === component;
         
@@ -118,31 +119,39 @@ export const useDynamicCustomizations = (previewMode = false) => {
         
         if (componentMatches || targetMatches) {
           console.log(`   ✅ MATCH FOUND!`);
-          
-          if (changes?.modifications && Array.isArray(changes.modifications)) {
-            console.log(`   - Processing ${changes.modifications.length} modifications...`);
-            changes.modifications.forEach((mod: any, modIndex: number) => {
-              console.log(`      Modification [${modIndex + 1}]:`, mod);
-              if (mod.styles) {
-                console.log(`      ✅ Adding styles: "${mod.styles}"`);
-                styles.push(mod.styles);
-              } else {
-                console.log(`      ⚠️ No styles in this modification`);
-              }
-            });
-          } else if (changes?.styles) {
-            console.log(`   ✅ Adding direct styles: "${changes.styles}"`);
-            styles.push(changes.styles);
+          // Use the first match we find (they're ordered by created_at DESC)
+          if (!latestMatch) {
+            latestMatch = custom;
+            console.log(`   🎯 This is now the active customization`);
           } else {
-            console.log(`   ⚠️ No styles found in this customization`);
+            console.log(`   ⏭️ Skipping - already have a more recent match`);
           }
-        } else {
-          console.log(`   ❌ No match`);
         }
       } catch (e) {
         console.error(`   ❌ Error parsing customization:`, e);
       }
     });
+
+    // Extract styles from the latest match
+    const styles: string[] = [];
+    if (latestMatch) {
+      console.log(`\n🎯 Using customization: ${latestMatch.id}`);
+      const changes = latestMatch.applied_changes;
+      
+      if (changes?.modifications && Array.isArray(changes.modifications)) {
+        console.log(`   - Processing ${changes.modifications.length} modifications...`);
+        changes.modifications.forEach((mod: any, modIndex: number) => {
+          console.log(`      Modification [${modIndex + 1}]:`, mod);
+          if (mod.styles) {
+            console.log(`      ✅ Adding styles: "${mod.styles}"`);
+            styles.push(mod.styles);
+          }
+        });
+      } else if (changes?.styles) {
+        console.log(`   ✅ Adding direct styles: "${changes.styles}"`);
+        styles.push(changes.styles);
+      }
+    }
 
     const result = styles.length > 0 ? styles.join(' ') : '';
     console.log(`\n🎨 ========== RESULT ==========`);

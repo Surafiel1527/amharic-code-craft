@@ -130,16 +130,69 @@ export default function AdminCustomizationsList() {
     }
   };
 
+  const clearOldDuplicates = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Keep only the most recent customization, delete older ones
+      if (customizations.length <= 1) {
+        toast({
+          title: 'Nothing to clear',
+          description: 'You only have one customization',
+        });
+        return;
+      }
+
+      // Delete all but the most recent
+      const idsToDelete = customizations.slice(1).map(c => c.id);
+      
+      const { error } = await supabase
+        .from('admin_customizations')
+        .delete()
+        .in('id', idsToDelete)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: '🧹 Cleaned up',
+        description: `Removed ${idsToDelete.length} old customization${idsToDelete.length !== 1 ? 's' : ''}`,
+      });
+
+      loadCustomizations();
+    } catch (error) {
+      console.error('Error clearing duplicates:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to clear old customizations',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (isLoading) {
     return <Card className="p-4">Loading customizations...</Card>;
   }
 
   return (
     <Card className="p-4">
-      <h3 className="font-semibold mb-4 flex items-center gap-2">
-        <Clock className="h-5 w-5" />
-        Recent Customizations
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Clock className="h-5 w-5" />
+          Recent Customizations
+        </h3>
+        {customizations.length > 1 && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={clearOldDuplicates}
+            className="text-xs"
+          >
+            🧹 Clear Old
+          </Button>
+        )}
+      </div>
 
       {customizations.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">
