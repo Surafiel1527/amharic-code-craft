@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +12,24 @@ serve(async (req) => {
   }
 
   try {
+    // Rate limiting
+    const identifier = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
+    const rateLimitResult = checkRateLimit(identifier);
+    const rateLimitHeaders = getRateLimitHeaders(identifier);
+
+    if (!rateLimitResult.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'በጣም ብዙ ጥያቄዎች። እባክዎ ትንሽ ይቆዩ።' }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            ...rateLimitHeaders,
+            'Content-Type': 'application/json' 
+          } 
+        }
+      );
+    }
     const { message, conversationHistory, currentCode } = await req.json();
     console.log('Chat request:', { message, hasHistory: !!conversationHistory, hasCode: !!currentCode });
 
@@ -138,7 +157,13 @@ ${currentCode ? `CURRENT WEBSITE CODE:\n${currentCode}\n\nThe user wants to modi
         message: assistantMessage,
         code: extractedCode 
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        headers: { 
+          ...corsHeaders, 
+          ...rateLimitHeaders,
+          'Content-Type': 'application/json' 
+        } 
+      }
     );
   } catch (error) {
     console.error('Error in chat-generate function:', error);

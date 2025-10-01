@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download } from "lucide-react";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -13,6 +13,7 @@ import { ChatInterface } from "@/components/ChatInterface";
 import { ConversationSidebar } from "@/components/ConversationSidebar";
 import { ProjectsGrid } from "@/components/ProjectsGrid";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { downloadHTML } from "@/utils/downloadHelpers";
 
@@ -55,6 +56,7 @@ const EXAMPLE_PROMPTS = [
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
+  const { isAdmin } = useUserRole(user?.id);
   const isOnline = useNetworkStatus();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"quick" | "chat">("quick");
@@ -284,6 +286,12 @@ const Index = () => {
                 የአማርኛ AI ቴክኖሎጂ - ዘመናዊ እና ብልህ
               </div>
               <div className="flex-1 flex justify-end gap-2">
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => navigate("/admin")} className="gap-2">
+                    <Shield className="h-4 w-4" />
+                    አስተዳዳሪ
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={() => navigate("/settings")} className="gap-2">
                   <Settings className="h-4 w-4" />
                   ማስተካከያ
