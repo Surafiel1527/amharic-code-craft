@@ -61,26 +61,30 @@ serve(async (req) => {
         break;
 
       case 'migration':
-        // For database migrations, execute directly
-        try {
-          const { error: migrationError } = await supabaseClient.rpc('exec_sql', {
-            sql: fix.fixed_code
-          });
-          
-          if (migrationError) {
-            throw migrationError;
+        // For database migrations, store for admin approval
+        // Cannot execute raw SQL from edge functions for security
+        console.log('Migration stored for admin review and approval');
+        
+        // Notify admins immediately with the SQL
+        await supabaseClient.rpc('notify_admins', {
+          notification_type: 'migration_required',
+          notification_title: '🔧 Database Migration Ready',
+          notification_message: `Auto-generated migration for ${fix.detected_errors.error_type}. Confidence: ${(fix.ai_confidence * 100).toFixed(0)}%. Review and apply in admin panel.`,
+          notification_data: {
+            fixId: fix.id,
+            errorId: fix.error_id,
+            sql: fix.fixed_code,
+            confidence: fix.ai_confidence,
+            explanation: fix.explanation
           }
-          
-          console.log('Migration applied successfully');
-          applyResult = { method: 'migration_executed' };
-          applied = true;
-        } catch (err) {
-          console.error('Migration failed:', err);
-          applyResult = { 
-            method: 'migration_failed', 
-            error: err instanceof Error ? err.message : 'Unknown error'
-          };
-        }
+        });
+        
+        applyResult = {
+          method: 'migration_stored_for_approval',
+          requiresAdminAction: true,
+          sql: fix.fixed_code
+        };
+        applied = false; // Don't mark as applied until admin approves
         break;
 
       case 'config_change':

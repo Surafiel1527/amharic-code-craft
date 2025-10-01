@@ -169,9 +169,28 @@ export const SelfHealingMonitor = () => {
           </h2>
           <p className="text-muted-foreground">Autonomous error detection and fixing</p>
         </div>
-        <Button onClick={fetchData} variant="outline" size="icon">
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={async () => {
+              try {
+                setLoading(true);
+                await supabase.functions.invoke('proactive-monitor');
+                await fetchData();
+              } catch (error) {
+                console.error('Error triggering monitor:', error);
+              }
+            }} 
+            variant="default" 
+            size="sm"
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+            Run Auto-Fix
+          </Button>
+          <Button onClick={fetchData} variant="outline" size="icon" disabled={loading}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Health Metrics */}

@@ -103,22 +103,38 @@ serve(async (req) => {
       }
     }
 
-    // Check 3: Unresolved high-severity errors
+    // Check 3: Unresolved high-severity errors - Auto-trigger fixes
     const { data: unresolvedErrors } = await supabaseClient
       .from('detected_errors')
-      .select('id, error_type, severity, created_at')
+      .select('id, error_type, severity, created_at, auto_fix_enabled, fix_attempts')
       .in('severity', ['high', 'critical'])
       .in('status', ['detected', 'analyzing', 'failed'])
+      .eq('auto_fix_enabled', true)
+      .lt('fix_attempts', 3) // Only auto-fix if not already tried 3 times
       .gte('created_at', new Date(Date.now() - 3600000).toISOString());
 
     if (unresolvedErrors && unresolvedErrors.length > 0) {
+      console.log(`🔧 Found ${unresolvedErrors.length} unresolved errors, triggering auto-fix...`);
+      
       issues.push({
         type: 'unresolved_errors',
         severity: 'high',
-        message: `${unresolvedErrors.length} high/critical errors remain unresolved`,
-        recommendation: 'Review admin dashboard and manually intervene if auto-fix failed',
+        message: `${unresolvedErrors.length} high/critical errors being auto-fixed`,
+        recommendation: 'AI is analyzing and generating fixes automatically',
         errorIds: unresolvedErrors.map(e => e.id)
       });
+
+      // Trigger auto-fix for each error (don't await - run in background)
+      for (const error of unresolvedErrors) {
+        fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/auto-fix-engine`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          },
+          body: JSON.stringify({ errorId: error.id }),
+        }).catch(err => console.error('Failed to trigger auto-fix:', err));
+      }
     }
 
     // Check 4: Failed auto-fixes
