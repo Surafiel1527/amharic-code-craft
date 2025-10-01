@@ -9,7 +9,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import App from "./App.tsx";
 import "./index.css";
 
-// Query client with optimized settings
+// Initialize React Query client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -19,17 +19,19 @@ const queryClient = new QueryClient({
   },
 });
 
-// Main app render - updated 2025
+// Main application entry point
 createRoot(document.getElementById("root")!).render(
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <LanguageProvider>
-          <App />
-          <Toaster />
-          <Sonner />
-        </LanguageProvider>
-      </ThemeProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <LanguageProvider>
+            <App />
+            <Toaster />
+            <Sonner />
+          </LanguageProvider>
+        </ThemeProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  </StrictMode>
 );
