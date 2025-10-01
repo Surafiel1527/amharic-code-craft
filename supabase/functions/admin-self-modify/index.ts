@@ -106,10 +106,17 @@ CURRENT ADMIN PAGE STATE:
 ${JSON.stringify(currentState, null, 2)}
 
 COMPONENT STRUCTURE FOR PROPS & REORDERING:
+- Header Elements: "Header-Title" (dashboard title), "Header-Subtitle" (system overview text)
 - Stats Cards: "StatsCard-Users", "StatsCard-Projects", "StatsCard-Conversations" (wrapped in DynamicComponent)
 - Action Buttons: "Button-SignOut", "Button-BackToHome" (can modify variant, size, etc.)
 - Tabs: "Tab-Users", "Tab-AI", "Tab-Healing", "Tab-Customize" (can reorder)
 - Any component wrapped in <DynamicComponent name="ComponentName"> can be modified
+
+CRITICAL TARGETING RULES:
+1. **Text Color Changes**: ALWAYS target specific text elements like "Header-Title", "Header-Subtitle", NOT vague targets like "header text"
+2. **Background Changes**: Target containers like "AdminPage", "main container", specific card names
+3. **Text classes**: text-[color], font-[weight], text-[size]
+4. **Background classes**: bg-[color], bg-gradient-to-[direction]
 
 PROJECT ARCHITECTURE:
 - Frontend: React with TypeScript
@@ -350,6 +357,43 @@ Example 1e - Background color change (Named colors):
       "type": "modify",
       "target": "main container",
       "styles": "bg-gradient-to-br from-pink-50 via-pink-100 to-red-200 dark:from-pink-950 dark:via-red-900 dark:to-red-800"
+    }]
+  },
+  "confidence": 1.0
+}
+
+Example 1f - TEXT COLOR change (THIS IS DIFFERENT FROM BACKGROUND):
+{
+  "customization_type": "style",
+  "analysis": "User wants to change the dashboard header title text to blue color",
+  "changes": {
+    "description": "Change the 'Admin Dashboard' title text color to blue",
+    "component": "Header-Title",
+    "modifications": [{
+      "type": "modify",
+      "target": "Header-Title",
+      "styles": "text-blue-500 dark:text-blue-400"
+    }]
+  },
+  "implementation_steps": [
+    "Target the Header-Title component specifically",
+    "Apply text-blue-500 for light mode and text-blue-400 for dark mode",
+    "The dashboard title 'Admin Dashboard' will now be blue"
+  ],
+  "confidence": 1.0
+}
+
+Example 1g - SUBTITLE TEXT COLOR change:
+{
+  "customization_type": "style",
+  "analysis": "User wants to change the subtitle text to gray",
+  "changes": {
+    "description": "Change the subtitle 'System overview and user management' to gray",
+    "component": "Header-Subtitle",
+    "modifications": [{
+      "type": "modify",
+      "target": "Header-Subtitle",
+      "styles": "text-gray-600 dark:text-gray-400"
     }]
   },
   "confidence": 1.0

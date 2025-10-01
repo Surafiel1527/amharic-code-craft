@@ -265,10 +265,14 @@ function AdminContent() {
               </Button>
             </DynamicComponent>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent truncate">
-                {t("admin.title")}
-              </h1>
-              <p className="text-muted-foreground mt-1 text-xs sm:text-sm hidden sm:block">{t("admin.subtitle")}</p>
+              <DynamicComponent name="Header-Title">
+                <h1 className="text-xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent truncate">
+                  {t("admin.title")}
+                </h1>
+              </DynamicComponent>
+              <DynamicComponent name="Header-Subtitle">
+                <p className="text-muted-foreground mt-1 text-xs sm:text-sm hidden sm:block">{t("admin.subtitle")}</p>
+              </DynamicComponent>
             </div>
           </div>
           
