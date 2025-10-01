@@ -19,6 +19,9 @@ import { AIAssistant } from "@/components/AIAssistant";
 import { VersionHistory } from "@/components/VersionHistory";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DevicePreview } from "@/components/DevicePreview";
+import { DesignToCode } from "@/components/DesignToCode";
+import { AccessibilityChecker } from "@/components/AccessibilityChecker";
+import { SEOOptimizer } from "@/components/SEOOptimizer";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -618,10 +621,13 @@ const Index = () => {
           {showAIFeatures && generatedCode && (
             <div className="space-y-4">
               <Tabs defaultValue="analysis" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="analysis" className="text-xs">ትንተና</TabsTrigger>
                   <TabsTrigger value="assistant" className="text-xs">ረዳት</TabsTrigger>
                   <TabsTrigger value="versions" className="text-xs">ስሪቶች</TabsTrigger>
+                  <TabsTrigger value="design" className="text-xs">ዲዛይን</TabsTrigger>
+                  <TabsTrigger value="a11y" className="text-xs">ተደራሽነት</TabsTrigger>
+                  <TabsTrigger value="seo" className="text-xs">SEO</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="analysis" className="mt-4">
@@ -660,6 +666,33 @@ const Index = () => {
                       <p>ፕሮጀክትን በመጀመሪያ ያስቀምጡ</p>
                     </Card>
                   )}
+                </TabsContent>
+
+                <TabsContent value="design" className="mt-4">
+                  <DesignToCode
+                    onCodeGenerated={(code) => {
+                      setGeneratedCode(code);
+                      toast.success("ኮድ ከዲዛይን ተፈጠረ!");
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="a11y" className="mt-4">
+                  <AccessibilityChecker
+                    code={generatedCode}
+                    onCodeFixed={(fixedCode) => {
+                      setGeneratedCode(fixedCode);
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="seo" className="mt-4">
+                  <SEOOptimizer
+                    code={generatedCode}
+                    onCodeOptimized={(optimizedCode) => {
+                      setGeneratedCode(optimizedCode);
+                    }}
+                  />
                 </TabsContent>
               </Tabs>
             </div>
