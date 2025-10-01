@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.seo-analyze]
 verify_jwt = false
+
+[functions.security-scan]
+verify_jwt = false

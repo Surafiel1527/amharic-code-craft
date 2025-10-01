@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard } from "lucide-react";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -26,6 +26,11 @@ import { FeaturedGallery } from "@/components/FeaturedGallery";
 import { ExportOptions } from "@/components/ExportOptions";
 import { ComponentLibrary } from "@/components/ComponentLibrary";
 import { APIIntegration } from "@/components/APIIntegration";
+import { ProjectAnalytics } from "@/components/ProjectAnalytics";
+import { SecurityScanner } from "@/components/SecurityScanner";
+import { PrivacySettings } from "@/components/PrivacySettings";
+import { BackupRestore } from "@/components/BackupRestore";
+import { UsageInsights } from "@/components/UsageInsights";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -625,7 +630,7 @@ const Index = () => {
           {showAIFeatures && generatedCode && (
             <div className="space-y-4">
               <Tabs defaultValue="analysis" className="w-full">
-                <TabsList className="grid w-full grid-cols-9">
+                <TabsList className="grid w-full grid-cols-6 lg:grid-cols-12">
                   <TabsTrigger value="analysis" className="text-xs">ትንተና</TabsTrigger>
                   <TabsTrigger value="assistant" className="text-xs">ረዳት</TabsTrigger>
                   <TabsTrigger value="versions" className="text-xs">ስሪቶች</TabsTrigger>
@@ -635,6 +640,9 @@ const Index = () => {
                   <TabsTrigger value="export" className="text-xs">ውጤት</TabsTrigger>
                   <TabsTrigger value="components" className="text-xs">አካላት</TabsTrigger>
                   <TabsTrigger value="api" className="text-xs">API</TabsTrigger>
+                  <TabsTrigger value="analytics" className="text-xs">ትንታኔ</TabsTrigger>
+                  <TabsTrigger value="security" className="text-xs">ደህንነት</TabsTrigger>
+                  <TabsTrigger value="privacy" className="text-xs">ግላዊነት</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="analysis" className="mt-4">
@@ -716,6 +724,33 @@ const Index = () => {
                 <TabsContent value="api" className="mt-4">
                   <APIIntegration />
                 </TabsContent>
+
+                <TabsContent value="analytics" className="mt-4">
+                  {currentProjectId ? (
+                    <ProjectAnalytics projectId={currentProjectId} />
+                  ) : (
+                    <Card className="p-8 text-center text-muted-foreground">
+                      <p>ፕሮጀክትን በመጀመሪያ ያስቀምጡ</p>
+                    </Card>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="security" className="mt-4">
+                  <SecurityScanner code={generatedCode} />
+                </TabsContent>
+
+                <TabsContent value="privacy" className="mt-4">
+                  {currentProjectId ? (
+                    <PrivacySettings 
+                      projectId={currentProjectId}
+                      onUpdate={fetchRecentProjects}
+                    />
+                  ) : (
+                    <Card className="p-8 text-center text-muted-foreground">
+                      <p>ፕሮጀክትን በመጀመሪያ ያስቀምጡ</p>
+                    </Card>
+                  )}
+                </TabsContent>
               </Tabs>
             </div>
           )}
@@ -745,6 +780,28 @@ const Index = () => {
       <section className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           <FeaturedGallery />
+        </div>
+      </section>
+
+      {/* Backup & Restore Section */}
+      <section className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+            <Database className="h-6 w-6 text-primary" />
+            ምትኪ እና መመለሻ
+          </h2>
+          <BackupRestore />
+        </div>
+      </section>
+
+      {/* Usage Insights Section */}
+      <section className="container mx-auto px-4 py-8 bg-muted/50">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+            <TrendingUp className="h-6 w-6 text-primary" />
+            የአጠቃቀም ግንዛቤዎች
+          </h2>
+          <UsageInsights />
         </div>
       </section>
 
