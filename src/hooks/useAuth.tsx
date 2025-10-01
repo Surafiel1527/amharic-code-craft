@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -8,25 +8,19 @@ export const useAuth = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const hasNavigatedRef = useRef(false);
 
   useEffect(() => {
-    let isInitialLoad = true;
-    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Only navigate on actual sign in/out events, not on token refresh
-        if (event === 'SIGNED_IN' && isInitialLoad) {
-          navigate("/");
-          isInitialLoad = false;
-        } else if (event === 'SIGNED_OUT') {
+        // Only navigate on explicit sign out - never on sign in or token refresh
+        if (event === 'SIGNED_OUT') {
           navigate("/auth");
-        } else if (event === 'SIGNED_IN') {
-          // Token refresh or other auth update - don't navigate
-          isInitialLoad = false;
+          hasNavigatedRef.current = false;
         }
       }
     );
