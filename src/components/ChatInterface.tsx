@@ -50,6 +50,7 @@ export const ChatInterface = ({
   };
 
   const loadConversation = async (convId: string) => {
+    console.log('💬 Chat: Loading conversation:', convId);
     try {
       const { data, error } = await supabase
         .from("messages")
@@ -57,7 +58,12 @@ export const ChatInterface = ({
         .eq("conversation_id", convId)
         .order("created_at", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Chat: Error loading conversation:', error);
+        throw error;
+      }
+      
+      console.log('✅ Chat: Loaded', data?.length || 0, 'messages');
       
       const typedMessages: Message[] = (data || [])
         .filter(m => m.role === 'user' || m.role === 'assistant')
@@ -71,15 +77,36 @@ export const ChatInterface = ({
       
       setMessages(typedMessages);
     } catch (error) {
-      console.error("Error loading conversation:", error);
+      console.error("❌ Chat: Error loading conversation:", error);
+      
+      // Report error to self-healing system
+      await supabase.functions.invoke('report-error', {
+        body: {
+          errorType: 'DatabaseAccessError',
+          errorMessage: error instanceof Error ? error.message : 'Failed to load conversation',
+          source: 'frontend',
+          filePath: 'components/ChatInterface.tsx',
+          functionName: 'loadConversation',
+          severity: 'medium',
+          context: {
+            operation: 'load_messages',
+            conversationId: convId
+          }
+        }
+      }).catch(err => console.error('Failed to report error:', err));
+      
       toast.error("ውይይትን መጫን አልተቻለም");
     }
   };
 
   const createNewConversation = async () => {
+    console.log('💬 Chat: Creating new conversation...');
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) {
+        console.error('❌ Chat: User not authenticated');
+        throw new Error("Not authenticated");
+      }
 
       const { data, error } = await supabase
         .from("conversations")
@@ -87,10 +114,29 @@ export const ChatInterface = ({
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Chat: Error creating conversation:', error);
+        throw error;
+      }
+      
+      console.log('✅ Chat: Created conversation:', data.id);
       return data.id;
     } catch (error) {
-      console.error("Error creating conversation:", error);
+      console.error("❌ Chat: Error creating conversation:", error);
+      
+      // Report error to self-healing system
+      await supabase.functions.invoke('report-error', {
+        body: {
+          errorType: 'DatabaseAccessError',
+          errorMessage: error instanceof Error ? error.message : 'Failed to create conversation',
+          source: 'frontend',
+          filePath: 'components/ChatInterface.tsx',
+          functionName: 'createNewConversation',
+          severity: 'high',
+          context: { operation: 'create_conversation' }
+        }
+      }).catch(err => console.error('Failed to report error:', err));
+      
       throw error;
     }
   };

@@ -73,40 +73,85 @@ serve(async (req) => {
       .order('frequency', { ascending: false })
       .limit(3);
 
-    // Build AI prompt for fix generation
+    // Build enhanced AI prompt with codebase context
     const knowledgeContext = knowledgeBase && knowledgeBase.length > 0
-      ? `\n\nKnown solutions for similar errors:\n${knowledgeBase.map(kb => 
-          `- ${kb.error_pattern}: ${kb.solution}`
-        ).join('\n')}`
-      : '';
+      ? `\n\nKNOWN SOLUTIONS (${knowledgeBase.length} patterns found):\n${knowledgeBase.map(kb => 
+          `- Pattern: ${kb.error_pattern}\n  Solution: ${kb.solution}\n  Success Rate: ${(kb.auto_fix_success_rate * 100).toFixed(0)}%`
+        ).join('\n\n')}`
+      : '\n\nNo similar patterns found in knowledge base.';
 
-    const aiPrompt = `You are an expert code debugger and fixer. Analyze this error and generate a fix.
+    const codebaseContext = `
+CODEBASE ARCHITECTURE:
+- Frontend: React 18 + TypeScript + Vite + TailwindCSS
+- Backend: Supabase (PostgreSQL + Edge Functions)
+- Authentication: Supabase Auth with email/password
+- State Management: React hooks (useState, useEffect)
+- Routing: React Router v6
+- UI Components: Radix UI + shadcn/ui
+- AI Integration: Lovable AI Gateway (Gemini 2.5)
 
-ERROR DETAILS:
+COMMON PATTERNS IN THIS CODEBASE:
+- RLS policies use security definer functions to avoid recursion
+- All database operations use Supabase client methods (never raw SQL in edge functions)
+- Edge functions use CORS headers for all responses
+- Authentication stores full session object, not just user
+- Error reporting goes to 'report-error' edge function
+- Components use semantic design tokens from index.css
+
+SECURITY REQUIREMENTS:
+- Never expose API keys or secrets in frontend
+- Always validate user input
+- Use parameterized queries (Supabase client handles this)
+- Implement proper RLS policies for all tables
+- Check auth.uid() for user-specific operations`;
+
+    const aiPrompt = `You are an expert full-stack debugger specializing in React + Supabase applications.
+
+🔍 ERROR ANALYSIS:
 Type: ${error.error_type}
 Message: ${error.error_message}
 Source: ${error.source}
 ${error.function_name ? `Function: ${error.function_name}` : ''}
 ${error.file_path ? `File: ${error.file_path}` : ''}
-${error.stack_trace ? `Stack Trace: ${error.stack_trace}` : ''}
+Severity: ${error.severity}
+${error.stack_trace ? `\nStack Trace:\n${error.stack_trace}` : ''}
 
-CONTEXT:
+📋 ERROR CONTEXT:
 ${JSON.stringify(error.error_context, null, 2)}
-${knowledgeContext}
 
-TASK:
-1. Identify the root cause
-2. Generate a fix (code patch, config change, or migration)
-3. Explain the fix clearly
-4. Provide confidence score (0-1)
+💡 ${knowledgeContext}
+
+🏗️ ${codebaseContext}
+
+🎯 YOUR TASK:
+1. Analyze the root cause considering the codebase architecture
+2. Generate a precise fix that follows the codebase patterns
+3. Choose the appropriate fix type:
+   - code_patch: For frontend/component fixes (React, TypeScript, UI)
+   - migration: For database changes (tables, RLS, triggers, functions)
+   - config_change: For configuration updates (env vars, settings)
+4. Provide detailed explanation with reasoning
+5. Assign honest confidence score based on:
+   - How well error matches known patterns (0.9+ if exact match)
+   - Completeness of error information (0.8+ if full stack trace)
+   - Complexity of fix (0.7+ if simple, 0.5-0.7 if complex)
+
+⚠️ CRITICAL RULES:
+- For RLS recursion: Create security definer function, never self-reference
+- For null/undefined: Add optional chaining and null checks
+- For auth errors: Ensure full session storage and onAuthStateChange
+- For CORS: Add headers to ALL responses including errors
+- For edge functions: Always return Response with proper headers
+- For database: Use Supabase client methods, never raw SQL
 
 Return JSON ONLY in this exact format:
 {
   "fixType": "code_patch|migration|config_change",
-  "originalCode": "original code if applicable",
-  "fixedCode": "fixed code",
-  "explanation": "clear explanation of what was wrong and how the fix resolves it",
-  "confidence": 0.85
+  "originalCode": "the problematic code if available",
+  "fixedCode": "complete working solution with proper syntax",
+  "explanation": "detailed explanation: what was wrong, why it failed, how the fix works, and what it prevents",
+  "confidence": 0.85,
+  "reasoning": "why this confidence score - mention pattern matches, info completeness, fix complexity"
 }`;
 
     // Call AI to generate fix
@@ -132,7 +177,13 @@ Return JSON ONLY in this exact format:
     const aiData = await aiResponse.json();
     const fixData = JSON.parse(aiData.choices[0].message.content);
 
-    console.log('Generated fix:', fixData.fixType, 'Confidence:', fixData.confidence);
+    console.log('✅ Generated fix:', {
+      fixType: fixData.fixType,
+      confidence: fixData.confidence,
+      reasoning: fixData.reasoning,
+      errorType: error.error_type,
+      source: error.source
+    });
 
     // Store the generated fix
     const { data: autoFix, error: fixInsertError } = await supabaseClient
