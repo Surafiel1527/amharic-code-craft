@@ -72,12 +72,18 @@ export const useDynamicCustomizations = () => {
     customizations.forEach(custom => {
       try {
         const changes = custom.applied_changes;
-        if (changes?.component === component && changes?.modifications) {
-          changes.modifications.forEach((mod: any) => {
-            if (mod.styles) {
-              styles.push(mod.styles);
-            }
-          });
+        // Check if the component matches directly or if modifications target this component
+        if (changes?.component === component || changes?.target === component) {
+          if (changes?.modifications) {
+            changes.modifications.forEach((mod: any) => {
+              if (mod.styles) {
+                styles.push(mod.styles);
+              }
+            });
+          } else if (changes?.styles) {
+            // Handle direct styles on changes object
+            styles.push(changes.styles);
+          }
         }
       } catch (e) {
         console.error('Error parsing customization:', e);

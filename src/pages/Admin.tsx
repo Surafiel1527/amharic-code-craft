@@ -155,8 +155,8 @@ export default function Admin() {
     return null;
   }
 
-  // Get dynamic styles for AdminPage component
-  const dynamicStyles = getDynamicStyles('AdminPage');
+  // Get dynamic styles for AdminPage component (check multiple possible component names)
+  const dynamicStyles = getDynamicStyles('AdminPage') || getDynamicStyles('Admin') || getDynamicStyles('main container');
   const backgroundStyles = dynamicStyles || 'bg-gradient-to-br from-green-50 via-green-100 to-green-200 dark:from-green-950 dark:via-green-900 dark:to-green-800';
 
   return (
