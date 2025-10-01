@@ -32,3 +32,12 @@ verify_jwt = false
 
 [functions.api-generate]
 verify_jwt = false
+
+[functions.meta-improve]
+verify_jwt = true
+
+[functions.self-heal]
+verify_jwt = false
+
+[functions.ai-reflect]
+verify_jwt = false

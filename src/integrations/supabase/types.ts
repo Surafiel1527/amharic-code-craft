@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_improvements: {
+        Row: {
+          after_metrics: Json | null
+          analysis: Json | null
+          approved_by: string | null
+          before_metrics: Json | null
+          created_at: string | null
+          deployed_at: string | null
+          id: string
+          improvement_type: string
+          new_version: string | null
+          old_version: string | null
+          reason: string
+          status: string | null
+          success_improvement: number | null
+        }
+        Insert: {
+          after_metrics?: Json | null
+          analysis?: Json | null
+          approved_by?: string | null
+          before_metrics?: Json | null
+          created_at?: string | null
+          deployed_at?: string | null
+          id?: string
+          improvement_type: string
+          new_version?: string | null
+          old_version?: string | null
+          reason: string
+          status?: string | null
+          success_improvement?: number | null
+        }
+        Update: {
+          after_metrics?: Json | null
+          analysis?: Json | null
+          approved_by?: string | null
+          before_metrics?: Json | null
+          created_at?: string | null
+          deployed_at?: string | null
+          id?: string
+          improvement_type?: string
+          new_version?: string | null
+          old_version?: string | null
+          reason?: string
+          status?: string | null
+          success_improvement?: number | null
+        }
+        Relationships: []
+      }
+      ai_knowledge_base: {
+        Row: {
+          best_approach: string
+          category: string
+          code_examples: Json | null
+          common_mistakes: Json | null
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          learned_from_cases: number | null
+          pattern_name: string
+          success_rate: number | null
+          tags: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          best_approach: string
+          category: string
+          code_examples?: Json | null
+          common_mistakes?: Json | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          learned_from_cases?: number | null
+          pattern_name: string
+          success_rate?: number | null
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          best_approach?: string
+          category?: string
+          code_examples?: Json | null
+          common_mistakes?: Json | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          learned_from_cases?: number | null
+          pattern_name?: string
+          success_rate?: number | null
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           api_key: string
@@ -188,6 +281,51 @@ export type Database = {
         }
         Relationships: []
       }
+      error_patterns: {
+        Row: {
+          affected_model: string | null
+          auto_fix_success_rate: number | null
+          common_user_prompts: Json | null
+          error_pattern: string
+          error_type: string
+          fix_applied: boolean | null
+          frequency: number | null
+          id: string
+          last_seen_at: string | null
+          learned_at: string | null
+          resolution_status: string | null
+          solution: string | null
+        }
+        Insert: {
+          affected_model?: string | null
+          auto_fix_success_rate?: number | null
+          common_user_prompts?: Json | null
+          error_pattern: string
+          error_type: string
+          fix_applied?: boolean | null
+          frequency?: number | null
+          id?: string
+          last_seen_at?: string | null
+          learned_at?: string | null
+          resolution_status?: string | null
+          solution?: string | null
+        }
+        Update: {
+          affected_model?: string | null
+          auto_fix_success_rate?: number | null
+          common_user_prompts?: Json | null
+          error_pattern?: string
+          error_type?: string
+          fix_applied?: boolean | null
+          frequency?: number | null
+          id?: string
+          last_seen_at?: string | null
+          learned_at?: string | null
+          resolution_status?: string | null
+          solution?: string | null
+        }
+        Relationships: []
+      }
       featured_projects: {
         Row: {
           display_order: number | null
@@ -248,6 +386,92 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "generated_images_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generation_analytics: {
+        Row: {
+          code_worked: boolean | null
+          conversation_history: Json | null
+          cost_estimate: number | null
+          created_at: string | null
+          error_message: string | null
+          existing_code_context: string | null
+          feedback_type: Database["public"]["Enums"]["feedback_type"] | null
+          generated_code: string
+          generation_time_ms: number | null
+          id: string
+          model_used: string
+          modifications_made: string | null
+          project_id: string | null
+          prompt_version: string
+          status: Database["public"]["Enums"]["generation_status"]
+          system_prompt: string
+          time_to_accept_seconds: number | null
+          tokens_used: number | null
+          updated_at: string | null
+          user_id: string | null
+          user_modified: boolean | null
+          user_prompt: string
+          user_satisfaction_score: number | null
+        }
+        Insert: {
+          code_worked?: boolean | null
+          conversation_history?: Json | null
+          cost_estimate?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          existing_code_context?: string | null
+          feedback_type?: Database["public"]["Enums"]["feedback_type"] | null
+          generated_code: string
+          generation_time_ms?: number | null
+          id?: string
+          model_used: string
+          modifications_made?: string | null
+          project_id?: string | null
+          prompt_version?: string
+          status: Database["public"]["Enums"]["generation_status"]
+          system_prompt: string
+          time_to_accept_seconds?: number | null
+          tokens_used?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          user_modified?: boolean | null
+          user_prompt: string
+          user_satisfaction_score?: number | null
+        }
+        Update: {
+          code_worked?: boolean | null
+          conversation_history?: Json | null
+          cost_estimate?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          existing_code_context?: string | null
+          feedback_type?: Database["public"]["Enums"]["feedback_type"] | null
+          generated_code?: string
+          generation_time_ms?: number | null
+          id?: string
+          model_used?: string
+          modifications_made?: string | null
+          project_id?: string | null
+          prompt_version?: string
+          status?: Database["public"]["Enums"]["generation_status"]
+          system_prompt?: string
+          time_to_accept_seconds?: number | null
+          tokens_used?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          user_modified?: boolean | null
+          user_prompt?: string
+          user_satisfaction_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_analytics_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -557,6 +781,57 @@ export type Database = {
           },
         ]
       }
+      prompt_versions: {
+        Row: {
+          average_satisfaction: number | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          improvements_made: Json | null
+          is_active: boolean | null
+          notes: string | null
+          parent_version: string | null
+          success_rate: number | null
+          system_prompt: string
+          total_uses: number | null
+          traffic_percentage: number | null
+          updated_at: string | null
+          version: string
+        }
+        Insert: {
+          average_satisfaction?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          improvements_made?: Json | null
+          is_active?: boolean | null
+          notes?: string | null
+          parent_version?: string | null
+          success_rate?: number | null
+          system_prompt: string
+          total_uses?: number | null
+          traffic_percentage?: number | null
+          updated_at?: string | null
+          version: string
+        }
+        Update: {
+          average_satisfaction?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          improvements_made?: Json | null
+          is_active?: boolean | null
+          notes?: string | null
+          parent_version?: string | null
+          success_rate?: number | null
+          system_prompt?: string
+          total_uses?: number | null
+          traffic_percentage?: number | null
+          updated_at?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           id: string
@@ -769,6 +1044,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      feedback_type:
+        | "thumbs_up"
+        | "thumbs_down"
+        | "modified"
+        | "accepted"
+        | "rejected"
+      generation_status: "success" | "partial_success" | "failure" | "error"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -897,6 +1179,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      feedback_type: [
+        "thumbs_up",
+        "thumbs_down",
+        "modified",
+        "accepted",
+        "rejected",
+      ],
+      generation_status: ["success", "partial_success", "failure", "error"],
     },
   },
 } as const
