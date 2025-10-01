@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { DynamicComponent } from "@/components/DynamicComponent";
 
 interface MobileNavProps {
   isAdmin: boolean;
@@ -69,14 +70,16 @@ export const MobileNav = ({ isAdmin, onShowShortcuts, onSignOut }: MobileNavProp
               {t("header.settings")}
             </Button>
 
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 text-destructive hover:text-destructive"
-              onClick={onSignOut}
-            >
-              <LogOut className="h-4 w-4" />
-              {t("header.logout")}
-            </Button>
+            <DynamicComponent name="Button-SignOut">
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+                onClick={onSignOut}
+              >
+                <LogOut className="h-4 w-4" />
+                {t("header.logout")}
+              </Button>
+            </DynamicComponent>
           </div>
         </div>
       </SheetContent>
