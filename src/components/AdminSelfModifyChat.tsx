@@ -122,8 +122,8 @@ export default function AdminSelfModifyChat({ onCustomizationApplied }: AdminSel
       setMessages(prev => [...prev, assistantMessage]);
 
       toast({
-        title: '✨ Change Applied',
-        description: 'Your customization has been automatically applied!',
+        title: '✨ Change Ready for Preview',
+        description: 'Review the change in the customizations list. Enable Preview Mode to see it live!',
       });
 
       // Optionally trigger a callback to refresh the admin page

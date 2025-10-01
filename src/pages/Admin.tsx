@@ -16,8 +16,10 @@ import { NotificationCenter } from "@/components/NotificationCenter";
 import { SelfHealingMonitor } from "@/components/SelfHealingMonitor";
 import AdminSelfModifyChat from "@/components/AdminSelfModifyChat";
 import AdminCustomizationsList from "@/components/AdminCustomizationsList";
+import { PreviewModeToggle } from "@/components/PreviewModeToggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -52,10 +54,18 @@ export default function Admin() {
   const { isAdmin, loading: roleLoading } = useUserRole(user?.id);
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { getDynamicStyles, isVisible } = useDynamicCustomizations();
+  const [previewMode, setPreviewMode] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const { getDynamicStyles, isVisible, customizations } = useDynamicCustomizations(previewMode);
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalProjects: 0, totalConversations: 0 });
   const [loading, setLoading] = useState(true);
+
+  // Count pending customizations
+  useEffect(() => {
+    const count = customizations.filter(c => c.status === 'pending').length;
+    setPendingCount(count);
+  }, [customizations]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -162,6 +172,18 @@ export default function Admin() {
   return (
     <div className={`min-h-screen ${backgroundStyles} p-4 sm:p-8`}>
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
+        {/* Preview Mode Alert */}
+        {previewMode && pendingCount > 0 && (
+          <Alert className="border-primary bg-primary/5">
+            <AlertDescription className="flex items-center justify-between">
+              <span className="text-sm">
+                🔍 <strong>Preview Mode:</strong> Showing {pendingCount} pending change{pendingCount !== 1 ? 's' : ''}. 
+                {' '}Go to the Self-Modify tab to approve or reject.
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Mobile Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
@@ -178,6 +200,11 @@ export default function Admin() {
           
           {/* Desktop Actions */}
           <div className="hidden sm:flex items-center gap-2">
+            <PreviewModeToggle 
+              isPreviewMode={previewMode}
+              onToggle={() => setPreviewMode(!previewMode)}
+              pendingCount={pendingCount}
+            />
             <DynamicSlot name="header-actions">
               {isVisible('NotificationCenter') && <NotificationCenter />}
             </DynamicSlot>

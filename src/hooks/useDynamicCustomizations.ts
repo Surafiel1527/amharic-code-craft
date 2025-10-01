@@ -6,6 +6,8 @@ interface Customization {
   customization_type: string;
   applied_changes: any; // JSON from database
   applied_at: string | null;
+  status: string;
+  created_at: string;
 }
 
 interface DynamicModification {
@@ -19,14 +21,14 @@ interface DynamicModification {
   component?: string;
 }
 
-export const useDynamicCustomizations = () => {
+export const useDynamicCustomizations = (previewMode = false) => {
   const [customizations, setCustomizations] = useState<Customization[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadCustomizations();
 
-    // Subscribe to real-time updates
+    // Subscribe to real-time updates (any status changes)
     const channel = supabase
       .channel('admin-customizations')
       .on(
@@ -34,10 +36,10 @@ export const useDynamicCustomizations = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'admin_customizations',
-          filter: 'status=eq.applied'
+          table: 'admin_customizations'
         },
         () => {
+          console.log('🔔 Realtime update received, reloading customizations');
           loadCustomizations();
         }
       )
@@ -46,16 +48,28 @@ export const useDynamicCustomizations = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [previewMode]);
 
   const loadCustomizations = async () => {
     try {
-      console.log('🔄 LOADING CUSTOMIZATIONS...');
-      const { data, error } = await supabase
+      console.log('🔄 LOADING CUSTOMIZATIONS...', { previewMode });
+      
+      // In preview mode, load BOTH pending AND applied customizations
+      // Otherwise, only load applied ones
+      let query = supabase
         .from('admin_customizations')
         .select('*')
-        .eq('status', 'applied')
-        .order('applied_at', { ascending: false });
+        .order('created_at', { ascending: false });
+      
+      if (previewMode) {
+        // Load pending AND applied (pending will override applied)
+        query = query.in('status', ['pending', 'applied']);
+      } else {
+        // Only load applied customizations
+        query = query.eq('status', 'applied');
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('❌ Error loading customizations:', error);
@@ -63,6 +77,7 @@ export const useDynamicCustomizations = () => {
       }
       
       console.log('📦 LOADED CUSTOMIZATIONS:', {
+        previewMode,
         count: data?.length || 0,
         data: data
       });

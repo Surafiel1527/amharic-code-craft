@@ -67,7 +67,7 @@ export default function AdminCustomizationsList() {
     }
   };
 
-  const applyCustomization = async (customizationId: string) => {
+  const approveCustomization = async (customizationId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -85,16 +85,46 @@ export default function AdminCustomizationsList() {
       if (error) throw error;
 
       toast({
-        title: '✅ Applied',
-        description: 'Customization has been applied successfully',
+        title: '✅ Approved & Applied',
+        description: 'Customization is now live!',
       });
 
       loadCustomizations();
     } catch (error) {
-      console.error('Error applying customization:', error);
+      console.error('Error approving customization:', error);
       toast({
         title: 'Error',
-        description: 'Failed to apply customization',
+        description: 'Failed to approve customization',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const rejectCustomization = async (customizationId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Delete the rejected customization
+      const { error } = await supabase
+        .from('admin_customizations')
+        .delete()
+        .eq('id', customizationId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: '🗑️ Rejected',
+        description: 'Customization has been removed',
+      });
+
+      loadCustomizations();
+    } catch (error) {
+      console.error('Error rejecting customization:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to reject customization',
         variant: 'destructive',
       });
     }
@@ -151,12 +181,26 @@ export default function AdminCustomizationsList() {
                     </div>
 
                     {customization.status === 'pending' && (
-                      <Button
-                        size="sm"
-                        onClick={() => applyCustomization(customization.id)}
-                      >
-                        Apply
-                      </Button>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => approveCustomization(customization.id)}
+                          className="gap-1"
+                        >
+                          <CheckCircle className="h-3 w-3" />
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => rejectCustomization(customization.id)}
+                          className="gap-1"
+                        >
+                          <XCircle className="h-3 w-3" />
+                          Reject
+                        </Button>
+                      </div>
                     )}
 
                     {customization.status === 'applied' && (

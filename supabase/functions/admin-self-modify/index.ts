@@ -282,7 +282,7 @@ USER REQUEST: ${prompt}`;
       throw new Error('Invalid AI response format');
     }
 
-    // Store the customization as applied (auto-apply)
+    // Store the customization as PENDING (require manual approval)
     const { data: customization, error: insertError } = await supabase
       .from('admin_customizations')
       .insert({
@@ -291,8 +291,8 @@ USER REQUEST: ${prompt}`;
         prompt: prompt,
         applied_changes: parsedResponse.changes,
         code_changes: JSON.stringify(parsedResponse),
-        status: 'applied', // Auto-apply
-        applied_at: new Date().toISOString()
+        status: 'pending', // Store as pending for preview
+        applied_at: null
       })
       .select()
       .single();
@@ -302,7 +302,7 @@ USER REQUEST: ${prompt}`;
       throw insertError;
     }
 
-    console.log('Customization auto-applied:', customization.id);
+    console.log('Customization created (pending review):', customization.id);
 
     // Save assistant message to chat
     await supabase
