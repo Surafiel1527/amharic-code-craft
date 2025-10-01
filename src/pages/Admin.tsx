@@ -61,10 +61,19 @@ export default function Admin() {
   useEffect(() => {
     // Only check admin status after both auth and role are fully loaded
     if (!authLoading && !roleLoading) {
-      console.log('Admin check - isAdmin:', isAdmin, 'user:', user?.id);
+      console.log('🔒 Admin page access check:', { 
+        isAdmin, 
+        userId: user?.id, 
+        authLoading, 
+        roleLoading 
+      });
+      
       if (!isAdmin) {
+        console.log('❌ Access denied - not admin');
         toast.error("የአስተዳዳሪ መብት የለዎትም");
         navigate("/");
+      } else {
+        console.log('✅ Admin access granted');
       }
     }
   }, [authLoading, roleLoading, isAdmin, navigate, user]);
