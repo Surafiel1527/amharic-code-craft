@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon } from "lucide-react";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -14,6 +14,9 @@ import { ConversationSidebar } from "@/components/ConversationSidebar";
 import { ProjectsGrid } from "@/components/ProjectsGrid";
 import { TemplatesBrowser } from "@/components/TemplatesBrowser";
 import { ImageGenerator } from "@/components/ImageGenerator";
+import { CodeAnalysis } from "@/components/CodeAnalysis";
+import { AIAssistant } from "@/components/AIAssistant";
+import { VersionHistory } from "@/components/VersionHistory";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -25,6 +28,13 @@ interface Project {
   prompt: string;
   html_code: string;
   created_at: string;
+  is_favorite: boolean;
+  is_public: boolean;
+  share_token: string | null;
+  tags: string[];
+  usage_count?: number;
+  views_count?: number;
+  forked_from?: string | null;
 }
 
 interface Conversation {
@@ -73,6 +83,8 @@ const Index = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"quick" | "templates" | "images">("quick");
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [showAIFeatures, setShowAIFeatures] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -195,6 +207,7 @@ const Index = () => {
   const loadProject = (project: Project) => {
     setPrompt(project.prompt);
     setGeneratedCode(project.html_code);
+    setCurrentProjectId(project.id);
     toast.success(`"${project.title}" ተጫነ`);
   };
 
@@ -289,6 +302,10 @@ const Index = () => {
                 የአማርኛ AI ቴክኖሎጂ - ዘመናዊ እና ብልህ
               </div>
               <div className="flex-1 flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => navigate("/explore")} className="gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  አስስ
+                </Button>
                 {isAdmin && (
                   <Button variant="outline" size="sm" onClick={() => navigate("/admin")} className="gap-2">
                     <Shield className="h-4 w-4" />
@@ -344,7 +361,7 @@ const Index = () => {
 
       {/* Main Content */}
       <section className="container mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-[300px_1fr_1fr] gap-4 max-w-7xl mx-auto">
+        <div className={`grid ${showAIFeatures ? 'lg:grid-cols-[300px_1fr_1fr_350px]' : 'lg:grid-cols-[300px_1fr_1fr]'} gap-4 max-w-full mx-auto`}>
           {/* Sidebar - Conversations List */}
           {mode === "chat" && (
             <Card className="p-4 space-y-4 h-[calc(100vh-350px)] flex flex-col">
@@ -498,6 +515,15 @@ const Index = () => {
               </label>
               {generatedCode && (
                 <div className="flex gap-2">
+                  <Button
+                    variant={showAIFeatures ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowAIFeatures(!showAIFeatures)}
+                    className="gap-2"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    AI
+                  </Button>
                   <Button variant="outline" size="sm" onClick={copyCode} className="gap-2">
                     {copied ? (
                       <>
@@ -537,6 +563,57 @@ const Index = () => {
               )}
             </div>
           </Card>
+
+          {/* AI Features Panel */}
+          {showAIFeatures && generatedCode && (
+            <div className="space-y-4">
+              <Tabs defaultValue="analysis" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="analysis" className="text-xs">ትንተና</TabsTrigger>
+                  <TabsTrigger value="assistant" className="text-xs">ረዳት</TabsTrigger>
+                  <TabsTrigger value="versions" className="text-xs">ስሪቶች</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="analysis" className="mt-4">
+                  <CodeAnalysis
+                    code={generatedCode}
+                    projectId={currentProjectId || undefined}
+                    onOptimize={(optimizedCode) => {
+                      setGeneratedCode(optimizedCode);
+                      toast.success("ኮድ በራስ ተመሻሽሏል!");
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="assistant" className="mt-4">
+                  <AIAssistant
+                    projectContext={currentProjectId ? {
+                      title: projectTitle || 'Untitled',
+                      prompt: prompt,
+                      codeLength: generatedCode.length
+                    } : undefined}
+                  />
+                </TabsContent>
+
+                <TabsContent value="versions" className="mt-4">
+                  {currentProjectId ? (
+                    <VersionHistory
+                      projectId={currentProjectId}
+                      onRestore={(code) => {
+                        setGeneratedCode(code);
+                        toast.success("ስሪት ተመልሷል!");
+                      }}
+                    />
+                  ) : (
+                    <Card className="p-8 text-center text-muted-foreground">
+                      <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>ፕሮጀክትን በመጀመሪያ ያስቀምጡ</p>
+                    </Card>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
         </div>
       </section>
 

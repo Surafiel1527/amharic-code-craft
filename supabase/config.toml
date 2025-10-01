@@ -8,3 +8,12 @@ verify_jwt = false
 
 [functions.generate-image]
 verify_jwt = false
+
+[functions.analyze-code]
+verify_jwt = false
+
+[functions.optimize-code]
+verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false

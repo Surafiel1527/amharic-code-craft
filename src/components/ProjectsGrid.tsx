@@ -3,9 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Calendar, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Calendar, Trash2, ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ProjectActions } from "@/components/ProjectActions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,10 @@ interface Project {
   prompt: string;
   html_code: string;
   created_at: string;
+  is_favorite: boolean;
+  is_public: boolean;
+  share_token: string | null;
+  tags: string[];
 }
 
 interface ProjectsGridProps {
@@ -102,27 +107,48 @@ export const ProjectsGrid = ({ projects, onLoadProject, onProjectsChange }: Proj
             {currentProjects.map((project) => (
             <Card
               key={project.id}
-              className="p-4 hover-scale hover-glow cursor-pointer group relative overflow-hidden"
+              className="p-4 hover-scale hover-glow group relative overflow-hidden border-2"
+              style={{
+                borderColor: project.is_favorite ? 'hsl(var(--primary))' : undefined
+              }}
             >
-              <div onClick={() => onLoadProject(project)} className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-lg truncate flex-1">
-                    {project.title}
-                  </h3>
-                  <Badge variant="secondary" className="text-xs">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    {formatDate(project.created_at)}
-                  </Badge>
+              <div className="space-y-3">
+                <div onClick={() => onLoadProject(project)} className="cursor-pointer">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-1">
+                      <h3 className="font-semibold text-lg truncate">
+                        {project.title}
+                      </h3>
+                      {project.is_favorite && (
+                        <Heart className="h-4 w-4 fill-primary text-primary flex-shrink-0" />
+                      )}
+                    </div>
+                    <Badge variant="secondary" className="text-xs flex-shrink-0">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {formatDate(project.created_at)}
+                    </Badge>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
+                    {project.prompt}
+                  </p>
+
+                  {project.tags && project.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {project.tags.slice(0, 3).map((tag, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                <p className="text-sm text-muted-foreground line-clamp-3">
-                  {project.prompt}
-                </p>
-
                 <div className="pt-2 border-t border-border/50">
-                  <p className="text-xs text-muted-foreground">
-                    ለመክፈት ጠቅ ያድርጉ
-                  </p>
+                  <ProjectActions
+                    project={project}
+                    onUpdate={onProjectsChange}
+                  />
                 </div>
               </div>
 

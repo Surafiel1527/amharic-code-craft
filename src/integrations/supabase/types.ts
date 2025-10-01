@@ -14,6 +14,117 @@ export type Database = {
   }
   public: {
     Tables: {
+      assistant_conversations: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: string
+          project_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_conversations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          role: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      code_analysis: {
+        Row: {
+          analysis_type: string
+          created_at: string
+          id: string
+          issues: Json | null
+          project_id: string
+          score: number | null
+          suggestions: Json | null
+        }
+        Insert: {
+          analysis_type: string
+          created_at?: string
+          id?: string
+          issues?: Json | null
+          project_id: string
+          score?: number | null
+          suggestions?: Json | null
+        }
+        Update: {
+          analysis_type?: string
+          created_at?: string
+          id?: string
+          issues?: Json | null
+          project_id?: string
+          score?: number | null
+          suggestions?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_analysis_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
@@ -134,6 +245,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      project_versions: {
+        Row: {
+          changes_summary: string | null
+          created_at: string
+          html_code: string
+          id: string
+          performance_score: number | null
+          project_id: string
+          quality_score: number | null
+          version_number: number
+        }
+        Insert: {
+          changes_summary?: string | null
+          created_at?: string
+          html_code: string
+          id?: string
+          performance_score?: number | null
+          project_id: string
+          quality_score?: number | null
+          version_number: number
+        }
+        Update: {
+          changes_summary?: string | null
+          created_at?: string
+          html_code?: string
+          id?: string
+          performance_score?: number | null
+          project_id?: string
+          quality_score?: number | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       projects: {
         Row: {
