@@ -64,8 +64,8 @@ export default function Admin() {
   }, [authLoading, user, navigate]);
 
   useEffect(() => {
-    // Check admin status only after everything is loaded
-    if (!authLoading && !roleLoading && user) {
+    // Check admin status only after everything is loaded AND role is definitive (not null)
+    if (!authLoading && !roleLoading && user && isAdmin !== null) {
       console.log('🔒 Admin page access check:', { 
         isAdmin, 
         userId: user?.id, 
@@ -74,11 +74,11 @@ export default function Admin() {
         userEmail: user?.email
       });
       
-      if (isAdmin === false) {
+      if (!isAdmin) {
         console.log('❌ Access denied - not admin, redirecting to home');
         toast.error(t("toast.notAuthorized"));
         navigate("/");
-      } else if (isAdmin === true) {
+      } else {
         console.log('✅ Admin access granted, fetching dashboard data');
         fetchDashboardData();
       }

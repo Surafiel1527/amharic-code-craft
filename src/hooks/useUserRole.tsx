@@ -9,12 +9,13 @@ export const useUserRole = (userId: string | undefined) => {
 
   useEffect(() => {
     if (!userId) {
-      console.log('⚠️ No userId provided, setting role to null');
+      console.log('⚠️ No userId provided, keeping loading state true');
       setRole(null);
-      setLoading(false);
+      // Don't set loading to false - wait for valid userId
       return;
     }
 
+    setLoading(true);
     console.log('🔍 Starting role fetch for userId:', userId);
     const fetchRole = async () => {
       try {
