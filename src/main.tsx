@@ -10,7 +10,13 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import App from "./App.tsx";
 import "./index.css";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
