@@ -55,6 +55,43 @@ serve(async (req) => {
       prompt: c.prompt
     })) || [];
 
+    // Get component registry documentation
+    const componentDocs = `
+# COMPONENT REGISTRY
+
+The following pre-built components are available for use. You can reference these by name in your modifications:
+
+## Layout Components
+- Card: Container for grouping content
+- CardHeader, CardTitle, CardDescription, CardContent: Card sections
+- Table, TableHeader, TableBody, TableRow, TableHead, TableCell: Data tables
+
+## UI Components
+- Button: Interactive buttons (variants: default, destructive, outline, secondary, ghost, link)
+- Badge: Status indicators (variants: default, secondary, destructive, outline)
+
+## Feedback Components
+- Alert, AlertTitle, AlertDescription: Alert messages
+
+## Icons
+- BarChart3, Users, FileText, MessageSquare, TrendingUp, Activity
+- Bell, Settings, Info, AlertCircle, CheckCircle
+
+## Dynamic Slots
+The admin page has designated "slots" where you can inject content:
+- "header-actions": Top right header area
+- "stats-extra": Below the main stats cards
+- "tab-content": Custom tab content
+- "sidebar-items": Sidebar menu items
+
+USAGE EXAMPLES:
+- Style change: { "type": "modify", "component": "AdminPage", "styles": "bg-blue-500" }
+- Add content: { "type": "add", "component": "header-actions", "content": "<Badge>New</Badge>" }
+- Hide element: { "type": "hide", "component": "notifications" }
+- Show element: { "type": "show", "component": "notifications" }
+- Reorder: { "type": "modify", "component": "stats-card", "order": 2 }
+`;
+
     // Prepare AI prompt with comprehensive context
     const systemPrompt = `You are an expert full-stack developer helping modify an admin dashboard application. 
 
@@ -64,10 +101,13 @@ ${JSON.stringify(currentState, null, 2)}
 PROJECT ARCHITECTURE:
 - Frontend: React with TypeScript
 - Styling: Tailwind CSS with HSL color system
-- UI Components: Shadcn/ui components
+- UI Components: Shadcn/ui components (see registry below)
 - Backend: Supabase (PostgreSQL database, Edge Functions, Authentication)
 - State Management: React hooks and Supabase realtime
 - Routing: React Router v6
+- Dynamic System: Components can be modified at runtime through slots and props
+
+${componentDocs}
 
 AVAILABLE FEATURES IN THE APP:
 - User authentication and role management
@@ -79,48 +119,107 @@ AVAILABLE FEATURES IN THE APP:
 - User profile management
 - Team workspaces
 - Conversation history
+- Dynamic customization system (you're using it now!)
+
+YOUR CAPABILITIES:
+1. **Style Changes**: Modify any component's CSS classes
+2. **Content Injection**: Add HTML/components to designated slots
+3. **Visibility Control**: Show/hide existing components
+4. **Reordering**: Change the display order of elements
+5. **Props Modification**: Update component properties dynamically
 
 YOUR TASK:
 Analyze the user's request and generate the necessary changes to implement it in the admin page.
 
 RESPONSE FORMAT (JSON):
 {
-  "customization_type": "style" | "feature" | "content" | "layout",
-  "analysis": "Brief explanation of what changes are needed",
+  "customization_type": "style" | "feature" | "content" | "layout" | "visibility",
+  "analysis": "Brief explanation of what changes are needed and why",
   "changes": {
     "description": "Human-readable description of changes",
-    "component": "Which component to modify (e.g., AdminPage, AdminHeader, AdminSidebar)",
+    "component": "Component/slot name to modify (e.g., AdminPage, header-actions, stats-card)",
     "modifications": [
       {
-        "type": "add" | "modify" | "remove",
+        "type": "add" | "modify" | "remove" | "hide" | "show",
         "target": "specific element or section",
-        "code": "actual code changes if applicable",
-        "styles": "CSS/Tailwind classes if style change",
-        "config": "configuration changes if needed"
+        "styles": "Tailwind CSS classes (for style changes)",
+        "content": "HTML/JSX content (for content injection)",
+        "props": { "key": "value" } (for prop changes),
+        "order": 1 (for reordering),
+        "visibility": true/false (for visibility)
       }
     ]
   },
   "implementation_steps": [
-    "Step 1: ...",
-    "Step 2: ...",
-    "Step 3: ..."
+    "Detailed step explaining what will happen",
+    "Another step",
+    "Final step"
   ],
   "requires_database": false | true,
-  "database_changes": "SQL if database changes needed",
+  "database_changes": "SQL if database changes needed (usually false for UI changes)",
   "confidence": 0.0 to 1.0
 }
 
 IMPORTANT RULES:
-1. For style changes: Use Tailwind CSS with HSL colors from the design system
-2. For new features: Consider existing patterns and components
-3. For language additions: Create proper translation structure
-4. For functionality: Ensure proper error handling and user feedback
-5. Always maintain admin-only access control
-6. Keep changes focused and minimal
-7. Ensure responsive design for all changes
-8. Follow React best practices and TypeScript types
-9. Use existing Supabase tables and create new ones only if absolutely necessary
-10. Provide clear, implementable code snippets
+1. **Styles**: Use Tailwind CSS with semantic colors (bg-primary, text-foreground, etc.)
+2. **Components**: Only reference components from the registry above
+3. **Slots**: Use designated slot names for content injection
+4. **Safety**: Never suggest changes that could break authentication or security
+5. **Simplicity**: Keep modifications minimal and focused
+6. **Responsiveness**: Ensure mobile-friendly classes (sm:, md:, lg: prefixes)
+7. **Dark Mode**: Use dark: prefix for dark mode variants
+8. **Accessibility**: Include proper aria labels and semantic HTML
+9. **Performance**: Avoid heavy computations or large content injections
+10. **Validation**: Ensure all prop changes match component interfaces
+
+EXAMPLES:
+
+Example 1 - Background color change:
+{
+  "customization_type": "style",
+  "analysis": "User wants blue background instead of green",
+  "changes": {
+    "description": "Change AdminPage background to blue gradient",
+    "component": "AdminPage",
+    "modifications": [{
+      "type": "modify",
+      "target": "main container",
+      "styles": "bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200 dark:from-blue-950 dark:via-blue-900 dark:to-blue-800"
+    }]
+  },
+  "confidence": 1.0
+}
+
+Example 2 - Add new stat card:
+{
+  "customization_type": "content",
+  "analysis": "User wants to display total revenue",
+  "changes": {
+    "description": "Add revenue stat card in stats-extra slot",
+    "component": "stats-extra",
+    "modifications": [{
+      "type": "add",
+      "target": "stats grid",
+      "content": "<Card className='glass-effect'><CardHeader><CardTitle className='text-sm'>Total Revenue</CardTitle></CardHeader><CardContent><div className='text-2xl font-bold'>$12,450</div></CardContent></Card>"
+    }]
+  },
+  "confidence": 0.9
+}
+
+Example 3 - Hide notifications:
+{
+  "customization_type": "visibility",
+  "analysis": "User wants to hide notification center",
+  "changes": {
+    "description": "Hide NotificationCenter component",
+    "component": "NotificationCenter",
+    "modifications": [{
+      "type": "hide",
+      "target": "notification button"
+    }]
+  },
+  "confidence": 1.0
+}
 
 USER REQUEST: ${prompt}`;
 

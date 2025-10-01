@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useDynamicCustomizations } from "@/hooks/useDynamicCustomizations";
+import { DynamicSlot } from "@/components/DynamicSlot";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,7 +52,7 @@ export default function Admin() {
   const { isAdmin, loading: roleLoading } = useUserRole(user?.id);
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { getDynamicStyles } = useDynamicCustomizations();
+  const { getDynamicStyles, isVisible } = useDynamicCustomizations();
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalProjects: 0, totalConversations: 0 });
   const [loading, setLoading] = useState(true);
@@ -177,7 +178,9 @@ export default function Admin() {
           
           {/* Desktop Actions */}
           <div className="hidden sm:flex items-center gap-2">
-            <NotificationCenter />
+            <DynamicSlot name="header-actions">
+              {isVisible('NotificationCenter') && <NotificationCenter />}
+            </DynamicSlot>
             <Button variant="outline" size="sm" onClick={signOut} className="gap-2">
               <LogOut className="h-4 w-4" />
               {t("admin.signOut")}
@@ -193,7 +196,9 @@ export default function Admin() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px]">
               <div className="flex flex-col gap-4 mt-8">
-                <NotificationCenter />
+                <DynamicSlot name="mobile-menu">
+                  {isVisible('NotificationCenter') && <NotificationCenter />}
+                </DynamicSlot>
                 <Button
                   variant="ghost"
                   className="w-full justify-start gap-2 text-destructive hover:text-destructive"
@@ -239,6 +244,9 @@ export default function Admin() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Dynamic Extra Stats Slot */}
+        <DynamicSlot name="stats-extra" className="grid gap-6 md:grid-cols-3" />
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="users" className="space-y-4 sm:space-y-6">
