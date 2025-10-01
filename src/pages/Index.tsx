@@ -368,21 +368,21 @@ const Index = () => {
           <div className="max-w-4xl mx-auto text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
             <div className="flex items-center justify-between mb-4">
               <div className="flex-1" />
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary animate-fade-in">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                 </span>
                 {t("header.badge")}
               </div>
-              <div className="flex-1 flex justify-end gap-2">
+              <div className="flex-1 flex justify-end gap-2 animate-fade-in" style={{ animationDelay: "100ms" }}>
                 <LanguageToggle />
-                <Button variant="outline" size="sm" onClick={() => navigate("/explore")} className="gap-2">
+                <Button variant="outline" size="sm" onClick={() => navigate("/explore")} className="gap-2 hover-scale">
                   <TrendingUp className="h-4 w-4" />
                   {t("header.explore")}
                 </Button>
                 {isAdmin && (
-                  <Button variant="outline" size="sm" onClick={() => navigate("/admin")} className="gap-2">
+                  <Button variant="outline" size="sm" onClick={() => navigate("/admin")} className="gap-2 hover-scale">
                     <Shield className="h-4 w-4" />
                     {t("header.admin")}
                   </Button>
@@ -392,16 +392,16 @@ const Index = () => {
                   size="sm"
                   onClick={() => setShowShortcuts(!showShortcuts)}
                   title="Keyboard Shortcuts (Ctrl+/)"
-                  className="gap-2"
+                  className="gap-2 hover-scale"
                 >
                   <Keyboard className="h-4 w-4" />
                 </Button>
                 <ThemeToggle />
-                <Button variant="outline" size="sm" onClick={() => navigate("/settings")} className="gap-2">
+                <Button variant="outline" size="sm" onClick={() => navigate("/settings")} className="gap-2 hover-scale">
                   <Settings className="h-4 w-4" />
                   {t("header.settings")}
                 </Button>
-                <Button variant="outline" size="sm" onClick={signOut} className="gap-2">
+                <Button variant="outline" size="sm" onClick={signOut} className="gap-2 hover-scale">
                   <LogOut className="h-4 w-4" />
                   {t("header.logout")}
                 </Button>
@@ -432,7 +432,8 @@ const Index = () => {
                 <Button
                   key={index}
                   variant="outline"
-                  className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50 transition-all text-xs"
+                  className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50 transition-all text-xs hover-scale animate-fade-in"
+                  style={{ animationDelay: `${index * 50}ms` }}
                   onClick={() => useExamplePrompt(example.prompt)}
                 >
                   <span className="text-2xl">{example.emoji}</span>
