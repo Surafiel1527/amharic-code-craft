@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.ai-reflect]
 verify_jwt = false
+
+[functions.scheduled-improvement]
+verify_jwt = false

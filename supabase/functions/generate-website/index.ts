@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
@@ -30,8 +31,9 @@ serve(async (req) => {
         }
       );
     }
-    const { prompt } = await req.json();
+    const { prompt, userId, projectId } = await req.json();
     console.log('Received prompt:', prompt);
+    const startTime = Date.now();
 
     if (!prompt) {
       throw new Error('Prompt is required');
@@ -42,7 +44,21 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const systemPrompt = `You are an expert web developer. Generate complete, beautiful, and modern HTML/CSS code based on the user's description.
+    // Initialize Supabase client for tracking
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
+    // Get active prompt version
+    const { data: promptVersion } = await supabaseClient
+      .from('prompt_versions')
+      .select('version, system_prompt')
+      .eq('is_active', true)
+      .maybeSingle();
+
+    // Use versioned prompt if available, otherwise use default
+    const systemPrompt = promptVersion?.system_prompt || `You are an expert web developer. Generate complete, beautiful, and modern HTML/CSS code based on the user's description.
 
 CRITICAL LANGUAGE REQUIREMENT:
 - **IMPORTANT**: If the user's prompt is in Amharic, generate ALL website content (text, headings, buttons, navigation, descriptions) in AMHARIC
@@ -112,7 +128,25 @@ IMPORTANT: Return ONLY the raw HTML code without any markdown formatting, code b
     // Clean up the HTML if it's wrapped in markdown code blocks
     html = html.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
     
-    console.log('Generated HTML length:', html.length);
+    const generationTime = Date.now() - startTime;
+    console.log('Generated HTML length:', html.length, 'Time:', generationTime, 'ms');
+
+    // Track successful generation
+    if (userId) {
+      await supabaseClient
+        .from('generation_analytics')
+        .insert({
+          user_id: userId,
+          project_id: projectId,
+          prompt_version: promptVersion?.version || 'v1.0.0',
+          model_used: 'google/gemini-2.5-flash',
+          user_prompt: prompt,
+          system_prompt: systemPrompt,
+          generated_code: html,
+          generation_time_ms: generationTime,
+          status: 'success'
+        });
+    }
 
     return new Response(
       JSON.stringify({ html }),
@@ -127,6 +161,34 @@ IMPORTANT: Return ONLY the raw HTML code without any markdown formatting, code b
   } catch (error) {
     console.error('Error in generate-website function:', error);
     const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+    
+    // Track error if userId available
+    try {
+      const { userId, projectId, prompt } = await req.json();
+      if (userId) {
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+        );
+        
+        await supabaseClient
+          .from('generation_analytics')
+          .insert({
+            user_id: userId,
+            project_id: projectId,
+            prompt_version: 'v1.0.0',
+            model_used: 'google/gemini-2.5-flash',
+            user_prompt: prompt || 'Error during request',
+            system_prompt: '',
+            generated_code: '',
+            status: 'error',
+            error_message: errorMessage
+          });
+      }
+    } catch (trackError) {
+      console.error('Error tracking failed generation:', trackError);
+    }
+    
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
