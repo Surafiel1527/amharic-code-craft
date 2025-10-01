@@ -67,6 +67,29 @@ export default function AdminCustomizationsList() {
     }
   };
 
+  const reapplyCustomization = async (prompt: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get the chat interface to send the prompt
+      toast({
+        title: '📋 Prompt copied',
+        description: 'Paste it in the chat below to reapply',
+      });
+
+      // Copy to clipboard
+      await navigator.clipboard.writeText(prompt);
+    } catch (error) {
+      console.error('Error reapplying customization:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to copy prompt',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const approveCustomization = async (customizationId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -257,7 +280,17 @@ export default function AdminCustomizationsList() {
                     )}
 
                     {customization.status === 'applied' && (
-                      <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => reapplyCustomization(customization.prompt)}
+                          className="gap-1"
+                        >
+                          📋 Reuse
+                        </Button>
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      </div>
                     )}
 
                     {customization.status === 'failed' && (
