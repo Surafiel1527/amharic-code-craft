@@ -5,13 +5,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield } from "lucide-react";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ChatInterface } from "@/components/ChatInterface";
 import { ConversationSidebar } from "@/components/ConversationSidebar";
 import { ProjectsGrid } from "@/components/ProjectsGrid";
+import { TemplatesBrowser } from "@/components/TemplatesBrowser";
+import { ImageGenerator } from "@/components/ImageGenerator";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -70,6 +72,7 @@ const Index = () => {
   const [recentProjects, setRecentProjects] = useState<Project[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"quick" | "templates" | "images">("quick");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -358,94 +361,133 @@ const Index = () => {
 
           {/* Editor Panel */}
           <Card className={`p-6 space-y-4 bg-card border-border shadow-lg ${mode === "chat" ? "" : "lg:col-span-2"}`}>
-            <Tabs value={mode} onValueChange={(v) => setMode(v as "quick" | "chat")}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="quick" className="gap-2">
-                  <Zap className="h-4 w-4" />
-                  ፈጣን ሁነታ
-                </TabsTrigger>
-                <TabsTrigger value="chat" className="gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  የውይይት ሁነታ
-                </TabsTrigger>
-              </TabsList>
+            {mode === "quick" ? (
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "quick" | "templates" | "images")}>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="quick" className="gap-2">
+                    <Zap className="h-4 w-4" />
+                    ፈጣን
+                  </TabsTrigger>
+                  <TabsTrigger value="templates" className="gap-2">
+                    <Layers className="h-4 w-4" />
+                    አብነቶች
+                  </TabsTrigger>
+                  <TabsTrigger value="images" className="gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    ምስሎች
+                  </TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="quick" className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold">የእርስዎን ድህረ ገፅ ይግለጹ</label>
-                </div>
-                
-                <Textarea
-                  placeholder="ምሳሌ: ለቡና ቤቴ ቆንጆ ድህረ ገፅ ፍጠር። ምስሎች፣ ዋጋዎች እና የመገኛ አድራሻ ይኑረው።"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="min-h-[200px] resize-none"
-                  dir="auto"
-                />
-                
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleQuickGenerate}
-                    disabled={isGenerating || !prompt.trim()}
-                    className="flex-1"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        በመፍጠር ላይ...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        ድህረ ገፅ ፍጠር
-                      </>
-                    )}
-                  </Button>
+                <TabsContent value="quick" className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">የእርስዎን ድህረ ገፅ ይግለጹ</label>
+                  </div>
+                  
+                  <Textarea
+                    placeholder="ምሳሌ: ለቡና ቤቴ ቆንጆ ድህረ ገፅ ፍጠር። ምስሎች፣ ዋጋዎች እና የመገኛ አድራሻ ይኑረው።"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    className="min-h-[200px] resize-none"
+                    dir="auto"
+                  />
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleQuickGenerate}
+                      disabled={isGenerating || !prompt.trim()}
+                      className="flex-1"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          በመፍጠር ላይ...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          ድህረ ገፅ ፍጠር
+                        </>
+                      )}
+                    </Button>
 
-                  {generatedCode && (
-                    <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="icon">
-                          <Save className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>ፕሮጀክት አስቀምጥ</DialogTitle>
-                          <DialogDescription>የፕሮጀክት ስም ያስገቡ</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 pt-4">
-                          <Input
-                            placeholder="የፕሮጀክት ስም"
-                            value={projectTitle}
-                            onChange={(e) => setProjectTitle(e.target.value)}
-                          />
-                          <Button onClick={handleSaveProject} disabled={isSaving} className="w-full">
-                            {isSaving ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                በማስቀመጥ ላይ...
-                              </>
-                            ) : (
-                              "አስቀምጥ"
-                            )}
+                    {generatedCode && (
+                      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="icon">
+                            <Save className="h-4 w-4" />
                           </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                </div>
-              </TabsContent>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>ፕሮጀክት አስቀምጥ</DialogTitle>
+                            <DialogDescription>የፕሮጀክት ስም ያስገቡ</DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 pt-4">
+                            <Input
+                              placeholder="የፕሮጀክት ስም"
+                              value={projectTitle}
+                              onChange={(e) => setProjectTitle(e.target.value)}
+                            />
+                            <Button onClick={handleSaveProject} disabled={isSaving} className="w-full">
+                              {isSaving ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  በማስቀመጥ ላይ...
+                                </>
+                              ) : (
+                                "አስቀምጥ"
+                              )}
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                  </div>
+                </TabsContent>
 
-              <TabsContent value="chat" className="mt-4 h-[calc(100vh-400px)]">
-                <ChatInterface
-                  conversationId={activeConversation}
-                  onCodeGenerated={handleCodeGenerated}
-                  currentCode={generatedCode}
-                  onConversationChange={handleConversationChange}
-                />
-              </TabsContent>
-            </Tabs>
+                <TabsContent value="templates" className="mt-4 max-h-[calc(100vh-400px)] overflow-y-auto">
+                  <TemplatesBrowser
+                    onSelectTemplate={(template) => {
+                      setPrompt(template.prompt);
+                      setGeneratedCode(template.html_code);
+                      setActiveTab("quick");
+                      toast.success(`"${template.title}" አብነት ተጫነ`);
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="images" className="mt-4">
+                  <ImageGenerator
+                    onImageGenerated={(imageUrl) => {
+                      // Image generated successfully
+                      console.log('Image generated:', imageUrl);
+                    }}
+                  />
+                </TabsContent>
+              </Tabs>
+            ) : (
+              <Tabs value={mode} onValueChange={(v) => setMode(v as "quick" | "chat")}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="quick" className="gap-2">
+                    <Zap className="h-4 w-4" />
+                    ፈጣን ሁነታ
+                  </TabsTrigger>
+                  <TabsTrigger value="chat" className="gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    የውይይት ሁነታ
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="chat" className="mt-4 h-[calc(100vh-400px)]">
+                  <ChatInterface
+                    conversationId={activeConversation}
+                    onCodeGenerated={handleCodeGenerated}
+                    currentCode={generatedCode}
+                    onConversationChange={handleConversationChange}
+                  />
+                </TabsContent>
+              </Tabs>
+            )}
           </Card>
 
           {/* Preview Panel */}
