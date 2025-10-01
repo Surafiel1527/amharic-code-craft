@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { EditModeProvider, useEditMode } from "@/contexts/EditModeContext";
+import { InspectorPanel } from "@/components/InspectorPanel";
 import {
   Table,
   TableBody,
@@ -387,6 +388,9 @@ function AdminContent() {
 
         {/* Dynamic Extra Stats Slot */}
         <DynamicSlot name="stats-extra" className="grid gap-6 md:grid-cols-3" />
+
+        {/* Inspector Panel - only visible in Edit Mode when component is selected */}
+        <InspectorPanel />
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="users" className="space-y-4 sm:space-y-6">
