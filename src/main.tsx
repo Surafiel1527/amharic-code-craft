@@ -9,26 +9,27 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import App from "./App.tsx";
 import "./index.css";
 
+// Query client with optimized settings
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 5,
+      retry: 1,
     },
   },
 });
 
+// Main app render - updated 2025
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <LanguageProvider>
-            <App />
-            <Toaster />
-            <Sonner />
-          </LanguageProvider>
-        </ThemeProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
-  </StrictMode>,
+  <QueryClientProvider client={queryClient}>
+    <BrowserRouter>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <LanguageProvider>
+          <App />
+          <Toaster />
+          <Sonner />
+        </LanguageProvider>
+      </ThemeProvider>
+    </BrowserRouter>
+  </QueryClientProvider>
 );
