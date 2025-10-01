@@ -59,11 +59,15 @@ export default function Admin() {
   }, [authLoading, user, navigate]);
 
   useEffect(() => {
-    if (!roleLoading && !isAdmin) {
-      toast.error("የአስተዳዳሪ መብት የለዎትም");
-      navigate("/");
+    // Only check admin status after both auth and role are fully loaded
+    if (!authLoading && !roleLoading) {
+      console.log('Admin check - isAdmin:', isAdmin, 'user:', user?.id);
+      if (!isAdmin) {
+        toast.error("የአስተዳዳሪ መብት የለዎትም");
+        navigate("/");
+      }
     }
-  }, [roleLoading, isAdmin, navigate]);
+  }, [authLoading, roleLoading, isAdmin, navigate, user]);
 
   useEffect(() => {
     if (isAdmin) {
