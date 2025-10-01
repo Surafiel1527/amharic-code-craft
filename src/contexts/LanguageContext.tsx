@@ -163,6 +163,23 @@ const translations = {
     "shortcuts.copyCode": "Copy Code",
     "shortcuts.aiFeatures": "AI Features",
     "shortcuts.show": "Show Shortcuts",
+    
+    // Admin
+    "admin.title": "Admin Dashboard",
+    "admin.subtitle": "System overview and user management",
+    "admin.signOut": "Sign Out",
+    "admin.totalUsers": "Total Users",
+    "admin.totalProjects": "Total Projects",
+    "admin.totalConversations": "Total Conversations",
+    "admin.usersManagement": "User Management",
+    "admin.usersManagementDesc": "View and manage user roles",
+    "admin.email": "Email",
+    "admin.fullName": "Full Name",
+    "admin.registeredDate": "Registered Date",
+    "admin.role": "Role",
+    "admin.selectRole": "Select Role",
+    "admin.roleUser": "User",
+    "admin.roleAdmin": "Admin",
   },
   am: {
     // Header
@@ -315,6 +332,23 @@ const translations = {
     "shortcuts.copyCode": "ኮድ ቅዳ",
     "shortcuts.aiFeatures": "AI ባህሪያት",
     "shortcuts.show": "አቋራጮች አሳይ",
+    
+    // Admin
+    "admin.title": "የአስተዳዳሪ ዳሽቦርድ",
+    "admin.subtitle": "የስርዓት አጠቃላይ እይታ እና የተጠቃሚ አስተዳደር",
+    "admin.signOut": "ውጣ",
+    "admin.totalUsers": "ጠቅላላ ተጠቃሚዎች",
+    "admin.totalProjects": "ጠቅላላ ፕሮጀክቶች",
+    "admin.totalConversations": "ጠቅላላ ውይይቶች",
+    "admin.usersManagement": "የተጠቃሚዎች አስተዳደር",
+    "admin.usersManagementDesc": "የተጠቃሚዎችን ሚናዎች ይመልከቱ እና ያስተዳድሩ",
+    "admin.email": "ኢሜል",
+    "admin.fullName": "ሙሉ ስም",
+    "admin.registeredDate": "የተመዘገበበት ቀን",
+    "admin.role": "ሚና",
+    "admin.selectRole": "ሚና ይምረጡ",
+    "admin.roleUser": "ተጠቃሚ",
+    "admin.roleAdmin": "አስተዳዳሪ",
   },
 };
 

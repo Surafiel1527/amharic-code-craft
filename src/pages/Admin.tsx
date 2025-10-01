@@ -146,9 +146,9 @@ export default function Admin() {
             </Button>
             <div className="min-w-0 flex-1">
               <h1 className="text-xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent truncate">
-                የአስተዳዳሪ ዳሽቦርድ
+                {t("admin.title")}
               </h1>
-              <p className="text-muted-foreground mt-1 text-xs sm:text-sm hidden sm:block">የስርዓት አጠቃላይ እይታ እና የተጠቃሚ አስተዳደር</p>
+              <p className="text-muted-foreground mt-1 text-xs sm:text-sm hidden sm:block">{t("admin.subtitle")}</p>
             </div>
           </div>
           
@@ -157,7 +157,7 @@ export default function Admin() {
             <NotificationCenter />
             <Button variant="outline" size="sm" onClick={signOut} className="gap-2">
               <LogOut className="h-4 w-4" />
-              Sign Out
+              {t("admin.signOut")}
             </Button>
           </div>
 
@@ -177,7 +177,7 @@ export default function Admin() {
                   onClick={signOut}
                 >
                   <LogOut className="h-4 w-4" />
-                  Sign Out
+                  {t("admin.signOut")}
                 </Button>
               </div>
             </SheetContent>
@@ -188,7 +188,7 @@ export default function Admin() {
         <div className="grid gap-6 md:grid-cols-3">
           <Card className="glass-effect border-primary/20">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">ጠቅላላ ተጠቃሚዎች</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("admin.totalUsers")}</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -198,7 +198,7 @@ export default function Admin() {
 
           <Card className="glass-effect border-primary/20">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">ጠቅላላ ፕሮጀክቶች</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("admin.totalProjects")}</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -208,7 +208,7 @@ export default function Admin() {
 
           <Card className="glass-effect border-primary/20">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">ጠቅላላ ውይይቶች</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("admin.totalConversations")}</CardTitle>
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -248,20 +248,20 @@ export default function Admin() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />
-                  የተጠቃሚዎች አስተዳደር
+                  {t("admin.usersManagement")}
                 </CardTitle>
                 <CardDescription>
-                  የተጠቃሚዎችን ሚናዎች ይመልከቱ እና ያስተዳድሩ
+                  {t("admin.usersManagementDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[150px]">ኢሜል</TableHead>
-                      <TableHead className="min-w-[120px] hidden sm:table-cell">ሙሉ ስም</TableHead>
-                      <TableHead className="min-w-[120px] hidden md:table-cell">የተመዘገበበት ቀን</TableHead>
-                      <TableHead className="min-w-[100px]">ሚና</TableHead>
+                      <TableHead className="min-w-[150px]">{t("admin.email")}</TableHead>
+                      <TableHead className="min-w-[120px] hidden sm:table-cell">{t("admin.fullName")}</TableHead>
+                      <TableHead className="min-w-[120px] hidden md:table-cell">{t("admin.registeredDate")}</TableHead>
+                      <TableHead className="min-w-[100px]">{t("admin.role")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -276,11 +276,11 @@ export default function Admin() {
                             defaultValue="user"
                           >
                             <SelectTrigger className="w-24 sm:w-32 text-xs sm:text-sm">
-                              <SelectValue placeholder="ሚና ይምረጡ" />
+                              <SelectValue placeholder={t("admin.selectRole")} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="user">ተጠቃሚ</SelectItem>
-                              <SelectItem value="admin">አስተዳዳሪ</SelectItem>
+                              <SelectItem value="user">{t("admin.roleUser")}</SelectItem>
+                              <SelectItem value="admin">{t("admin.roleAdmin")}</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
