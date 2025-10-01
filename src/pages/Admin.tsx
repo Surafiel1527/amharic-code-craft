@@ -6,7 +6,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain, Sparkles } from "lucide-react";
+import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain, Sparkles, LogOut, Menu } from "lucide-react";
 import { toast } from "sonner";
 import { AIAnalytics } from "@/components/AIAnalytics";
 import { NotificationCenter } from "@/components/NotificationCenter";
@@ -14,6 +14,7 @@ import { SelfHealingMonitor } from "@/components/SelfHealingMonitor";
 import AdminSelfModifyChat from "@/components/AdminSelfModifyChat";
 import AdminCustomizationsList from "@/components/AdminCustomizationsList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -44,7 +45,7 @@ interface Stats {
 }
 
 export default function Admin() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole(user?.id);
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
@@ -134,21 +135,52 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 sm:p-8">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
+        {/* Mobile Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => navigate("/")}>
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+            <Button variant="outline" size="icon" onClick={() => navigate("/")} className="shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent truncate">
                 የአስተዳዳሪ ዳሽቦርድ
               </h1>
-              <p className="text-muted-foreground mt-1">የስርዓት አጠቃላይ እይታ እና የተጠቃሚ አስተዳደር</p>
+              <p className="text-muted-foreground mt-1 text-xs sm:text-sm hidden sm:block">የስርዓት አጠቃላይ እይታ እና የተጠቃሚ አስተዳደር</p>
             </div>
           </div>
-          <NotificationCenter />
+          
+          {/* Desktop Actions */}
+          <div className="hidden sm:flex items-center gap-2">
+            <NotificationCenter />
+            <Button variant="outline" size="sm" onClick={signOut} className="gap-2">
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
+
+          {/* Mobile Menu */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="sm:hidden shrink-0">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[280px]">
+              <div className="flex flex-col gap-4 mt-8">
+                <NotificationCenter />
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+                  onClick={signOut}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
 
         {/* Stats Cards */}
@@ -185,23 +217,27 @@ export default function Admin() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="users" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="users" className="gap-2">
-              <Shield className="h-4 w-4" />
-              Users & Stats
+        <Tabs defaultValue="users" className="space-y-4 sm:space-y-6">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto gap-2">
+            <TabsTrigger value="users" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
+              <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Users & Stats</span>
+              <span className="sm:hidden">Users</span>
             </TabsTrigger>
-            <TabsTrigger value="ai" className="gap-2">
-              <Brain className="h-4 w-4" />
-              AI System
+            <TabsTrigger value="ai" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
+              <Brain className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">AI System</span>
+              <span className="sm:hidden">AI</span>
             </TabsTrigger>
-            <TabsTrigger value="healing" className="gap-2">
-              <Shield className="h-4 w-4" />
-              Self-Healing
+            <TabsTrigger value="healing" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
+              <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Self-Healing</span>
+              <span className="sm:hidden">Healing</span>
             </TabsTrigger>
-            <TabsTrigger value="customize" className="gap-2">
-              <Sparkles className="h-4 w-4" />
-              Self-Modify
+            <TabsTrigger value="customize" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
+              <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Self-Modify</span>
+              <span className="sm:hidden">Modify</span>
             </TabsTrigger>
           </TabsList>
 
@@ -217,28 +253,28 @@ export default function Admin() {
                   የተጠቃሚዎችን ሚናዎች ይመልከቱ እና ያስተዳድሩ
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ኢሜል</TableHead>
-                      <TableHead>ሙሉ ስም</TableHead>
-                      <TableHead>የተመዘገበበት ቀን</TableHead>
-                      <TableHead>ሚና</TableHead>
+                      <TableHead className="min-w-[150px]">ኢሜል</TableHead>
+                      <TableHead className="min-w-[120px] hidden sm:table-cell">ሙሉ ስም</TableHead>
+                      <TableHead className="min-w-[120px] hidden md:table-cell">የተመዘገበበት ቀን</TableHead>
+                      <TableHead className="min-w-[100px]">ሚና</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {users.map((user) => (
                       <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.email}</TableCell>
-                        <TableCell>{user.full_name || '-'}</TableCell>
-                        <TableCell>{new Date(user.created_at).toLocaleDateString('am-ET')}</TableCell>
+                        <TableCell className="font-medium text-xs sm:text-sm">{user.email}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-xs sm:text-sm">{user.full_name || '-'}</TableCell>
+                        <TableCell className="hidden md:table-cell text-xs sm:text-sm">{new Date(user.created_at).toLocaleDateString('am-ET')}</TableCell>
                         <TableCell>
                           <Select
                             onValueChange={(value) => handleRoleChange(user.id, value as 'admin' | 'user')}
                             defaultValue="user"
                           >
-                            <SelectTrigger className="w-32">
+                            <SelectTrigger className="w-24 sm:w-32 text-xs sm:text-sm">
                               <SelectValue placeholder="ሚና ይምረጡ" />
                             </SelectTrigger>
                             <SelectContent>
@@ -264,7 +300,7 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="customize" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2">
               <AdminSelfModifyChat onCustomizationApplied={() => {
                 toast.success("🎨 Changes ready for review");
               }} />
