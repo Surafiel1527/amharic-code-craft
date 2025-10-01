@@ -30,7 +30,7 @@ const Auth = () => {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -42,21 +42,31 @@ const Auth = () => {
       });
 
       if (error) {
-        if (error.message.includes("already registered")) {
+        if (error.message.includes("already registered") || error.message.includes("User already registered")) {
           toast.error("ይህ ኢሜል አስቀድሞ ተመዝግቧል። እባክዎ ይግቡ።");
+        } else if (error.message.includes("Invalid email")) {
+          toast.error("እባክዎ ትክክለኛ ኢሜል ያስገቡ");
+        } else if (error.message.includes("Password")) {
+          toast.error("የይለፍ ቃል በጣም አጭር ነው። ቢያንስ 6 ቁምፊዎች ያስገቡ");
         } else {
-          toast.error(error.message);
+          toast.error(`ምዝገባ አልተሳካም: ${error.message}`);
         }
         return;
       }
 
-      toast.success("መለያ በተሳካ ሁኔታ ተፈጥሯል! እባክዎ ይግቡ።");
-      setEmail("");
-      setPassword("");
-      setFullName("");
-    } catch (error) {
+      // Auto-confirm is enabled, so user should be logged in immediately
+      if (data.user && data.session) {
+        toast.success("መለያ በተሳካ ሁኔታ ተፈጥሯል!");
+        navigate("/");
+      } else {
+        toast.success("መለያ ተፈጥሯል። እባክዎ ይግቡ።");
+        setEmail("");
+        setPassword("");
+        setFullName("");
+      }
+    } catch (error: any) {
       console.error("Signup error:", error);
-      toast.error("ምዝገባ አልተሳካም። እባክዎ እንደገና ይሞክሩ።");
+      toast.error(error?.message || "ምዝገባ አልተሳካም። እባክዎ እንደገና ይሞክሩ።");
     } finally {
       setIsLoading(false);
     }
