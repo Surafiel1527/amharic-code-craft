@@ -59,13 +59,16 @@ export default function Admin() {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [previewMode, setPreviewMode] = useState(false);
+  const [previewSnapshotId, setPreviewSnapshotId] = useState<string | undefined>(undefined);
+  const [previewSnapshotName, setPreviewSnapshotName] = useState<string>('');
   const [pendingCount, setPendingCount] = useState(0);
   
   // Debug preview mode changes
   useEffect(() => {
-    console.log('📱 Preview Mode Changed:', previewMode);
-  }, [previewMode]);
-  const { getDynamicStyles, getDynamicInlineStyles, isVisible, customizations } = useDynamicCustomizations(previewMode);
+    console.log('📱 Preview Mode Changed:', previewMode, 'Snapshot:', previewSnapshotId);
+  }, [previewMode, previewSnapshotId]);
+  
+  const { getDynamicStyles, getDynamicInlineStyles, isVisible, customizations } = useDynamicCustomizations(previewMode, previewSnapshotId);
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalProjects: 0, totalConversations: 0 });
   const [loading, setLoading] = useState(true);
@@ -75,6 +78,23 @@ export default function Admin() {
     const count = customizations.filter(c => c.status === 'pending').length;
     setPendingCount(count);
   }, [customizations]);
+
+  // Handle snapshot preview
+  const handleSnapshotPreview = (snapshotId: string, snapshotName: string) => {
+    setPreviewSnapshotId(snapshotId);
+    setPreviewSnapshotName(snapshotName);
+    setPreviewMode(true);
+  };
+
+  // Handle preview mode toggle - clear snapshot preview when toggling off
+  const handlePreviewToggle = () => {
+    if (previewMode) {
+      // Turning off preview mode - clear snapshot preview
+      setPreviewSnapshotId(undefined);
+      setPreviewSnapshotName('');
+    }
+    setPreviewMode(!previewMode);
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -189,13 +209,24 @@ export default function Admin() {
     >
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
         {/* Preview Mode Alert */}
-        {previewMode && pendingCount > 0 && (
+        {previewMode && (
           <Alert className="border-primary bg-primary/5">
             <AlertDescription className="flex items-center justify-between">
-              <span className="text-sm">
-                🔍 <strong>Preview Mode:</strong> Showing {pendingCount} pending change{pendingCount !== 1 ? 's' : ''}. 
-                {' '}Go to the Self-Modify tab to approve or reject.
-              </span>
+              {previewSnapshotId ? (
+                <span className="text-sm">
+                  🔍 <strong>Previewing Snapshot:</strong> "{previewSnapshotName}". 
+                  {' '}Toggle off Preview Mode to return to your live settings.
+                </span>
+              ) : pendingCount > 0 ? (
+                <span className="text-sm">
+                  🔍 <strong>Preview Mode:</strong> Showing {pendingCount} pending change{pendingCount !== 1 ? 's' : ''}. 
+                  {' '}Go to the Self-Modify tab to approve or reject.
+                </span>
+              ) : (
+                <span className="text-sm">
+                  🔍 <strong>Preview Mode:</strong> No pending changes to preview.
+                </span>
+              )}
             </AlertDescription>
           </Alert>
         )}
@@ -218,11 +249,11 @@ export default function Admin() {
           
           {/* Desktop Actions */}
           <div className="hidden sm:flex items-center gap-2">
-            <PreviewModeToggle 
-              isPreviewMode={previewMode}
-              onToggle={() => setPreviewMode(!previewMode)}
-              pendingCount={pendingCount}
-            />
+                <PreviewModeToggle 
+                  isPreviewMode={previewMode}
+                  onToggle={handlePreviewToggle}
+                  pendingCount={pendingCount}
+                />
             <DynamicSlot name="header-actions">
               {isVisible('NotificationCenter') && <NotificationCenter />}
             </DynamicSlot>
@@ -243,11 +274,11 @@ export default function Admin() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px]">
               <div className="flex flex-col gap-4 mt-8">
-                <PreviewModeToggle 
-                  isPreviewMode={previewMode}
-                  onToggle={() => setPreviewMode(!previewMode)}
-                  pendingCount={pendingCount}
-                />
+            <PreviewModeToggle 
+              isPreviewMode={previewMode}
+              onToggle={handlePreviewToggle}
+              pendingCount={pendingCount}
+            />
                 <DynamicSlot name="mobile-menu">
                   {isVisible('NotificationCenter') && <NotificationCenter />}
                 </DynamicSlot>
@@ -399,7 +430,7 @@ export default function Admin() {
               </div>
               <div className="grid gap-4 lg:grid-cols-2">
                 <ModificationHistory />
-                <SnapshotManager />
+                <SnapshotManager onPreview={handleSnapshotPreview} />
               </div>
             </div>
           </TabsContent>

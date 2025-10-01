@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Save, Download, Trash2, Camera } from 'lucide-react';
+import { Save, Download, Trash2, Camera, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
@@ -37,7 +37,11 @@ interface Snapshot {
   created_at: string;
 }
 
-export function SnapshotManager() {
+interface SnapshotManagerProps {
+  onPreview?: (snapshotId: string, snapshotName: string) => void;
+}
+
+export function SnapshotManager({ onPreview }: SnapshotManagerProps) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -234,6 +238,14 @@ export function SnapshotManager() {
                           </p>
                         </div>
                         <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => onPreview?.(snapshot.id, snapshot.name)}
+                            title="Preview this version"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="outline"
                             size="icon"

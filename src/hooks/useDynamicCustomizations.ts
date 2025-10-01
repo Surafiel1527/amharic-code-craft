@@ -22,7 +22,7 @@ interface DynamicModification {
   component?: string;
 }
 
-export const useDynamicCustomizations = (previewMode = false) => {
+export const useDynamicCustomizations = (previewMode = false, snapshotId?: string) => {
   const [customizations, setCustomizations] = useState<Customization[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,30 +30,70 @@ export const useDynamicCustomizations = (previewMode = false) => {
     loadCustomizations();
 
     // Subscribe to real-time updates (any status changes)
-    const channel = supabase
-      .channel('admin-customizations')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'admin_customizations'
-        },
-        () => {
-          console.log('🔔 Realtime update received, reloading customizations');
-          loadCustomizations();
-        }
-      )
-      .subscribe();
+    // Don't subscribe when in snapshot preview mode
+    if (!snapshotId) {
+      const channel = supabase
+        .channel('admin-customizations')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'admin_customizations'
+          },
+          () => {
+            console.log('🔔 Realtime update received, reloading customizations');
+            loadCustomizations();
+          }
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [previewMode]);
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [previewMode, snapshotId]);
 
   const loadCustomizations = async () => {
     try {
-      console.log('🔄 LOADING CUSTOMIZATIONS...', { previewMode });
+      console.log('🔄 LOADING CUSTOMIZATIONS...', { previewMode, snapshotId });
+      
+      // If snapshot preview mode, load from snapshot
+      if (snapshotId) {
+        console.log('📸 SNAPSHOT PREVIEW MODE: Loading from snapshot', snapshotId);
+        const { data: snapshot, error } = await supabase
+          .from('customization_snapshots')
+          .select('customizations')
+          .eq('id', snapshotId)
+          .single();
+
+        if (error) {
+          console.error('❌ Error loading snapshot:', error);
+          throw error;
+        }
+
+        // Convert snapshot customizations to the format we need
+        const snapshotCustomizations = Array.isArray(snapshot.customizations) 
+          ? snapshot.customizations.map((c: any) => ({
+              id: c.id || crypto.randomUUID(),
+              customization_type: c.customization_type || 'unknown',
+              applied_changes: c.applied_changes || {},
+              applied_at: c.applied_at || c.created_at,
+              status: 'applied', // Treat all snapshot customizations as applied
+              created_at: c.created_at || new Date().toISOString()
+            }))
+          : [];
+
+        console.log('📦 LOADED SNAPSHOT CUSTOMIZATIONS:', {
+          snapshotId,
+          count: snapshotCustomizations.length,
+          data: snapshotCustomizations
+        });
+
+        setCustomizations(snapshotCustomizations);
+        setLoading(false);
+        return;
+      }
       
       // In preview mode, load BOTH pending AND applied customizations
       // Otherwise, only load applied ones
