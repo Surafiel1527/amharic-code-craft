@@ -514,6 +514,39 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          message: string
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message: string
+          read?: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       premium_templates: {
         Row: {
           author_id: string | null
@@ -1040,6 +1073,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      notify_admins: {
+        Args: {
+          notification_data?: Json
+          notification_message: string
+          notification_title: string
+          notification_type: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

@@ -178,6 +178,18 @@ Return a JSON object with:
 
     if (improvementError) throw improvementError;
 
+    // Notify admins about the improvement
+    await supabaseClient.rpc('notify_admins', {
+      notification_type: 'improvement',
+      notification_title: '🧠 AI System Improved',
+      notification_message: `New prompt version ${newVersion} created with ${improvement.improvements.length} improvements based on recent failures.`,
+      notification_data: {
+        oldVersion: currentPrompt.version,
+        newVersion: newVersion,
+        improvementCount: improvement.improvements.length
+      }
+    });
+
     return new Response(
       JSON.stringify({
         success: true,

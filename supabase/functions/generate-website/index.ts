@@ -12,6 +12,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let userId: string | undefined;
+  let projectId: string | undefined;
+  let prompt: string | undefined;
+  let promptVersion: string = 'v1.0.0';
+  let systemPrompt: string = '';
+
   try {
     // Rate limiting based on IP or user identifier
     const identifier = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
@@ -31,7 +37,11 @@ serve(async (req) => {
         }
       );
     }
-    const { prompt, userId, projectId } = await req.json();
+    const requestBody = await req.json();
+    userId = requestBody.userId;
+    projectId = requestBody.projectId;
+    prompt = requestBody.prompt;
+    
     console.log('Received prompt:', prompt);
     const startTime = Date.now();
 
@@ -64,19 +74,19 @@ serve(async (req) => {
       const random = Math.random() * 100;
       let cumulative = 0;
       
-      for (const prompt of activePrompts) {
-        cumulative += prompt.traffic_percentage;
+      for (const p of activePrompts) {
+        cumulative += p.traffic_percentage;
         if (random <= cumulative) {
-          selectedPrompt = prompt;
+          selectedPrompt = p;
           break;
         }
       }
     }
 
-    const promptVersion = selectedPrompt?.version || 'v1.0.0';
+    promptVersion = selectedPrompt?.version || 'v1.0.0';
 
     // Use versioned prompt if available, otherwise use default
-    const systemPrompt = selectedPrompt?.system_prompt || `You are an expert web developer. Generate complete, beautiful, and modern HTML/CSS code based on the user's description.
+    systemPrompt = selectedPrompt?.system_prompt || `You are an expert web developer. Generate complete, beautiful, and modern HTML/CSS code based on the user's description.
 
 CRITICAL LANGUAGE REQUIREMENT:
 - **IMPORTANT**: If the user's prompt is in Amharic, generate ALL website content (text, headings, buttons, navigation, descriptions) in AMHARIC
@@ -180,10 +190,70 @@ IMPORTANT: Return ONLY the raw HTML code without any markdown formatting, code b
     console.error('Error in generate-website function:', error);
     const errorMessage = error instanceof Error ? error.message : 'An error occurred';
     
-    // Track error if userId available
-    try {
-      const { userId, projectId, prompt } = await req.json();
-      if (userId) {
+    // Attempt self-healing if we have the necessary data
+    if (userId && prompt) {
+      try {
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+        );
+
+        // Try to get the generated code if available
+        let generatedCode = '';
+        try {
+          generatedCode = JSON.stringify(error);
+        } catch {}
+
+        // Call self-heal function
+        const healResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/self-heal`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.headers.get('Authorization') || '',
+          },
+          body: JSON.stringify({
+            generatedCode,
+            error: errorMessage,
+            context: {
+              userPrompt: prompt,
+              attemptedGeneration: true
+            }
+          }),
+        });
+
+        if (healResponse.ok) {
+          const healData = await healResponse.json();
+          console.log('Self-healing successful:', healData);
+          
+          // Track successful healing
+          await supabaseClient
+            .from('generation_analytics')
+            .insert({
+              user_id: userId,
+              project_id: projectId,
+              prompt_version: promptVersion,
+              model_used: 'google/gemini-2.5-flash',
+              user_prompt: prompt,
+              system_prompt: systemPrompt,
+              generated_code: healData.fixedCode,
+              status: 'success',
+              modifications_made: 'Auto-healed after initial error'
+            });
+          
+          // Return the healed code
+          return new Response(
+            JSON.stringify({ html: healData.fixedCode, autoHealed: true }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch (healError) {
+        console.error('Self-healing failed:', healError);
+      }
+    }
+    
+    // Track error if healing failed
+    if (userId) {
+      try {
         const supabaseClient = createClient(
           Deno.env.get('SUPABASE_URL') ?? '',
           Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -194,17 +264,17 @@ IMPORTANT: Return ONLY the raw HTML code without any markdown formatting, code b
           .insert({
             user_id: userId,
             project_id: projectId,
-            prompt_version: 'v1.0.0',
+            prompt_version: promptVersion,
             model_used: 'google/gemini-2.5-flash',
             user_prompt: prompt || 'Error during request',
-            system_prompt: '',
+            system_prompt: systemPrompt || '',
             generated_code: '',
             status: 'error',
             error_message: errorMessage
           });
+      } catch (trackError) {
+        console.error('Error tracking failed generation:', trackError);
       }
-    } catch (trackError) {
-      console.error('Error tracking failed generation:', trackError);
     }
     
     return new Response(

@@ -187,6 +187,19 @@ Return JSON:
 
     console.log(`Created new prompt version: ${newVersion}`);
 
+    // Notify admins about scheduled improvement
+    await supabaseClient.rpc('notify_admins', {
+      notification_type: 'improvement',
+      notification_title: '⏰ Scheduled AI Improvement',
+      notification_message: `Weekly improvement completed. New version ${newVersion} created. Success rate was ${successRate}%.`,
+      notification_data: {
+        oldVersion: currentPrompt.version,
+        newVersion: newVersion,
+        successRate: parseFloat(successRate),
+        improvementCount: improvement.improvements.length
+      }
+    });
+
     return new Response(
       JSON.stringify({
         success: true,

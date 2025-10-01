@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain } from "lucide-react";
 import { toast } from "sonner";
 import { AIAnalytics } from "@/components/AIAnalytics";
+import { NotificationCenter } from "@/components/NotificationCenter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -144,6 +145,7 @@ export default function Admin() {
               <p className="text-muted-foreground mt-1">የስርዓት አጠቃላይ እይታ እና የተጠቃሚ አስተዳደር</p>
             </div>
           </div>
+          <NotificationCenter />
         </div>
 
         {/* Stats Cards */}
