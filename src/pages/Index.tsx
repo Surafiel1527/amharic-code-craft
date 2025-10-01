@@ -22,6 +22,7 @@ import { DevicePreview } from "@/components/DevicePreview";
 import { DesignToCode } from "@/components/DesignToCode";
 import { AccessibilityChecker } from "@/components/AccessibilityChecker";
 import { SEOOptimizer } from "@/components/SEOOptimizer";
+import { FeaturedGallery } from "@/components/FeaturedGallery";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -718,6 +719,13 @@ const Index = () => {
           </div>
         </section>
       )}
+
+      {/* Featured Projects Section */}
+      <section className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
+          <FeaturedGallery />
+        </div>
+      </section>
 
       {/* Keyboard Shortcuts Dialog */}
       <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
