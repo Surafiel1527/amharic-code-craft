@@ -23,6 +23,9 @@ import { DesignToCode } from "@/components/DesignToCode";
 import { AccessibilityChecker } from "@/components/AccessibilityChecker";
 import { SEOOptimizer } from "@/components/SEOOptimizer";
 import { FeaturedGallery } from "@/components/FeaturedGallery";
+import { ExportOptions } from "@/components/ExportOptions";
+import { ComponentLibrary } from "@/components/ComponentLibrary";
+import { APIIntegration } from "@/components/APIIntegration";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -622,13 +625,16 @@ const Index = () => {
           {showAIFeatures && generatedCode && (
             <div className="space-y-4">
               <Tabs defaultValue="analysis" className="w-full">
-                <TabsList className="grid w-full grid-cols-6">
+                <TabsList className="grid w-full grid-cols-9">
                   <TabsTrigger value="analysis" className="text-xs">ትንተና</TabsTrigger>
                   <TabsTrigger value="assistant" className="text-xs">ረዳት</TabsTrigger>
                   <TabsTrigger value="versions" className="text-xs">ስሪቶች</TabsTrigger>
                   <TabsTrigger value="design" className="text-xs">ዲዛይን</TabsTrigger>
                   <TabsTrigger value="a11y" className="text-xs">ተደራሽነት</TabsTrigger>
                   <TabsTrigger value="seo" className="text-xs">SEO</TabsTrigger>
+                  <TabsTrigger value="export" className="text-xs">ውጤት</TabsTrigger>
+                  <TabsTrigger value="components" className="text-xs">አካላት</TabsTrigger>
+                  <TabsTrigger value="api" className="text-xs">API</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="analysis" className="mt-4">
@@ -694,6 +700,21 @@ const Index = () => {
                       setGeneratedCode(optimizedCode);
                     }}
                   />
+                </TabsContent>
+
+                <TabsContent value="export" className="mt-4">
+                  <ExportOptions
+                    htmlCode={generatedCode}
+                    projectTitle={projectTitle}
+                  />
+                </TabsContent>
+
+                <TabsContent value="components" className="mt-4">
+                  <ComponentLibrary />
+                </TabsContent>
+
+                <TabsContent value="api" className="mt-4">
+                  <APIIntegration />
                 </TabsContent>
               </Tabs>
             </div>
