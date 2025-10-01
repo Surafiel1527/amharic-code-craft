@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, Mail, Trash2, Crown, Shield, User as UserIcon } from "lucide-react";
+import { Users, Plus, Mail, Trash2, Crown, Shield, User as UserIcon, Loader2 } from "lucide-react";
 
 interface Workspace {
   id: string;
@@ -59,13 +59,17 @@ export default function TeamWorkspaces() {
 
   const fetchWorkspaces = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
+    
     try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.log("No authenticated user");
+        setLoading(false);
+        setWorkspaces([]);
+        return;
+      }
+
       // Fetch workspaces where user is owner
       const { data: ownedWorkspaces, error: ownedError } = await supabase
         .from("team_workspaces")
@@ -80,7 +84,10 @@ export default function TeamWorkspaces() {
 
       if (ownedError || memberError) {
         console.error("Error:", ownedError || memberError);
-        toast({ title: "Error fetching workspaces", variant: "destructive" });
+        // Only show toast if it's not an auth error
+        if (!ownedError?.message?.includes('JWT') && !memberError?.message?.includes('JWT')) {
+          toast({ title: "Error fetching workspaces", variant: "destructive" });
+        }
         setLoading(false);
         return;
       }
@@ -106,11 +113,15 @@ export default function TeamWorkspaces() {
       if (uniqueWorkspaces.length > 0 && !selectedWorkspace) {
         setSelectedWorkspace(uniqueWorkspaces[0]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Unexpected error:", error);
-      toast({ title: "Error fetching workspaces", variant: "destructive" });
+      // Only show toast if it's not an auth error
+      if (!error?.message?.includes('JWT') && !error?.message?.includes('session')) {
+        toast({ title: "Error fetching workspaces", variant: "destructive" });
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const fetchMembers = async (workspaceId: string) => {
@@ -265,17 +276,27 @@ export default function TeamWorkspaces() {
             <CardTitle>Workspaces</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {workspaces.map((workspace) => (
-              <Button
-                key={workspace.id}
-                variant={selectedWorkspace?.id === workspace.id ? "default" : "outline"}
-                className="w-full justify-start"
-                onClick={() => setSelectedWorkspace(workspace)}
-              >
-                <Users className="h-4 w-4 mr-2" />
-                {workspace.name}
-              </Button>
-            ))}
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : workspaces.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                No workspaces yet. Create one to get started!
+              </div>
+            ) : (
+              workspaces.map((workspace) => (
+                <Button
+                  key={workspace.id}
+                  variant={selectedWorkspace?.id === workspace.id ? "default" : "outline"}
+                  className="w-full justify-start"
+                  onClick={() => setSelectedWorkspace(workspace)}
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  {workspace.name}
+                </Button>
+              ))
+            )}
           </CardContent>
         </Card>
 
