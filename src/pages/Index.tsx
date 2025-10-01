@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database } from "lucide-react";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -31,6 +31,9 @@ import { SecurityScanner } from "@/components/SecurityScanner";
 import { PrivacySettings } from "@/components/PrivacySettings";
 import { BackupRestore } from "@/components/BackupRestore";
 import { UsageInsights } from "@/components/UsageInsights";
+import PremiumTemplates from "@/components/PremiumTemplates";
+import TeamWorkspaces from "@/components/TeamWorkspaces";
+import APIAccessManager from "@/components/APIAccessManager";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -630,7 +633,7 @@ const Index = () => {
           {showAIFeatures && generatedCode && (
             <div className="space-y-4">
               <Tabs defaultValue="analysis" className="w-full">
-                <TabsList className="grid w-full grid-cols-6 lg:grid-cols-12">
+                <TabsList className="grid w-full grid-cols-6 lg:grid-cols-15">
                   <TabsTrigger value="analysis" className="text-xs">ትንተና</TabsTrigger>
                   <TabsTrigger value="assistant" className="text-xs">ረዳት</TabsTrigger>
                   <TabsTrigger value="versions" className="text-xs">ስሪቶች</TabsTrigger>
@@ -643,6 +646,9 @@ const Index = () => {
                   <TabsTrigger value="analytics" className="text-xs">ትንታኔ</TabsTrigger>
                   <TabsTrigger value="security" className="text-xs">ደህንነት</TabsTrigger>
                   <TabsTrigger value="privacy" className="text-xs">ግላዊነት</TabsTrigger>
+                  <TabsTrigger value="marketplace" className="text-xs">ገበያ</TabsTrigger>
+                  <TabsTrigger value="teams" className="text-xs">ቡድኖች</TabsTrigger>
+                  <TabsTrigger value="apikeys" className="text-xs">API ቁልፎች</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="analysis" className="mt-4">
@@ -751,6 +757,18 @@ const Index = () => {
                     </Card>
                   )}
                 </TabsContent>
+
+                <TabsContent value="marketplace" className="mt-4">
+                  <PremiumTemplates />
+                </TabsContent>
+
+                <TabsContent value="teams" className="mt-4">
+                  <TeamWorkspaces />
+                </TabsContent>
+
+                <TabsContent value="apikeys" className="mt-4">
+                  <APIAccessManager />
+                </TabsContent>
               </Tabs>
             </div>
           )}
@@ -802,6 +820,38 @@ const Index = () => {
             የአጠቃቀም ግንዛቤዎች
           </h2>
           <UsageInsights />
+        </div>
+      </section>
+
+      {/* Monetization Features */}
+      <section className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto space-y-12">
+          {/* Premium Templates Marketplace */}
+          <div>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <DollarSign className="h-6 w-6 text-primary" />
+              የአብነት ገበያ
+            </h2>
+            <PremiumTemplates />
+          </div>
+
+          {/* Team Workspaces */}
+          <div>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <Users className="h-6 w-6 text-primary" />
+              የቡድን ስራ ቦታዎች
+            </h2>
+            <TeamWorkspaces />
+          </div>
+
+          {/* API Access */}
+          <div>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <Key className="h-6 w-6 text-primary" />
+              API መዳረሻ
+            </h2>
+            <APIAccessManager />
+          </div>
         </div>
       </section>
 

@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          api_key: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          key_name: string
+          last_used_at: string | null
+          rate_limit: number | null
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          api_key: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_name: string
+          last_used_at?: string | null
+          rate_limit?: number | null
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_name?: string
+          last_used_at?: string | null
+          rate_limit?: number | null
+          usage_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       assistant_conversations: {
         Row: {
           context: Json | null
@@ -251,6 +290,54 @@ export type Database = {
           },
         ]
       }
+      premium_templates: {
+        Row: {
+          author_id: string | null
+          category: string | null
+          code: Json
+          created_at: string
+          description: string | null
+          id: string
+          preview_image: string | null
+          price: number
+          purchases_count: number | null
+          rating: number | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          category?: string | null
+          code: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          preview_image?: string | null
+          price?: number
+          purchases_count?: number | null
+          rating?: number | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          category?: string | null
+          code?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          preview_image?: string | null
+          price?: number
+          purchases_count?: number | null
+          rating?: number | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -466,6 +553,109 @@ export type Database = {
             columns: ["forked_from"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          id: string
+          invited_by: string | null
+          joined_at: string
+          role: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          role?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          role?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "team_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_workspaces: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          max_members: number | null
+          name: string
+          owner_id: string
+          plan: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_members?: number | null
+          name: string
+          owner_id: string
+          plan?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_members?: number | null
+          name?: string
+          owner_id?: string
+          plan?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      template_purchases: {
+        Row: {
+          amount: number
+          id: string
+          purchased_at: string
+          stripe_payment_id: string | null
+          template_id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          id?: string
+          purchased_at?: string
+          stripe_payment_id?: string | null
+          template_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          id?: string
+          purchased_at?: string
+          stripe_payment_id?: string | null
+          template_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_purchases_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "premium_templates"
             referencedColumns: ["id"]
           },
         ]

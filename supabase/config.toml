@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.security-scan]
 verify_jwt = false
+
+[functions.api-generate]
+verify_jwt = false
