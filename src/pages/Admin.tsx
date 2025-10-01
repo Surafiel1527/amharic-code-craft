@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useDynamicCustomizations } from "@/hooks/useDynamicCustomizations";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,6 +51,7 @@ export default function Admin() {
   const { isAdmin, loading: roleLoading } = useUserRole(user?.id);
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { getDynamicStyles } = useDynamicCustomizations();
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalProjects: 0, totalConversations: 0 });
   const [loading, setLoading] = useState(true);
@@ -152,8 +154,11 @@ export default function Admin() {
     return null;
   }
 
+  // Get dynamic styles for AdminPage component
+  const dynamicStyles = getDynamicStyles('AdminPage') || 'bg-gradient-to-br from-green-50 via-green-100 to-green-200 dark:from-green-950 dark:via-green-900 dark:to-green-800';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-green-100 to-green-200 dark:from-green-950 dark:via-green-900 dark:to-green-800 p-4 sm:p-8">
+    <div className={`min-h-screen ${dynamicStyles} p-4 sm:p-8`}>
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
         {/* Mobile Header */}
         <div className="flex items-center justify-between">
