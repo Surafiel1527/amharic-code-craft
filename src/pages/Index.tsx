@@ -526,25 +526,25 @@ const Index = () => {
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="quick" className="gap-2">
                     <Zap className="h-4 w-4" />
-                    ፈጣን
+                    {t("tabs.quick")}
                   </TabsTrigger>
                   <TabsTrigger value="templates" className="gap-2">
                     <Layers className="h-4 w-4" />
-                    አብነቶች
+                    {t("tabs.templates")}
                   </TabsTrigger>
                   <TabsTrigger value="images" className="gap-2">
                     <ImageIcon className="h-4 w-4" />
-                    ምስሎች
+                    {t("tabs.images")}
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="quick" className="space-y-4 mt-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold">የእርስዎን ድህረ ገፅ ይግለጹ</label>
+                    <label className="text-sm font-semibold">{t("editor.placeholder")}</label>
                   </div>
                   
                   <Textarea
-                    placeholder="ምሳሌ: ለቡና ቤቴ ቆንጆ ድህረ ገፅ ፍጠር። ምስሎች፣ ዋጋዎች እና የመገኛ አድራሻ ይኑረው።"
+                    placeholder={t("editor.placeholder")}
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     className="min-h-[200px] resize-none"
@@ -630,11 +630,11 @@ const Index = () => {
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="quick" className="gap-2">
                     <Zap className="h-4 w-4" />
-                    ፈጣን ሁነታ
+                    {t("tabs.quickMode")}
                   </TabsTrigger>
                   <TabsTrigger value="chat" className="gap-2">
                     <MessageSquare className="h-4 w-4" />
-                    የውይይት ሁነታ
+                    {t("tabs.chatMode")}
                   </TabsTrigger>
                 </TabsList>
 

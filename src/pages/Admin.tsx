@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,6 +48,7 @@ interface Stats {
 export default function Admin() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole(user?.id);
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalProjects: 0, totalConversations: 0 });
@@ -73,7 +75,7 @@ export default function Admin() {
       
       if (!isAdmin) {
         console.log('❌ Access denied - not admin');
-        toast.error("የአስተዳዳሪ መብት የለዎትም");
+        toast.error(t("toast.notAuthorized"));
         navigate("/");
       } else {
         console.log('✅ Admin access granted');
@@ -109,7 +111,7 @@ export default function Admin() {
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      toast.error("መረጃ በማምጣት ላይ ስህተት ተፈጥሯል");
+      toast.error(t("toast.dataFetchError"));
     } finally {
       setLoading(false);
     }
@@ -122,10 +124,10 @@ export default function Admin() {
         .upsert({ user_id: userId, role: newRole });
 
       if (error) throw error;
-      toast.success("የተጠቃሚ ሚና ተቀይሯል");
+      toast.success(t("toast.roleUpdated"));
     } catch (error) {
       console.error('Error updating role:', error);
-      toast.error("ሚና በመቀየር ላይ ስህተት ተፈጥሯል");
+      toast.error(t("toast.roleUpdateError"));
     }
   };
 

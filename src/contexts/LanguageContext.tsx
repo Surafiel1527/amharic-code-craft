@@ -98,6 +98,10 @@ const translations = {
     "toast.rateLimitDesc": "Please wait a moment.",
     "toast.paymentRequired": "Payment required",
     "toast.paymentDesc": "Please top up your account.",
+    "toast.notAuthorized": "You are not authorized",
+    "toast.dataFetchError": "Error fetching data",
+    "toast.roleUpdated": "User role updated successfully",
+    "toast.roleUpdateError": "Error updating role",
     
     // Sections
     "section.backup": "Backup & Restore",
@@ -201,6 +205,10 @@ const translations = {
     "toast.rateLimitDesc": "እባክዎ ትንሽ ይቆዩ።",
     "toast.paymentRequired": "ክፍያ ያስፈልጋል",
     "toast.paymentDesc": "እባክዎ የእርስዎን መለያ ይሙሉ።",
+    "toast.notAuthorized": "የአስተዳዳሪ መብት የለዎትም",
+    "toast.dataFetchError": "መረጃ በማምጣት ላይ ስህተት ተፈጥሯል",
+    "toast.roleUpdated": "የተጠቃሚ ሚና ተቀይሯል",
+    "toast.roleUpdateError": "ሚና በመቀየር ላይ ስህተት ተፈጥሯል",
     
     // Sections
     "section.backup": "ምትኪ እና መመለሻ",
