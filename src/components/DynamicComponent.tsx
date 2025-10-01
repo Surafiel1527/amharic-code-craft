@@ -31,12 +31,27 @@ export function DynamicComponent({ name, children, defaultOrder = 0 }: DynamicCo
   // Get dynamic styles
   const dynamicStyles = getDynamicStyles(name);
   
-  // Merge dynamic props with existing props
-  const mergedProps = {
-    ...dynamicProps,
-    className: `${children.props.className || ''} ${dynamicStyles}`.trim(),
+  // Merge dynamic props with existing props, being careful not to override critical props
+  const mergedProps: Record<string, any> = {
     'data-order': order, // Add order as data attribute for parent sorting
   };
+  
+  // Merge className carefully
+  if (dynamicStyles || dynamicProps.className) {
+    mergedProps.className = `${children.props.className || ''} ${dynamicStyles} ${dynamicProps.className || ''}`.trim();
+  }
+  
+  // Add dynamic props, but NEVER override event handlers or critical props
+  Object.keys(dynamicProps).forEach(key => {
+    // Skip className (handled above), event handlers, and critical props
+    if (key === 'className' || key.startsWith('on') || key === 'ref' || key === 'key') {
+      return;
+    }
+    // Only add if it doesn't exist or if it's explicitly allowed to override
+    if (children.props[key] === undefined || key === 'variant' || key === 'size') {
+      mergedProps[key] = dynamicProps[key];
+    }
+  });
   
   // Clone the child element with merged props
   return cloneElement(children, mergedProps);
