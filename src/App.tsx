@@ -12,23 +12,23 @@ import NotFound from "./pages/NotFound";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const App = () => {
-  // Enable global error monitoring for autonomous self-healing
+  // Global error monitoring
   useErrorMonitor();
 
   return (
     <ErrorBoundary>
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/settings" element={<Settings />} />
-      <Route path="/admin" element={<Admin />} />
-      <Route path="/explore" element={<Explore />} />
-      <Route path="/profile/:userId" element={<UserProfile />} />
-      <Route path="/shared/:shareToken" element={<SharedProject />} />
-      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  </ErrorBoundary>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/explore" element={<Explore />} />
+        <Route path="/profile/:userId" element={<UserProfile />} />
+        <Route path="/shared/:shareToken" element={<SharedProject />} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </ErrorBoundary>
   );
 };
 
