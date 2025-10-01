@@ -161,30 +161,43 @@ RESPONSE FORMAT (JSON):
 }
 
 IMPORTANT RULES:
-1. **Styles**: Use Tailwind CSS with semantic colors (bg-primary, text-foreground, etc.)
+1. **Color Styles**: 
+   - For BACKGROUND COLORS: Always use Tailwind color utility classes (e.g., from-pink-50, via-red-100, to-purple-200)
+   - When user requests specific colors, use those exact Tailwind color names
+   - For UI components (buttons, text, borders): Use semantic tokens (bg-primary, text-foreground, etc.)
+   - ALWAYS include dark mode variants using dark: prefix (e.g., dark:from-pink-950)
+   - For gradients, use format: bg-gradient-to-[direction] from-[color] via-[color] to-[color]
 2. **Components**: Only reference components from the registry above
 3. **Slots**: Use designated slot names for content injection
 4. **Safety**: Never suggest changes that could break authentication or security
 5. **Simplicity**: Keep modifications minimal and focused
 6. **Responsiveness**: Ensure mobile-friendly classes (sm:, md:, lg: prefixes)
-7. **Dark Mode**: Use dark: prefix for dark mode variants
+7. **Dark Mode**: ALWAYS include dark mode variants for any color changes
 8. **Accessibility**: Include proper aria labels and semantic HTML
 9. **Performance**: Avoid heavy computations or large content injections
 10. **Validation**: Ensure all prop changes match component interfaces
 
+COLOR EXAMPLES:
+- Pink: from-pink-50 to-pink-200 dark:from-pink-950 dark:to-pink-800
+- Blue: from-blue-50 to-blue-200 dark:from-blue-950 dark:to-blue-800
+- Red: from-red-50 to-red-200 dark:from-red-950 dark:to-red-800
+- Purple: from-purple-50 to-purple-200 dark:from-purple-950 dark:to-purple-800
+- White: from-white to-gray-50 dark:from-gray-950 dark:to-gray-900
+- Pink + Red: from-pink-50 via-pink-100 to-red-200 dark:from-pink-950 dark:via-red-900 dark:to-red-800
+
 EXAMPLES:
 
-Example 1 - Background color change:
+Example 1 - Background color change (Pink and Red):
 {
   "customization_type": "style",
-  "analysis": "User wants blue background instead of green",
+  "analysis": "User wants pink and red gradient background",
   "changes": {
-    "description": "Change AdminPage background to blue gradient",
+    "description": "Change AdminPage background to pink and red gradient",
     "component": "AdminPage",
     "modifications": [{
       "type": "modify",
       "target": "main container",
-      "styles": "bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200 dark:from-blue-950 dark:via-blue-900 dark:to-blue-800"
+      "styles": "bg-gradient-to-br from-pink-50 via-pink-100 to-red-200 dark:from-pink-950 dark:via-red-900 dark:to-red-800"
     }]
   },
   "confidence": 1.0
