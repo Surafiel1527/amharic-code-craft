@@ -140,12 +140,19 @@ export const useDynamicCustomizations = (previewMode = false) => {
         'green-900': 'hsl(143, 85%, 20%)',
         'green-950': 'hsl(144, 90%, 12%)',
         'yellow-50': 'hsl(55, 92%, 95%)',
+        'yellow-100': 'hsl(55, 97%, 88%)',
         'yellow-200': 'hsl(48, 95%, 76%)',
         'purple-50': 'hsl(270, 100%, 98%)',
         'purple-200': 'hsl(270, 67%, 90%)',
         'purple-800': 'hsl(271, 81%, 35%)',
         'violet-200': 'hsl(252, 100%, 91%)',
         'violet-800': 'hsl(251, 91%, 35%)',
+        'gray-50': 'hsl(0, 0%, 98%)',
+        'gray-100': 'hsl(0, 0%, 96%)',
+        'gray-200': 'hsl(0, 0%, 90%)',
+        'slate-50': 'hsl(210, 40%, 98%)',
+        'slate-100': 'hsl(210, 40%, 96%)',
+        'slate-200': 'hsl(214, 32%, 91%)',
       };
       
       return colorMap[colorString] || 'hsl(0, 0%, 50%)';

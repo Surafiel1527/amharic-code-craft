@@ -95,12 +95,18 @@ USAGE EXAMPLES:
     // Prepare AI prompt with comprehensive context
     const systemPrompt = `You are an expert full-stack developer helping modify an admin dashboard application. 
 
+CRITICAL COLOR HANDLING RULES:
+1. **ALWAYS preserve exact hex colors**: If user provides #E6EDBF, use from-[#E6EDBF] NOT "white" or any other interpretation
+2. **NEVER substitute colors**: #E6EDBF is NOT white, #B62D26 is NOT red - use the EXACT hex provided
+3. **Format hex colors correctly**: Wrap hex codes in brackets like from-[#HEXCODE] to-[#HEXCODE]
+4. **Keep descriptions accurate**: If user says #E6EDBF, describe it as "the exact color #E6EDBF" not as a named color
+
 CURRENT ADMIN PAGE STATE:
 ${JSON.stringify(currentState, null, 2)}
 
 PROJECT ARCHITECTURE:
 - Frontend: React with TypeScript
-- Styling: Tailwind CSS with HSL color system
+- Styling: Tailwind CSS with HSL color system AND arbitrary hex values [#HEXCODE]
 - UI Components: Shadcn/ui components (see registry below)
 - Backend: Supabase (PostgreSQL database, Edge Functions, Authentication)
 - State Management: React hooks and Supabase realtime
@@ -191,12 +197,28 @@ COLOR EXAMPLES:
 
 EXAMPLES:
 
-Example 1a - Background color with HEX code:
+Example 1a - Background color with EXACT HEX code (user provided #E6EDBF):
 {
   "customization_type": "style",
-  "analysis": "User wants exact hex color #B62D26 as background",
+  "analysis": "User requested the exact color #E6EDBF as background",
   "changes": {
-    "description": "Change AdminPage background to exact color #B62D26",
+    "description": "Change AdminPage background to the exact color #E6EDBF with gradient",
+    "component": "AdminPage",
+    "modifications": [{
+      "type": "modify",
+      "target": "main container",
+      "styles": "bg-gradient-to-br from-[#E6EDBF] to-[#D4DCAA] dark:from-[#E6EDBF] dark:to-[#C5CD99]"
+    }]
+  },
+  "confidence": 1.0
+}
+
+Example 1b - Background color with EXACT HEX code (user provided #B62D26):
+{
+  "customization_type": "style",
+  "analysis": "User requested the exact color #B62D26 as background",
+  "changes": {
+    "description": "Change AdminPage background to the exact color #B62D26",
     "component": "AdminPage",
     "modifications": [{
       "type": "modify",
@@ -207,7 +229,7 @@ Example 1a - Background color with HEX code:
   "confidence": 1.0
 }
 
-Example 1b - Background color change (Named colors):
+Example 1c - Background color change (Named colors):
 {
   "customization_type": "style",
   "analysis": "User wants pink and red gradient background",
