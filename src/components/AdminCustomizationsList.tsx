@@ -126,16 +126,40 @@ export default function AdminCustomizationsList() {
   const rejectCustomization = async (customizationId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      console.log('Attempting to delete customization:', customizationId);
 
       // Delete the rejected customization
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('admin_customizations')
         .delete()
         .eq('id', customizationId)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+
+      console.log('Deleted rows:', data);
+
+      if (!data || data.length === 0) {
+        toast({
+          title: '⚠️ Already removed',
+          description: 'This customization was already deleted',
+        });
+        loadCustomizations();
+        return;
+      }
 
       toast({
         title: '🗑️ Rejected',
@@ -143,11 +167,11 @@ export default function AdminCustomizationsList() {
       });
 
       loadCustomizations();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error rejecting customization:', error);
       toast({
         title: 'Error',
-        description: 'Failed to reject customization',
+        description: error.message || 'Failed to reject customization',
         variant: 'destructive',
       });
     }
