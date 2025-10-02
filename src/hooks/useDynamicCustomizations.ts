@@ -56,11 +56,8 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
 
   const loadCustomizations = async () => {
     try {
-      console.log('🔄 LOADING CUSTOMIZATIONS...', { previewMode, snapshotId });
-      
       // If snapshot preview mode, load from snapshot
       if (snapshotId) {
-        console.log('📸 SNAPSHOT PREVIEW MODE: Loading from snapshot', snapshotId);
         const { data: snapshot, error } = await supabase
           .from('customization_snapshots')
           .select('customizations')
@@ -68,7 +65,7 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
           .single();
 
         if (error) {
-          console.error('❌ Error loading snapshot:', error);
+          console.error('Error loading snapshot:', error);
           throw error;
         }
 
@@ -84,12 +81,6 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
             }))
           : [];
 
-        console.log('📦 LOADED SNAPSHOT CUSTOMIZATIONS:', {
-          snapshotId,
-          count: snapshotCustomizations.length,
-          data: snapshotCustomizations
-        });
-
         setCustomizations(snapshotCustomizations);
         setLoading(false);
         return;
@@ -103,11 +94,9 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
         .order('created_at', { ascending: false });
       
       if (previewMode) {
-        console.log('🔍 PREVIEW MODE: Loading pending + applied');
         // Load pending AND applied (pending will override applied)
         query = query.in('status', ['pending', 'applied']);
       } else {
-        console.log('✅ NORMAL MODE: Loading only applied');
         // Only load applied customizations
         query = query.eq('status', 'applied');
       }
@@ -115,16 +104,9 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
       const { data, error } = await query;
 
       if (error) {
-        console.error('❌ Error loading customizations:', error);
+        console.error('Error loading customizations:', error);
         throw error;
       }
-      
-      console.log('📦 LOADED CUSTOMIZATIONS:', {
-        previewMode,
-        count: data?.length || 0,
-        currentRoute,
-        data: data
-      });
       
       // Filter customizations by current route (page)
       // A customization applies if its page matches the current route OR if it's marked as "global"
@@ -134,12 +116,11 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
           const custPage = c.applied_changes?.page;
           return custPage === currentRoute || custPage === 'global' || !custPage;
         });
-        console.log(`🔍 Filtered to ${filteredData.length} customizations for route: ${currentRoute}`);
       }
       
       setCustomizations(filteredData);
     } catch (error) {
-      console.error('❌ FATAL Error loading customizations:', error);
+      console.error('Error loading customizations:', error);
     } finally {
       setLoading(false);
     }
@@ -260,70 +241,40 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
   // IMPORTANT: When multiple customizations target the same component,
   // only use the MOST RECENT one to avoid style conflicts
   const getDynamicStyles = (component: string) => {
-    console.log(`\n🎨 ========== GET DYNAMIC STYLES ==========`);
-    console.log(`🎯 Looking for component: "${component}"`);
-    console.log(`📚 Total customizations available: ${customizations.length}`);
-    
     // Find the most recent matching customization
     let latestMatch: Customization | null = null;
     
-    customizations.forEach((custom, index) => {
+    customizations.forEach((custom) => {
       try {
         const changes = custom.applied_changes;
-        console.log(`\n   [${index + 1}/${customizations.length}] Checking customization:`);
-        console.log(`   - ID: ${custom.id}`);
-        console.log(`   - Type: ${custom.customization_type}`);
-        console.log(`   - Status: ${custom.status}`);
-        console.log(`   - Created: ${custom.created_at}`);
-        console.log(`   - Component in changes: "${changes?.component}"`);
-        
         const componentMatches = changes?.component === component;
         const targetMatches = changes?.target === component;
         
-        console.log(`   - Component match: ${componentMatches}`);
-        console.log(`   - Target match: ${targetMatches}`);
-        
-        if (componentMatches || targetMatches) {
-          console.log(`   ✅ MATCH FOUND!`);
-          // Use the first match we find (they're ordered by created_at DESC)
-          if (!latestMatch) {
-            latestMatch = custom;
-            console.log(`   🎯 This is now the active customization`);
-          } else {
-            console.log(`   ⏭️ Skipping - already have a more recent match`);
-          }
+        if ((componentMatches || targetMatches) && !latestMatch) {
+          latestMatch = custom;
         }
       } catch (e) {
-        console.error(`   ❌ Error parsing customization:`, e);
+        console.error('Error parsing customization:', e);
       }
     });
 
     // Extract styles from the latest match
     const styles: string[] = [];
     if (latestMatch) {
-      console.log(`\n🎯 Using customization: ${latestMatch.id}`);
       const changes = latestMatch.applied_changes;
       
       if (changes?.modifications && Array.isArray(changes.modifications)) {
-        console.log(`   - Processing ${changes.modifications.length} modifications...`);
-        changes.modifications.forEach((mod: any, modIndex: number) => {
-          console.log(`      Modification [${modIndex + 1}]:`, mod);
+        changes.modifications.forEach((mod: any) => {
           if (mod.styles) {
-            console.log(`      ✅ Adding styles: "${mod.styles}"`);
             styles.push(mod.styles);
           }
         });
       } else if (changes?.styles) {
-        console.log(`   ✅ Adding direct styles: "${changes.styles}"`);
         styles.push(changes.styles);
       }
     }
 
-    const result = styles.length > 0 ? styles.join(' ') : '';
-    console.log(`\n🎨 ========== RESULT ==========`);
-    console.log(`Final styles for "${component}": "${result}"`);
-    console.log(`==========================================\n`);
-    return result;
+    return styles.length > 0 ? styles.join(' ') : '';
   };
 
   // Get inline CSS styles (converted from Tailwind classes)
@@ -331,9 +282,7 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
     const tailwindClasses = getDynamicStyles(component);
     if (!tailwindClasses) return {};
     
-    const inlineStyles = convertTailwindToInlineStyles(tailwindClasses);
-    console.log(`🎨 Converted to inline styles:`, inlineStyles);
-    return inlineStyles;
+    return convertTailwindToInlineStyles(tailwindClasses);
   };
 
   // Get dynamic content modifications
@@ -390,15 +339,9 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
       .filter(mod => mod.target === componentName && (mod.type === 'props' || mod.props));
     
     // Merge all props (later ones override earlier ones)
-    const mergedProps = propsModifications.reduce((acc, mod) => {
+    return propsModifications.reduce((acc, mod) => {
       return { ...acc, ...(mod.props || {}) };
     }, {});
-    
-    if (Object.keys(mergedProps).length > 0) {
-      console.log(`📦 Props for ${componentName}:`, mergedProps);
-    }
-    
-    return mergedProps;
   };
 
   // Get sort order for components
@@ -413,14 +356,7 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
         return timeB - timeA; // Most recent first
       });
     
-    const latestOrder = reorderModifications[0]?.order;
-    
-    if (latestOrder !== undefined) {
-      console.log(`🔢 Order for ${componentName}:`, latestOrder);
-      return latestOrder;
-    }
-    
-    return undefined;
+    return reorderModifications[0]?.order;
   };
 
   return {
