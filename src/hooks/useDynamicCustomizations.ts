@@ -22,7 +22,7 @@ interface DynamicModification {
   component?: string;
 }
 
-export const useDynamicCustomizations = (previewMode = false, snapshotId?: string) => {
+export const useDynamicCustomizations = (previewMode = false, snapshotId?: string, currentRoute?: string) => {
   const [customizations, setCustomizations] = useState<Customization[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +52,7 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
         supabase.removeChannel(channel);
       };
     }
-  }, [previewMode, snapshotId]);
+  }, [previewMode, snapshotId, currentRoute]);
 
   const loadCustomizations = async () => {
     try {
@@ -122,10 +122,22 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
       console.log('📦 LOADED CUSTOMIZATIONS:', {
         previewMode,
         count: data?.length || 0,
+        currentRoute,
         data: data
       });
       
-      setCustomizations(data || []);
+      // Filter customizations by current route (page)
+      // A customization applies if its page matches the current route OR if it's marked as "global"
+      let filteredData = data || [];
+      if (currentRoute) {
+        filteredData = (data || []).filter((c: any) => {
+          const custPage = c.applied_changes?.page;
+          return custPage === currentRoute || custPage === 'global' || !custPage;
+        });
+        console.log(`🔍 Filtered to ${filteredData.length} customizations for route: ${currentRoute}`);
+      }
+      
+      setCustomizations(filteredData);
     } catch (error) {
       console.error('❌ FATAL Error loading customizations:', error);
     } finally {

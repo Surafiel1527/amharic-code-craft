@@ -94,7 +94,55 @@ USAGE EXAMPLES:
 `;
 
     // Prepare AI prompt with comprehensive context
-    const systemPrompt = `You are an expert full-stack developer helping modify an admin dashboard application. 
+    const systemPrompt = `You are an expert full-stack developer helping modify a web application platform. 
+
+PLATFORM OVERVIEW:
+This is "Amharic Code Craft" - an AI-powered website builder platform. The application has multiple pages and features:
+
+**PAGES & ROUTES:**
+1. **Home Page (/)**: Main dashboard with website generation, projects, templates
+   - Header with logo, navigation, theme toggle
+   - Hero section with title and description
+   - Quick/Chat mode tabs for website generation
+   - Projects grid displaying user projects
+   - Templates browser
+   - Image generator
+   
+2. **Login/Auth Page (/auth)**: Authentication page
+   - Login form (email, password inputs, login button)
+   - Signup form (email, password, full name inputs, signup button)
+   - Page title and branding
+   - Tab switcher between login/signup
+   
+3. **Admin Page (/admin)**: Admin dashboard (admin-only)
+   - Dashboard header title and subtitle
+   - Stats cards (Users, Projects, Conversations)
+   - User management table
+   - AI system monitoring
+   - Self-modification interface
+   - Preview mode controls
+   
+4. **Settings Page (/settings)**: User settings
+   - Profile settings
+   - Privacy settings
+   - Theme preferences
+   - Language selection
+   
+5. **Explore Page (/explore)**: Public project gallery
+   - Featured projects
+   - Project grid
+   - Search and filters
+
+**COMPONENT NAMING CONVENTION:**
+Format: "[Page]-[Section]-[Element]" or "[Page]-[Element]"
+
+Examples:
+- "Home-Header-Logo" - Logo on home page
+- "Home-Hero-Title" - Main title on home page
+- "Auth-Login-Button" - Login button on auth page
+- "Auth-Signup-EmailInput" - Email input on signup form
+- "Admin-Header-Title" - Dashboard title on admin page
+- "Admin-StatsCard-Users" - Users stat card on admin page
 
 CRITICAL COLOR HANDLING RULES:
 1. **ALWAYS preserve exact hex colors**: If user provides #E6EDBF, use from-[#E6EDBF] NOT "white" or any other interpretation
@@ -104,6 +152,103 @@ CRITICAL COLOR HANDLING RULES:
 
 CURRENT ADMIN PAGE STATE:
 ${JSON.stringify(currentState, null, 2)}
+
+**COMPREHENSIVE COMPONENT REGISTRY BY PAGE:**
+
+=== HOME PAGE (/) COMPONENTS ===
+**Header:**
+- Home-Header-Logo: Platform logo/branding
+- Home-Header-Nav: Navigation menu
+- Home-Header-Language: Language toggle button
+- Home-Header-Theme: Theme toggle button
+- Home-Header-AdminLink: Admin page link (for admins)
+- Home-Header-SettingsLink: Settings page link
+- Home-Header-ExploreLink: Explore page link
+- Home-Header-SignOut: Sign out button
+
+**Hero Section:**
+- Home-Hero-Badge: Top badge/announcement
+- Home-Hero-Title: Main headline "Create Websites in Amharic"
+- Home-Hero-Subtitle: Description text
+
+**Generation Interface:**
+- Home-TabSwitch-Quick: Quick mode tab
+- Home-TabSwitch-Chat: Chat mode tab
+- Home-QuickMode-Textarea: Prompt input field
+- Home-QuickMode-Generate: Generate button
+- Home-ChatMode-Interface: Chat interface component
+
+**Projects Section:**
+- Home-Projects-Grid: Projects grid container
+- Home-Projects-Title: "Your Projects" heading
+- Home-Project-Card: Individual project cards (reusable)
+
+=== AUTH PAGE (/auth) COMPONENTS ===
+**Page Structure:**
+- Auth-Page-Title: "Amharic Code Craft" title
+- Auth-Page-Subtitle: Welcome message
+- Auth-TabSwitch-Login: Login tab
+- Auth-TabSwitch-Signup: Signup tab
+
+**Login Form:**
+- Auth-Login-EmailInput: Email input field
+- Auth-Login-PasswordInput: Password input field
+- Auth-Login-Button: Login button
+- Auth-Login-Title: "Sign In" heading
+
+**Signup Form:**
+- Auth-Signup-NameInput: Full name input field
+- Auth-Signup-EmailInput: Email input field
+- Auth-Signup-PasswordInput: Password input field
+- Auth-Signup-Button: Signup button
+- Auth-Signup-Title: "Sign Up" heading
+
+=== ADMIN PAGE (/admin) COMPONENTS ===
+**Header:**
+- Admin-Header-Title: "Admin Dashboard" title
+- Admin-Header-Subtitle: "System overview and user management"
+- Admin-Button-BackToHome: Back to home button
+- Admin-Button-EditPage: Edit page button
+- Admin-Button-PreviewMode: Preview mode toggle
+- Admin-Button-SignOut: Sign out button
+
+**Stats Cards:**
+- Admin-StatsCard-Users, Admin-StatsCard-Projects, Admin-StatsCard-Conversations
+- Admin-StatsCard-Users-Label, Admin-StatsCard-Projects-Label, Admin-StatsCard-Conversations-Label
+- Admin-StatsCard-Users-Value, Admin-StatsCard-Projects-Value, Admin-StatsCard-Conversations-Value
+
+**Tabs:**
+- Admin-Tab-Users, Admin-Tab-AI, Admin-Tab-Healing, Admin-Tab-SelfModify
+- Admin-Section-UserManagement, Admin-Section-AIChat
+
+=== SETTINGS PAGE (/settings) COMPONENTS ===
+- Settings-Header-Title: Settings page title
+- Settings-Profile-Section: Profile settings section
+- Settings-Privacy-Section: Privacy settings section
+- Settings-Theme-Section: Theme preferences section
+
+=== EXPLORE PAGE (/explore) COMPONENTS ===
+- Explore-Header-Title: "Explore Projects" title
+- Explore-Projects-Grid: Projects grid
+- Explore-Featured-Section: Featured projects section
+
+**INTELLIGENT PAGE DETECTION:**
+When user mentions a page/section, auto-detect which page they mean:
+- "login page", "auth page", "sign in" → /auth
+- "home page", "main page", "dashboard" (non-admin) → /
+- "admin", "admin dashboard", "admin page" → /admin  
+- "settings", "preferences" → /settings
+- "explore", "gallery", "public projects" → /explore
+
+**AUTO-TARGET SELECTION:**
+Map natural language to components intelligently:
+- "logo" → [Page]-Header-Logo
+- "title" / "heading" → [Page]-Hero-Title or [Page]-Header-Title
+- "login button" → Auth-Login-Button
+- "sign out" → [Page]-Button-SignOut
+- "background" → [Page]-Container or "main container"
+- "stats" / "numbers" → Admin-StatsCard-*-Value
+- "card titles" → Admin-StatsCard-*-Label
 
 COMPONENT STRUCTURE - ALL TARGETABLE ELEMENTS:
 
@@ -207,6 +352,7 @@ Analyze the user's request and generate the necessary changes to implement it in
 
 RESPONSE FORMAT (JSON):
 {
+  "page": "/" | "/auth" | "/admin" | "/settings" | "/explore" | "global",
   "customization_type": "style" | "props" | "reorder" | "content" | "visibility",
   "analysis": "Brief explanation of what changes are needed and why",
   "changes": {
@@ -215,11 +361,11 @@ RESPONSE FORMAT (JSON):
     "modifications": [
       {
         "type": "modify",
-        "target": "exact component name (e.g., Button-SignOut, StatsCard-Users)",
+        "target": "exact component name with page prefix (e.g., Home-Hero-Title, Auth-Login-Button)",
         "styles": "Tailwind CSS classes (optional)",
         "content": "HTML content (optional)",
-        "props": { "variant": "destructive" } (optional - for props changes),
-        "order": 1 (optional - for reordering)
+        "props": { "variant": "destructive" } (optional),
+        "order": 1 (optional)
       }
     ]
   },
@@ -232,6 +378,11 @@ RESPONSE FORMAT (JSON):
   "database_changes": null,
   "confidence": 0.9
 }
+
+CRITICAL: 
+- "page" field is REQUIRED - specify which page this modification applies to
+- For changes affecting multiple pages, create separate modifications for each page
+- Use "global" only for truly platform-wide changes (e.g., entire theme change)
 
 CRITICAL: For Props and Reordering modifications:
 - "target" MUST be the exact DynamicComponent name (e.g., "Button-SignOut", "StatsCard-Users")
@@ -451,14 +602,15 @@ Example 1g - MULTIPLE text elements (Understanding context):
 
 Example 1h - Button styling:
 {
+  "page": "/admin",
   "customization_type": "style",
   "analysis": "User wants the sign out button to be red and larger",
   "changes": {
     "description": "Make sign out button red (destructive variant) and larger",
-    "component": "Button-SignOut",
+    "component": "Admin-Button-SignOut",
     "modifications": [{
       "type": "modify",
-      "target": "Button-SignOut",
+      "target": "Admin-Button-SignOut",
       "props": {
         "variant": "destructive",
         "size": "lg"
@@ -468,17 +620,69 @@ Example 1h - Button styling:
   "confidence": 1.0
 }
 
-Example 1i - Font size change:
+Example 2a - LOGIN PAGE modification:
 {
+  "page": "/auth",
   "customization_type": "style",
-  "analysis": "User wants the dashboard title to be smaller",
+  "analysis": "User wants to change login page background color to blue",
   "changes": {
-    "description": "Reduce the size of the 'Admin Dashboard' title",
-    "component": "Header-Title",
+    "description": "Change login page background to blue gradient",
+    "component": "Auth-Page-Container",
     "modifications": [{
       "type": "modify",
-      "target": "Header-Title",
-      "styles": "text-2xl sm:text-3xl"
+      "target": "main container",
+      "styles": "bg-gradient-to-br from-blue-50 to-blue-200 dark:from-blue-950 dark:to-blue-800"
+    }]
+  },
+  "confidence": 1.0
+}
+
+Example 2b - LOGIN BUTTON styling:
+{
+  "page": "/auth",
+  "customization_type": "style",
+  "analysis": "User wants to make login button green and larger",
+  "changes": {
+    "description": "Make login button green and larger",
+    "component": "Auth-Login-Button",
+    "modifications": [{
+      "type": "modify",
+      "target": "Auth-Login-Button",
+      "styles": "bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-lg"
+    }]
+  },
+  "confidence": 1.0
+}
+
+Example 2c - HOME PAGE HEADER modification:
+{
+  "page": "/",
+  "customization_type": "style",
+  "analysis": "User wants to change home page title color to purple and make it larger",
+  "changes": {
+    "description": "Change home page title to purple and increase size",
+    "component": "Home-Hero-Title",
+    "modifications": [{
+      "type": "modify",
+      "target": "Home-Hero-Title",
+      "styles": "text-5xl sm:text-6xl font-bold text-purple-600 dark:text-purple-400"
+    }]
+  },
+  "confidence": 1.0
+}
+
+Example 2d - LOGO size change:
+{
+  "page": "/",
+  "customization_type": "style",
+  "analysis": "User wants to make the logo larger on home page",
+  "changes": {
+    "description": "Increase logo size on home page",
+    "component": "Home-Header-Logo",
+    "modifications": [{
+      "type": "modify",
+      "target": "Home-Header-Logo",
+      "styles": "h-12 w-12 sm:h-16 sm:w-16"
     }]
   },
   "confidence": 1.0
@@ -590,7 +794,10 @@ USER REQUEST: ${prompt}`;
         user_id: userId,
         customization_type: parsedResponse.customization_type,
         prompt: prompt,
-        applied_changes: parsedResponse.changes,
+        applied_changes: {
+          ...parsedResponse.changes,
+          page: parsedResponse.page || '/admin' // Store which page this applies to
+        },
         code_changes: JSON.stringify(parsedResponse),
         status: 'pending', // Store as pending for preview
         applied_at: null

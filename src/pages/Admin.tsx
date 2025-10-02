@@ -73,7 +73,7 @@ function AdminContent() {
     console.log('📱 Preview Mode Changed:', previewMode, 'Snapshot:', previewSnapshotId);
   }, [previewMode, previewSnapshotId]);
   
-  const { getDynamicStyles, getDynamicInlineStyles, isVisible, customizations } = useDynamicCustomizations(previewMode, previewSnapshotId);
+  const { getDynamicStyles, getDynamicInlineStyles, isVisible, customizations } = useDynamicCustomizations(previewMode, previewSnapshotId, '/admin');
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalProjects: 0, totalConversations: 0 });
   const [loading, setLoading] = useState(true);
