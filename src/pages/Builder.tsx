@@ -1,9 +1,15 @@
 import { SmartChatBuilder } from "@/components/SmartChatBuilder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Sparkles, FlaskConical, RefreshCw, Package, FileText, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AICapabilitiesGuide } from "@/components/AICapabilitiesGuide";
+import { TestGenerator } from "@/components/TestGenerator";
+import { RefactoringAssistant } from "@/components/RefactoringAssistant";
+import { DependencyIntelligence } from "@/components/DependencyIntelligence";
+import { DocumentationGenerator } from "@/components/DocumentationGenerator";
+import { CollaborationHub } from "@/components/CollaborationHub";
 
 export default function Builder() {
   const navigate = useNavigate();
@@ -30,18 +36,69 @@ export default function Builder() {
           <AICapabilitiesGuide />
         </div>
 
-        {/* Main Builder */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Smart Chat Builder</CardTitle>
-            <CardDescription>
-              Describe what you want to build, and the AI will generate complete, working code with proper file organization
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <SmartChatBuilder />
-          </CardContent>
-        </Card>
+        {/* Main Builder with Tabs */}
+        <Tabs defaultValue="builder" className="w-full">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="builder" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">Builder</span>
+            </TabsTrigger>
+            <TabsTrigger value="testing" className="flex items-center gap-2">
+              <FlaskConical className="h-4 w-4" />
+              <span className="hidden sm:inline">Tests</span>
+            </TabsTrigger>
+            <TabsTrigger value="refactor" className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4" />
+              <span className="hidden sm:inline">Refactor</span>
+            </TabsTrigger>
+            <TabsTrigger value="deps" className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">Deps</span>
+            </TabsTrigger>
+            <TabsTrigger value="docs" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Docs</span>
+            </TabsTrigger>
+            <TabsTrigger value="collab" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Collab</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="builder" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Smart Chat Builder</CardTitle>
+                <CardDescription>
+                  Describe what you want to build, and the AI will generate complete, working code with proper file organization
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SmartChatBuilder />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="testing" className="mt-6">
+            <TestGenerator />
+          </TabsContent>
+
+          <TabsContent value="refactor" className="mt-6">
+            <RefactoringAssistant />
+          </TabsContent>
+
+          <TabsContent value="deps" className="mt-6">
+            <DependencyIntelligence />
+          </TabsContent>
+
+          <TabsContent value="docs" className="mt-6">
+            <DocumentationGenerator />
+          </TabsContent>
+
+          <TabsContent value="collab" className="mt-6">
+            <CollaborationHub />
+          </TabsContent>
+        </Tabs>
 
         {/* Quick Tips */}
         <div className="grid md:grid-cols-3 gap-4">

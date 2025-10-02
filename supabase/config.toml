@@ -77,3 +77,15 @@ verify_jwt = false
 
 [functions.create-modification]
 verify_jwt = false
+
+[functions.generate-tests]
+verify_jwt = true
+
+[functions.suggest-refactoring]
+verify_jwt = true
+
+[functions.audit-dependencies]
+verify_jwt = true
+
+[functions.generate-docs]
+verify_jwt = true

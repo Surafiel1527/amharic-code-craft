@@ -384,6 +384,94 @@ export type Database = {
           },
         ]
       }
+      code_documentation: {
+        Row: {
+          api_docs: Json | null
+          created_at: string
+          doc_type: string
+          documented_code: string
+          file_path: string
+          id: string
+          original_code: string
+          project_id: string | null
+          readme_content: string | null
+          user_id: string
+        }
+        Insert: {
+          api_docs?: Json | null
+          created_at?: string
+          doc_type?: string
+          documented_code: string
+          file_path: string
+          id?: string
+          original_code: string
+          project_id?: string | null
+          readme_content?: string | null
+          user_id: string
+        }
+        Update: {
+          api_docs?: Json | null
+          created_at?: string
+          doc_type?: string
+          documented_code?: string
+          file_path?: string
+          id?: string
+          original_code?: string
+          project_id?: string | null
+          readme_content?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_documentation_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collaboration_sessions: {
+        Row: {
+          active_users: Json
+          created_by: string
+          ended_at: string | null
+          id: string
+          is_active: boolean
+          project_id: string
+          session_name: string
+          started_at: string
+        }
+        Insert: {
+          active_users?: Json
+          created_by: string
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean
+          project_id: string
+          session_name: string
+          started_at?: string
+        }
+        Update: {
+          active_users?: Json
+          created_by?: string
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean
+          project_id?: string
+          session_name?: string
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collaboration_sessions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
@@ -437,6 +525,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      dependency_audits: {
+        Row: {
+          audit_score: number | null
+          created_at: string
+          current_dependencies: Json
+          id: string
+          project_id: string | null
+          security_issues: Json
+          suggested_additions: Json
+          suggested_removals: Json
+          user_id: string
+          version_conflicts: Json
+        }
+        Insert: {
+          audit_score?: number | null
+          created_at?: string
+          current_dependencies?: Json
+          id?: string
+          project_id?: string | null
+          security_issues?: Json
+          suggested_additions?: Json
+          suggested_removals?: Json
+          user_id: string
+          version_conflicts?: Json
+        }
+        Update: {
+          audit_score?: number | null
+          created_at?: string
+          current_dependencies?: Json
+          id?: string
+          project_id?: string | null
+          security_issues?: Json
+          suggested_additions?: Json
+          suggested_removals?: Json
+          user_id?: string
+          version_conflicts?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dependency_audits_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       detected_errors: {
         Row: {
@@ -1156,6 +1291,62 @@ export type Database = {
         }
         Relationships: []
       }
+      refactoring_suggestions: {
+        Row: {
+          applied_at: string | null
+          complexity_after: number | null
+          complexity_before: number | null
+          component_name: string
+          confidence_score: number
+          created_at: string
+          id: string
+          original_code: string
+          project_id: string | null
+          reasoning: string
+          status: string
+          suggested_code: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          complexity_after?: number | null
+          complexity_before?: number | null
+          component_name: string
+          confidence_score: number
+          created_at?: string
+          id?: string
+          original_code: string
+          project_id?: string | null
+          reasoning: string
+          status?: string
+          suggested_code: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          complexity_after?: number | null
+          complexity_before?: number | null
+          component_name?: string
+          confidence_score?: number
+          created_at?: string
+          id?: string
+          original_code?: string
+          project_id?: string | null
+          reasoning?: string
+          status?: string
+          suggested_code?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refactoring_suggestions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_health: {
         Row: {
           created_at: string
@@ -1327,6 +1518,59 @@ export type Database = {
           usage_count?: number | null
         }
         Relationships: []
+      }
+      test_suites: {
+        Row: {
+          code_to_test: string
+          coverage_estimate: number | null
+          created_at: string
+          description: string | null
+          generated_tests: string
+          id: string
+          name: string
+          project_id: string | null
+          status: string
+          test_framework: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          code_to_test: string
+          coverage_estimate?: number | null
+          created_at?: string
+          description?: string | null
+          generated_tests: string
+          id?: string
+          name: string
+          project_id?: string | null
+          status?: string
+          test_framework?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          code_to_test?: string
+          coverage_estimate?: number | null
+          created_at?: string
+          description?: string | null
+          generated_tests?: string
+          id?: string
+          name?: string
+          project_id?: string | null
+          status?: string
+          test_framework?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_suites_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_follows: {
         Row: {
