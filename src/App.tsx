@@ -1,4 +1,6 @@
 import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { useErrorMonitor } from "./hooks/useErrorMonitor";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
@@ -10,6 +12,9 @@ import NotFound from "./pages/NotFound";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const App = () => {
+  // Global error monitoring - temporarily disabled due to React hook conflict
+  // useErrorMonitor();
+
   return (
     <ErrorBoundary>
       <Routes>
