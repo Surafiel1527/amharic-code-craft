@@ -12,8 +12,8 @@ import NotFound from "./pages/NotFound";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const App = () => {
-  // Global error monitoring
-  useErrorMonitor();
+  // Global error monitoring - temporarily disabled due to React hook conflict
+  // useErrorMonitor();
 
   return (
     <ErrorBoundary>
