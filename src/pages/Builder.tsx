@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowLeft, Sparkles, FlaskConical, RefreshCw, Package, FileText, Users } from "lucide-react";
+import { ArrowLeft, Sparkles, Wrench } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { AICapabilitiesGuide } from "@/components/AICapabilitiesGuide";
 import { TestGenerator } from "@/components/TestGenerator";
 import { RefactoringAssistant } from "@/components/RefactoringAssistant";
@@ -14,6 +15,7 @@ import { CollaborationHub } from "@/components/CollaborationHub";
 
 export default function Builder() {
   const navigate = useNavigate();
+  const [activeDevTool, setActiveDevTool] = useState<string>("testing");
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -40,12 +42,12 @@ export default function Builder() {
         {/* Main Builder with Tabs */}
         <TooltipProvider>
           <Tabs defaultValue="builder" className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-2">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <TabsTrigger value="builder" className="flex items-center gap-2">
                     <Sparkles className="h-4 w-4" />
-                    <span className="hidden sm:inline">Builder</span>
+                    <span>AI Builder</span>
                   </TabsTrigger>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -55,61 +57,13 @@ export default function Builder() {
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <TabsTrigger value="testing" className="flex items-center gap-2">
-                    <FlaskConical className="h-4 w-4" />
-                    <span className="hidden sm:inline">Tests</span>
+                  <TabsTrigger value="devtools" className="flex items-center gap-2">
+                    <Wrench className="h-4 w-4" />
+                    <span>Development Tools</span>
                   </TabsTrigger>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Automatically generate unit tests for your components</p>
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="refactor" className="flex items-center gap-2">
-                    <RefreshCw className="h-4 w-4" />
-                    <span className="hidden sm:inline">Refactor</span>
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Get AI suggestions to improve code quality and structure</p>
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="deps" className="flex items-center gap-2">
-                    <Package className="h-4 w-4" />
-                    <span className="hidden sm:inline">Deps</span>
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Audit dependencies for security and outdated packages</p>
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="docs" className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    <span className="hidden sm:inline">Docs</span>
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Generate comprehensive documentation for your code</p>
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <TabsTrigger value="collab" className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    <span className="hidden sm:inline">Collab</span>
-                  </TabsTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Real-time collaboration sessions with your team</p>
+                  <p>Professional tools for testing, refactoring, docs & collaboration</p>
                 </TooltipContent>
               </Tooltip>
             </TabsList>
@@ -128,24 +82,104 @@ export default function Builder() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="testing" className="mt-6">
-            <TestGenerator />
-          </TabsContent>
+          <TabsContent value="devtools" className="mt-6 space-y-6">
+            {/* Dev Tools Sub-Navigation */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wrench className="h-5 w-5" />
+                  Development Tools Suite
+                </CardTitle>
+                <CardDescription>
+                  Professional-grade tools to enhance your development workflow
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={activeDevTool} onValueChange={setActiveDevTool} className="w-full">
+                  <TabsList className="grid w-full grid-cols-5">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger value="testing" className="flex items-center gap-1 text-xs sm:text-sm">
+                          <span>🧪</span>
+                          <span className="hidden sm:inline">Tests</span>
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Automatically generate unit tests for your components</p>
+                      </TooltipContent>
+                    </Tooltip>
 
-          <TabsContent value="refactor" className="mt-6">
-            <RefactoringAssistant />
-          </TabsContent>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger value="refactor" className="flex items-center gap-1 text-xs sm:text-sm">
+                          <span>🔄</span>
+                          <span className="hidden sm:inline">Refactor</span>
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Get AI suggestions to improve code quality and structure</p>
+                      </TooltipContent>
+                    </Tooltip>
 
-          <TabsContent value="deps" className="mt-6">
-            <DependencyIntelligence />
-          </TabsContent>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger value="deps" className="flex items-center gap-1 text-xs sm:text-sm">
+                          <span>📦</span>
+                          <span className="hidden sm:inline">Deps</span>
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Audit dependencies for security and outdated packages</p>
+                      </TooltipContent>
+                    </Tooltip>
 
-          <TabsContent value="docs" className="mt-6">
-            <DocumentationGenerator />
-          </TabsContent>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger value="docs" className="flex items-center gap-1 text-xs sm:text-sm">
+                          <span>📝</span>
+                          <span className="hidden sm:inline">Docs</span>
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Generate comprehensive documentation for your code</p>
+                      </TooltipContent>
+                    </Tooltip>
 
-          <TabsContent value="collab" className="mt-6">
-            <CollaborationHub />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger value="collab" className="flex items-center gap-1 text-xs sm:text-sm">
+                          <span>👥</span>
+                          <span className="hidden sm:inline">Collab</span>
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Real-time collaboration sessions with your team</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TabsList>
+
+                  <TabsContent value="testing" className="mt-6">
+                    <TestGenerator />
+                  </TabsContent>
+
+                  <TabsContent value="refactor" className="mt-6">
+                    <RefactoringAssistant />
+                  </TabsContent>
+
+                  <TabsContent value="deps" className="mt-6">
+                    <DependencyIntelligence />
+                  </TabsContent>
+
+                  <TabsContent value="docs" className="mt-6">
+                    <DocumentationGenerator />
+                  </TabsContent>
+
+                  <TabsContent value="collab" className="mt-6">
+                    <CollaborationHub />
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
         </TooltipProvider>
