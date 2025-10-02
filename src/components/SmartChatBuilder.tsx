@@ -4,15 +4,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Send, Code, AlertTriangle, CheckCircle2, Lightbulb, Settings } from "lucide-react";
+import { Loader2, Send, Code, AlertTriangle, CheckCircle2, Lightbulb, Settings, AlertCircle, Activity, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProjectInstructionsPanel } from "./ProjectInstructionsPanel";
 import { SelfHealingMonitor } from "./SelfHealingMonitor";
 import { SnapshotManager } from "./SnapshotManager";
 import { AICapabilitiesGuide } from "./AICapabilitiesGuide";
-import { AlertCircle, Activity, Save } from "lucide-react";
-import { Alert, AlertDescription } from "./ui/alert";
 import { useErrorMonitor } from "@/hooks/useErrorMonitor";
 import { useProactiveMonitoring } from "@/hooks/useProactiveMonitoring";
 import {
