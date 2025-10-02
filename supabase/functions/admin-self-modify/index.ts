@@ -235,10 +235,15 @@ ${JSON.stringify(currentState, null, 2)}
 **INTELLIGENT PAGE DETECTION:**
 When user mentions a page/section, auto-detect which page they mean:
 - "login page", "auth page", "sign in" → /auth
-- "home page", "main page", "dashboard" (non-admin) → /
+- "home page", "homepage", "home", "main page", "dashboard" (non-admin) → /
 - "admin", "admin dashboard", "admin page" → /admin  
 - "settings", "preferences" → /settings
 - "explore", "gallery", "public projects" → /explore
+
+**CRITICAL PAGE DETECTION RULES:**
+1. If user says "homepage", "home page", or just "home" - ALWAYS use page: "/"
+2. If user mentions title/heading without specifying page - assume they mean current page or homepage
+3. When in doubt, ASK which page they mean or default to "/"
 
 **AUTO-TARGET SELECTION:**
 Map natural language to components intelligently:
@@ -654,18 +659,35 @@ Example 2b - LOGIN BUTTON styling:
   "confidence": 1.0
 }
 
-Example 2c - HOME PAGE HEADER modification:
+Example 2c - HOME PAGE TITLE modification (TEXT COLOR):
 {
   "page": "/",
   "customization_type": "style",
-  "analysis": "User wants to change home page title color to purple and make it larger",
+  "analysis": "User wants to change home page title color to purple",
   "changes": {
-    "description": "Change home page title to purple and increase size",
+    "description": "Change home page title gradient to purple tones",
     "component": "Home-Hero-Title",
     "modifications": [{
       "type": "modify",
       "target": "Home-Hero-Title",
-      "styles": "text-5xl sm:text-6xl font-bold text-purple-600 dark:text-purple-400"
+      "styles": "bg-gradient-to-r from-purple-600 via-purple-400 to-purple-500 bg-clip-text text-transparent"
+    }]
+  },
+  "confidence": 1.0
+}
+
+Example 2c2 - HOME PAGE TITLE to GREEN:
+{
+  "page": "/",
+  "customization_type": "style",
+  "analysis": "User wants homepage title to be green color",
+  "changes": {
+    "description": "Change homepage title gradient to green",
+    "component": "Home-Hero-Title",
+    "modifications": [{
+      "type": "modify",
+      "target": "Home-Hero-Title",
+      "styles": "bg-gradient-to-r from-green-600 via-green-400 to-emerald-500 bg-clip-text text-transparent"
     }]
   },
   "confidence": 1.0
@@ -788,6 +810,18 @@ USER REQUEST: ${prompt}`;
     }
 
     // Store the customization as PENDING (require manual approval)
+    // Auto-detect page if not specified
+    let targetPage = parsedResponse.page;
+    if (!targetPage && parsedResponse.changes?.component) {
+      const component = parsedResponse.changes.component;
+      if (component.startsWith('Home-')) targetPage = '/';
+      else if (component.startsWith('Auth-')) targetPage = '/auth';
+      else if (component.startsWith('Admin-')) targetPage = '/admin';
+      else if (component.startsWith('Settings-')) targetPage = '/settings';
+      else if (component.startsWith('Explore-')) targetPage = '/explore';
+      else targetPage = '/admin'; // default
+    }
+    
     const { data: customization, error: insertError } = await supabase
       .from('admin_customizations')
       .insert({
@@ -796,7 +830,7 @@ USER REQUEST: ${prompt}`;
         prompt: prompt,
         applied_changes: {
           ...parsedResponse.changes,
-          page: parsedResponse.page || '/admin' // Store which page this applies to
+          page: targetPage || '/admin' // Store which page this applies to
         },
         code_changes: JSON.stringify(parsedResponse),
         status: 'pending', // Store as pending for preview
