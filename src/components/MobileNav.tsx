@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, TrendingUp, Shield, Settings, LogOut, Keyboard } from "lucide-react";
+import { Menu, TrendingUp, Shield, Settings, LogOut, Keyboard, Code } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -32,6 +32,15 @@ export const MobileNav = ({ isAdmin, onShowShortcuts, onSignOut }: MobileNavProp
           </div>
           
           <div className="border-t pt-4 space-y-2">
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-2"
+              onClick={() => navigate("/builder")}
+            >
+              <Code className="h-4 w-4" />
+              Builder
+            </Button>
+
             <Button
               variant="ghost"
               className="w-full justify-start gap-2"
