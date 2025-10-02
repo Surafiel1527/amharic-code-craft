@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
@@ -19,22 +20,18 @@ const queryClient = new QueryClient({
 });
 
 // Main application entry point
-const root = document.getElementById("root");
-
-if (!root) {
-  throw new Error("Root element not found");
-}
-
-createRoot(root).render(
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <LanguageProvider>
-          <App />
-          <Toaster />
-          <Sonner />
-        </LanguageProvider>
-      </ThemeProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <LanguageProvider>
+            <App />
+            <Toaster />
+            <Sonner />
+          </LanguageProvider>
+        </ThemeProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  </StrictMode>
 );
