@@ -850,6 +850,7 @@ export type Database = {
           full_name: string | null
           github: string | null
           id: string
+          profile_visibility: string | null
           twitter: string | null
           updated_at: string
           website: string | null
@@ -862,6 +863,7 @@ export type Database = {
           full_name?: string | null
           github?: string | null
           id: string
+          profile_visibility?: string | null
           twitter?: string | null
           updated_at?: string
           website?: string | null
@@ -874,6 +876,7 @@ export type Database = {
           full_name?: string | null
           github?: string | null
           id?: string
+          profile_visibility?: string | null
           twitter?: string | null
           updated_at?: string
           website?: string | null

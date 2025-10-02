@@ -152,7 +152,8 @@ export const ProjectComments = ({ projectId }: ProjectCommentsProps) => {
   };
 
   const getInitials = (comment: Comment) => {
-    const name = comment.profiles?.full_name || comment.profiles?.email || 'U';
+    // SECURITY: Never use email for display
+    const name = comment.profiles?.full_name || 'U';
     return name[0].toUpperCase();
   };
 
@@ -199,7 +200,7 @@ export const ProjectComments = ({ projectId }: ProjectCommentsProps) => {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium text-sm">
-                      {comment.profiles?.full_name || comment.profiles?.email}
+                      {comment.profiles?.full_name || 'Anonymous User'}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}

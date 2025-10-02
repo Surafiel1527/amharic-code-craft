@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { ProfilePrivacySettings } from "@/components/ProfilePrivacySettings";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -171,6 +172,10 @@ const Settings = () => {
             )}
           </Button>
         </Card>
+
+        <div className="mt-6">
+          <ProfilePrivacySettings />
+        </div>
       </div>
     </div>
   );

@@ -166,7 +166,7 @@ export const FeaturedGallery = () => {
                   </span>
                 </div>
                 <span>
-                  ያቀረበው: {featured.projects.profiles?.full_name || featured.projects.profiles?.email}
+                  ያቀረበው: {featured.projects.profiles?.full_name || 'Anonymous User'}
                 </span>
               </div>
 

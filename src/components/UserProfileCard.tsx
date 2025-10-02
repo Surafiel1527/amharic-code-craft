@@ -83,7 +83,11 @@ export const UserProfileCard = ({
         .toUpperCase()
         .slice(0, 2);
     }
-    return profile.email?.[0]?.toUpperCase() || 'U';
+    // SECURITY: Never use email for non-owners
+    if (isOwnProfile && profile.email) {
+      return profile.email[0].toUpperCase();
+    }
+    return 'U';
   };
 
   return (
@@ -98,7 +102,7 @@ export const UserProfileCard = ({
 
           <div className="space-y-2">
             <h2 className="text-2xl font-bold">
-              {profile.full_name || profile.email}
+              {profile.full_name || (isOwnProfile ? profile.email : 'Anonymous User')}
             </h2>
             {profile.bio && (
               <p className="text-muted-foreground text-sm max-w-md">
