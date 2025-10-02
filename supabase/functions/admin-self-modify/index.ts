@@ -397,11 +397,13 @@ CRITICAL: For Props and Reordering modifications:
 
 IMPORTANT RULES:
 1. **Color Styles**: 
+   - **SIMPLE COLORS**: When user says just "yellow", "blue", "red" etc WITHOUT mentioning "gradient", use SOLID colors like: bg-yellow-50 dark:bg-yellow-950
+   - **GRADIENTS**: Only use gradients (bg-gradient-to-br from-... to-...) when user explicitly mentions "gradient" or multiple colors
    - **HEX COLOR CODES**: When user provides hex colors like #B62D26, use Tailwind arbitrary values: bg-[#B62D26], from-[#B62D26], to-[#B62D26]
-   - **NAMED COLORS**: For color names (pink, blue, red), use Tailwind classes: from-pink-50, to-pink-200
+   - **NAMED COLORS**: For color names (pink, blue, red), use Tailwind classes: bg-pink-50, bg-blue-100, bg-red-200
    - **EXACT MATCH PRIORITY**: Always use the EXACT color provided by the user
    - For UI components (buttons, text, borders): Use semantic tokens (bg-primary, text-foreground, etc.)
-   - ALWAYS include dark mode variants using dark: prefix (e.g., dark:from-[#B62D26] or dark:from-pink-950)
+   - ALWAYS include dark mode variants using dark: prefix (e.g., dark:bg-yellow-950 or dark:from-pink-950)
    - For gradients with hex codes: bg-gradient-to-[direction] from-[#HEX1] to-[#HEX2]
 2. **Components**: Only reference components from the registry above
 3. **Slots**: Use designated slot names for content injection
@@ -414,10 +416,12 @@ IMPORTANT RULES:
 10. **Validation**: Ensure all prop changes match component interfaces
 
 COLOR EXAMPLES:
+- Simple yellow: bg-yellow-50 dark:bg-yellow-950
+- Simple blue: bg-blue-100 dark:bg-blue-900
 - Hex code (#B62D26): bg-gradient-to-br from-[#B62D26] to-[#8B1F1F] dark:from-[#B62D26] dark:to-[#5A0F0F]
 - Hex code (#4A90E2): bg-gradient-to-br from-[#4A90E2] to-[#2E5C8A] dark:from-[#4A90E2] dark:to-[#1A3552]
-- Pink: from-pink-50 to-pink-200 dark:from-pink-950 dark:to-pink-800
-- Blue: from-blue-50 to-blue-200 dark:from-blue-950 dark:to-blue-800
+- Pink gradient: from-pink-50 to-pink-200 dark:from-pink-950 dark:to-pink-800
+- Blue gradient: from-blue-50 to-blue-200 dark:from-blue-950 dark:to-blue-800
 - Red: from-red-50 to-red-200 dark:from-red-950 dark:to-red-800
 - Purple: from-purple-50 to-purple-200 dark:from-purple-950 dark:to-purple-800
 - White: from-white to-gray-50 dark:from-gray-950 dark:to-gray-900
@@ -540,7 +544,23 @@ Example 1d - Reordering (move stats cards):
   "confidence": 1.0
 }
 
-Example 1e - Background color change (Named colors):
+Example 1e - Background color change (Simple solid colors):
+{
+  "customization_type": "style",
+  "analysis": "User wants yellow background - simple solid color",
+  "changes": {
+    "description": "Change AdminPage background to yellow",
+    "component": "AdminPage",
+    "modifications": [{
+      "type": "modify",
+      "target": "main container",
+      "styles": "bg-yellow-50 dark:bg-yellow-950"
+    }]
+  },
+  "confidence": 1.0
+}
+
+Example 1f - Background color with gradient (when user explicitly asks for gradient):
 {
   "customization_type": "style",
   "analysis": "User wants pink and red gradient background",
@@ -556,7 +576,7 @@ Example 1e - Background color change (Named colors):
   "confidence": 1.0
 }
 
-Example 1f - TEXT COLOR change (THIS IS DIFFERENT FROM BACKGROUND):
+Example 1g - TEXT COLOR change (THIS IS DIFFERENT FROM BACKGROUND):
 {
   "customization_type": "style",
   "analysis": "User wants to change the dashboard header title text to blue color",
@@ -577,7 +597,7 @@ Example 1f - TEXT COLOR change (THIS IS DIFFERENT FROM BACKGROUND):
   "confidence": 1.0
 }
 
-Example 1g - MULTIPLE text elements (Understanding context):
+Example 1h - MULTIPLE text elements (Understanding context):
 {
   "customization_type": "style",
   "analysis": "User wants to make all stat numbers larger and green",
@@ -605,7 +625,7 @@ Example 1g - MULTIPLE text elements (Understanding context):
   "confidence": 1.0
 }
 
-Example 1h - Button styling:
+Example 1i - Button styling:
 {
   "page": "/admin",
   "customization_type": "style",

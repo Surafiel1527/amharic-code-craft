@@ -275,9 +275,9 @@ export default function AdminCustomizationsList() {
               
               return (
                 <Card key={customization.id} className="p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className="p-2 rounded-lg bg-primary/10">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                         <Icon className="h-4 w-4 text-primary" />
                       </div>
                       
@@ -285,7 +285,7 @@ export default function AdminCustomizationsList() {
                         <p className="text-sm font-medium line-clamp-2">
                           {customization.prompt}
                         </p>
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
                           <Badge 
                             variant="outline" 
                             className={statusColors[customization.status as keyof typeof statusColors]}
@@ -308,7 +308,7 @@ export default function AdminCustomizationsList() {
                     </div>
 
                     {customization.status === 'pending' && (
-                      <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2 flex-shrink-0 w-full sm:w-auto">
+                      <div className="flex flex-row sm:flex-row gap-1.5 flex-shrink-0 w-full sm:w-auto">
                         <Button
                           size="sm"
                           variant="outline"
@@ -320,28 +320,28 @@ export default function AdminCustomizationsList() {
                             });
                             setPreviewOpen(true);
                           }}
-                          className="gap-1 h-8 px-2 sm:px-3"
+                          className="gap-1 h-8 px-2 text-xs flex-1 sm:flex-initial"
                         >
-                          <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                          <span className="text-xs sm:text-sm">View</span>
+                          <Eye className="h-3 w-3" />
+                          <span>View</span>
                         </Button>
                         <Button
                           size="sm"
                           variant="default"
                           onClick={() => approveCustomization(customization.id)}
-                          className="gap-1 h-8 px-2 sm:px-3"
+                          className="gap-1 h-8 px-2 text-xs flex-1 sm:flex-initial"
                         >
-                          <CheckCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                          <span className="text-xs sm:text-sm">Approve</span>
+                          <CheckCircle className="h-3 w-3" />
+                          <span>Approve</span>
                         </Button>
                         <Button
                           size="sm"
                           variant="destructive"
                           onClick={() => rejectCustomization(customization.id)}
-                          className="gap-1 h-8 px-2 sm:px-3"
+                          className="gap-1 h-8 px-2 text-xs flex-1 sm:flex-initial"
                         >
-                          <XCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                          <span className="text-xs sm:text-sm">Reject</span>
+                          <XCircle className="h-3 w-3" />
+                          <span>Reject</span>
                         </Button>
                       </div>
                     )}
