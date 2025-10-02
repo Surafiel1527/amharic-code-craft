@@ -1,5 +1,8 @@
 project_id = "xuncvfnvatgqshlivuep"
 
+[functions.ai-code-builder]
+verify_jwt = false
+
 [functions.generate-website]
 verify_jwt = false
 
@@ -70,4 +73,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.code-quality-analyzer]
+verify_jwt = false
+
+[functions.create-modification]
 verify_jwt = false
