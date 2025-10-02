@@ -44,9 +44,6 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { downloadHTML } from "@/utils/downloadHelpers";
-import { useDynamicCustomizations } from "@/hooks/useDynamicCustomizations";
-import { DynamicComponent } from "@/components/DynamicComponent";
-import { PreviewBanner } from "@/components/PreviewBanner";
 
 interface Project {
   id: string;
@@ -118,10 +115,6 @@ const Index = () => {
 
   // PWA install prompt
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  
-  // Auto-enable preview mode if there are pending customizations for this page
-  const { customizations, getDynamicStyles } = useDynamicCustomizations(true, undefined, '/');
-  const pendingCustomizations = customizations.filter((c: any) => c.status === 'pending');
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   useEffect(() => {
@@ -406,16 +399,6 @@ const Index = () => {
       {/* Offline Indicator */}
       <OfflineIndicator />
       
-      {/* Preview Banner */}
-      {pendingCustomizations.length > 0 && (
-        <div className="container mx-auto px-4 pt-4">
-          <PreviewBanner
-            pendingCount={pendingCustomizations.length}
-            affectedPages={[...new Set(pendingCustomizations.map((c: any) => c.applied_changes?.page).filter(Boolean))]}
-          />
-        </div>
-      )}
-      
       {/* Hero Section */}
       <section className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(271_91%_65%/0.15),transparent_50%)]" />
@@ -482,11 +465,9 @@ const Index = () => {
               </div>
             </div>
             
-            <DynamicComponent name="Home-Hero-Title">
-              <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent leading-tight px-2">
-                {t("hero.title")}
-              </h1>
-            </DynamicComponent>
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent leading-tight px-2">
+              {t("hero.title")}
+            </h1>
             
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
               {t("hero.subtitle")}
