@@ -56,15 +56,28 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
   useEffect(() => {
     const createConversation = async () => {
       try {
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.log('No authenticated user - skipping conversation creation');
+          return;
+        }
+
         const { data, error } = await supabase
           .from('conversations')
-          .insert({ title: 'Smart Code Builder Session' })
+          .insert({ 
+            title: 'Smart Code Builder Session',
+            user_id: user.id 
+          })
           .select('id')
           .single();
         
         if (!error && data) {
           setConversationId(data.id);
           console.log('📝 Created conversation:', data.id);
+        } else if (error) {
+          console.error('Failed to create conversation:', error);
         }
       } catch (error) {
         console.error('Failed to create conversation:', error);
