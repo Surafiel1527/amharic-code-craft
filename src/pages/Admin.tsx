@@ -499,7 +499,34 @@ function AdminContent() {
           </TabsContent>
 
           <TabsContent value="healing">
-            <SelfHealingMonitor />
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="w-5 h-5" />
+                    Self-Healing System Monitor
+                  </CardTitle>
+                  <CardDescription>
+                    Real-time error detection, auto-fix generation, and system health monitoring
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <DynamicComponent name="Button-TestSuite">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => navigate("/ai-test")}
+                        className="gap-2"
+                      >
+                        <Brain className="w-4 h-4" />
+                        Open Test Suite
+                      </Button>
+                    </DynamicComponent>
+                  </div>
+                </CardContent>
+              </Card>
+              <SelfHealingMonitor />
+            </div>
           </TabsContent>
 
           <TabsContent value="customize" className="space-y-4">

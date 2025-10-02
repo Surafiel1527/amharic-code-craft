@@ -8,6 +8,7 @@ import Explore from "./pages/Explore";
 import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
 import AISystemTest from "./pages/AISystemTest";
+import Builder from "./pages/Builder";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const App = () => {
@@ -16,6 +17,7 @@ const App = () => {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/builder" element={<Builder />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/explore" element={<Explore />} />

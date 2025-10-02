@@ -2,9 +2,33 @@
 
 ## Access the Test Suite
 
-Navigate to: **`/ai-test`** in your browser
+**Admin-Only Access**: Navigate to `/ai-test`
 
-This page provides a structured way to test all three features independently.
+This page is restricted to administrators for testing and monitoring purposes.
+
+---
+
+## 🏢 For Regular Users
+
+**User Interface**: Navigate to `/builder`
+
+This is your main code generation interface with:
+- Smart Chat Builder
+- AI-powered multi-file generation
+- Example prompts and guidance
+- Integrated version control (snapshots)
+
+**No testing needed** - just start building! The self-healing system works automatically in the background.
+
+---
+
+## 👨‍💼 For Administrators
+
+### Access Points
+
+1. **Main Monitoring**: `/admin` → "Self-Healing" tab
+2. **Test Suite**: `/ai-test` (link in admin panel)
+3. **User Builder**: `/builder` (same as regular users see)
 
 ---
 

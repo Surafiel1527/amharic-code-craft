@@ -1,20 +1,57 @@
 import { SmartChatBuilder } from "@/components/SmartChatBuilder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Brain, Shield, GitBranch } from "lucide-react";
+import { Brain, Shield, GitBranch, AlertTriangle, ArrowLeft } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function AISystemTest() {
+  const { user, loading } = useAuth();
+  const { isAdmin, loading: roleLoading } = useUserRole(user?.id);
+  const navigate = useNavigate();
+
+  // Redirect if not admin
+  if (!loading && !roleLoading && !isAdmin) {
+    navigate("/");
+    return null;
+  }
+
+  if (loading || roleLoading) {
+    return (
+      <div className="min-h-screen bg-background p-6 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold flex items-center justify-center gap-3">
-            <Brain className="w-10 h-10 text-primary" />
-            AI System Test Suite
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Test all three advanced AI features: Self-Healing, Multi-File Generation, and Version Control
-          </p>
+        {/* Admin Only Banner */}
+        <Alert className="border-primary bg-primary/5">
+          <Shield className="w-4 h-4" />
+          <AlertDescription>
+            <strong>🔒 Admin Development Tools</strong> - This test suite is for administrators and developers only.
+          </AlertDescription>
+        </Alert>
+
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={() => navigate("/admin")}>
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div className="text-center flex-1">
+            <h1 className="text-4xl font-bold flex items-center justify-center gap-3">
+              <Brain className="w-10 h-10 text-primary" />
+              AI System Test Suite
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Test all three advanced AI features: Self-Healing, Multi-File Generation, and Version Control
+            </p>
+          </div>
         </div>
 
         <Tabs defaultValue="builder" className="w-full">
