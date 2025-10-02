@@ -47,6 +47,7 @@ import { downloadHTML } from "@/utils/downloadHelpers";
 import { useDynamicCustomizations } from "@/hooks/useDynamicCustomizations";
 import { DynamicComponent } from "@/components/DynamicComponent";
 import { PreviewBanner } from "@/components/PreviewBanner";
+import { usePreviewMode } from "@/hooks/usePreviewMode";
 
 interface Project {
   id: string;
@@ -119,8 +120,9 @@ const Index = () => {
   // PWA install prompt
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   
-  // Auto-enable preview mode if there are pending customizations for this page
-  const { customizations, getDynamicStyles } = useDynamicCustomizations(true, undefined, '/');
+  // Auto-enable preview mode if URL has ?preview=true parameter
+  const urlPreviewMode = usePreviewMode();
+  const { customizations, getDynamicStyles } = useDynamicCustomizations(urlPreviewMode || true, undefined, '/');
   const pendingCustomizations = customizations.filter((c: any) => c.status === 'pending');
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 

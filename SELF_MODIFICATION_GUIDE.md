@@ -93,10 +93,16 @@ The AI can use these pre-built components in its modifications:
    - Be specific: "Add a revenue stat card showing $25,000"
    - Ask for complex changes: "Hide notifications and add a settings button"
 
-4. **See Changes Instantly**
-   - Changes apply automatically
-   - No page refresh needed
-   - Real-time updates across all admin sessions
+4. **Preview Changes Before Applying**
+   - Changes are created in "pending" status
+   - Click the "View" button next to any pending change
+   - See a live preview of how it will look on the affected page
+   - Preview opens in a modal - no need to leave the admin page!
+
+5. **Approve or Reject**
+   - Click "Approve" to apply the change permanently
+   - Click "Reject" to discard the change
+   - Approved changes appear immediately site-wide
 
 ---
 
@@ -318,12 +324,17 @@ What's **not supported:**
 - ✅ Customization history
 - ✅ Auto-apply changes
 
+### Version 1.1 (Latest)
+- ✅ Preview mode with in-admin previews
+- ✅ No-redirect workflow - stay on admin page
+- ✅ Modal preview for affected pages
+- ✅ Approve/reject workflow
+
 ### Coming Next
 - Enhanced component library
 - Layout editor
 - Theme presets
-- Rollback UI
-- Preview mode
+- Rollback UI improvements
 - Multi-admin collaboration
 
 ---

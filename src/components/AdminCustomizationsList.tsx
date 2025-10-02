@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, Code, Palette, Layout, FileText, Eye } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { PagePreviewDialog } from './PagePreviewDialog';
 
 interface Customization {
   id: string;
@@ -34,8 +34,9 @@ const statusColors = {
 export default function AdminCustomizationsList() {
   const [customizations, setCustomizations] = useState<Customization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewPage, setPreviewPage] = useState({ path: '/', title: 'Home' });
   const { toast } = useToast();
-  const navigate = useNavigate();
   
   const getPageName = (path: string) => {
     const pageNames: Record<string, string> = {
@@ -236,8 +237,16 @@ export default function AdminCustomizationsList() {
   }
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-4">
+    <>
+      <PagePreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        pagePath={previewPage.path}
+        pageTitle={previewPage.title}
+      />
+      
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold flex items-center gap-2">
           <Clock className="h-5 w-5" />
           Recent Customizations
@@ -304,7 +313,13 @@ export default function AdminCustomizationsList() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => navigate(customization.applied_changes.page)}
+                            onClick={() => {
+                              setPreviewPage({
+                                path: customization.applied_changes.page,
+                                title: getPageName(customization.applied_changes.page)
+                              });
+                              setPreviewOpen(true);
+                            }}
                             className="gap-1"
                           >
                             <Eye className="h-3 w-3" />
@@ -362,6 +377,7 @@ export default function AdminCustomizationsList() {
           </div>
         </ScrollArea>
       )}
-    </Card>
+      </Card>
+    </>
   );
 }
