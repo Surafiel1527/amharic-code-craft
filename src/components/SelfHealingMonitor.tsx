@@ -247,18 +247,18 @@ export const SelfHealingMonitor = () => {
               ) : (
                 errors.map((error) => (
                   <Card key={error.id}>
-                    <CardHeader>
+                     <CardHeader>
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start gap-2 flex-1">
                           {getStatusIcon(error.status)}
-                          <div>
+                          <div className="flex-1 min-w-0">
                             <CardTitle className="text-base">{error.error_type}</CardTitle>
-                            <CardDescription className="line-clamp-1">
+                            <CardDescription className="whitespace-normal break-words mt-1">
                               {error.error_message}
                             </CardDescription>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col gap-2 flex-shrink-0">
                           <Badge variant={getSeverityColor(error.severity)}>
                             {error.severity}
                           </Badge>
