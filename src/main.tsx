@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { EditModeProvider } from "@/contexts/EditModeContext";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import App from "./App.tsx";
@@ -26,9 +27,11 @@ createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <LanguageProvider>
-            <App />
-            <Toaster />
-            <Sonner />
+            <EditModeProvider>
+              <App />
+              <Toaster />
+              <Sonner />
+            </EditModeProvider>
           </LanguageProvider>
         </ThemeProvider>
       </BrowserRouter>

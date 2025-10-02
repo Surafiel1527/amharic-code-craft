@@ -26,7 +26,7 @@ import { ThemeGallery } from "@/components/ThemeGallery";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { EditModeProvider, useEditMode } from "@/contexts/EditModeContext";
+import { useEditMode } from "@/contexts/EditModeContext";
 import { InspectorPanel } from "@/components/InspectorPanel";
 import {
   Table,
@@ -550,9 +550,5 @@ function AdminContent() {
 }
 
 export default function Admin() {
-  return (
-    <EditModeProvider>
-      <AdminContent />
-    </EditModeProvider>
-  );
+  return <AdminContent />;
 }
