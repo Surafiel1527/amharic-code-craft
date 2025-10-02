@@ -1344,6 +1344,15 @@ export type Database = {
         Args: { time_window?: unknown }
         Returns: number
       }
+      get_privacy_audit: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          private_count: number
+          public_count: number
+          table_name: string
+          total_count: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1367,6 +1376,10 @@ export type Database = {
           notification_type: string
         }
         Returns: undefined
+      }
+      verify_user_privacy: {
+        Args: { check_user_id: string }
+        Returns: Json
       }
     }
     Enums: {
