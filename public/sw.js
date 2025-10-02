@@ -1,4 +1,4 @@
-const CACHE_NAME = 'amharic-code-craft-v1';
+const CACHE_NAME = 'amharic-code-craft-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -13,51 +13,40 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Fetch with cache-first strategy
+// Fetch with network-first strategy for better reliability
 self.addEventListener('fetch', (event) => {
   // Skip chrome-extension and non-http(s) requests
   if (!event.request.url.startsWith('http')) {
     return;
   }
 
+  // Use network-first strategy to avoid serving stale cached assets
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
       .then((response) => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request).then((response) => {
-          // Don't cache non-successful responses
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
+        // Only cache successful responses with correct content types
+        if (response && response.status === 200) {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME)
             .then((cache) => {
               cache.put(event.request, responseToCache);
             });
-
-          return response;
-        }).catch((error) => {
-          console.log('Fetch failed:', error.message);
-          // Return a basic offline response
+        }
+        return response;
+      })
+      .catch((error) => {
+        // If network fails, try cache
+        return caches.match(event.request).then((response) => {
+          if (response) {
+            return response;
+          }
+          // Return offline response as last resort
           return new Response('Offline', {
             status: 503,
             statusText: 'Service Unavailable',
             headers: new Headers({
               'Content-Type': 'text/plain'
             })
-          });
-        });
-      })
-      .catch((error) => {
-        console.error('Cache match failed:', error);
-        // Try to fetch anyway
-        return fetch(event.request).catch(() => {
-          return new Response('Offline', {
-            status: 503,
-            statusText: 'Service Unavailable'
           });
         });
       })
