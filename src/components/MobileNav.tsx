@@ -35,15 +35,6 @@ export const MobileNav = ({ isAdmin, onShowShortcuts, onSignOut }: MobileNavProp
             <Button
               variant="ghost"
               className="w-full justify-start gap-2"
-              onClick={() => navigate("/builder")}
-            >
-              <Code className="h-4 w-4" />
-              Builder
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2"
               onClick={() => navigate("/explore")}
             >
               <TrendingUp className="h-4 w-4" />

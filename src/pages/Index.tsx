@@ -444,10 +444,6 @@ const Index = () => {
               {/* Desktop Navigation - Absolutely Hidden on Mobile */}
               <div className="hidden md:flex items-center gap-2 animate-fade-in flex-shrink-0" style={{ animationDelay: "100ms" }}>
                 <LanguageToggle />
-                <Button variant="outline" size="sm" onClick={() => navigate("/builder")} className="gap-2 hover-scale">
-                  <Code className="h-4 w-4" />
-                  <span className="hidden lg:inline">Builder</span>
-                </Button>
                 <Button variant="outline" size="sm" onClick={() => navigate("/explore")} className="gap-2 hover-scale">
                   <TrendingUp className="h-4 w-4" />
                   <span className="hidden lg:inline">{t("header.explore")}</span>

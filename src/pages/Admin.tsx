@@ -11,7 +11,7 @@ import { DynamicContainer } from "@/components/DynamicContainer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain, Sparkles, LogOut, Menu, Edit3, Check, Info, Eye } from "lucide-react";
+import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain, Sparkles, LogOut, Menu, Edit3, Check, Info, Eye, Code } from "lucide-react";
 import { toast } from "sonner";
 import { AIAnalytics } from "@/components/AIAnalytics";
 import { NotificationCenter } from "@/components/NotificationCenter";
@@ -276,6 +276,15 @@ function AdminContent() {
           
           {/* Desktop Actions */}
           <div className="hidden sm:flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/builder")}
+              className="gap-2"
+            >
+              <Code className="h-4 w-4" />
+              AI Builder
+            </Button>
             <DynamicComponent name="Button-EditPage">
               <Button
                 variant={isEditMode ? "default" : "outline"}
@@ -296,7 +305,7 @@ function AdminContent() {
                 )}
               </Button>
             </DynamicComponent>
-            <PreviewModeToggle 
+            <PreviewModeToggle
               isPreviewMode={previewMode}
               onToggle={handlePreviewToggle}
               pendingCount={pendingCount}
@@ -322,6 +331,15 @@ function AdminContent() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px]">
               <div className="flex flex-col gap-4 mt-8">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/builder")}
+                  className="gap-2 w-full"
+                >
+                  <Code className="h-4 w-4" />
+                  AI Builder
+                </Button>
                 <Button
                   variant={isEditMode ? "default" : "outline"}
                   size="sm"
