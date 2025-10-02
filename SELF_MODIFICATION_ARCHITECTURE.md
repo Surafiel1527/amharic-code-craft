@@ -1,500 +1,327 @@
-# Self-Modifying System - Technical Architecture
+# 🧠 Self-Modifying AI Architecture
+
+## Complete System Overview
+
+This document describes the complete architecture of the self-modifying AI system with three core pillars: **Self-Healing**, **Multi-File Generation**, and **Version Control**.
+
+---
 
 ## 🏗️ System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     User Interface Layer                     │
-├─────────────────────────────────────────────────────────────┤
-│  AdminSelfModifyChat → Supabase Edge Function              │
-│        ↓                                                     │
-│  [admin-self-modify] Edge Function                          │
-│        ↓                                                     │
-│  Lovable AI Gateway (Gemini 2.5 Flash)                     │
-│        ↓                                                     │
-│  Structured JSON Response                                   │
+│                    Smart Chat Builder UI                     │
+│  ┌──────────┐  ┌──────────────┐  ┌────────────────────┐    │
+│  │ Settings │  │ Self-Healing │  │ Version Control    │    │
+│  │ Panel    │  │ Monitor      │  │ & Snapshots        │    │
+│  └──────────┘  └──────────────┘  └────────────────────┘    │
 └─────────────────────────────────────────────────────────────┘
-                          ↓
+                            ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                    Database Layer                            │
-├─────────────────────────────────────────────────────────────┤
-│  admin_customizations table                                  │
-│    - stores modification instructions                        │
-│    - status: 'applied' (auto-apply)                         │
-│    - applied_changes: JSON structure                         │
-│                                                              │
-│  admin_chat_messages table                                   │
-│    - conversation history                                    │
-│    - linked to customizations                                │
+│                   AI Code Builder Engine                     │
+│  • Project Memory (Long-term Context)                        │
+│  • Multi-File Generation                                     │
+│  • Custom Instructions Support                               │
+│  • Conversation History Management                           │
 └─────────────────────────────────────────────────────────────┘
-                          ↓
+                            ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                    Runtime Layer                             │
-├─────────────────────────────────────────────────────────────┤
-│  useDynamicCustomizations Hook                               │
-│    - fetches applied customizations                          │
-│    - real-time subscription                                  │
-│    - provides: getDynamicStyles, getDynamicContent, etc     │
-│                                                              │
-│  DynamicSlot Components                                      │
-│    - render injected content                                 │
-│    - handle visibility, styles, props                        │
-│                                                              │
-│  Component Registry                                          │
-│    - pre-registered safe components                          │
-│    - AI references by name                                   │
-└─────────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    Render Layer                              │
-├─────────────────────────────────────────────────────────────┤
-│  Admin.tsx applies modifications:                            │
-│    - Dynamic styles via className                            │
-│    - Content injection via DynamicSlot                       │
-│    - Visibility via isVisible()                              │
-│    - Props via getDynamicProps()                             │
+│                    Self-Healing System                       │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │ Error        │  │ Auto-Fix     │  │ Verification │      │
+│  │ Detection    │→ │ Engine       │→ │ & Rollback   │      │
+│  └──────────────┘  └──────────────┘  └──────────────┘      │
+│                            ↓                                 │
+│                   ┌──────────────┐                           │
+│                   │ Knowledge    │                           │
+│                   │ Base         │                           │
+│                   └──────────────┘                           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📦 Core Components
+## 🎯 Feature 1: Self-Healing System
 
-### 1. **Edge Function: admin-self-modify**
-`supabase/functions/admin-self-modify/index.ts`
+### Complete Implementation
 
-**Purpose:** AI analysis and change generation
+**Components:**
+- Error Detection: `useErrorMonitor` hook, `ErrorBoundary` component
+- Auto-Fix Engine: `auto-fix-engine` edge function
+- Fix Application: `apply-fix` edge function
+- Error Reporting: `report-error` edge function
+- Proactive Monitoring: `proactive-monitor` edge function
+- Knowledge Base: Pre-trained error patterns
 
-**Flow:**
-```typescript
-1. Receive prompt from user
-2. Verify admin role
-3. Fetch existing customizations
-4. Build comprehensive AI prompt with:
-   - Current state
-   - Component registry docs
-   - Architecture info
-   - Usage examples
-5. Call Lovable AI Gateway
-6. Parse structured JSON response
-7. Store in database with status: 'applied'
-8. Return to frontend
-```
-
-**AI Prompt Structure:**
-- System architecture details
-- Component registry documentation
-- Available slots and capabilities
-- Modification examples
-- Safety constraints
-- Response format specification
-
-**Response Schema:**
-```typescript
-{
-  customization_type: string;
-  analysis: string;
-  changes: {
-    description: string;
-    component: string;
-    modifications: Array<{
-      type: 'add' | 'modify' | 'remove' | 'hide' | 'show';
-      target: string;
-      styles?: string;
-      content?: string;
-      props?: Record<string, any>;
-      order?: number;
-      visibility?: boolean;
-    }>;
-  };
-  implementation_steps: string[];
-  confidence: number;
-}
-```
-
----
-
-### 2. **Hook: useDynamicCustomizations**
-`src/hooks/useDynamicCustomizations.ts`
-
-**Purpose:** Fetch and manage runtime customizations
-
-**API:**
-```typescript
-const {
-  customizations,        // All applied customizations
-  loading,              // Loading state
-  getDynamicStyles,     // Get CSS classes for component
-  getDynamicContent,    // Get injected content
-  isVisible,            // Check component visibility
-  getDynamicProps,      // Get dynamic props
-  getOrder              // Get display order
-} = useDynamicCustomizations();
-```
+**Database Tables:**
+- `detected_errors` - Tracks all detected errors
+- `auto_fixes` - Stores generated fixes
+- `fix_verifications` - Records verification results
+- `error_patterns` - Stores learned fix patterns
+- `system_health` - Tracks system metrics
 
 **Features:**
-- Real-time Supabase subscription
-- Automatic refetch on changes
-- Safe JSON parsing with error handling
-- Type-safe modification extraction
+✅ Automatic error detection across frontend/backend
+✅ AI-powered fix generation with confidence scoring
+✅ 5-stage verification before applying fixes
+✅ Automatic rollback on failures
+✅ Pattern recognition and learning
+✅ 24+ pre-trained error patterns
 
-**Subscription:**
-```typescript
-supabase
-  .channel('admin-customizations')
-  .on('postgres_changes', { 
-    table: 'admin_customizations',
-    filter: 'status=eq.applied'
-  }, () => loadCustomizations())
+---
+
+## 🗂️ Feature 2: Multi-File Generation
+
+### Enhanced AI Code Builder
+
+**New Capabilities:**
+- Generate multiple related files in a single request
+- Automatic code splitting and organization
+- File structure awareness
+- Maintains consistent patterns across files
+
+**Supported File Types:**
+- Components (`src/components/`)
+- Hooks (`src/hooks/`)
+- Utils (`src/utils/`)
+- Types (`src/types/`)
+- Pages (`src/pages/`)
+- Styles (`src/styles/`)
+
+**Usage Example:**
+```
+User: "Create a complete authentication system"
+
+AI Generates:
+- src/components/LoginForm.tsx
+- src/components/SignupForm.tsx
+- src/hooks/useAuth.ts
+- src/types/auth.ts
+- src/utils/authApi.ts
 ```
 
 ---
 
-### 3. **Component: DynamicSlot**
-`src/components/DynamicSlot.tsx`
+## 📦 Feature 3: Version Control & Snapshots
 
-**Purpose:** Render AI-injected content in designated areas
+### Two-Level System
 
-**Usage:**
-```tsx
-<DynamicSlot 
-  name="header-actions" 
-  fallback={<DefaultButton />}
-  className="flex gap-2"
-/>
-```
+**1. Automatic Versioning:**
+- Triggers on every project update
+- Stores in `project_versions` table
+- Includes change summaries
+- Enables one-click restore
 
-**How It Works:**
-1. Queries `getDynamicContent(name)` for modifications
-2. If content exists, renders it with dynamic styles
-3. Otherwise renders fallback or children
-4. Applies any CSS modifications
+**2. Manual Snapshots:**
+- User-created save points
+- Visual screenshots
+- Custom names and descriptions
+- Stored in `customization_snapshots` table
 
-**Slots in Admin Page:**
-- `header-actions` - Top right header
-- `stats-extra` - Below stats cards
-- `mobile-menu` - Mobile sidebar
-- `tab-content` - Custom tabs
+**UI Components:**
+- `SnapshotManager` - Create and manage snapshots
+- `VersionHistory` - View and restore versions
 
 ---
 
-### 4. **Component Registry**
-`src/lib/componentRegistry.tsx`
+## 🧠 Project Memory System
 
-**Purpose:** Safe, pre-approved components AI can use
+### Long-term Context Management
 
-**Structure:**
-```typescript
-{
-  componentName: {
-    component: ReactComponent,
-    props: PropTypes,
-    description: string,
-    examples: string[],
-    category: 'layout' | 'data' | 'ui' | 'icon' | 'feedback'
-  }
-}
-```
+**Stored Information:**
+- Project architecture
+- Tech stack
+- Implemented features
+- Code structure analysis
+- Recent changes
+- Custom instructions
+- File structure requirements
 
-**50+ Registered Components:**
-- Layout: Card, Table, etc.
-- UI: Button, Badge, Alert
-- Icons: 30+ Lucide icons
-- Data: Tables, Charts
-
-**AI Integration:**
-- Automatically documented in AI prompt
-- Components referenced by name
-- Type-safe prop validation
-- Category-based organization
+**Benefits:**
+- Consistent code generation
+- Better context awareness
+- Maintains project patterns
+- Faster generation times
+- Reduces errors
 
 ---
 
-## 🔄 Data Flow
+## 🔄 Complete Workflow
 
-### Modification Request Flow
-
+### 1. Initial Setup
 ```
-User types: "Change background to blue"
-         ↓
-AdminSelfModifyChat component
-         ↓
-Supabase Edge Function: admin-self-modify
-         ↓
-Lovable AI Gateway (Gemini 2.5 Flash)
-         ↓
-Structured JSON: {
-  component: "AdminPage",
-  modifications: [{
-    type: "modify",
-    styles: "bg-blue-500"
-  }]
-}
-         ↓
-Database: admin_customizations table
-  status: 'applied'
-  applied_changes: {JSON above}
-         ↓
-Real-time Supabase Event
-         ↓
-useDynamicCustomizations refetches
-         ↓
-Admin.tsx reads: getDynamicStyles('AdminPage')
-         ↓
-className={`${dynamicStyles}`}
-         ↓
-Component re-renders with blue background
+User opens Smart Chat Builder
+  ↓
+System creates conversation
+  ↓
+User sets custom instructions (optional)
+  ↓
+User defines file structure (optional)
 ```
 
----
-
-## 🗄️ Database Schema
-
-### Table: admin_customizations
-
-```sql
-CREATE TABLE admin_customizations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL,
-  prompt TEXT NOT NULL,
-  customization_type TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
-  applied_changes JSONB NOT NULL,
-  code_changes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  applied_at TIMESTAMPTZ
-);
-
--- Enable realtime
-ALTER PUBLICATION supabase_realtime 
-ADD TABLE admin_customizations;
+### 2. Code Generation
+```
+User submits request
+  ↓
+AI loads project memory
+  ↓
+Analyzes current context
+  ↓
+Generates code (single or multi-file)
+  ↓
+Updates project memory
+  ↓
+Auto-creates version
 ```
 
-**Fields:**
-- `prompt`: Original user request
-- `customization_type`: style | feature | content | layout | visibility
-- `status`: 'applied' (auto-applied in this system)
-- `applied_changes`: Structured JSON with modifications
-- `code_changes`: Full AI response for debugging
+### 3. Error Occurs (Self-Healing)
+```
+Error detected
+  ↓
+Reported to backend
+  ↓
+Auto-fix engine analyzes
+  ↓
+Generates fix with confidence score
+  ↓
+If confidence ≥ 80%: Apply → Verify → Done
+If confidence < 80%: Notify admin → Manual review
+```
 
----
-
-### Table: admin_chat_messages
-
-```sql
-CREATE TABLE admin_chat_messages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL,
-  role TEXT NOT NULL,  -- 'user' | 'assistant'
-  content TEXT NOT NULL,
-  customization_id UUID REFERENCES admin_customizations(id),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+### 4. Version Management
+```
+User creates snapshot
+  ↓
+System captures screenshot
+  ↓
+Saves with metadata
+  ↓
+User continues working
+  ↓
+If needed: One-click restore
 ```
 
 ---
 
-## 🎯 Modification Types
+## 📊 Monitoring & Analytics
 
-### 1. Style Modifications
-```json
-{
-  "type": "modify",
-  "component": "AdminPage",
-  "styles": "bg-gradient-to-br from-blue-50 to-blue-200"
-}
-```
-**Implementation:**
-```tsx
-const styles = getDynamicStyles('AdminPage');
-<div className={`base-classes ${styles}`}>
-```
+### Health Metrics Dashboard
 
----
+**Real-time Tracking:**
+- Error rate (last hour)
+- Active errors count
+- Fixes applied today
+- Fix success rate
+- System health score
 
-### 2. Content Injection
-```json
-{
-  "type": "add",
-  "component": "stats-extra",
-  "content": "<Card>...</Card>"
-}
-```
-**Implementation:**
-```tsx
-<DynamicSlot name="stats-extra" />
-```
+**Components:**
+- `SelfHealingMonitor` - View errors and fixes
+- `useProactiveMonitoring` - Background health checks
+- Alert system for degraded health
 
 ---
 
-### 3. Visibility Control
-```json
-{
-  "type": "hide",
-  "component": "NotificationCenter"
-}
-```
-**Implementation:**
-```tsx
-{isVisible('NotificationCenter') && <NotificationCenter />}
-```
+## 🎓 User Guide
+
+### Quick Start
+
+**1. Set Up Your Project**
+- Click Settings icon (⚙️)
+- Define project structure
+- Set coding standards
+- Add specific requirements
+
+**2. Generate Code**
+- Single component: "Create a user profile card"
+- Multi-file feature: "Build complete auth system with login, signup, hooks, and types"
+
+**3. Let It Heal**
+- Errors are automatically detected
+- System generates and applies fixes
+- View progress in Self-Healing Monitor
+
+**4. Save Important States**
+- Click Snapshot icon (💾)
+- Create named snapshots before major changes
+- Restore anytime with one click
 
 ---
 
-### 4. Props Modification
-```json
-{
-  "type": "modify",
-  "component": "Button",
-  "props": { "variant": "destructive", "size": "lg" }
-}
-```
-**Implementation:**
-```tsx
-const props = getDynamicProps('Button');
-<Button {...props} />
-```
+## 🔒 Security & Safety
+
+### Built-in Protections
+
+- **RLS Policies**: All tables protected by Row-Level Security
+- **Max Fix Attempts**: Limit of 3 attempts per error
+- **Confidence Threshold**: Only high-confidence fixes auto-apply
+- **Verification Gates**: 5-stage verification process
+- **Automatic Rollback**: Failed fixes revert automatically
+- **Duplicate Prevention**: Similar errors grouped
 
 ---
 
-### 5. Reordering
-```json
-{
-  "type": "modify",
-  "component": "stat-card-users",
-  "order": 3
-}
-```
-**Implementation:**
-```tsx
-const order = getOrder('stat-card-users');
-<div style={{ order }}>
-```
+## 🚀 Performance Optimizations
+
+### Efficiency Features
+
+- **Token Management**: Conversation history summarization
+- **Caching**: Project memory and error patterns cached
+- **Background Processing**: Async operations don't block UI
+- **Batch Operations**: Multiple fixes can run in parallel
+- **Smart Loading**: Only load necessary context
 
 ---
 
-## 🔒 Security
+## 📈 Future Enhancements
 
-### Input Validation
-- Admin role verification in edge function
-- RLS policies on database tables
-- SQL injection prevention via parameterized queries
+### Planned Features
 
-### Output Sanitization
-- HTML content sanitized before rendering
-- Only registered components allowed
-- No JavaScript execution in injected content
-
-### Scope Limitations
-- Cannot modify authentication logic
-- Cannot access other users' data
-- Cannot change database schema
-- Cannot import new dependencies
-
-### Rate Limiting
-- Lovable AI Gateway handles rate limits
-- 429 and 402 errors properly surfaced
-- User-friendly error messages
+1. **ML-Based Confidence Scoring**: Train on historical success rates
+2. **Multi-Stage Verification**: Progressive rollout of fixes
+3. **Predictive Error Prevention**: Catch issues before they occur
+4. **Collaborative Memory**: Share patterns across projects
+5. **Visual Diff Viewer**: Preview changes before applying
+6. **Batch Operations**: Apply multiple fixes simultaneously
+7. **Custom Verification Rules**: User-defined safety checks
+8. **CI/CD Integration**: Automated testing and deployment
 
 ---
 
-## 🚀 Performance
+## 💡 Best Practices
 
-### Optimization Strategies
+### For Optimal Results
 
-**1. Lazy Loading**
-- Customizations loaded only on admin page
-- Not affecting public pages
+**Project Setup:**
+- Define clear custom instructions
+- Specify file structure requirements
+- Document coding standards
+- Set naming conventions
 
-**2. Real-time Subscriptions**
-- Single subscription channel
-- Efficient postgres_changes filtering
+**During Development:**
+- Be specific in requests
+- Use multi-file generation for features
+- Review auto-fixes regularly
+- Create snapshots before experiments
 
-**3. Memoization**
-```typescript
-const getDynamicStyles = useMemo(
-  () => (component: string) => {...},
-  [customizations]
-);
-```
-
-**4. Batched Updates**
-- Multiple modifications in single transaction
-- Reduced database roundtrips
+**Maintenance:**
+- Monitor system health
+- Review error patterns
+- Update custom instructions
+- Keep knowledge base current
 
 ---
 
-## 🧪 Testing Strategy
+## 📚 Technical Documentation
 
-### Unit Tests
-- Hook behavior (getDynamicStyles, etc.)
-- Component rendering (DynamicSlot)
-- Registry lookups
-
-### Integration Tests
-- End-to-end modification flow
-- Real-time subscription updates
-- Edge function responses
-
-### Safety Tests
-- Malicious input rejection
-- Auth bypass attempts
-- XSS prevention
+### Related Documents
+- [Enhanced Memory System](./ENHANCED_MEMORY_SYSTEM.md)
+- [Self-Healing System](./SELF_HEALING_SYSTEM.md)
+- [Self-Modification Guide](./SELF_MODIFICATION_GUIDE.md)
+- [Enhanced Self-Healing](./ENHANCED_SELF_HEALING.md)
 
 ---
 
-## 🔮 Future Enhancements
-
-### Phase 2: Advanced Features
-- **Preview Mode**: Test changes before applying
-- **Rollback UI**: One-click revert
-- **Version Control**: Track modification history
-- **Collaboration**: Multiple admins editing simultaneously
-
-### Phase 3: True Code Generation
-- **GitHub Integration**: Create PRs automatically
-- **File Modifications**: Update actual source files
-- **Component Generation**: Create new React components
-- **Testing Integration**: Auto-run tests before applying
-
-### Phase 4: AI Improvements
-- **Learning**: Remember user preferences
-- **Suggestions**: Proactive improvement recommendations
-- **Context Awareness**: Understand app state and user behavior
-- **Natural Conversations**: Multi-turn dialogs for complex changes
-
----
-
-## 📚 Related Documentation
-
-- **User Guide**: `SELF_MODIFICATION_GUIDE.md`
-- **Component Registry**: `src/lib/componentRegistry.tsx`
-- **API Reference**: Edge function inline docs
-- **Database Schema**: Supabase migrations
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Changes not applying:**
-- Check realtime subscription active
-- Verify status='applied' in database
-- Check browser console for errors
-
-**AI misunderstanding requests:**
-- Improve system prompt with more examples
-- Add context about current state
-- Provide clearer component documentation
-
-**Performance degradation:**
-- Audit number of active customizations
-- Optimize getDynamicStyles algorithm
-- Consider caching strategies
-
----
-
-**Last Updated:** January 2025  
-**Version:** 1.0.0  
-**Status:** Production Ready ✅
+**System Version**: 2.0  
+**Last Updated**: 2025-10-02  
+**Status**: ✅ Fully Operational  
+**Features**: Self-Healing | Multi-File | Version Control | Smart Memory

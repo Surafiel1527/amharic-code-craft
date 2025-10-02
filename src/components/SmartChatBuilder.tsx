@@ -8,6 +8,13 @@ import { Loader2, Send, Code, AlertTriangle, CheckCircle2, Lightbulb, Settings }
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProjectInstructionsPanel } from "./ProjectInstructionsPanel";
+import { SelfHealingMonitor } from "./SelfHealingMonitor";
+import { SnapshotManager } from "./SnapshotManager";
+import { AICapabilitiesGuide } from "./AICapabilitiesGuide";
+import { AlertCircle, Activity, Save } from "lucide-react";
+import { Alert, AlertDescription } from "./ui/alert";
+import { useErrorMonitor } from "@/hooks/useErrorMonitor";
+import { useProactiveMonitoring } from "@/hooks/useProactiveMonitoring";
 import {
   Sheet,
   SheetContent,
@@ -31,6 +38,10 @@ interface SmartChatBuilderProps {
 }
 
 export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuilderProps) => {
+  // Error monitoring
+  useErrorMonitor();
+  const { healthStatus, issuesCount, isHealthy } = useProactiveMonitoring(60);
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -39,6 +50,8 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
   const [customInstructions, setCustomInstructions] = useState("");
   const [fileStructure, setFileStructure] = useState("");
   const [showInstructions, setShowInstructions] = useState(false);
+  const [monitorOpen, setMonitorOpen] = useState(false);
+  const [snapshotOpen, setSnapshotOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Create conversation on mount
@@ -195,38 +208,80 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
               Smart Code Builder
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Tell me what to build or modify - I'll create complete, working code!
+              AI with self-healing, multi-file generation & version control
             </p>
           </div>
-          <Sheet open={showInstructions} onOpenChange={setShowInstructions}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4 mr-2" />
-                Instructions
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle>Project Instructions</SheetTitle>
-                <SheetDescription>
-                  Define custom guidelines and file structure for your project
-                </SheetDescription>
-              </SheetHeader>
-              <div className="mt-6">
-                <ProjectInstructionsPanel
-                  conversationId={conversationId || ''}
-                  onSave={(instructions, structure) => {
-                    setCustomInstructions(instructions);
-                    setFileStructure(structure);
-                    setShowInstructions(false);
-                  }}
-                  initialInstructions={customInstructions}
-                  initialFileStructure={fileStructure}
-                />
-              </div>
-            </SheetContent>
-          </Sheet>
+          <div className="flex gap-2">
+            <Sheet open={snapshotOpen} onOpenChange={setSnapshotOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" title="Version Control">
+                  <Save className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="overflow-y-auto">
+                <SnapshotManager />
+              </SheetContent>
+            </Sheet>
+            
+            <Sheet open={monitorOpen} onOpenChange={setMonitorOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" title="Self-Healing Monitor">
+                  <Activity className="h-4 w-4" />
+                  {!isHealthy && (
+                    <span className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full" />
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="overflow-y-auto">
+                <SelfHealingMonitor />
+              </SheetContent>
+            </Sheet>
+            
+            <Sheet open={showInstructions} onOpenChange={setShowInstructions}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" title="Project Settings">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Project Instructions</SheetTitle>
+                  <SheetDescription>
+                    Define custom guidelines and file structure for your project
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="mt-6">
+                  <ProjectInstructionsPanel
+                    conversationId={conversationId || ''}
+                    onSave={(instructions, structure) => {
+                      setCustomInstructions(instructions);
+                      setFileStructure(structure);
+                      setShowInstructions(false);
+                    }}
+                    initialInstructions={customInstructions}
+                    initialFileStructure={fileStructure}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
+
+        {!isHealthy && (
+          <Alert variant="destructive" className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              System health: {healthStatus} - {issuesCount} issue(s) detected. 
+              <Button 
+                variant="link" 
+                className="h-auto p-0 ml-2"
+                onClick={() => setMonitorOpen(true)}
+              >
+                View details
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
       </CardHeader>
       
       <CardContent className="flex-1 flex flex-col gap-4 p-4">
@@ -235,16 +290,19 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
             {messages.length === 0 && (
               <Alert>
                 <Lightbulb className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Build anything - even large projects like Facebook clones!</strong>
+                <AlertDescription className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <strong>🚀 Advanced AI Builder - Build Anything!</strong>
+                    <AICapabilitiesGuide />
+                  </div>
                   <ul className="mt-2 space-y-1 text-sm">
                     <li>✨ <strong>Create:</strong> "Build a social media platform with posts, likes, and comments"</li>
-                    <li>🔧 <strong>Modify:</strong> "Add user authentication and profiles"</li>
-                    <li>🔨 <strong>Fix:</strong> "The comment system isn't working properly"</li>
-                    <li>🚀 <strong>Improve:</strong> "Make it faster and add animations"</li>
+                    <li>🗂️ <strong>Multi-File:</strong> "Generate auth system with login, signup, hooks, and types"</li>
+                    <li>🔧 <strong>Modify:</strong> "Add user profiles and follow system"</li>
+                    <li>🔨 <strong>Auto-Fix:</strong> Errors are detected and fixed automatically</li>
                   </ul>
                   <div className="mt-3 p-2 bg-primary/5 rounded text-xs">
-                    <strong>💡 Smart Memory:</strong> I remember your entire project, even with 40+ functions!
+                    <strong>🧠 Smart Memory:</strong> Handles 40+ functions | 🛡️ Self-Healing | 📦 Version Control
                   </div>
                 </AlertDescription>
               </Alert>

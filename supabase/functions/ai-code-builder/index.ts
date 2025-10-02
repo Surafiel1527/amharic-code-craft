@@ -135,7 +135,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, message, history, currentCode, projectContext, error, conversationId, customInstructions, fileStructure } = await req.json();
+    const { action, message, history, currentCode, projectContext, error, conversationId, customInstructions, fileStructure, multiFile = false, targetFiles = [] } = await req.json();
     
     console.log('🤖 AI Code Builder request:', { 
       action, 
@@ -174,6 +174,22 @@ CRITICAL RULES:
 - Explain your changes clearly
 - Use modern best practices
 - Make code modular and maintainable
+
+${multiFile ? `
+🔥 MULTI-FILE GENERATION MODE ACTIVE:
+You can generate multiple files in a single response. Format each file like this:
+
+<file path="src/components/Component.tsx">
+// File content here
+</file>
+
+<file path="src/hooks/useHook.ts">
+// Another file here
+</file>
+
+Generate complete, well-organized code across multiple files when needed.
+${targetFiles.length ? `Requested files: ${targetFiles.join(', ')}` : ''}
+` : ''}
 
 CURRENT CONTEXT:
 Action: ${action}
