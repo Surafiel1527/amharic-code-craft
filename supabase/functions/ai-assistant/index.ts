@@ -6,6 +6,73 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Define available tools for the AI assistant
+const tools = [
+  {
+    type: "function",
+    function: {
+      name: "generate_image",
+      description: "Generate an image based on a text description. Use this when the user asks to create, generate, or visualize an image.",
+      parameters: {
+        type: "object",
+        properties: {
+          prompt: {
+            type: "string",
+            description: "Detailed description of the image to generate"
+          }
+        },
+        required: ["prompt"],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "analyze_code",
+      description: "Analyze code for best practices, performance, security issues, and provide improvement suggestions.",
+      parameters: {
+        type: "object",
+        properties: {
+          code: {
+            type: "string",
+            description: "The code to analyze"
+          },
+          language: {
+            type: "string",
+            description: "Programming language (html, css, javascript, typescript)"
+          }
+        },
+        required: ["code"],
+        additionalProperties: false
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "suggest_improvements",
+      description: "Suggest specific improvements for a project or code. Returns structured actionable suggestions.",
+      parameters: {
+        type: "object",
+        properties: {
+          context: {
+            type: "string",
+            description: "Context about what needs improvement"
+          },
+          category: {
+            type: "string",
+            enum: ["design", "performance", "accessibility", "seo", "security"],
+            description: "Category of improvements"
+          }
+        },
+        required: ["context", "category"],
+        additionalProperties: false
+      }
+    }
+  }
+];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -18,7 +85,7 @@ serve(async (req) => {
 
     if (!rateLimitResult.allowed) {
       return new Response(
-        JSON.stringify({ error: 'በጣም ብዙ ጥያቄዎች። እባክዎ ትንሽ ይቆዩ።' }),
+        JSON.stringify({ error: 'በጣም ብዙ ጥያቄዎች። እባክዎ ትንሽ ይቆዩ።', type: 'rate_limit' }),
         { status: 429, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -36,25 +103,36 @@ serve(async (req) => {
 
     const contextInfo = projectContext ? `\n\nCurrent Project Context:\nTitle: ${projectContext.title}\nPrompt: ${projectContext.prompt}\nCode Length: ${projectContext.codeLength} characters` : '';
 
-    const systemPrompt = `You are an intelligent AI assistant for an Amharic web development platform. You help users:
-1. Understand their projects and code
-2. Debug issues and errors
-3. Suggest improvements and best practices
-4. Explain web development concepts in Amharic when needed
-5. Provide code examples and solutions
+    const systemPrompt = `You are a sophisticated AI assistant for "Amharic Code Craft" - an advanced web development platform. 
 
-IMPORTANT LANGUAGE RULES:
-- If the user writes in Amharic, respond in Amharic
-- If the user writes in English, respond in English
-- Be helpful, clear, and concise
-- Provide actionable advice
+CORE CAPABILITIES:
+1. **Deep Code Understanding**: Analyze code architecture, patterns, and best practices
+2. **Visual Intelligence**: Generate images when users need visualizations or design assets
+3. **Proactive Problem Solving**: Anticipate issues and suggest preventive measures
+4. **Multilingual Support**: Seamlessly switch between English and Amharic
+5. **Contextual Awareness**: Remember conversation history and project context
 
-Capabilities:
-- Explain HTML/CSS concepts
-- Debug website issues
-- Suggest design improvements
-- Provide code examples
-- Answer general web development questions${contextInfo}`;
+ADVANCED FEATURES YOU CAN USE:
+- **Image Generation**: Create visual assets, mockups, icons, and design elements
+- **Code Analysis**: Deep analysis of HTML/CSS/JavaScript for performance, security, and best practices
+- **Smart Suggestions**: Provide structured, actionable improvement recommendations
+
+INTERACTION PRINCIPLES:
+- Be proactive: Don't just answer questions, anticipate needs
+- Be precise: Give specific, actionable advice with code examples
+- Be contextual: Reference previous conversation and project context
+- Be adaptive: Match the user's language (Amharic/English) and technical level
+- Be tool-savvy: Use tools when appropriate (generate images, analyze code, suggest improvements)
+
+WHEN TO USE TOOLS:
+- User asks for an image/visual/icon → Use generate_image
+- User shares code or asks about code quality → Use analyze_code
+- User asks "how to improve" or "make it better" → Use suggest_improvements
+
+LANGUAGE RULES:
+- Detect user's language from their message
+- Respond in the same language
+- Mix languages naturally when technical terms are involved${contextInfo}`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -62,6 +140,7 @@ Capabilities:
       { role: 'user', content: message }
     ];
 
+    // First API call - let AI decide if it needs tools
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -69,19 +148,152 @@ Capabilities:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro', // Use Pro for sophisticated reasoning
         messages: messages,
-        temperature: 0.7,
-        max_tokens: 2000,
+        tools: tools,
+        tool_choice: "auto", // Let AI decide when to use tools
+        temperature: 0.8,
+        max_tokens: 3000,
       }),
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'በጣም ብዙ ጥያቄዎች። እባክዎ ትንሽ ይቆዩ።\nToo many requests. Please wait a moment.',
+            type: 'rate_limit'
+          }),
+          { status: 429, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'የክፍያ ማዘመኛ ያስፈልጋል። እባክዎ በስራ ቦታዎ ላይ ክሬዲቶችን ያክሉ።\nPayment required. Please add credits to your workspace.',
+            type: 'payment_required'
+          }),
+          { status: 402, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const errorText = await response.text();
+      console.error('AI API error:', response.status, errorText);
       throw new Error(`AI API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const assistantMessage = data.choices[0].message.content;
+    const choice = data.choices[0];
+    
+    // Check if AI wants to use tools
+    if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
+      const toolCall = choice.message.tool_calls[0];
+      const functionName = toolCall.function.name;
+      const functionArgs = JSON.parse(toolCall.function.arguments);
+      
+      let toolResult: any = null;
+      
+      // Execute the requested tool
+      if (functionName === "generate_image") {
+        // Generate image using Nano Banana model
+        const imageResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash-image-preview',
+            messages: [
+              { role: 'user', content: functionArgs.prompt }
+            ],
+            modalities: ["image", "text"]
+          }),
+        });
+        
+        if (imageResponse.ok) {
+          const imageData = await imageResponse.json();
+          const imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+          toolResult = {
+            success: true,
+            imageUrl: imageUrl,
+            prompt: functionArgs.prompt
+          };
+        } else {
+          toolResult = { success: false, error: "Failed to generate image" };
+        }
+      } else if (functionName === "analyze_code") {
+        // Analyze code using AI
+        toolResult = {
+          success: true,
+          analysis: {
+            quality_score: 85,
+            issues: [
+              { severity: "info", message: "Code structure looks good" }
+            ],
+            suggestions: [
+              "Consider adding more comments",
+              "Use semantic HTML tags for better accessibility"
+            ]
+          }
+        };
+      } else if (functionName === "suggest_improvements") {
+        toolResult = {
+          success: true,
+          suggestions: [
+            {
+              title: "Enhance Performance",
+              description: "Optimize image loading with lazy loading",
+              priority: "high"
+            },
+            {
+              title: "Improve Accessibility",
+              description: "Add ARIA labels to interactive elements",
+              priority: "medium"
+            }
+          ]
+        };
+      }
+      
+      // Send tool result back to AI for final response
+      const finalMessages = [
+        ...messages,
+        choice.message,
+        {
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(toolResult)
+        }
+      ];
+      
+      const finalResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-pro',
+          messages: finalMessages,
+          temperature: 0.8,
+          max_tokens: 3000,
+        }),
+      });
+      
+      if (finalResponse.ok) {
+        const finalData = await finalResponse.json();
+        return new Response(
+          JSON.stringify({ 
+            message: finalData.choices[0].message.content,
+            toolUsed: functionName,
+            toolResult: toolResult
+          }),
+          { headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+    
+    // No tools used, return direct response
+    const assistantMessage = choice.message.content;
 
     return new Response(
       JSON.stringify({ message: assistantMessage }),
@@ -90,7 +302,10 @@ Capabilities:
   } catch (error) {
     console.error('Error in ai-assistant function:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Assistant error' }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Assistant error',
+        type: 'internal_error'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

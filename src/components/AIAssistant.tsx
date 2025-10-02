@@ -6,10 +6,20 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Send, Bot, User } from "lucide-react";
 import { toast } from "sonner";
+import { AICapabilitiesGuide } from "./AICapabilitiesGuide";
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  toolUsed?: string;
+  toolResult?: {
+    success: boolean;
+    imageUrl?: string;
+    prompt?: string;
+    analysis?: any;
+    suggestions?: any;
+    error?: string;
+  };
 }
 
 interface AIAssistantProps {
@@ -44,22 +54,44 @@ export const AIAssistant = ({ projectContext }: AIAssistantProps) => {
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
         body: {
           message: input,
-          history: messages,
+          history: messages.map(m => ({ role: m.role, content: m.content })), // Send clean history
           projectContext
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Handle specific error types
+        if (error.message?.includes('rate_limit') || error.message?.includes('429')) {
+          toast.error("በጣም ብዙ ጥያቄዎች። እባክዎ ትንሽ ይቆዩ።\nToo many requests. Please wait.");
+        } else if (error.message?.includes('payment_required') || error.message?.includes('402')) {
+          toast.error("የክፍያ ማዘመኛ ያስፈልጋል። Credits are needed.\nPlease add credits to your workspace.");
+        } else {
+          toast.error("መልእክት መላክ አልተቻለም\nFailed to send message");
+        }
+        throw error;
+      }
 
       const assistantMessage: Message = {
         role: 'assistant',
-        content: data.message
+        content: data.message,
+        toolUsed: data.toolUsed,
+        toolResult: data.toolResult
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Show toast for tool usage
+      if (data.toolUsed) {
+        if (data.toolUsed === 'generate_image') {
+          toast.success("✨ Image generated successfully!");
+        } else if (data.toolUsed === 'analyze_code') {
+          toast.success("🔍 Code analysis complete!");
+        } else if (data.toolUsed === 'suggest_improvements') {
+          toast.success("💡 Improvement suggestions ready!");
+        }
+      }
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error("መልእክት መላክ አልተቻለም");
       // Remove user message on error
       setMessages(prev => prev.slice(0, -1));
     } finally {
@@ -75,16 +107,19 @@ export const AIAssistant = ({ projectContext }: AIAssistantProps) => {
   };
 
   return (
-    <Card className="glass-effect border-primary/20 h-[600px] flex flex-col">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bot className="h-5 w-5" />
-          AI አስተዋይ ረዳት
-        </CardTitle>
-        <CardDescription>
-          ስለ ፕሮጀክትዎ ይጠይቁ፣ እገዛ ያግኙ፣ እና ምክሮችን ይቀበሉ
-        </CardDescription>
-      </CardHeader>
+    <div className="space-y-4">
+      <AICapabilitiesGuide />
+      
+      <Card className="glass-effect border-primary/20 h-[600px] flex flex-col">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            AI አስተዋይ ረዳት
+          </CardTitle>
+          <CardDescription>
+            ስለ ፕሮጀክትዎ ይጠይቁ፣ እገዛ ያግኙ፣ እና ምክሮችን ይቀበሉ
+          </CardDescription>
+        </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-4 p-4">
         <ScrollArea ref={scrollRef} className="flex-1 pr-4">
           <div className="space-y-4">
@@ -116,6 +151,40 @@ export const AIAssistant = ({ projectContext }: AIAssistantProps) => {
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  
+                  {/* Show generated image */}
+                  {message.toolResult?.imageUrl && (
+                    <div className="mt-3">
+                      <img 
+                        src={message.toolResult.imageUrl} 
+                        alt={message.toolResult.prompt || "Generated image"} 
+                        className="rounded-lg max-w-full h-auto shadow-lg"
+                      />
+                      <p className="text-xs text-muted-foreground mt-2">
+                        📸 Generated image
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Show code analysis results */}
+                  {message.toolResult?.analysis && (
+                    <div className="mt-3 p-2 bg-background/50 rounded border">
+                      <p className="text-xs font-semibold mb-1">🔍 Code Analysis:</p>
+                      <p className="text-xs">Quality Score: {message.toolResult.analysis.quality_score}/100</p>
+                    </div>
+                  )}
+                  
+                  {/* Show improvement suggestions */}
+                  {message.toolResult?.suggestions && Array.isArray(message.toolResult.suggestions) && (
+                    <div className="mt-3 space-y-2">
+                      {message.toolResult.suggestions.map((suggestion: any, idx: number) => (
+                        <div key={idx} className="p-2 bg-background/50 rounded border text-xs">
+                          <p className="font-semibold">💡 {suggestion.title}</p>
+                          <p className="text-muted-foreground">{suggestion.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {message.role === 'user' && (
@@ -162,5 +231,6 @@ export const AIAssistant = ({ projectContext }: AIAssistantProps) => {
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 };
