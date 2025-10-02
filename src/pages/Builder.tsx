@@ -2,6 +2,7 @@ import { SmartChatBuilder } from "@/components/SmartChatBuilder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowLeft, Sparkles, FlaskConical, RefreshCw, Package, FileText, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AICapabilitiesGuide } from "@/components/AICapabilitiesGuide";
@@ -37,33 +38,81 @@ export default function Builder() {
         </div>
 
         {/* Main Builder with Tabs */}
-        <Tabs defaultValue="builder" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="builder" className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              <span className="hidden sm:inline">Builder</span>
-            </TabsTrigger>
-            <TabsTrigger value="testing" className="flex items-center gap-2">
-              <FlaskConical className="h-4 w-4" />
-              <span className="hidden sm:inline">Tests</span>
-            </TabsTrigger>
-            <TabsTrigger value="refactor" className="flex items-center gap-2">
-              <RefreshCw className="h-4 w-4" />
-              <span className="hidden sm:inline">Refactor</span>
-            </TabsTrigger>
-            <TabsTrigger value="deps" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              <span className="hidden sm:inline">Deps</span>
-            </TabsTrigger>
-            <TabsTrigger value="docs" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Docs</span>
-            </TabsTrigger>
-            <TabsTrigger value="collab" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Collab</span>
-            </TabsTrigger>
-          </TabsList>
+        <TooltipProvider>
+          <Tabs defaultValue="builder" className="w-full">
+            <TabsList className="grid w-full grid-cols-6">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="builder" className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    <span className="hidden sm:inline">Builder</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>AI-powered code generation with multi-file support</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="testing" className="flex items-center gap-2">
+                    <FlaskConical className="h-4 w-4" />
+                    <span className="hidden sm:inline">Tests</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Automatically generate unit tests for your components</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="refactor" className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    <span className="hidden sm:inline">Refactor</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Get AI suggestions to improve code quality and structure</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="deps" className="flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    <span className="hidden sm:inline">Deps</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Audit dependencies for security and outdated packages</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="docs" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <span className="hidden sm:inline">Docs</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Generate comprehensive documentation for your code</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="collab" className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <span className="hidden sm:inline">Collab</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Real-time collaboration sessions with your team</p>
+                </TooltipContent>
+              </Tooltip>
+            </TabsList>
 
           <TabsContent value="builder" className="mt-6">
             <Card>
@@ -99,6 +148,7 @@ export default function Builder() {
             <CollaborationHub />
           </TabsContent>
         </Tabs>
+        </TooltipProvider>
 
         {/* Quick Tips */}
         <div className="grid md:grid-cols-3 gap-4">
