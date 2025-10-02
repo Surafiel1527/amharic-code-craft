@@ -13,6 +13,10 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 const translations = {
   en: {
+    // Meta
+    "meta.title": "Create Websites in Amharic - AI Website Builder",
+    "meta.description": "Build websites and applications in Amharic language. Easy and fast solution using AI technology.",
+    
     // Header
     "header.explore": "Explore",
     "header.admin": "Admin",
@@ -182,6 +186,10 @@ const translations = {
     "admin.roleAdmin": "Admin",
   },
   am: {
+    // Meta
+    "meta.title": "በአማርኛ ድህረ ገፆችን ይፍጠሩ - AI Website Builder",
+    "meta.description": "በአማርኛ ቋንቋ ድህረ ገፆችን እና መተግበሪያዎችን ይፍጠሩ። AI ቴክኖሎጂ የሚጠቀም ቀላል እና ፈጣን መፍትሄ።",
+    
     // Header
     "header.explore": "አስስ",
     "header.admin": "አስተዳዳሪ",
@@ -361,6 +369,30 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     localStorage.setItem("language", language);
     document.documentElement.setAttribute("lang", language);
+    
+    // Update document title and meta tags
+    const title = translations[language]["meta.title"];
+    const description = translations[language]["meta.description"];
+    
+    document.title = title;
+    
+    // Update meta description
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute("content", description);
+    }
+    
+    // Update Open Graph title
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) {
+      ogTitle.setAttribute("content", title);
+    }
+    
+    // Update Open Graph description
+    const ogDescription = document.querySelector('meta[property="og:description"]');
+    if (ogDescription) {
+      ogDescription.setAttribute("content", description);
+    }
   }, [language]);
 
   const setLanguage = (lang: Language) => {
