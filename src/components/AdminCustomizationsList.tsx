@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Clock, Code, Palette, Layout, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Code, Palette, Layout, FileText, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,18 @@ export default function AdminCustomizationsList() {
   const [customizations, setCustomizations] = useState<Customization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  
+  const getPageName = (path: string) => {
+    const pageNames: Record<string, string> = {
+      '/': 'Home',
+      '/auth': 'Login',
+      '/admin': 'Admin',
+      '/settings': 'Settings',
+      '/explore': 'Explore'
+    };
+    return pageNames[path] || path;
+  };
 
   useEffect(() => {
     loadCustomizations();
@@ -273,6 +286,11 @@ export default function AdminCustomizationsList() {
                           <Badge variant="secondary" className="text-xs">
                             {customization.customization_type}
                           </Badge>
+                          {customization.applied_changes?.page && (
+                            <Badge variant="outline" className="text-xs">
+                              📄 {getPageName(customization.applied_changes.page)}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                           {new Date(customization.created_at).toLocaleString()}
@@ -282,6 +300,17 @@ export default function AdminCustomizationsList() {
 
                     {customization.status === 'pending' && (
                       <div className="flex gap-2 flex-shrink-0">
+                        {customization.applied_changes?.page && customization.applied_changes.page !== '/admin' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => navigate(customization.applied_changes.page)}
+                            className="gap-1"
+                          >
+                            <Eye className="h-3 w-3" />
+                            View
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="default"

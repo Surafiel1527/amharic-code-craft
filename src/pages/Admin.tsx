@@ -11,7 +11,7 @@ import { DynamicContainer } from "@/components/DynamicContainer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain, Sparkles, LogOut, Menu, Edit3, Check, Info } from "lucide-react";
+import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain, Sparkles, LogOut, Menu, Edit3, Check, Info, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { AIAnalytics } from "@/components/AIAnalytics";
 import { NotificationCenter } from "@/components/NotificationCenter";
@@ -19,6 +19,7 @@ import { SelfHealingMonitor } from "@/components/SelfHealingMonitor";
 import AdminSelfModifyChat from "@/components/AdminSelfModifyChat";
 import AdminCustomizationsList from "@/components/AdminCustomizationsList";
 import { PreviewModeToggle } from "@/components/PreviewModeToggle";
+import { PreviewBanner } from "@/components/PreviewBanner";
 import { ModificationHistory } from "@/components/ModificationHistory";
 import { SnapshotManager } from "@/components/SnapshotManager";
 import { ThemeGallery } from "@/components/ThemeGallery";
@@ -232,26 +233,23 @@ function AdminContent() {
           </Alert>
         )}
 
-        {/* Preview Mode Alert */}
-        {previewMode && (
+        {/* Preview Mode Banner */}
+        {previewMode && !previewSnapshotId && (
+          <PreviewBanner 
+            pendingCount={pendingCount}
+            affectedPages={[...new Set(customizations.filter(c => c.status === 'pending').map((c: any) => c.applied_changes?.page).filter(Boolean))]}
+          />
+        )}
+
+        {/* Snapshot Preview Alert */}
+        {previewMode && previewSnapshotId && (
           <Alert className="border-primary bg-primary/5">
             <Info className="h-4 w-4" />
-            <AlertDescription className="flex items-center justify-between">
-              {previewSnapshotId ? (
-                <span className="text-sm">
-                  🔍 <strong>Previewing Snapshot:</strong> "{previewSnapshotName}". 
-                  {' '}Toggle off Preview Mode to return to your live settings.
-                </span>
-              ) : pendingCount > 0 ? (
-                <span className="text-sm">
-                  🔍 <strong>Preview Mode:</strong> Showing {pendingCount} pending change{pendingCount !== 1 ? 's' : ''}. 
-                  {' '}Go to the Self-Modify tab to approve or reject.
-                </span>
-              ) : (
-                <span className="text-sm">
-                  🔍 <strong>Preview Mode:</strong> No pending changes to preview.
-                </span>
-              )}
+            <AlertDescription>
+              <span className="text-sm">
+                🔍 <strong>Previewing Snapshot:</strong> "{previewSnapshotName}". 
+                {' '}Toggle off Preview Mode to return to your live settings.
+              </span>
             </AlertDescription>
           </Alert>
         )}
@@ -302,6 +300,7 @@ function AdminContent() {
               isPreviewMode={previewMode}
               onToggle={handlePreviewToggle}
               pendingCount={pendingCount}
+              affectedPages={[...new Set(customizations.filter(c => c.status === 'pending').map((c: any) => c.applied_changes?.page).filter(Boolean))]}
             />
             <DynamicSlot name="header-actions">
               {isVisible('NotificationCenter') && <NotificationCenter />}
@@ -345,6 +344,7 @@ function AdminContent() {
                   isPreviewMode={previewMode}
                   onToggle={handlePreviewToggle}
                   pendingCount={pendingCount}
+                  affectedPages={[...new Set(customizations.filter(c => c.status === 'pending').map((c: any) => c.applied_changes?.page).filter(Boolean))]}
                 />
                 <DynamicSlot name="mobile-menu">
                   {isVisible('NotificationCenter') && <NotificationCenter />}
