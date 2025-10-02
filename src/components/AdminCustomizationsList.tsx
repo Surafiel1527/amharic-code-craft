@@ -308,7 +308,7 @@ export default function AdminCustomizationsList() {
                     </div>
 
                     {customization.status === 'pending' && (
-                      <div className="flex gap-2 flex-shrink-0">
+                      <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2 flex-shrink-0">
                         {customization.applied_changes?.page && customization.applied_changes.page !== '/admin' && (
                           <Button
                             size="sm"
@@ -320,29 +320,29 @@ export default function AdminCustomizationsList() {
                               });
                               setPreviewOpen(true);
                             }}
-                            className="gap-1"
+                            className="gap-1 h-8 px-2 sm:px-3"
                           >
-                            <Eye className="h-3 w-3" />
-                            View
+                            <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            <span className="text-xs sm:text-sm">View</span>
                           </Button>
                         )}
                         <Button
                           size="sm"
                           variant="default"
                           onClick={() => approveCustomization(customization.id)}
-                          className="gap-1"
+                          className="gap-1 h-8 px-2 sm:px-3"
                         >
-                          <CheckCircle className="h-3 w-3" />
-                          Approve
+                          <CheckCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                          <span className="text-xs sm:text-sm">Approve</span>
                         </Button>
                         <Button
                           size="sm"
                           variant="destructive"
                           onClick={() => rejectCustomization(customization.id)}
-                          className="gap-1"
+                          className="gap-1 h-8 px-2 sm:px-3"
                         >
-                          <XCircle className="h-3 w-3" />
-                          Reject
+                          <XCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                          <span className="text-xs sm:text-sm">Reject</span>
                         </Button>
                       </div>
                     )}
