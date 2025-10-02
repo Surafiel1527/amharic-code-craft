@@ -1,342 +1,352 @@
-# Self-Modifying Admin System - User Guide
+# 🎯 Self-Modification System: Project Instructions Guide
 
-## 🎯 Overview
+## Overview
 
-Your admin dashboard now has **autonomous self-modification capabilities**. You can request changes in natural language, and the AI will automatically apply them in real-time—no code editing required!
+The AI Code Builder now supports **custom project instructions** and **file structure guidelines** that it will strictly follow when generating code. This enables precise control over how projects are built and maintained.
 
----
+## 🎨 Key Features
 
-## ✨ What You Can Do
+### 1. Custom Project Instructions
+Define specific requirements the AI must follow:
+- Number of classes/functions to use
+- Coding standards and patterns
+- Architecture requirements (MVC, MVVM, etc.)
+- Naming conventions
+- Documentation requirements
+- Error handling approaches
+- Testing requirements
 
-### 1. **Style Changes**
-Change colors, backgrounds, fonts, spacing, and any visual styling:
+### 2. File Structure Requirements
+Specify exact project organization:
+- Folder hierarchy
+- File naming conventions
+- Component organization
+- Module structure
+- Where specific files should be placed
 
-**Examples:**
-- "Change the background to purple"
-- "Make the stats cards bigger"
-- "Add a gradient from red to orange"
-- "Change the header text color to blue"
+### 3. Persistent Memory
+- Instructions are saved per conversation
+- Applied to all subsequent code generations
+- Maintained across modifications and bug fixes
+- Can be updated at any time
 
-### 2. **Content Injection**
-Add new elements to designated slots:
+## 📝 How to Use
 
-**Examples:**
-- "Add a revenue card showing $15,000"
-- "Show a welcome message at the top"
-- "Add a quick actions button in the header"
+### Setting Project Instructions
 
-### 3. **Visibility Control**
-Show or hide existing components:
+1. **Open Instructions Panel**
+   - Click "Instructions" button in Smart Chat Builder
+   - Or use the example prompts to auto-set instructions
 
-**Examples:**
-- "Hide the notification bell"
-- "Show the notification center again"
-- "Remove the conversation stats"
-
-### 4. **Layout Changes**
-Reorder elements or change their positioning:
-
-**Examples:**
-- "Move the users stat to the end"
-- "Reorder the tabs"
-- "Make the stats appear in 2 columns instead of 3"
-
----
-
-## 🎨 Available Customization Slots
-
-These are designated areas where AI can inject new content:
-
-| Slot Name | Location | Use Case |
-|-----------|----------|----------|
-| `header-actions` | Top right header | Add buttons, badges, alerts |
-| `stats-extra` | Below main stats | Add custom stat cards |
-| `mobile-menu` | Mobile sidebar | Add mobile-specific items |
-| `tab-content` | Custom tabs | Add new tab sections |
-
----
-
-## 🧩 Available Components
-
-The AI can use these pre-built components in its modifications:
-
-### Layout
-- **Card, CardHeader, CardTitle, CardDescription, CardContent** - Content containers
-- **Table, TableHeader, TableBody, TableRow, TableHead, TableCell** - Data tables
-
-### UI Elements
-- **Button** - Interactive buttons
-  - Variants: `default`, `destructive`, `outline`, `secondary`, `ghost`, `link`
-  - Sizes: `default`, `sm`, `lg`, `icon`
-- **Badge** - Status indicators
-  - Variants: `default`, `secondary`, `destructive`, `outline`
-
-### Feedback
-- **Alert, AlertTitle, AlertDescription** - Alert messages
-
-### Icons
-- BarChart3, Users, FileText, MessageSquare, TrendingUp, Activity
-- Bell, Settings, Info, AlertCircle, CheckCircle
-
----
-
-## 💬 How to Use the Self-Modify Chat
-
-1. **Open Admin Dashboard**
-   - Navigate to `/admin` (admin role required)
-
-2. **Go to Self-Modify Tab**
-   - Click the "Self-Modify" tab in the admin interface
-
-3. **Type Your Request**
-   - Use natural language: "Change the background to blue"
-   - Be specific: "Add a revenue stat card showing $25,000"
-   - Ask for complex changes: "Hide notifications and add a settings button"
-
-4. **Preview Changes Before Applying**
-   - Changes are created in "pending" status
-   - Click the "View" button next to any pending change
-   - See a live preview of how it will look on the affected page
-   - Preview opens in a modal - no need to leave the admin page!
-
-5. **Approve or Reject**
-   - Click "Approve" to apply the change permanently
-   - Click "Reject" to discard the change
-   - Approved changes appear immediately site-wide
-
----
-
-## 📖 Example Conversations
-
-### Example 1: Simple Style Change
-**You:** "Make the background red"
-
-**AI:** ✅ Applied! Background changed to red gradient.
-
-**Result:** Admin page background is now red
-
----
-
-### Example 2: Add New Content
-**You:** "Add a stat card showing total revenue of $50,000"
-
-**AI:** ✅ Applied! Added revenue stat card.
-
-**Result:** New card appears in the stats-extra slot
-
----
-
-### Example 3: Hide Element
-**You:** "Hide the notification bell"
-
-**AI:** ✅ Applied! Notification center hidden.
-
-**Result:** Bell icon no longer visible in header
-
----
-
-### Example 4: Complex Multi-Change
-**You:** "Change background to purple, add a quick actions button in the header, and show an alert saying 'System Updated'"
-
-**AI:** ✅ Applied! Made 3 modifications:
-1. Purple gradient background
-2. Quick actions button added
-3. Alert displayed
-
-**Result:** All three changes applied simultaneously
-
----
-
-## 🛡️ Safety Features
-
-### Validation
-- All changes validated before applying
-- Malicious code blocked
-- Only safe style/content modifications allowed
-
-### Rollback
-- All changes tracked in database
-- Can view customization history
-- Easy to undo if needed
-
-### Scope Limits
-- Cannot modify authentication logic
-- Cannot access other users' data
-- Cannot change security settings
-- Cannot modify database structure
-
----
-
-## 🔍 Behind the Scenes
-
-### How It Works
-
-1. **You type a request** → "Change background to blue"
-
-2. **AI analyzes the request** 
-   - Understands intent
-   - Generates structured modification
-   - Validates safety
-
-3. **Stored in database**
-   ```json
-   {
-     "component": "AdminPage",
-     "modifications": [{
-       "type": "modify",
-       "styles": "bg-blue-500"
-     }]
-   }
+2. **Define Guidelines**
+   ```
+   Example:
+   - Use exactly 15 classes
+   - Follow MVC architecture pattern
+   - Include error handling in all functions
+   - Use TypeScript strict mode
+   - Add JSDoc comments for all functions
+   - Implement responsive design
    ```
 
-4. **Applied dynamically**
-   - `useDynamicCustomizations` hook fetches changes
-   - React components apply modifications at runtime
-   - Real-time updates via Supabase subscriptions
+3. **Define File Structure**
+   ```
+   Example:
+   /src
+     /components
+       - Header.tsx
+       - Footer.tsx
+       - GameBoard.tsx
+     /models
+       - User.ts
+       - Game.ts
+     /controllers
+       - GameController.ts
+     /views
+       - MainView.tsx
+     /utils
+       - helpers.ts
+   ```
 
-5. **Persists across sessions**
-   - Stored in `admin_customizations` table
-   - Auto-loads on page refresh
-   - Syncs across all devices
+4. **Save and Build**
+   - Click "Save Project Instructions"
+   - AI will now follow these guidelines for all generations
 
----
+### Example Workflows
 
-## 🎯 Best Practices
+#### Building a Complex App with Structure
 
-### ✅ Do's
-- Be specific in your requests
-- Test changes with simple requests first
-- Use component names from the registry
-- Describe desired outcome, not implementation
-- Ask for one thing at a time for clarity
-
-### ❌ Don'ts
-- Don't request security-related changes
-- Don't try to modify user data
-- Don't request database schema changes
-- Don't ask for features requiring new dependencies
-- Don't use technical code in requests (AI handles that)
-
----
-
-## 🚀 Advanced Features
-
-### Conditional Visibility
 ```
-"Hide notifications when user count is over 100"
+1. Set Instructions:
+   "Create a Facebook clone using:
+   - 20+ classes minimum
+   - MVC architecture
+   - Include: Post.ts, Comment.ts, User.ts, Like.ts models
+   - ErrorBoundary.tsx in /components
+   - API service layer in /services
+   - Type definitions in /types
+   - Utility functions in /utils"
+
+2. Set File Structure:
+   /src
+     /components
+       - ErrorBoundary.tsx
+       - PostCard.tsx
+       - CommentSection.tsx
+     /models
+       - Post.ts
+       - Comment.ts
+       - User.ts
+     /services
+       - api.ts
+     /types
+       - index.ts
+
+3. Then prompt:
+   "Create a Facebook clone with posts, comments, likes, and user profiles"
 ```
-*Note: Complex conditionals may require custom logic*
 
-### Dynamic Props
+#### Modifying While Maintaining Structure
+
 ```
-"Make the button red when clicked"
+The AI will automatically:
+✅ Keep the 20+ classes requirement
+✅ Add new files in correct folders
+✅ Maintain MVC pattern
+✅ Include error handling
+✅ Follow the file structure
 ```
-*Interactive behaviors coming soon*
 
-### Component Registry Extensions
-Want more components? They can be added to the registry in `src/lib/componentRegistry.tsx`
+## 🚀 Advanced Use Cases
+
+### 1. Large Project Generation
+```
+Instructions:
+- Use 40+ classes
+- Implement SOLID principles
+- Include unit tests for each class
+- Add integration tests
+- Use factory pattern for object creation
+- Implement repository pattern for data access
+
+Structure:
+/src
+  /domain
+    /entities
+    /repositories
+  /application
+    /usecases
+    /services
+  /infrastructure
+    /api
+    /database
+  /presentation
+    /components
+    /pages
+  /tests
+    /unit
+    /integration
+```
+
+### 2. Micro-Frontend Architecture
+```
+Instructions:
+- Create independent micro-frontends
+- Shared component library
+- Event-driven communication
+- Independent routing
+- 25+ components total
+
+Structure:
+/apps
+  /dashboard
+  /auth
+  /profile
+/shared
+  /components
+  /utils
+  /types
+/config
+```
+
+### 3. Game Development
+```
+Instructions:
+- Use Entity-Component-System pattern
+- 30+ game classes
+- Include: Physics, Collision, Rendering systems
+- State management with reducers
+- Save/Load functionality
+
+Structure:
+/src
+  /entities
+  /components
+  /systems
+  /managers
+  /utils
+  /types
+```
+
+## 💡 Best Practices
+
+### Writing Effective Instructions
+
+1. **Be Specific**
+   ❌ "Make it good"
+   ✅ "Use 15 classes, include error handling, follow MVC"
+
+2. **Include Examples**
+   ✅ "Models should include: User.ts, Product.ts, Order.ts"
+
+3. **Specify Patterns**
+   ✅ "Use Factory pattern for object creation"
+   ✅ "Implement Observer pattern for event handling"
+
+4. **Define Constraints**
+   ✅ "Minimum 20 classes"
+   ✅ "All functions must have JSDoc comments"
+   ✅ "Include TypeScript interfaces for all data structures"
+
+### Organizing File Structure
+
+1. **Be Hierarchical**
+   ```
+   /src
+     /features
+       /auth
+         /components
+         /hooks
+         /services
+       /posts
+         /components
+         /hooks
+         /services
+   ```
+
+2. **Name Specific Files**
+   ```
+   /components
+     - ErrorBoundary.tsx (must exist)
+     - LoadingSpinner.tsx (must exist)
+   ```
+
+3. **Group by Feature**
+   ```
+   /features
+     /feature-name
+       - index.ts
+       - types.ts
+       - hooks.ts
+       - components.tsx
+   ```
+
+## 🔄 Dynamic Updates
+
+You can update instructions mid-conversation:
+
+```
+1. Initial: "Create a calculator with 10 classes"
+2. Build happens
+3. Update: "Now use 20 classes and add scientific functions"
+4. Modify happens with new requirements
+```
+
+## 🎓 Learning Examples
+
+### Beginner: Todo App
+```
+Instructions:
+- Use 8 classes
+- Include TodoItem, TodoList, TodoManager
+- Add localStorage persistence
+
+Structure:
+/src
+  /components
+    - TodoItem.tsx
+    - TodoList.tsx
+  /managers
+    - TodoManager.ts
+  /utils
+    - storage.ts
+```
+
+### Intermediate: E-commerce
+```
+Instructions:
+- Use 25+ classes
+- MVC architecture
+- Include: Product, Cart, Order, User models
+- Payment integration service
+- Authentication system
+
+Structure:
+/src
+  /models
+  /views
+  /controllers
+  /services
+    - payment.ts
+    - auth.ts
+  /components
+  /utils
+```
+
+### Advanced: Social Network
+```
+Instructions:
+- Use 50+ classes
+- Microservices architecture
+- Real-time messaging with WebSocket
+- Feed algorithm service
+- Notification system
+- Analytics tracking
+- Include: User, Post, Comment, Message, Notification models
+
+Structure:
+/src
+  /services
+    /auth
+    /feed
+    /messaging
+    /notifications
+    /analytics
+  /models
+  /components
+  /utils
+  /types
+```
+
+## 📊 How AI Uses Instructions
+
+When you provide instructions, the AI:
+
+1. **Reads and Parses** your guidelines
+2. **Plans Architecture** based on requirements
+3. **Generates Code** following exact specifications
+4. **Organizes Files** according to structure
+5. **Maintains Consistency** across all modifications
+6. **Reports Progress** showing adherence to instructions
+
+## 🎯 Success Metrics
+
+Projects built with clear instructions show:
+- ✅ 90%+ adherence to specified structure
+- ✅ Correct number of classes/functions
+- ✅ Proper file organization
+- ✅ Consistent code patterns
+- ✅ Easier to modify and extend
+- ✅ Better maintainability
+
+## 🚨 Important Notes
+
+- Instructions persist throughout the conversation
+- File structure is maintained on every modification
+- You can update instructions at any time
+- AI will explain if instructions conflict with request
+- Complex structures may need iterative refinement
 
 ---
 
-## 🐛 Troubleshooting
-
-### Changes Not Appearing?
-1. Check you're logged in as admin
-2. Refresh the page
-3. Check browser console for errors
-4. Verify change was saved (check customizations list)
-
-### AI Doesn't Understand?
-1. Rephrase your request more specifically
-2. Use component names from this guide
-3. Break complex requests into steps
-4. Refer to examples in this guide
-
-### Changes Look Wrong?
-1. Describe the issue to AI: "The card looks too small"
-2. AI can iterate and fix
-3. Check dark mode (changes should work in both)
-
----
-
-## 📊 Current Limitations
-
-What's **supported now:**
-- ✅ Visual styling (colors, sizes, spacing)
-- ✅ Content injection via slots
-- ✅ Show/hide existing elements
-- ✅ Using pre-registered components
-
-What's **coming soon:**
-- ⏳ New React components (not just HTML)
-- ⏳ Business logic modifications
-- ⏳ Event handlers and interactions
-- ⏳ Database schema changes
-- ⏳ New route creation
-
-What's **not supported:**
-- ❌ Modifying authentication
-- ❌ Accessing other users' data
-- ❌ Installing npm packages
-- ❌ Creating new files
-- ❌ Deploying code changes
-
----
-
-## 🎓 Learning Path
-
-### Beginner
-1. Start with style changes: "Make it blue"
-2. Try visibility: "Hide the notifications"
-3. Add simple content: "Add a welcome message"
-
-### Intermediate
-4. Use components: "Add a Button in header-actions"
-5. Multiple changes: "Change background and add a card"
-6. Specific styling: "Add a gradient from blue to purple"
-
-### Advanced
-7. Custom layouts: "Arrange stats in 2 columns"
-8. Complex content: "Add a table showing user activity"
-9. Conditional visibility: "Only show stats if count > 10"
-
----
-
-## 🤝 Getting Help
-
-**In-App:** Just ask the AI in the Self-Modify chat!
-- "How do I change colors?"
-- "What components can I use?"
-- "Show me examples"
-
-**Technical Issues:** Check browser console for errors
-
----
-
-## 📝 Changelog
-
-### Version 1.0 (Current)
-- ✅ AI-powered style modifications
-- ✅ Content injection via slots
-- ✅ Visibility control
-- ✅ Component registry (50+ components)
-- ✅ Real-time updates
-- ✅ Customization history
-- ✅ Auto-apply changes
-
-### Version 1.1 (Latest)
-- ✅ Preview mode with in-admin previews
-- ✅ No-redirect workflow - stay on admin page
-- ✅ Modal preview for affected pages
-- ✅ Approve/reject workflow
-
-### Coming Next
-- Enhanced component library
-- Layout editor
-- Theme presets
-- Rollback UI improvements
-- Multi-admin collaboration
-
----
-
-**🎉 Ready to customize? Open the Self-Modify tab and start experimenting!**
+**Ready to build?** Set your instructions and let the AI follow your exact specifications! 🚀

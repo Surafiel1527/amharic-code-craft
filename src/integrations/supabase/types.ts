@@ -934,7 +934,9 @@ export type Database = {
           code_structure: string | null
           conversation_id: string
           created_at: string | null
+          custom_instructions: string | null
           features: string[] | null
+          file_structure: string | null
           id: string
           recent_changes: Json | null
           tech_stack: string[] | null
@@ -945,7 +947,9 @@ export type Database = {
           code_structure?: string | null
           conversation_id: string
           created_at?: string | null
+          custom_instructions?: string | null
           features?: string[] | null
+          file_structure?: string | null
           id?: string
           recent_changes?: Json | null
           tech_stack?: string[] | null
@@ -956,7 +960,9 @@ export type Database = {
           code_structure?: string | null
           conversation_id?: string
           created_at?: string | null
+          custom_instructions?: string | null
           features?: string[] | null
+          file_structure?: string | null
           id?: string
           recent_changes?: Json | null
           tech_stack?: string[] | null

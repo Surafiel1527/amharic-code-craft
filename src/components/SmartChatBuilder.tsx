@@ -4,9 +4,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Send, Code, AlertTriangle, CheckCircle2, Lightbulb } from "lucide-react";
+import { Loader2, Send, Code, AlertTriangle, CheckCircle2, Lightbulb, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ProjectInstructionsPanel } from "./ProjectInstructionsPanel";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "./ui/sheet";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -27,6 +36,9 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
   const [isLoading, setIsLoading] = useState(false);
   const [workingCode, setWorkingCode] = useState(currentCode || "");
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [customInstructions, setCustomInstructions] = useState("");
+  const [fileStructure, setFileStructure] = useState("");
+  const [showInstructions, setShowInstructions] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Create conversation on mount
@@ -104,6 +116,8 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
           history: messages.map(m => ({ role: m.role, content: m.content })),
           currentCode: workingCode,
           conversationId, // Send conversation ID for memory tracking
+          customInstructions,
+          fileStructure,
           projectContext: {
             hasCode: !!workingCode,
             codeLength: workingCode?.length || 0
@@ -174,13 +188,45 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
   return (
     <Card className="h-[600px] flex flex-col">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Lightbulb className="h-5 w-5 text-primary" />
-          Smart Code Builder
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Tell me what to build or modify - I'll create complete, working code!
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="h-5 w-5 text-primary" />
+              Smart Code Builder
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Tell me what to build or modify - I'll create complete, working code!
+            </p>
+          </div>
+          <Sheet open={showInstructions} onOpenChange={setShowInstructions}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Settings className="h-4 w-4 mr-2" />
+                Instructions
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Project Instructions</SheetTitle>
+                <SheetDescription>
+                  Define custom guidelines and file structure for your project
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-6">
+                <ProjectInstructionsPanel
+                  conversationId={conversationId || ''}
+                  onSave={(instructions, structure) => {
+                    setCustomInstructions(instructions);
+                    setFileStructure(structure);
+                    setShowInstructions(false);
+                  }}
+                  initialInstructions={customInstructions}
+                  initialFileStructure={fileStructure}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </CardHeader>
       
       <CardContent className="flex-1 flex flex-col gap-4 p-4">

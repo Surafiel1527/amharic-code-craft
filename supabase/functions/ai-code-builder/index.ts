@@ -20,6 +20,8 @@ interface ProjectMemory {
   techStack: string[];
   recentChanges: Array<{ change: string; timestamp: string }>;
   codeStructure: string;
+  customInstructions?: string;
+  fileStructure?: string;
 }
 
 // Summarize old messages to save tokens
@@ -83,6 +85,8 @@ async function saveProjectMemory(conversationId: string, memory: Partial<Project
         tech_stack: memory.techStack,
         recent_changes: memory.recentChanges,
         code_structure: memory.codeStructure,
+        custom_instructions: memory.customInstructions,
+        file_structure: memory.fileStructure,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'conversation_id'
@@ -115,7 +119,9 @@ async function getProjectMemory(conversationId: string): Promise<ProjectMemory |
       features: data.features || [],
       techStack: data.tech_stack || [],
       recentChanges: data.recent_changes || [],
-      codeStructure: data.code_structure
+      codeStructure: data.code_structure,
+      customInstructions: data.custom_instructions,
+      fileStructure: data.file_structure
     };
   } catch (error) {
     console.error('Failed to get project memory:', error);
@@ -129,7 +135,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, message, history, currentCode, projectContext, error, conversationId } = await req.json();
+    const { action, message, history, currentCode, projectContext, error, conversationId, customInstructions, fileStructure } = await req.json();
     
     console.log('🤖 AI Code Builder request:', { 
       action, 
@@ -181,6 +187,20 @@ Features: ${projectMemory.features.join(', ')}
 Tech Stack: ${projectMemory.techStack.join(', ')}
 Recent Changes: ${projectMemory.recentChanges.slice(-3).map(c => c.change).join(', ')}
 Code Structure: ${projectMemory.codeStructure}
+${projectMemory.customInstructions ? `\nCUSTOM PROJECT INSTRUCTIONS:\n${projectMemory.customInstructions}\n⚠️ CRITICAL: Follow these instructions EXACTLY when generating code.` : ''}
+${projectMemory.fileStructure ? `\nREQUIRED FILE STRUCTURE:\n${projectMemory.fileStructure}\n⚠️ CRITICAL: Maintain this exact file structure.` : ''}
+` : ''}
+
+${customInstructions ? `
+CUSTOM INSTRUCTIONS FOR THIS REQUEST:
+${customInstructions}
+⚠️ CRITICAL: Follow these specific instructions for this generation.
+` : ''}
+
+${fileStructure ? `
+REQUIRED FILE STRUCTURE FOR THIS REQUEST:
+${fileStructure}
+⚠️ CRITICAL: Organize code according to this structure.
 ` : ''}
 
 ${codeStructure ? `
@@ -278,7 +298,9 @@ For large projects:
                 timestamp: new Date().toISOString()
               }
             ],
-            codeStructure: newCodeStructure
+            codeStructure: newCodeStructure,
+            customInstructions: customInstructions || projectMemory?.customInstructions,
+            fileStructure: fileStructure || projectMemory?.fileStructure
           };
           
           await saveProjectMemory(conversationId, updatedMemory);
