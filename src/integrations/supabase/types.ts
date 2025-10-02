@@ -928,6 +928,42 @@ export type Database = {
           },
         ]
       }
+      project_memory: {
+        Row: {
+          architecture: string | null
+          code_structure: string | null
+          conversation_id: string
+          created_at: string | null
+          features: string[] | null
+          id: string
+          recent_changes: Json | null
+          tech_stack: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          architecture?: string | null
+          code_structure?: string | null
+          conversation_id: string
+          created_at?: string | null
+          features?: string[] | null
+          id?: string
+          recent_changes?: Json | null
+          tech_stack?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          architecture?: string | null
+          code_structure?: string | null
+          conversation_id?: string
+          created_at?: string | null
+          features?: string[] | null
+          id?: string
+          recent_changes?: Json | null
+          tech_stack?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       project_ratings: {
         Row: {
           created_at: string

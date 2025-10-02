@@ -26,7 +26,30 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [workingCode, setWorkingCode] = useState(currentCode || "");
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Create conversation on mount
+  useEffect(() => {
+    const createConversation = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('conversations')
+          .insert({ title: 'Smart Code Builder Session' })
+          .select('id')
+          .single();
+        
+        if (!error && data) {
+          setConversationId(data.id);
+          console.log('📝 Created conversation:', data.id);
+        }
+      } catch (error) {
+        console.error('Failed to create conversation:', error);
+      }
+    };
+    
+    createConversation();
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -80,6 +103,7 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
           message: input,
           history: messages.map(m => ({ role: m.role, content: m.content })),
           currentCode: workingCode,
+          conversationId, // Send conversation ID for memory tracking
           projectContext: {
             hasCode: !!workingCode,
             codeLength: workingCode?.length || 0
@@ -166,13 +190,16 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
               <Alert>
                 <Lightbulb className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Examples:</strong>
+                  <strong>Build anything - even large projects like Facebook clones!</strong>
                   <ul className="mt-2 space-y-1 text-sm">
-                    <li>• "Create a fully operational bingo game"</li>
-                    <li>• "Add login functionality"</li>
-                    <li>• "Fix the error where buttons don't work"</li>
-                    <li>• "Make it mobile responsive"</li>
+                    <li>✨ <strong>Create:</strong> "Build a social media platform with posts, likes, and comments"</li>
+                    <li>🔧 <strong>Modify:</strong> "Add user authentication and profiles"</li>
+                    <li>🔨 <strong>Fix:</strong> "The comment system isn't working properly"</li>
+                    <li>🚀 <strong>Improve:</strong> "Make it faster and add animations"</li>
                   </ul>
+                  <div className="mt-3 p-2 bg-primary/5 rounded text-xs">
+                    <strong>💡 Smart Memory:</strong> I remember your entire project, even with 40+ functions!
+                  </div>
                 </AlertDescription>
               </Alert>
             )}
