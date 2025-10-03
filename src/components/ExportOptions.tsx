@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, Code, FileCode, ExternalLink, Copy, Check } from "lucide-react";
+import { Download, Code, FileCode, ExternalLink, Copy, Check, Eye } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { downloadHTML } from "@/utils/downloadHelpers";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ExportOptionsProps {
   htmlCode: string;
@@ -80,18 +81,61 @@ export default {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="html" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="preview" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="preview">
+              <Eye className="w-4 h-4 mr-1" />
+              Preview
+            </TabsTrigger>
             <TabsTrigger value="html">HTML</TabsTrigger>
             <TabsTrigger value="react">React</TabsTrigger>
             <TabsTrigger value="vue">Vue</TabsTrigger>
           </TabsList>
           
+          <TabsContent value="preview" className="space-y-4">
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-muted-foreground mb-2">
+                የኮድ ቅድመ እይታ - Review your generated code
+              </p>
+              <ScrollArea className="h-[400px] w-full rounded-md border bg-muted p-4">
+                <pre className="text-xs">
+                  <code>{htmlCode}</code>
+                </pre>
+              </ScrollArea>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => copyToClipboard(htmlCode, "Code")}
+                  className="flex-1"
+                >
+                  {copied === "Code" ? (
+                    <Check className="w-4 h-4 mr-2" />
+                  ) : (
+                    <Copy className="w-4 h-4 mr-2" />
+                  )}
+                  Copy Code
+                </Button>
+                <Button onClick={handleDownloadHTML} className="flex-1">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+          
           <TabsContent value="html" className="space-y-4">
             <div className="flex flex-col gap-2">
+              <p className="text-sm text-muted-foreground mb-2">
+                Export as standalone HTML file
+              </p>
+              <ScrollArea className="h-[300px] w-full rounded-md border bg-muted p-4 mb-2">
+                <pre className="text-xs">
+                  <code>{htmlCode}</code>
+                </pre>
+              </ScrollArea>
               <Button onClick={handleDownloadHTML} className="w-full">
                 <Download className="w-4 h-4 mr-2" />
-                HTML ፋይል አውርድ
+                Download HTML File
               </Button>
               <Button 
                 variant="outline" 
@@ -103,7 +147,7 @@ export default {
                 ) : (
                   <Copy className="w-4 h-4 mr-2" />
                 )}
-                HTML ኮድ ቅዳ
+                Copy HTML Code
               </Button>
             </div>
           </TabsContent>
