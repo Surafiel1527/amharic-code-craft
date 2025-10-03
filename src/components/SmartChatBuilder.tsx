@@ -4,13 +4,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Send, Code, AlertTriangle, CheckCircle2, Lightbulb, Settings, AlertCircle, Activity, Save } from "lucide-react";
+import { Loader2, Send, Code, AlertTriangle, CheckCircle2, Lightbulb, Settings, AlertCircle, Activity, Save, LayoutDashboard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProjectInstructionsPanel } from "./ProjectInstructionsPanel";
 import { SelfHealingMonitor } from "./SelfHealingMonitor";
 import { SnapshotManager } from "./SnapshotManager";
 import { AICapabilitiesGuide } from "./AICapabilitiesGuide";
+import { EnterpriseProjectDashboard } from "./EnterpriseProjectDashboard";
+import { CollaborationIndicator } from "./CollaborationIndicator";
 import { useErrorMonitor } from "@/hooks/useErrorMonitor";
 import { useProactiveMonitoring } from "@/hooks/useProactiveMonitoring";
 import {
@@ -50,6 +52,7 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
   const [showInstructions, setShowInstructions] = useState(false);
   const [monitorOpen, setMonitorOpen] = useState(false);
   const [snapshotOpen, setSnapshotOpen] = useState(false);
+  const [dashboardOpen, setDashboardOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Create conversation on mount
@@ -213,16 +216,34 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
     <Card className="h-[600px] flex flex-col">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex-1">
             <CardTitle className="flex items-center gap-2">
               <Lightbulb className="h-5 w-5 text-primary" />
-              Smart Code Builder
+              Enterprise Code Builder
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              AI with self-healing, multi-file generation & version control
+              AI with self-healing, version control, real-time collaboration & advanced diff
             </p>
+            <div className="mt-2">
+              <CollaborationIndicator />
+            </div>
           </div>
           <div className="flex gap-2">
+            <Sheet open={dashboardOpen} onOpenChange={setDashboardOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" title="Enterprise Dashboard">
+                  <LayoutDashboard className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
+                <EnterpriseProjectDashboard 
+                  onCodeUpdate={(code) => {
+                    setWorkingCode(code);
+                    if (onCodeGenerated) onCodeGenerated(code);
+                  }}
+                />
+              </SheetContent>
+            </Sheet>
             <Sheet open={snapshotOpen} onOpenChange={setSnapshotOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon" title="Version Control">

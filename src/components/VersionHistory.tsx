@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Clock, RotateCcw, Eye } from "lucide-react";
+import { Clock, RotateCcw, Eye, GitCompare, Tag, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CodeDiffViewer } from "./CodeDiffViewer";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +17,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Version {
   id: string;
@@ -35,6 +44,9 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
   const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareVersions, setCompareVersions] = useState<{ v1: string; v2: string }>({ v1: '', v2: '' });
+  const [exportFormat, setExportFormat] = useState<'json' | 'html'>('json');
 
   useEffect(() => {
     fetchVersions();
@@ -63,6 +75,27 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
     toast.success(`ወደ ስሪት ${version.version_number} ተመልሷል`);
   };
 
+  const handleExport = (version: Version) => {
+    const data = exportFormat === 'json' 
+      ? JSON.stringify(version, null, 2)
+      : version.html_code;
+    
+    const blob = new Blob([data], { type: exportFormat === 'json' ? 'application/json' : 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `version-${version.version_number}.${exportFormat}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Version ${version.version_number} exported`);
+  };
+
+  const getComparedVersions = () => {
+    const v1 = versions.find(v => v.id === compareVersions.v1);
+    const v2 = versions.find(v => v.id === compareVersions.v2);
+    return { v1, v2 };
+  };
+
   if (loading) {
     return (
       <Card>
@@ -81,19 +114,88 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
   return (
     <Card className="glass-effect border-primary/20">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Clock className="h-5 w-5" />
-          የስሪት ታሪክ
-        </CardTitle>
-        <CardDescription>
-          የፕሮጀክትዎን ቀደም ያሉ ስሪቶች ይመልከቱ እና ያገግሙ
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Version History
+            </CardTitle>
+            <CardDescription>
+              Enterprise-grade version control with diff comparison
+            </CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant={compareMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCompareMode(!compareMode)}
+            >
+              <GitCompare className="h-4 w-4 mr-2" />
+              Compare
+            </Button>
+            <Select value={exportFormat} onValueChange={(v: 'json' | 'html') => setExportFormat(v)}>
+              <SelectTrigger className="w-24">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="json">JSON</SelectItem>
+                <SelectItem value="html">HTML</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
+        {compareMode && compareVersions.v1 && compareVersions.v2 && (
+          <div className="mb-4">
+            <CodeDiffViewer
+              oldCode={getComparedVersions().v1?.html_code || ''}
+              newCode={getComparedVersions().v2?.html_code || ''}
+              oldVersion={`Version ${getComparedVersions().v1?.version_number}`}
+              newVersion={`Version ${getComparedVersions().v2?.version_number}`}
+            />
+          </div>
+        )}
+        
+        {compareMode && (
+          <div className="grid grid-cols-2 gap-2 mb-4 p-3 bg-muted rounded-lg">
+            <div>
+              <label className="text-xs font-medium mb-1 block">Compare From:</label>
+              <Select value={compareVersions.v1} onValueChange={(v) => setCompareVersions(prev => ({ ...prev, v1: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select version" />
+                </SelectTrigger>
+                <SelectContent>
+                  {versions.map(v => (
+                    <SelectItem key={v.id} value={v.id}>
+                      Version {v.version_number}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-1 block">Compare To:</label>
+              <Select value={compareVersions.v2} onValueChange={(v) => setCompareVersions(prev => ({ ...prev, v2: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select version" />
+                </SelectTrigger>
+                <SelectContent>
+                  {versions.map(v => (
+                    <SelectItem key={v.id} value={v.id}>
+                      Version {v.version_number}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+        
         {versions.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
             <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>ምንም የስሪት ታሪክ የለም</p>
+            <p>No version history yet</p>
           </div>
         ) : (
           <ScrollArea className="h-[400px] pr-4">
@@ -123,7 +225,7 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
                       </p>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button
@@ -136,9 +238,9 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl max-h-[80vh]">
                           <DialogHeader>
-                            <DialogTitle>ስሪት {version.version_number}</DialogTitle>
+                            <DialogTitle>Version {version.version_number} Preview</DialogTitle>
                             <DialogDescription>
-                              የኮድ ቅድመ እይታ
+                              Code Preview & Details
                             </DialogDescription>
                           </DialogHeader>
                           <ScrollArea className="h-[500px]">
@@ -150,12 +252,20 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
                       </Dialog>
 
                       <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleExport(version)}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+
+                      <Button
                         variant="default"
                         size="sm"
                         onClick={() => handleRestore(version)}
                       >
                         <RotateCcw className="h-4 w-4 mr-1" />
-                        መልስ
+                        Restore
                       </Button>
                     </div>
                   </div>
