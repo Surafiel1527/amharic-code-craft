@@ -195,15 +195,16 @@ Your task: Create a comprehensive plan BEFORE any code generation. Respond in JS
         .eq('conversation_id', conversationId)
         .single();
 
-      const generationPrompt = `You are an expert developer implementing an approved architecture plan.
+      const generationPrompt = `You are an expert web developer creating a complete, standalone website.
 
-CRITICAL INSTRUCTIONS:
-- Generate ACTUAL SOURCE CODE (HTML/CSS/JavaScript/React/TypeScript files)
-- DO NOT generate setup instructions, bash commands, or npm commands
-- DO NOT include installation steps or project initialization commands
-- Return ONLY the complete, ready-to-use code that runs in a browser
-- For web projects: Generate complete HTML/CSS/JS that works immediately
-- For React projects: Generate complete React/TypeScript components with imports
+🚨 CRITICAL - OUTPUT FORMAT REQUIREMENTS:
+You MUST generate a SINGLE, COMPLETE HTML FILE that includes:
+1. Complete HTML structure (<!DOCTYPE html>, <html>, <head>, <body>)
+2. ALL CSS embedded in a <style> tag in the <head>
+3. ALL JavaScript embedded in a <script> tag before closing </body>
+4. NO external file references (no src="file.js" or href="style.css")
+5. NO build tools, no npm, no React imports
+6. A fully functional, ready-to-preview website
 
 APPROVED ARCHITECTURE PLAN:
 ${JSON.stringify(plan, null, 2)}
@@ -227,29 +228,59 @@ Preserve all existing functionality.
 USER REQUEST: "${userRequest}"
 
 YOUR TASK:
-Generate production-ready, executable source code that:
-1. Follows the architecture plan EXACTLY
-2. Uses the recommended technology stack
-3. Implements all components from the breakdown
-4. ${currentCode ? 'Makes MINIMAL, FOCUSED changes to existing code' : 'Creates complete, working HTML/CSS/JavaScript code'}
-5. Follows project memory patterns and conventions
-6. Can be directly rendered in a browser or executed immediately
+Generate a SINGLE, COMPLETE HTML FILE that:
+1. Starts with <!DOCTYPE html>
+2. Includes ALL CSS in a <style> tag in the <head>
+3. Includes ALL JavaScript in a <script> tag before </body>
+4. Has NO external dependencies or file references
+5. Works immediately when opened in a browser
+6. Follows the architecture plan from above
+7. ${currentCode ? 'Enhances the existing HTML structure' : 'Creates a beautiful, modern, responsive design'}
 
-WHAT TO GENERATE:
-✅ Complete HTML structure with all sections
-✅ CSS styles for responsive design
-✅ JavaScript for interactive features
-✅ React components if using React
-✅ Working, executable code
+EXAMPLE FORMAT:
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Title Here</title>
+    <style>
+        /* ALL your CSS here - responsive design, animations, etc. */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; }
+        /* ... more CSS ... */
+    </style>
+</head>
+<body>
+    <!-- ALL your HTML content here -->
+    <nav>...</nav>
+    <section>...</section>
+    <!-- ... more HTML ... -->
+    
+    <script>
+        // ALL your JavaScript here
+        document.addEventListener('DOMContentLoaded', function() {
+            // Your interactive code
+        });
+    </script>
+</body>
+</html>
 
-WHAT NOT TO GENERATE:
-❌ npm install commands
-❌ Project setup instructions
-❌ Bash/terminal commands
-❌ Package.json files
-❌ Build configuration
+✅ DO GENERATE:
+- Complete HTML document structure
+- Embedded CSS with modern styles, responsive design, animations
+- Embedded JavaScript for interactivity
+- Beautiful, production-ready design
+- All content requested by user
 
-Wrap the ACTUAL SOURCE CODE in <code></code> tags. Provide brief explanation before the code.`;
+❌ DO NOT GENERATE:
+- tailwind.config.js, package.json, or ANY config files
+- Multiple separate files
+- Import statements or external references
+- npm commands or setup instructions
+- React/Vue/framework code that needs compilation
+
+Wrap the COMPLETE HTML FILE in <code></code> tags. Keep explanation brief.`;
 
       const genResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
