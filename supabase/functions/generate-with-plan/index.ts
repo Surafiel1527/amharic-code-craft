@@ -137,19 +137,23 @@ Your task: Create a comprehensive plan BEFORE any code generation. Respond in JS
         .single();
 
       if (planError) {
-        console.error('Error saving plan:', planError);
+        console.error('❌ Error saving plan:', planError);
+        throw new Error(`Failed to save plan: ${planError.message}`);
       }
 
-      console.log('✅ Plan created and saved');
+      if (!savedPlan || !savedPlan.id) {
+        console.error('❌ Plan saved but no ID returned:', savedPlan);
+        throw new Error('Plan saved but no ID returned');
+      }
+
+      console.log('✅ Plan created and saved with ID:', savedPlan.id);
 
       return new Response(
         JSON.stringify({
           success: true,
           phase: 'plan',
-          plan: {
-            ...plan,
-            planId: savedPlan?.id
-          }
+          planId: savedPlan.id,
+          plan: plan
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -158,17 +162,31 @@ Your task: Create a comprehensive plan BEFORE any code generation. Respond in JS
     // PHASE 2: GENERATION - Generate code based on approved plan
     if (phase === 'generate') {
       console.log('🚀 PHASE 2: Generating code from plan...');
+      console.log('📋 Plan ID received:', planId);
+      
+      if (!planId) {
+        console.error('❌ No planId provided for generate phase');
+        throw new Error('Plan ID is required for generate phase');
+      }
       
       // Get the approved plan
-      const { data: plan } = await supabase
+      const { data: plan, error: planFetchError } = await supabase
         .from('architecture_plans')
         .select('*')
         .eq('id', planId)
         .single();
 
+      if (planFetchError) {
+        console.error('❌ Error fetching plan:', planFetchError);
+        throw new Error(`Failed to fetch plan: ${planFetchError.message}`);
+      }
+
       if (!plan) {
+        console.error('❌ Plan not found for ID:', planId);
         throw new Error('Plan not found');
       }
+      
+      console.log('✅ Plan retrieved successfully');
 
       // Get project memory
       const { data: memory } = await supabase

@@ -167,13 +167,22 @@ serve(async (req) => {
     console.log('Phase 4: Code Generation');
     const genStart = Date.now();
     
+    const planId = currentResult.plan?.planId;
+    console.log('📋 Using plan ID:', planId);
+    
+    if (!planId) {
+      console.error('❌ No plan ID available from planning phase');
+      console.error('   Current result plan:', currentResult.plan);
+      throw new Error('Plan ID not available from planning phase');
+    }
+    
     const generateResponse = await supabaseClient.functions.invoke('generate-with-plan', {
       body: {
         phase: 'generate',
         userRequest,
         conversationId,
         currentCode,
-        planId: currentResult.plan?.planId,
+        planId: planId,
         userId: user.id,
         suggestedPatterns: currentResult.suggestedPatterns || []
       }
