@@ -1071,6 +1071,42 @@ export type Database = {
           },
         ]
       }
+      model_performance: {
+        Row: {
+          cost_estimate: number | null
+          created_at: string
+          execution_time_ms: number | null
+          id: string
+          model_name: string
+          quality_score: number | null
+          success: boolean
+          task_type: string
+          user_id: string | null
+        }
+        Insert: {
+          cost_estimate?: number | null
+          created_at?: string
+          execution_time_ms?: number | null
+          id?: string
+          model_name: string
+          quality_score?: number | null
+          success: boolean
+          task_type: string
+          user_id?: string | null
+        }
+        Update: {
+          cost_estimate?: number | null
+          created_at?: string
+          execution_time_ms?: number | null
+          id?: string
+          model_name?: string
+          quality_score?: number | null
+          success?: boolean
+          task_type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1103,6 +1139,118 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      orchestration_runs: {
+        Row: {
+          completed_at: string | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          phases_completed: Json | null
+          request: string
+          results: Json | null
+          status: string | null
+          total_duration_ms: number | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          phases_completed?: Json | null
+          request: string
+          results?: Json | null
+          status?: string | null
+          total_duration_ms?: number | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          phases_completed?: Json | null
+          request?: string
+          results?: Json | null
+          status?: string | null
+          total_duration_ms?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orchestration_runs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pattern_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          hit_count: number | null
+          id: string
+          last_accessed_at: string
+          pattern_data: Json
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          hit_count?: number | null
+          id?: string
+          last_accessed_at?: string
+          pattern_data: Json
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          hit_count?: number | null
+          id?: string
+          last_accessed_at?: string
+          pattern_data?: Json
+        }
+        Relationships: []
+      }
+      pattern_feedback: {
+        Row: {
+          accepted: boolean
+          context: string | null
+          created_at: string
+          feedback_text: string | null
+          id: string
+          pattern_id: string | null
+          user_id: string
+        }
+        Insert: {
+          accepted: boolean
+          context?: string | null
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          pattern_id?: string | null
+          user_id: string
+        }
+        Update: {
+          accepted?: boolean
+          context?: string | null
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          pattern_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pattern_feedback_pattern_id_fkey"
+            columns: ["pattern_id"]
+            isOneToOne: false
+            referencedRelation: "cross_project_patterns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       premium_templates: {
         Row: {

@@ -107,3 +107,12 @@ verify_jwt = false
 
 [functions.component-awareness]
 verify_jwt = false
+
+[functions.smart-orchestrator]
+verify_jwt = false
+
+[functions.model-selector]
+verify_jwt = false
+
+[functions.feedback-processor]
+verify_jwt = false
