@@ -155,7 +155,8 @@ export default function Workspace() {
 
       if (error) throw error;
 
-      const finalCode = data.finalCode || data.refinedCode || data.generatedCode;
+      const finalCode = data.finalCode;
+      const explanation = data.explanation || 'Code updated successfully';
       
       // Update project with new code
       setProject(prev => prev ? { ...prev, html_code: finalCode } : null);
@@ -163,7 +164,7 @@ export default function Workspace() {
       // Add assistant message
       const assistantMessage: Message = {
         role: 'assistant',
-        content: `I've enhanced your project! The changes include:\n\n${data.plan?.summary || 'Code improvements applied'}`,
+        content: explanation,
         timestamp: new Date().toISOString()
       };
 

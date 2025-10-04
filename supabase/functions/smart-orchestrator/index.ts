@@ -15,15 +15,25 @@ serve(async (req) => {
   try {
     const { userRequest, conversationId, currentCode, autoRefine = true, autoLearn = true } = await req.json();
     
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No authorization header found');
+      throw new Error('Unauthorized: No authorization header');
+    }
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error('Unauthorized');
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      console.error('Failed to get user:', userError);
+      throw new Error('Unauthorized: Invalid token');
+    }
+    
+    console.log('✅ Authenticated user:', user.id);
 
     const startTime = Date.now();
     const phases: any[] = [];
@@ -43,144 +53,33 @@ serve(async (req) => {
 
     console.log('Starting smart orchestration for:', userRequest);
 
-    // PHASE 1: Architecture Planning
-    console.log('Phase 1: Architecture Planning');
-    const planResponse = await supabaseClient.functions.invoke('generate-with-plan', {
+    // Use smart-diff-update for code changes
+    console.log('Generating code update with smart-diff-update...');
+    const updateStart = Date.now();
+    
+    const updateResponse = await supabaseClient.functions.invoke('smart-diff-update', {
       body: {
-        phase: 'plan',
         userRequest,
+        currentCode: currentCode || '',
         conversationId,
-        currentCode
+        userId: user.id
       }
     });
 
-    if (planResponse.error) throw planResponse.error;
+    if (updateResponse.error) {
+      console.error('Update error:', updateResponse.error);
+      throw updateResponse.error;
+    }
     
     phases.push({ 
-      name: 'planning', 
-      duration: Date.now() - startTime,
-      result: planResponse.data 
+      name: 'code_update', 
+      duration: Date.now() - updateStart,
+      result: updateResponse.data 
     });
-    currentResult.plan = planResponse.data;
-
-    // PHASE 2: Component Impact Analysis
-    console.log('Phase 2: Component Impact Analysis');
-    const impactStart = Date.now();
     
-    if (currentCode) {
-      const impactResponse = await supabaseClient.functions.invoke('component-awareness', {
-        body: {
-          action: 'analyze',
-          conversationId,
-          code: currentCode
-        }
-      });
-
-      if (!impactResponse.error) {
-        phases.push({ 
-          name: 'impact_analysis', 
-          duration: Date.now() - impactStart,
-          result: impactResponse.data 
-        });
-        currentResult.impactAnalysis = impactResponse.data;
-      }
-    }
-
-    // PHASE 3: Pattern Retrieval
-    console.log('Phase 3: Pattern Retrieval');
-    const patternStart = Date.now();
-    
-    const patternResponse = await supabaseClient.functions.invoke('multi-project-learn', {
-      body: {
-        action: 'retrieve',
-        userId: user.id,
-        context: userRequest,
-        minConfidence: 60
-      }
-    });
-
-    if (!patternResponse.error && patternResponse.data.patterns?.length > 0) {
-      phases.push({ 
-        name: 'pattern_retrieval', 
-        duration: Date.now() - patternStart,
-        result: patternResponse.data 
-      });
-      currentResult.suggestedPatterns = patternResponse.data.patterns;
-    }
-
-    // PHASE 4: Code Generation (with patterns and plan)
-    console.log('Phase 4: Code Generation');
-    const genStart = Date.now();
-    
-    const generateResponse = await supabaseClient.functions.invoke('generate-with-plan', {
-      body: {
-        phase: 'generate',
-        userRequest,
-        conversationId,
-        currentCode,
-        plan: currentResult.plan,
-        suggestedPatterns: currentResult.suggestedPatterns || []
-      }
-    });
-
-    if (generateResponse.error) throw generateResponse.error;
-    
-    phases.push({ 
-      name: 'generation', 
-      duration: Date.now() - genStart,
-      result: generateResponse.data 
-    });
-    currentResult.generatedCode = generateResponse.data.code;
-
-    // PHASE 5: Automatic Refinement (if enabled)
-    if (autoRefine && currentResult.generatedCode) {
-      console.log('Phase 5: Automatic Refinement');
-      const refineStart = Date.now();
-      
-      const refineResponse = await supabaseClient.functions.invoke('iterative-refine', {
-        body: {
-          generatedCode: currentResult.generatedCode,
-          userRequest,
-          maxIterations: 2,
-          targetQualityScore: 80,
-          userId: user.id
-        }
-      });
-
-      if (!refineResponse.error) {
-        phases.push({ 
-          name: 'refinement', 
-          duration: Date.now() - refineStart,
-          result: refineResponse.data 
-        });
-        currentResult.refinedCode = refineResponse.data.refinedCode;
-        currentResult.qualityMetrics = refineResponse.data.summary;
-      }
-    }
-
-    // PHASE 6: Learning (if enabled)
-    if (autoLearn && currentResult.refinedCode) {
-      console.log('Phase 6: Pattern Learning');
-      const learnStart = Date.now();
-      
-      const learnResponse = await supabaseClient.functions.invoke('multi-project-learn', {
-        body: {
-          action: 'learn',
-          userId: user.id,
-          generatedCode: currentResult.refinedCode,
-          context: userRequest,
-          success: true
-        }
-      });
-
-      if (!learnResponse.error) {
-        phases.push({ 
-          name: 'learning', 
-          duration: Date.now() - learnStart,
-          result: learnResponse.data 
-        });
-      }
-    }
+    currentResult.generatedCode = updateResponse.data.code;
+    currentResult.explanation = updateResponse.data.explanation;
+    currentResult.changeAnalysis = updateResponse.data.changeAnalysis;
 
     const totalDuration = Date.now() - startTime;
 
@@ -202,11 +101,9 @@ serve(async (req) => {
         orchestrationId: runRecord.id,
         phases,
         totalDuration,
-        finalCode: currentResult.refinedCode || currentResult.generatedCode,
-        plan: currentResult.plan,
-        impactAnalysis: currentResult.impactAnalysis,
-        suggestedPatterns: currentResult.suggestedPatterns,
-        qualityMetrics: currentResult.qualityMetrics
+        finalCode: currentResult.generatedCode,
+        explanation: currentResult.explanation,
+        changeAnalysis: currentResult.changeAnalysis
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
