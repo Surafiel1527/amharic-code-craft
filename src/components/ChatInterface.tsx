@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
-import { Loader2, Send, Bot, User, Code, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, Send, Bot, User, Code, Sparkles, Zap, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -14,6 +16,11 @@ interface Message {
   content: string;
   generated_code?: string;
   created_at: string;
+  orchestration?: {
+    phases: string[];
+    duration: number;
+    qualityScore?: number;
+  };
 }
 
 interface ChatInterfaceProps {
@@ -33,6 +40,8 @@ export const ChatInterface = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPhase, setCurrentPhase] = useState("");
+  const [progress, setProgress] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -174,34 +183,51 @@ export const ChatInterface = ({
         content: userMessage,
       });
 
-      // Get conversation history
-      const conversationHistory = messages.map(m => ({
-        role: m.role,
-        content: m.content
-      }));
+      // Simulate phase progress
+      const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
+      let currentPhaseIdx = 0;
+      
+      const progressInterval = setInterval(() => {
+        if (currentPhaseIdx < phases.length) {
+          setCurrentPhase(phases[currentPhaseIdx]);
+          setProgress((currentPhaseIdx + 1) * 20);
+          currentPhaseIdx++;
+        }
+      }, 800);
 
-      // Call AI
-      const { data, error } = await supabase.functions.invoke("chat-generate", {
+      // Call Smart Orchestrator
+      const { data, error } = await supabase.functions.invoke("smart-orchestrator", {
         body: {
-          message: userMessage,
-          conversationHistory,
+          userRequest: userMessage,
+          conversationId: activeConvId,
           currentCode,
+          autoRefine: true,
+          autoLearn: true,
         },
       });
 
+      clearInterval(progressInterval);
+      setProgress(100);
+
       if (error) throw error;
 
-      // Extract assistant response
-      const assistantContent = data.message;
-      const generatedCode = data.code;
-
-      // Add assistant message to UI
+      // Extract results
+      const assistantContent = data.plan?.architecture_overview || 
+        "I've generated the code based on your request with smart optimization.";
+      const generatedCode = data.finalCode;
+      
+      // Add assistant message with orchestration info
       const assistantMsg: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
         content: assistantContent,
         generated_code: generatedCode,
         created_at: new Date().toISOString(),
+        orchestration: {
+          phases: data.phases?.map((p: any) => p.name) || [],
+          duration: data.totalDuration || 0,
+          qualityScore: data.qualityMetrics?.finalScore
+        }
       };
       setMessages(prev => [...prev, assistantMsg]);
 
@@ -230,6 +256,8 @@ export const ChatInterface = ({
       toast.error(t("chat.sendFailed"));
     } finally {
       setIsLoading(false);
+      setCurrentPhase("");
+      setProgress(0);
     }
   };
 
@@ -280,11 +308,28 @@ export const ChatInterface = ({
                   <p className="whitespace-pre-wrap break-words">{msg.content.replace(/<code>[\s\S]*?<\/code>/g, '')}</p>
                 </div>
                 {msg.generated_code && (
-                  <div className="mt-3 pt-3 border-t border-border/50">
+                  <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Code className="h-3 w-3" />
                       <span>{t("chat.codeGenerated")}</span>
                     </div>
+                    {msg.orchestration && (
+                      <div className="flex flex-wrap gap-1.5">
+                        <Badge variant="secondary" className="text-xs">
+                          <Zap className="h-2.5 w-2.5 mr-1" />
+                          {msg.orchestration.phases.length} phases
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {(msg.orchestration.duration / 1000).toFixed(1)}s
+                        </Badge>
+                        {msg.orchestration.qualityScore && (
+                          <Badge variant="default" className="text-xs">
+                            <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
+                            Q: {msg.orchestration.qualityScore}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </Card>
@@ -300,12 +345,21 @@ export const ChatInterface = ({
           {isLoading && (
             <div className="flex gap-3">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Bot className="h-5 w-5 text-primary" />
+                <Bot className="h-5 w-5 text-primary animate-pulse" />
               </div>
-              <Card className="p-4">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">{t("chat.thinking")}</span>
+              <Card className="p-4 min-w-[300px]">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Zap className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Smart Orchestration</span>
+                  </div>
+                  {currentPhase && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>{currentPhase}...</span>
+                    </div>
+                  )}
+                  <Progress value={progress} className="h-1" />
                 </div>
               </Card>
             </div>

@@ -4,7 +4,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Send, Code, AlertTriangle, CheckCircle2, Lightbulb, Settings, AlertCircle, Activity, Save, LayoutDashboard, History as HistoryIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, Send, Code, AlertTriangle, CheckCircle2, Lightbulb, Settings, AlertCircle, Activity, Save, LayoutDashboard, History as HistoryIcon, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProjectInstructionsPanel } from "./ProjectInstructionsPanel";
@@ -32,6 +34,11 @@ interface Message {
   code?: string;
   action?: string;
   error?: boolean;
+  orchestration?: {
+    phases: string[];
+    duration: number;
+    qualityScore?: number;
+  };
 }
 
 interface SmartChatBuilderProps {
@@ -48,6 +55,8 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPhase, setCurrentPhase] = useState("");
+  const [progress, setProgress] = useState(0);
   const [workingCode, setWorkingCode] = useState(currentCode || "");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [customInstructions, setCustomInstructions] = useState("");
@@ -135,30 +144,39 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
     setIsLoading(true);
 
     try {
-      console.log('🚀 Sending to AI Code Builder:', { 
+      console.log('🚀 Using Smart Orchestrator:', { 
         action: userMessage.action,
         hasCode: !!workingCode,
         messageLength: input.length 
       });
 
-      const { data, error } = await supabase.functions.invoke('ai-code-builder', {
+      // Simulate phase progress
+      const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
+      let currentPhaseIdx = 0;
+      
+      const progressInterval = setInterval(() => {
+        if (currentPhaseIdx < phases.length) {
+          setCurrentPhase(phases[currentPhaseIdx]);
+          setProgress((currentPhaseIdx + 1) * 20);
+          currentPhaseIdx++;
+        }
+      }, 800);
+
+      const { data, error } = await supabase.functions.invoke('smart-orchestrator', {
         body: {
-          action: userMessage.action,
-          message: input,
-          history: messages.map(m => ({ role: m.role, content: m.content })),
+          userRequest: input,
+          conversationId,
           currentCode: workingCode,
-          conversationId, // Send conversation ID for memory tracking
-          customInstructions,
-          fileStructure,
-          projectContext: {
-            hasCode: !!workingCode,
-            codeLength: workingCode?.length || 0
-          }
+          autoRefine: true,
+          autoLearn: true
         }
       });
 
+      clearInterval(progressInterval);
+      setProgress(100);
+
       if (error) {
-        console.error('❌ Error from edge function:', error);
+        console.error('❌ Error from orchestrator:', error);
         if (error.message?.includes('rate_limit') || error.message?.includes('429')) {
           toast.error("Too many requests. Please wait a moment.");
         } else if (error.message?.includes('payment_required') || error.message?.includes('402')) {
@@ -169,35 +187,40 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
         throw error;
       }
 
-      console.log('✅ Received response:', { 
+      console.log('✅ Orchestration complete:', { 
         success: data.success, 
-        hasCode: !!data.code,
-        action: data.action 
+        phases: data.phases?.length,
+        hasCode: !!data.finalCode
       });
 
       const assistantMessage: Message = {
         role: 'assistant',
-        content: data.explanation || "Code generated successfully!",
-        code: data.code,
-        action: data.action
+        content: data.plan?.architecture_overview || "Generated code with smart optimization!",
+        code: data.finalCode,
+        action: userMessage.action,
+        orchestration: {
+          phases: data.phases?.map((p: any) => p.name) || [],
+          duration: data.totalDuration || 0,
+          qualityScore: data.qualityMetrics?.finalScore
+        }
       };
 
       setMessages(prev => [...prev, assistantMessage]);
 
       // Update working code if new code was generated
-      if (data.code) {
-        setWorkingCode(data.code);
+      if (data.finalCode) {
+        setWorkingCode(data.finalCode);
         if (onCodeGenerated) {
-          onCodeGenerated(data.code);
+          onCodeGenerated(data.finalCode);
         }
         
-        const actionEmoji = data.action === 'create' ? '✨' : 
-                           data.action === 'modify' ? '🔧' : '🔨';
-        toast.success(`${actionEmoji} Code ${data.action === 'create' ? 'created' : data.action === 'modify' ? 'updated' : 'fixed'} successfully!`);
+        const phasesCount = data.phases?.length || 0;
+        const duration = ((data.totalDuration || 0) / 1000).toFixed(1);
+        toast.success(`✨ Generated with ${phasesCount} phases in ${duration}s!`);
       }
 
     } catch (error: any) {
-      console.error('💥 Error in chat builder:', error);
+      console.error('💥 Error in orchestrator:', error);
       
       const errorMessage: Message = {
         role: 'assistant',
@@ -207,6 +230,8 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setCurrentPhase("");
+      setProgress(0);
     }
   };
 
@@ -418,14 +443,31 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   
                   {message.code && (
-                    <div className="mt-3 p-2 bg-background/50 rounded border">
-                      <div className="flex items-center gap-2 mb-2">
+                    <div className="mt-3 p-2 bg-background/50 rounded border space-y-2">
+                      <div className="flex items-center gap-2">
                         <Code className="h-3 w-3" />
                         <span className="text-xs font-semibold">Generated Code</span>
                       </div>
                       <pre className="text-xs overflow-x-auto">
                         {message.code.substring(0, 200)}...
                       </pre>
+                      {message.orchestration && (
+                        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/50">
+                          <Badge variant="secondary" className="text-xs">
+                            <Zap className="h-2.5 w-2.5 mr-1" />
+                            {message.orchestration.phases.length} phases
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {(message.orchestration.duration / 1000).toFixed(1)}s
+                          </Badge>
+                          {message.orchestration.qualityScore && (
+                            <Badge variant="default" className="text-xs">
+                              <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
+                              Q: {message.orchestration.qualityScore}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -443,8 +485,20 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 </div>
-                <div className="bg-muted rounded-lg p-3">
-                  <p className="text-sm">{t('aiCodeBuilder.building')}</p>
+                <div className="bg-muted rounded-lg p-3 min-w-[300px]">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Smart Orchestration</span>
+                    </div>
+                    {currentPhase && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>{currentPhase}...</span>
+                      </div>
+                    )}
+                    <Progress value={progress} className="h-1" />
+                  </div>
                 </div>
               </div>
             )}
