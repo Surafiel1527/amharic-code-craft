@@ -34,13 +34,27 @@ const Auth = () => {
         return;
       }
 
+      // Check current session
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        console.log('✅ Auth page: User already logged in, redirecting to home');
-        navigate("/");
+        console.log('✅ Auth page: User already logged in, redirecting to dashboard');
+        navigate("/", { replace: true });
       }
     };
+    
     checkAuth();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && event !== 'PASSWORD_RECOVERY') {
+        console.log('✅ Auth page: User logged in, redirecting to dashboard');
+        navigate("/", { replace: true });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
