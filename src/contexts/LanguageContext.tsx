@@ -25,8 +25,8 @@ const translations = {
     "header.badge": "AI Technology - Modern & Smart",
     
     // Hero
-    "hero.title": "Create Websites in English",
-    "hero.subtitle": "Build your website by chatting with AI or with simple descriptions.",
+    "hero.title": "Generate with AI",
+    "hero.subtitle": "Build anything by chatting with AI or with simple descriptions.",
     
     // Examples
     "examples.title": "Examples",
@@ -53,8 +53,8 @@ const translations = {
     "tabs.generatedAgo": "Generated",
     
     // Editor
-    "editor.placeholder": "Describe the website you want to create...",
-    "editor.generate": "Generate Website",
+    "editor.placeholder": "Describe what you want to create...",
+    "editor.generate": "Generate",
     "editor.generating": "Generating...",
     "editor.preview": "Preview",
     "editor.copy": "Copy",
@@ -274,7 +274,7 @@ const translations = {
     // Chat Interface
     "chat.conversations": "Conversations",
     "chat.generating": "Generating...",
-    "chat.createWebsite": "Create Website",
+    "chat.createWebsite": "Generate",
     "chat.saveProject": "Save Project",
     "chat.enterProjectName": "Enter project name",
     "chat.projectName": "Project name",
@@ -545,7 +545,7 @@ const translations = {
     // Chat Interface - Amharic
     "chat.conversations": "ውይይቶች",
     "chat.generating": "በመፍጠር ላይ...",
-    "chat.createWebsite": "ድህረ ገፅ ፍጠር",
+    "chat.createWebsite": "ፍጠር",
     "chat.saveProject": "ፕሮጀክት አስቀምጥ",
     "chat.enterProjectName": "የፕሮጀክት ስም ያስገቡ",
     "chat.projectName": "የፕሮጀክት ስም",
@@ -585,8 +585,8 @@ const translations = {
     "aiFeatures.apikeys": "API ቁልፎች",
     
     // Hero
-    "hero.title": "በአማርኛ ድህረ ገፆችን ይፍጠሩ",
-    "hero.subtitle": "AI ጋር በመወያየት ወይም በቀላል መግለጫ ድህረ ገፅዎን ይገንቡ።",
+    "hero.title": "በAI ይፍጠሩ",
+    "hero.subtitle": "በAI ጋር በመወያየት ወይም በቀላል መግለጫ ማንኛውንም ይገንቡ።",
     
     // Examples
     "examples.title": "ምሳሌዎች",
@@ -613,8 +613,8 @@ const translations = {
     "tabs.generatedAgo": "የተፈጠረ",
     
     // Editor
-    "editor.placeholder": "መፍጠር የሚፈልጉትን ድህረ ገፅ ይግለጹ...",
-    "editor.generate": "ድህረ ገፅ ፍጠር",
+    "editor.placeholder": "መፍጠር የሚፈልጉትን ይግለጹ...",
+    "editor.generate": "ፍጠር",
     "editor.generating": "በመፍጠር ላይ...",
     "editor.preview": "ቅድመ እይታ",
     "editor.copy": "ቅዳ",
