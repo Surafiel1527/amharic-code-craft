@@ -136,7 +136,7 @@ const Auth = () => {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -150,7 +150,17 @@ const Auth = () => {
         return;
       }
 
+      // Verify session was created
+      if (!data.session) {
+        toast.error("Login successful but session not created. Please try again.");
+        return;
+      }
+
+      console.log("✅ Sign in successful, session established");
       toast.success("Signed in successfully!");
+      
+      // Small delay to ensure session is fully persisted
+      await new Promise(resolve => setTimeout(resolve, 500));
       navigate("/");
     } catch (error) {
       console.error("Signin error:", error);

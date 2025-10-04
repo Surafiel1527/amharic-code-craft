@@ -79,7 +79,10 @@ export default function Dashboard() {
   // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
+      console.log("❌ Not authenticated, redirecting to auth page");
       navigate("/auth");
+    } else if (!authLoading && user) {
+      console.log("✅ User authenticated:", user.id);
     }
   }, [authLoading, user, navigate]);
 
@@ -164,6 +167,17 @@ export default function Dashboard() {
 
     setCreating(true);
     try {
+      // Verify session is still valid before creating project
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        console.error("❌ Invalid session:", sessionError);
+        toast.error("Your session has expired. Please log in again.");
+        navigate("/auth");
+        return;
+      }
+
+      console.log("✅ Creating project for user:", user.id);
+
       const { data, error } = await supabase
         .from("projects")
         .insert({
@@ -179,8 +193,12 @@ export default function Dashboard() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Error creating project:", error);
+        throw error;
+      }
 
+      console.log("✅ Project created:", data.id);
       toast.success("🚀 Starting project generation...");
       setShowCreateDialog(false);
       setNewProject({ title: "", prompt: "", template: "blank" });
@@ -190,7 +208,16 @@ export default function Dashboard() {
       navigate(`/project/${data.id}?generate=true`);
     } catch (error: any) {
       console.error("Error creating project:", error);
-      toast.error(error.message || "Failed to create project");
+      
+      // Provide more specific error messages
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_CONNECTION')) {
+        toast.error("Connection error. Please check your internet and try again.");
+      } else if (error.message?.includes('row-level security')) {
+        toast.error("Permission denied. Please log in again.");
+        navigate("/auth");
+      } else {
+        toast.error(error.message || "Failed to create project");
+      }
     } finally {
       setCreating(false);
     }
@@ -265,6 +292,11 @@ export default function Dashboard() {
         </div>
       </div>
     );
+  }
+
+  // Don't render if no user (will redirect via useEffect)
+  if (!user) {
+    return null;
   }
 
   return (
