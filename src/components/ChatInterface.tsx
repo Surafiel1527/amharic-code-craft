@@ -68,15 +68,14 @@ export const ChatInterface = ({
     ) {
       console.log('🚀 Auto-sending initial prompt:', autoSendPrompt);
       hasAutoSent.current = true;
-      setInput(autoSendPrompt);
       
-      // Small delay to ensure everything is ready
+      // Send directly with the prompt text (don't rely on state)
       setTimeout(() => {
-        handleSend();
+        handleSend(autoSendPrompt);
         if (onAutoSendComplete) {
           onAutoSendComplete();
         }
-      }, 1000);
+      }, 500);
     }
   }, [autoSendPrompt, conversationId, conversationLoaded, isLoading]);
 
@@ -210,8 +209,13 @@ export const ChatInterface = ({
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (messageOverrideOrEvent?: string | React.MouseEvent) => {
+    // Extract message text from override or input
+    const messageText = typeof messageOverrideOrEvent === 'string' 
+      ? messageOverrideOrEvent 
+      : input.trim();
+    
+    if (!messageText || isLoading) return;
 
     // Check authentication first
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -220,7 +224,7 @@ export const ChatInterface = ({
       return;
     }
 
-    const userMessage = input.trim();
+    const userMessage = messageText;
     const hasActiveProject = !!activeProjectCode;
     
     // Detect if user wants to start fresh
