@@ -345,8 +345,8 @@ export const ChatInterface = ({
         });
         
         const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
-        // Variable delays: faster at start, much longer at Learning phase
-        const phaseDelays = [600, 600, 700, 800, 2000]; // Learning phase takes 2 seconds
+        // Smooth, gradually increasing delays for better UX
+        const phaseDelays = [1000, 1200, 1400, 1600, 2500]; // Gradual slowdown, longest at Learning
         let currentPhaseIdx = 0;
         let progressIntervalId: number;
         
