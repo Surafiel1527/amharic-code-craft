@@ -102,17 +102,6 @@ function AdminContent() {
     setPreviewMode(!previewMode);
   };
 
-  const handleSignOut = async () => {
-    try {
-      toast.loading(t("toast.signingOut") || "Signing out...");
-      await signOut();
-      toast.success(t("toast.signedOut") || "Signed out successfully");
-    } catch (error) {
-      console.error('Sign out error:', error);
-      toast.error(t("toast.signOutError") || "Error signing out, but you've been logged out locally");
-    }
-  };
-
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
@@ -326,7 +315,7 @@ function AdminContent() {
               {isVisible('NotificationCenter') && <NotificationCenter />}
             </DynamicSlot>
             <DynamicComponent name="Button-SignOut">
-              <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2">
+              <Button variant="outline" size="sm" onClick={signOut} className="gap-2">
                 <LogOut className="h-4 w-4" />
                 {t("admin.signOut")}
               </Button>
@@ -381,7 +370,7 @@ function AdminContent() {
                 <Button
                   variant="ghost"
                   className="w-full justify-start gap-2 text-destructive hover:text-destructive"
-                  onClick={handleSignOut}
+                  onClick={signOut}
                 >
                   <LogOut className="h-4 w-4" />
                   {t("admin.signOut")}

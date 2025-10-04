@@ -55,43 +55,22 @@ export const useAuth = () => {
 
   const signOut = async () => {
     try {
-      // Use local scope to clear client-side session even if server session is invalid
-      const { error } = await supabase.auth.signOut({ scope: 'local' });
-      
-      // Even if there's an error, clear local state and redirect
-      if (error) {
-        console.warn('Sign out warning:', error.message);
-        
-        // If session not found, it means we're already signed out server-side
-        if (error.message.includes('session_not_found')) {
-          console.log('Session already expired, clearing local state');
-        } else {
-          // Report other errors but don't block sign out
-          supabase.functions.invoke('report-error', {
-            body: {
-              errorType: 'AuthError',
-              errorMessage: error.message,
-              source: 'frontend',
-              filePath: 'hooks/useAuth.tsx',
-              functionName: 'signOut',
-              severity: 'low',
-              context: { operation: 'sign_out' }
-            }
-          }).catch(err => console.error('Failed to report sign out error:', err));
-        }
-      }
-      
-      // Always clear local state and redirect
-      setUser(null);
-      setSession(null);
-      navigate("/auth");
-      
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
     } catch (error) {
-      // If sign out completely fails, still clear local state
-      console.error('Sign out error:', error);
-      setUser(null);
-      setSession(null);
-      navigate("/auth");
+      supabase.functions.invoke('report-error', {
+        body: {
+          errorType: 'AuthError',
+          errorMessage: error instanceof Error ? error.message : 'Sign out failed',
+          source: 'frontend',
+          filePath: 'hooks/useAuth.tsx',
+          functionName: 'signOut',
+          severity: 'medium',
+          context: { operation: 'sign_out' }
+        }
+      }).catch(err => console.error('Failed to report sign out error:', err));
+      
+      throw error;
     }
   };
 

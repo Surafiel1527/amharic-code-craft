@@ -17,47 +17,17 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
-  // Check for password reset token and redirect if already logged in
+  // Redirect if already logged in
   useEffect(() => {
     const checkAuth = async () => {
-      // Check if this is a password reset callback
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const type = hashParams.get('type');
-      
-      if (type === 'recovery') {
-        setShowResetPassword(true);
-        return;
-      }
-
-      // Check current session
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        console.log('✅ Auth page: User already logged in, redirecting to dashboard');
-        navigate("/", { replace: true });
+        console.log('✅ Auth page: User already logged in, redirecting to home');
+        navigate("/");
       }
     };
-    
     checkAuth();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && event !== 'PASSWORD_RECOVERY') {
-        console.log('✅ Auth page: User logged in, redirecting to dashboard');
-        // Add a small delay before redirect to ensure session is fully established
-        setTimeout(() => {
-          navigate("/", { replace: true });
-        }, 300);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, [navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -87,21 +57,12 @@ const Auth = () => {
       });
 
       if (error) {
-        // Handle various signup errors with user-friendly messages
-        if (error.message.includes("Database error saving new user")) {
-          toast.error("Account setup error", {
-            description: "There may be an incomplete account with this email. Please try signing in, or contact support if the issue persists.",
-            duration: 8000,
-          });
-        } else if (error.message.includes("already registered") || 
-            error.message.includes("User already registered")) {
-          toast.error("This email is already registered. Please sign in instead.");
+        if (error.message.includes("already registered") || error.message.includes("User already registered")) {
+          toast.error("This email is already registered. Please sign in.");
         } else if (error.message.includes("Invalid email")) {
-          toast.error("Please enter a valid email address");
+          toast.error("Please enter a valid email");
         } else if (error.message.includes("Password")) {
-          toast.error("Password must be at least 6 characters");
-        } else if (error.message.includes("Email rate limit exceeded")) {
-          toast.error("Too many attempts. Please try again later.");
+          toast.error("Password is too short. Enter at least 6 characters");
         } else {
           toast.error(`Sign up failed: ${error.message}`);
         }
@@ -136,7 +97,7 @@ const Auth = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -150,97 +111,11 @@ const Auth = () => {
         return;
       }
 
-      // Verify session was created
-      if (!data.session) {
-        toast.error("Login successful but session not created. Please try again.");
-        return;
-      }
-
-      console.log("✅ Sign in successful, session established");
       toast.success("Signed in successfully!");
-      
-      // Small delay to ensure session is fully persisted
-      await new Promise(resolve => setTimeout(resolve, 500));
       navigate("/");
     } catch (error) {
       console.error("Signin error:", error);
       toast.error("Sign in failed. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email) {
-      toast.error("Please enter your email address");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth`,
-      });
-
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-
-      toast.success("Password reset link sent!", {
-        description: "Check your email (and spam folder) for the reset link. It may take a few minutes to arrive.",
-        duration: 8000,
-      });
-      setShowForgotPassword(false);
-    } catch (error: any) {
-      console.error("Forgot password error:", error);
-      toast.error("Failed to send reset email", {
-        description: error?.message || "Please check your email address and try again",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newPassword || !confirmPassword) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-
-      toast.success("Password updated successfully!");
-      setShowResetPassword(false);
-      setNewPassword("");
-      setConfirmPassword("");
-      navigate("/");
-    } catch (error: any) {
-      console.error("Reset password error:", error);
-      toast.error(error?.message || "Failed to reset password");
     } finally {
       setIsLoading(false);
     }
@@ -269,82 +144,14 @@ const Auth = () => {
           </p>
         </div>
 
-        {showResetPassword ? (
-          <div className="space-y-4 mt-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-xl font-semibold">Reset Password</h2>
-              <p className="text-sm text-muted-foreground">Enter your new password</p>
-            </div>
-            
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">New Password</label>
-                <Input
-                  type="password"
-                  placeholder="At least 6 characters"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  disabled={isLoading}
-                  required
-                  minLength={6}
-                />
-              </div>
+        <Tabs defaultValue="signin" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="signin">Sign In</TabsTrigger>
+            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+          </TabsList>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Confirm Password</label>
-                <Input
-                  type="password"
-                  placeholder="Re-enter password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={isLoading}
-                  required
-                  minLength={6}
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Updating password...
-                  </>
-                ) : (
-                  "Update Password"
-                )}
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => {
-                  setShowResetPassword(false);
-                  window.history.replaceState({}, document.title, "/auth");
-                }}
-                disabled={isLoading}
-              >
-                Back to Sign In
-              </Button>
-            </form>
-          </div>
-        ) : showForgotPassword ? (
-          <div className="space-y-4 mt-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-xl font-semibold">Forgot Password</h2>
-              <p className="text-sm text-muted-foreground">Enter your email to receive a reset link</p>
-              <div className="bg-muted/50 border border-border rounded-lg p-3 mt-3">
-                <p className="text-xs text-muted-foreground">
-                  💡 <strong>Note:</strong> Check your spam/junk folder if you don't see the email within a few minutes.
-                </p>
-              </div>
-            </div>
-            
-            <form onSubmit={handleForgotPassword} className="space-y-4">
+          <TabsContent value="signin" className="space-y-4 mt-6">
+            <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Email</label>
                 <Input
@@ -357,6 +164,18 @@ const Auth = () => {
                 />
               </div>
 
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Password</label>
+                <Input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+
               <Button
                 type="submit"
                 className="w-full"
@@ -365,85 +184,14 @@ const Auth = () => {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
+                    Signing in...
                   </>
                 ) : (
-                  "Send Reset Link"
+                  "Sign In"
                 )}
               </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => setShowForgotPassword(false)}
-                disabled={isLoading}
-              >
-                Back to Sign In
-              </Button>
             </form>
-          </div>
-        ) : (
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="signin" className="space-y-4 mt-6">
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Email</label>
-                  <Input
-                    type="email"
-                    placeholder="example@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={isLoading}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Password</label>
-                  <Input
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
-                    required
-                  />
-                </div>
-
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="px-0 text-sm"
-                    onClick={() => setShowForgotPassword(true)}
-                    disabled={isLoading}
-                  >
-                    Forgot password?
-                  </Button>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Signing in...
-                    </>
-                  ) : (
-                    "Sign In"
-                  )}
-                </Button>
-              </form>
-            </TabsContent>
+          </TabsContent>
 
           <TabsContent value="signup" className="space-y-4 mt-6">
             <form onSubmit={handleSignUp} className="space-y-4">
@@ -499,8 +247,7 @@ const Auth = () => {
               </Button>
             </form>
           </TabsContent>
-          </Tabs>
-        )}
+        </Tabs>
       </Card>
     </div>
   );

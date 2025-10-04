@@ -111,9 +111,6 @@ const translations = {
     "toast.dataFetchError": "Error fetching data",
     "toast.roleUpdated": "User role updated successfully",
     "toast.roleUpdateError": "Error updating role",
-    "toast.signingOut": "Signing out...",
-    "toast.signedOut": "Signed out successfully",
-    "toast.signOutError": "Error signing out, but you've been logged out locally",
     
     // Sections
     "section.backup": "Backup & Restore",
@@ -521,11 +518,6 @@ const translations = {
     "themeGallery.applyFailed": "Failed to apply theme",
     "themeGallery.deleteFailed": "Failed to delete theme",
     "themeGallery.loadFailed": "Failed to load themes",
-    
-    // Version History
-    "version.update": "Update",
-    "version.history": "Version History",
-    "version.restore": "Restore any previous version of your project",
   },
   am: {
     // Meta
@@ -549,11 +541,6 @@ const translations = {
     "templates.usage": "አጠቃቀም",
     "templates.useThis": "ይህን አብነት ተጠቀም",
     "templates.loaded": "አብነት ተጫነ",
-    
-    // Version History - Amharic
-    "version.update": "የእውታዋን ስራት",
-    "version.history": "የስሪት ታሪክ",
-    "version.restore": "የፕሮጀክትዎን ቀደም ያሉ ስሪቶች መልሰው ይመልሱ",
     
     // Chat Interface - Amharic
     "chat.conversations": "ውይይቶች",
@@ -684,9 +671,6 @@ const translations = {
     "toast.dataFetchError": "መረጃ በማምጣት ላይ ስህተት ተፈጥሯል",
     "toast.roleUpdated": "የተጠቃሚ ሚና ተቀይሯል",
     "toast.roleUpdateError": "ሚና በመቀየር ላይ ስህተት ተፈጥሯል",
-    "toast.signingOut": "በመውጣት ላይ...",
-    "toast.signedOut": "በተሳካ ሁኔታ ወጥተዋል",
-    "toast.signOutError": "በመውጣት ላይ ስህተት፣ ግን በአካባቢያዊ ተወግደዋል",
     
     // Sections
     "section.backup": "ምትኪ እና መመለሻ",

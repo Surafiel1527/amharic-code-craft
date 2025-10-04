@@ -91,25 +91,25 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.generate-with-plan]
-verify_jwt = true
+verify_jwt = false
 
 [functions.smart-diff-update]
-verify_jwt = true
+verify_jwt = false
 
 [functions.learn-user-preferences]
 verify_jwt = false
 
 [functions.multi-project-learn]
-verify_jwt = true
+verify_jwt = false
 
 [functions.iterative-refine]
-verify_jwt = true
+verify_jwt = false
 
 [functions.component-awareness]
-verify_jwt = true
+verify_jwt = false
 
 [functions.smart-orchestrator]
-verify_jwt = true
+verify_jwt = false
 
 [functions.model-selector]
 verify_jwt = false

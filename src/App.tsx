@@ -1,5 +1,5 @@
 import { Routes, Route } from "react-router-dom";
-import Dashboard from "./pages/Dashboard";
+import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
@@ -8,16 +8,16 @@ import Explore from "./pages/Explore";
 import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
 import AISystemTest from "./pages/AISystemTest";
-import ProjectWorkspace from "./pages/ProjectWorkspace";
+import Builder from "./pages/Builder";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const App = () => {
   return (
     <ErrorBoundary>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/project/:projectId" element={<ProjectWorkspace />} />
+        <Route path="/builder" element={<Builder />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/explore" element={<Explore />} />

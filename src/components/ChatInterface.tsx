@@ -25,20 +25,16 @@ interface Message {
 
 interface ChatInterfaceProps {
   conversationId: string | null;
-  onCodeGenerated: (code: string, shouldSaveVersion?: boolean) => void;
+  onCodeGenerated: (code: string) => void;
   currentCode: string;
   onConversationChange: (id: string) => void;
-  autoSendPrompt?: string;
-  onAutoSendComplete?: () => void;
 }
 
 export const ChatInterface = ({ 
   conversationId, 
   onCodeGenerated, 
   currentCode,
-  onConversationChange,
-  autoSendPrompt,
-  onAutoSendComplete
+  onConversationChange 
 }: ChatInterfaceProps) => {
   const { t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -46,10 +42,7 @@ export const ChatInterface = ({
   const [isLoading, setIsLoading] = useState(false);
   const [currentPhase, setCurrentPhase] = useState("");
   const [progress, setProgress] = useState(0);
-  const [activeProjectCode, setActiveProjectCode] = useState(currentCode || "");
   const scrollRef = useRef<HTMLDivElement>(null);
-  const hasAutoSent = useRef(false);
-  const [conversationLoaded, setConversationLoaded] = useState(false);
 
   useEffect(() => {
     if (conversationId) {
@@ -57,57 +50,9 @@ export const ChatInterface = ({
     }
   }, [conversationId]);
 
-  /**
-   * Auto-sends initial prompt when landing in workspace from project creation
-   * Ensures auth context is fully established before making API calls
-   */
-  useEffect(() => {
-    // Guard: Only run if all conditions are met
-    if (
-      !autoSendPrompt ||           // No prompt to send
-      !conversationId ||            // No conversation context
-      !conversationLoaded ||        // Conversation not loaded yet
-      isLoading ||                  // Already generating
-      hasAutoSent.current           // Already sent (prevent duplicates)
-    ) {
-      return;
-    }
-
-    console.log('🎯 Auto-send conditions met, initializing...');
-    hasAutoSent.current = true; // Mark as sent immediately to prevent race conditions
-
-    // Delay to ensure:
-    // 1. Auth session is fully synced across app
-    // 2. Supabase client has valid auth context
-    // 3. Edge functions receive valid Authorization header
-    const AUTO_SEND_DELAY = 2000; // 2 seconds for stable auth
-
-    const timerId = setTimeout(() => {
-      console.log('🚀 Executing auto-send with prompt:', autoSendPrompt.substring(0, 50) + '...');
-      
-      // Trigger generation
-      handleSend(autoSendPrompt);
-      
-      // Notify parent component
-      if (onAutoSendComplete) {
-        onAutoSendComplete();
-      }
-    }, AUTO_SEND_DELAY);
-
-    // Cleanup timeout on unmount
-    return () => clearTimeout(timerId);
-  }, [autoSendPrompt, conversationId, conversationLoaded, isLoading]);
-
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Sync active project code with prop changes
-  useEffect(() => {
-    if (currentCode) {
-      setActiveProjectCode(currentCode);
-    }
-  }, [currentCode]);
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -117,25 +62,7 @@ export const ChatInterface = ({
 
   const loadConversation = async (convId: string) => {
     console.log('💬 Chat: Loading conversation:', convId);
-    setConversationLoaded(false);
     try {
-      // Load conversation with current_code
-      const { data: convData, error: convError } = await supabase
-        .from("conversations")
-        .select("current_code")
-        .eq("id", convId)
-        .single();
-
-      if (convError) {
-        console.error('❌ Chat: Error loading conversation:', convError);
-      } else if (convData?.current_code) {
-        console.log('✅ Chat: Loaded project code from conversation');
-        setActiveProjectCode(convData.current_code);
-        // Pass false to prevent creating a version on initial load
-        onCodeGenerated(convData.current_code, false);
-      }
-
-      // Load messages
       const { data, error } = await supabase
         .from("messages")
         .select("*")
@@ -160,8 +87,6 @@ export const ChatInterface = ({
         }));
       
       setMessages(typedMessages);
-      setConversationLoaded(true);
-      console.log('✅ Chat: Conversation loaded successfully');
     } catch (error) {
       console.error("❌ Chat: Error loading conversation:", error);
       
@@ -182,7 +107,6 @@ export const ChatInterface = ({
       }).catch(err => console.error('Failed to report error:', err));
       
       toast.error(t("chat.loadFailed"));
-      setConversationLoaded(true); // Set to true even on error to prevent infinite waiting
     }
   };
 
@@ -228,60 +152,10 @@ export const ChatInterface = ({
     }
   };
 
-  /**
-   * Handles sending messages to AI with robust auth validation
-   * Supports both user input and programmatic calls (auto-send)
-   */
-  const handleSend = async (messageOverrideOrEvent?: string | React.MouseEvent) => {
-    // 1. Extract message text
-    const messageText = typeof messageOverrideOrEvent === 'string' 
-      ? messageOverrideOrEvent 
-      : input.trim();
-    
-    if (!messageText || isLoading) {
-      console.warn('⚠️ Cannot send: empty message or already loading');
-      return;
-    }
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
 
-    // 2. Validate authentication with detailed logging
-    console.log('🔐 Validating authentication...');
-    
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) {
-      console.error('❌ Session error:', sessionError.message);
-      toast.error("Authentication error. Please log in again.");
-      return;
-    }
-    
-    if (!session) {
-      console.error('❌ No active session');
-      toast.error("Please log in to use AI generation");
-      return;
-    }
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError) {
-      console.error('❌ Auth error:', authError.message);
-      toast.error("Authentication error. Please log in again.");
-      return;
-    }
-    
-    if (!user) {
-      console.error('❌ No user found');
-      toast.error("Please log in to use AI generation");
-      return;
-    }
-    
-    console.log('✅ Authentication validated - User:', user.id);
-    console.log('✅ Session valid - Expires:', new Date(session.expires_at! * 1000).toISOString());
-
-    const userMessage = messageText;
-    const hasActiveProject = !!activeProjectCode;
-    
-    // Detect if user wants to start fresh
-    const wantsNewProject = userMessage.toLowerCase().match(/\b(create|build|make|generate|new)\b.*\b(project|app|website|game)\b/i) && 
-                            !userMessage.toLowerCase().match(/\b(update|modify|change|fix|add to|improve)\b/i);
-    
+    const userMessage = input.trim();
     setInput("");
     setIsLoading(true);
 
@@ -309,26 +183,21 @@ export const ChatInterface = ({
         content: userMessage,
       });
 
-      // Determine the right code to use based on context
-      const codeToModify = wantsNewProject ? "" : activeProjectCode;
-      
       // Detect if this is a simple modification (use fast path)
-      const isSimpleChange = hasActiveProject && 
-                            !wantsNewProject && 
-                            userMessage.toLowerCase().match(/\b(change|update|modify|fix|adjust|set|make)\b.*\b(color|style|text|size|font|background)\b/i);
+      const isSimpleChange = currentCode && userMessage.toLowerCase().match(/\b(change|update|modify|fix|adjust|set|make)\b.*\b(color|style|text|size|font|background)\b/i);
       
       let data, error;
       
       if (isSimpleChange) {
         // Fast path: Use smart-diff-update for simple style changes
-        console.log('🚀 Using fast smart-diff-update on existing project');
-        setCurrentPhase('Updating existing project');
+        console.log('🚀 Using fast smart-diff-update');
+        setCurrentPhase('Analyzing changes');
         setProgress(50);
         
         const response = await supabase.functions.invoke("smart-diff-update", {
           body: {
             userRequest: userMessage,
-            currentCode: activeProjectCode,
+            currentCode,
           },
         });
         
@@ -337,96 +206,29 @@ export const ChatInterface = ({
         setProgress(100);
       } else {
         // Full orchestration for complex changes or new projects
-        const isModification = hasActiveProject && !wantsNewProject;
-        console.log('🚀 Using full smart orchestration:', { 
-          isModification, 
-          hasCode: !!codeToModify,
-          wantsNew: wantsNewProject 
-        });
-        
+        console.log('🚀 Using full smart orchestration');
         const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
-        // Smooth, gradually increasing delays for better UX
-        const phaseDelays = [1000, 1200, 1400, 1600, 2500]; // Gradual slowdown, longest at Learning
         let currentPhaseIdx = 0;
-        let progressIntervalId: number;
         
-        // Show initialization phase for cold starts
-        setCurrentPhase('Initializing AI service...');
-        setProgress(5);
-        
-        const scheduleNextPhase = () => {
+        const progressInterval = setInterval(() => {
           if (currentPhaseIdx < phases.length) {
             setCurrentPhase(phases[currentPhaseIdx]);
-            setProgress((currentPhaseIdx + 1) * 19 + 5); // Offset by initial 5%
-            const currentDelay = phaseDelays[currentPhaseIdx];
+            setProgress((currentPhaseIdx + 1) * 20);
             currentPhaseIdx++;
-            progressIntervalId = window.setTimeout(scheduleNextPhase, currentDelay);
           }
-        };
-        
-        // Start the phase progression
-        progressIntervalId = window.setTimeout(scheduleNextPhase, 600);
+        }, 800);
 
-        // Call smart-orchestrator with EXPLICIT auth token
-        console.log('📡 Calling smart-orchestrator...');
-        console.log('   - Conversation:', activeConvId);
-        console.log('   - Has existing code:', !!codeToModify);
-        console.log('   - Session access token available:', !!session.access_token);
-        
-        // Get fresh session to ensure token is valid
-        const { data: { session: freshSession } } = await supabase.auth.getSession();
-        if (!freshSession?.access_token) {
-          console.error('❌ Fresh session check failed - no access token');
-          throw new Error('Session expired. Please refresh the page and try again.');
-        }
-        
-        console.log('   - Fresh session obtained, token length:', freshSession.access_token.length);
-        
-        // Call smart-orchestrator with retry logic for cold starts
-        let response;
-        let retryCount = 0;
-        const maxRetries = 3;
-        
-        while (retryCount < maxRetries) {
-          try {
-            console.log(`📡 Calling smart-orchestrator (attempt ${retryCount + 1}/${maxRetries})...`);
-            
-            response = await supabase.functions.invoke("smart-orchestrator", {
-              body: {
-                userRequest: userMessage,
-                conversationId: activeConvId,
-                currentCode: codeToModify,
-                autoRefine: true,
-                autoLearn: true,
-              },
-            });
-            
-            // If we get here without throwing, break the retry loop
-            break;
-          } catch (invokeError: any) {
-            retryCount++;
-            console.error(`❌ Attempt ${retryCount} failed:`, invokeError.message);
-            
-            if (retryCount < maxRetries) {
-              const delayMs = Math.min(1000 * Math.pow(2, retryCount - 1), 5000);
-              console.log(`⏱️ Retrying in ${delayMs}ms...`);
-              await new Promise(resolve => setTimeout(resolve, delayMs));
-            } else {
-              // Max retries exceeded
-              throw new Error('Service temporarily unavailable. Please try again in a moment.');
-            }
-          }
-        }
-        
-        if (!response) {
-          throw new Error('Failed to get response from service');
-        }
-        
-        console.log('📥 Response received from smart-orchestrator');
-        console.log('   - Has data:', !!response.data);
-        console.log('   - Has error:', !!response.error);
+        const response = await supabase.functions.invoke("smart-orchestrator", {
+          body: {
+            userRequest: userMessage,
+            conversationId: activeConvId,
+            currentCode,
+            autoRefine: true,
+            autoLearn: true,
+          },
+        });
 
-        clearTimeout(progressIntervalId);
+        clearInterval(progressInterval);
         data = response.data;
         error = response.error;
         setProgress(100);
@@ -439,20 +241,6 @@ export const ChatInterface = ({
         ? (data.explanation || "Updated the code with your changes.")
         : (data.plan?.architecture_overview || "I've generated the code based on your request with smart optimization.");
       const generatedCode = isSimpleChange ? data.updatedCode : data.finalCode;
-      
-      console.log('🎨 ChatInterface: Code extraction complete');
-      console.log('   - isSimpleChange:', isSimpleChange);
-      console.log('   - generatedCode length:', generatedCode?.length || 0);
-      console.log('   - data keys:', Object.keys(data || {}));
-      console.log('   - data.finalCode length:', data?.finalCode?.length || 0);
-      console.log('   - data.updatedCode length:', data?.updatedCode?.length || 0);
-      
-      // Validate generated code
-      if (!generatedCode || generatedCode.trim().length === 0) {
-        console.error('❌ ChatInterface: No valid code generated');
-        console.error('   - Response data:', JSON.stringify(data).substring(0, 500));
-        throw new Error('Failed to generate code. Please try rephrasing your request and try again.');
-      }
       
       // Add assistant message with orchestration info
       const assistantMsg: Message = {
@@ -481,52 +269,21 @@ export const ChatInterface = ({
         generated_code: generatedCode,
       });
 
-      // Update code preview and active project if code was generated
-      console.log('🔍 ChatInterface: Checking if should update code, generatedCode exists:', !!generatedCode);
-      
+      // Update code preview if code was generated
       if (generatedCode) {
-        console.log('✅ ChatInterface: Updating code, length:', generatedCode.length);
-        setActiveProjectCode(generatedCode);
-        // Pass true to save a version for new generations
-        console.log('📞 ChatInterface: Calling onCodeGenerated...');
-        onCodeGenerated(generatedCode, true);
-        console.log('✅ ChatInterface: onCodeGenerated called successfully');
-        
-        if (isSimpleChange) {
-          toast.success("⚡ Updated instantly!");
-        } else if (hasActiveProject && !wantsNewProject) {
-          toast.success("🔧 Project updated!");
-        } else {
-          toast.success("✨ New project created!");
-        }
+        onCodeGenerated(generatedCode);
+        toast.success(t("chat.codeUpdated"));
       }
 
-      // Save project code to conversation for persistence
+      // Update conversation timestamp
       await supabase
         .from("conversations")
-        .update({ 
-          updated_at: new Date().toISOString(),
-          current_code: generatedCode || activeProjectCode
-        })
+        .update({ updated_at: new Date().toISOString() })
         .eq("id", activeConvId);
 
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error sending message:", error);
-      
-      // Handle specific error cases with user-friendly messages
-      if (error?.message?.includes('Unauthorized') || error?.message?.includes('authentication')) {
-        toast.error("Authentication error. Please refresh the page and log in again.");
-      } else if (error?.message?.includes('FunctionsRelayError') || error?.message?.includes('FunctionsHttpError')) {
-        toast.error("Service temporarily unavailable. Please try again in a moment.");
-      } else if (error?.message?.includes('Failed to generate code')) {
-        toast.error("❌ " + error.message);
-      } else if (error?.message?.includes('Rate limit')) {
-        toast.error("⏱️ Too many requests. Please wait a moment and try again.");
-      } else if (error?.message?.includes('No code')) {
-        toast.error("Failed to generate code. Please try rephrasing your request.");
-      } else {
-        toast.error(error?.message || t("chat.sendFailed"));
-      }
+      toast.error(t("chat.sendFailed"));
     } finally {
       setIsLoading(false);
       setCurrentPhase("");
@@ -541,43 +298,8 @@ export const ChatInterface = ({
     }
   };
 
-  const handleStartFresh = async () => {
-    setActiveProjectCode("");
-    setMessages([]);
-    
-    // Clear current_code from conversation
-    if (conversationId) {
-      await supabase
-        .from("conversations")
-        .update({ current_code: null })
-        .eq("id", conversationId);
-    }
-    
-    toast.info("Starting fresh project");
-  };
-
   return (
     <div className="flex flex-col h-full">
-      {/* Project Status Header */}
-      {activeProjectCode && (
-        <div className="px-4 py-2 border-b border-border bg-muted/30">
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-muted-foreground">Active Project ({(activeProjectCode.length / 1000).toFixed(1)}KB)</span>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleStartFresh}
-              className="h-7 text-xs"
-            >
-              Start Fresh
-            </Button>
-          </div>
-        </div>
-      )}
-      
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-4">
           {messages.length === 0 && (
@@ -592,10 +314,6 @@ export const ChatInterface = ({
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
                   {t("chat.assistantDesc")}
                 </p>
-                <div className="text-xs text-muted-foreground mt-4 p-3 bg-primary/5 rounded-lg">
-                  <strong>💡 Smart Context:</strong> I'll remember your project throughout the conversation. 
-                  Just ask to modify it naturally, or say "create new" to start fresh.
-                </div>
               </div>
             </Card>
           )}
@@ -656,50 +374,22 @@ export const ChatInterface = ({
 
           {isLoading && (
             <div className="flex gap-3">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <Bot className="h-5 w-5 text-primary animate-pulse" />
               </div>
-              <Card className="p-4 min-w-[300px] max-w-[80%] bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-                <div className="space-y-4">
-                  {/* Header */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-semibold">AI Generation in Progress</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground font-mono">
-                      {progress}%
-                    </div>
+              <Card className="p-4 min-w-[300px]">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Zap className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Smart Orchestration</span>
                   </div>
-
-                  {/* Current Phase */}
                   {currentPhase && (
-                    <div className="flex items-start gap-2 bg-background/50 p-3 rounded-md">
-                      <Loader2 className="h-4 w-4 animate-spin text-primary mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium">{currentPhase}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {progress < 20 && "Analyzing your requirements and planning the architecture..."}
-                          {progress >= 20 && progress < 40 && "Reviewing existing code and dependencies..."}
-                          {progress >= 40 && progress < 60 && "Generating high-quality code with best practices..."}
-                          {progress >= 60 && progress < 80 && "Optimizing code for performance and readability..."}
-                          {progress >= 80 && "Learning from this generation for future improvements..."}
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>{currentPhase}...</span>
                     </div>
                   )}
-
-                  {/* Progress Bar */}
-                  <div className="space-y-2">
-                    <Progress value={progress} className="h-2" />
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>This may take 10-30 seconds</span>
-                      <span className="flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Enterprise-grade quality
-                      </span>
-                    </div>
-                  </div>
+                  <Progress value={progress} className="h-1" />
                 </div>
               </Card>
             </div>
@@ -713,10 +403,7 @@ export const ChatInterface = ({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={activeProjectCode 
-              ? "Modify your project or say 'create new' to start fresh..." 
-              : t("chat.writeMessage")
-            }
+            placeholder={t("chat.writeMessage")}
             disabled={isLoading}
             className="flex-1"
             dir="auto"

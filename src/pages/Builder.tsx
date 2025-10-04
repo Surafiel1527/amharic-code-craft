@@ -8,6 +8,7 @@ import { ArrowLeft, Sparkles, Wrench } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
 import { AICapabilitiesGuide } from "@/components/AICapabilitiesGuide";
 import { TestGenerator } from "@/components/TestGenerator";
@@ -19,18 +20,29 @@ import { CollaborationHub } from "@/components/CollaborationHub";
 export default function Builder() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { isAdmin, loading: roleLoading } = useUserRole(user?.id);
   const [activeDevTool, setActiveDevTool] = useState<string>("testing");
 
   // Redirect to auth if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
-      toast.error("Please log in to access the Builder");
+      toast.error("Please log in to access the AI Builder");
       navigate("/auth");
     }
   }, [authLoading, user, navigate]);
 
-  // Show loading while checking auth
-  if (authLoading || !user) {
+  // Redirect to home if not admin
+  useEffect(() => {
+    if (authLoading || roleLoading) return;
+    
+    if (user && !roleLoading && !isAdmin) {
+      toast.error("Access denied. AI Builder is only available to administrators.");
+      navigate("/");
+    }
+  }, [authLoading, roleLoading, isAdmin, user, navigate]);
+
+  // Show loading while checking permissions
+  if (authLoading || roleLoading || !user || isAdmin === null) {
     return (
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-6xl mx-auto space-y-6">
@@ -41,22 +53,27 @@ export default function Builder() {
     );
   }
 
+  // Don't render if not admin
+  if (!isAdmin) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => navigate("/")}>
+            <Button variant="outline" size="icon" onClick={() => navigate("/admin")}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
               <h1 className="text-3xl font-bold flex items-center gap-2">
                 <Sparkles className="w-8 h-8 text-primary" />
-                Project Builder
+                AI Code Builder
               </h1>
               <p className="text-muted-foreground">
-                Build and improve your projects with AI assistance
+                Generate complete applications with AI-powered multi-file generation
               </p>
             </div>
           </div>

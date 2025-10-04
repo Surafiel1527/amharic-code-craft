@@ -565,40 +565,26 @@ export type Database = {
       conversations: {
         Row: {
           created_at: string
-          current_code: string | null
           id: string
-          project_id: string | null
           title: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
           created_at?: string
-          current_code?: string | null
           id?: string
-          project_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           created_at?: string
-          current_code?: string | null
           id?: string
-          project_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "conversations_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       cross_project_patterns: {
         Row: {
@@ -1540,7 +1526,6 @@ export type Database = {
       projects: {
         Row: {
           created_at: string
-          description: string | null
           forked_from: string | null
           html_code: string
           id: string
@@ -1548,7 +1533,6 @@ export type Database = {
           is_public: boolean | null
           prompt: string
           share_token: string | null
-          status: string | null
           tags: string[] | null
           title: string
           updated_at: string
@@ -1558,7 +1542,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          description?: string | null
           forked_from?: string | null
           html_code: string
           id?: string
@@ -1566,7 +1549,6 @@ export type Database = {
           is_public?: boolean | null
           prompt: string
           share_token?: string | null
-          status?: string | null
           tags?: string[] | null
           title: string
           updated_at?: string
@@ -1576,7 +1558,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          description?: string | null
           forked_from?: string | null
           html_code?: string
           id?: string
@@ -1584,7 +1565,6 @@ export type Database = {
           is_public?: boolean | null
           prompt?: string
           share_token?: string | null
-          status?: string | null
           tags?: string[] | null
           title?: string
           updated_at?: string

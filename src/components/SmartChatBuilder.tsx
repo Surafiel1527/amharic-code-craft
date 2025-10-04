@@ -69,7 +69,7 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Create conversation and load persistent project on mount
+  // Create conversation on mount
   useEffect(() => {
     const createConversation = async () => {
       try {
@@ -87,21 +87,12 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
             title: 'Smart Code Builder Session',
             user_id: user.id 
           })
-          .select('id, current_code')
+          .select('id')
           .single();
         
         if (!error && data) {
           setConversationId(data.id);
           console.log('📝 Created conversation:', data.id);
-          
-          // Load persistent project code if exists
-          if (data.current_code) {
-            console.log('✅ Loaded persistent project code');
-            setWorkingCode(data.current_code);
-            if (onCodeGenerated) {
-              onCodeGenerated(data.current_code);
-            }
-          }
         } else if (error) {
           console.error('Failed to create conversation:', error);
         }
@@ -153,25 +144,15 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
     setIsLoading(true);
 
     try {
-      // Detect user intent
-      const hasActiveProject = !!workingCode;
-      const wantsNewProject = input.toLowerCase().match(/\b(create|build|make|generate|new)\b.*\b(project|app|website|game)\b/i) && 
-                              !input.toLowerCase().match(/\b(update|modify|change|fix|add to|improve)\b/i);
-      
-      // Determine code context
-      const codeToModify = wantsNewProject ? "" : workingCode;
-      
       // Detect if this is a simple modification
-      const isSimpleChange = hasActiveProject && 
-                            !wantsNewProject && 
-                            input.toLowerCase().match(/\b(change|update|modify|fix|adjust|set|make)\b.*\b(color|style|text|size|font|background)\b/i);
+      const isSimpleChange = workingCode && input.toLowerCase().match(/\b(change|update|modify|fix|adjust|set|make)\b.*\b(color|style|text|size|font|background)\b/i);
       
       let data, error;
       
       if (isSimpleChange) {
         // Fast path: Use smart-diff-update
-        console.log('🚀 Using fast smart-diff-update on existing project');
-        setCurrentPhase('Updating existing project');
+        console.log('🚀 Using fast smart-diff-update');
+        setCurrentPhase('Analyzing changes');
         setProgress(50);
         
         const response = await supabase.functions.invoke('smart-diff-update', {
@@ -186,12 +167,10 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
         setProgress(100);
       } else {
         // Full orchestration
-        const isModification = hasActiveProject && !wantsNewProject;
         console.log('🚀 Using full Smart Orchestrator:', { 
-          isModification,
-          hasCode: !!codeToModify,
-          wantsNew: wantsNewProject,
-          action: userMessage.action
+          action: userMessage.action,
+          hasCode: !!workingCode,
+          messageLength: input.length 
         });
 
         const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
@@ -209,7 +188,7 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
           body: {
             userRequest: input,
             conversationId,
-            currentCode: codeToModify,
+            currentCode: workingCode,
             autoRefine: true,
             autoLearn: true
           }
@@ -270,24 +249,12 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
           onCodeGenerated(generatedCode);
         }
         
-        // Save persistent project code to conversation
-        if (conversationId) {
-          await supabase
-            .from("conversations")
-            .update({ 
-              updated_at: new Date().toISOString(),
-              current_code: generatedCode 
-            })
-            .eq("id", conversationId);
-        }
-        
-        // Contextual success messages
         if (isSimpleChange) {
-          toast.success("⚡ Updated instantly!");
-        } else if (hasActiveProject && !wantsNewProject) {
-          toast.success("🔧 Project updated!");
+          toast.success(`⚡ Updated instantly with smart-diff!`);
         } else {
-          toast.success("✨ New project created!");
+          const phasesCount = data.phases?.length || 0;
+          const duration = ((data.totalDuration || 0) / 1000).toFixed(1);
+          toast.success(`✨ Generated with ${phasesCount} phases in ${duration}s!`);
         }
       }
 
@@ -314,19 +281,11 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
     }
   };
 
-  const handleLoadProject = async (project: any) => {
+  const handleLoadProject = (project: any) => {
     setWorkingCode(project.html_code);
     setCurrentProjectId(project.id);
     if (onCodeGenerated) {
       onCodeGenerated(project.html_code);
-    }
-    
-    // Save to conversation for persistence
-    if (conversationId) {
-      await supabase
-        .from("conversations")
-        .update({ current_code: project.html_code })
-        .eq("id", conversationId);
     }
     
     // Add system message to chat
@@ -338,21 +297,6 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
     setMessages(prev => [...prev, systemMessage]);
     setHistoryOpen(false);
     toast.success(`Project "${project.title}" loaded successfully`);
-  };
-
-  const handleStartFresh = async () => {
-    setWorkingCode("");
-    setMessages([]);
-    
-    // Clear persistent project code
-    if (conversationId) {
-      await supabase
-        .from("conversations")
-        .update({ current_code: null })
-        .eq("id", conversationId);
-    }
-    
-    toast.info("Starting fresh project");
   };
 
   return (
@@ -479,26 +423,6 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
       </CardHeader>
       
       <CardContent className="flex-1 flex flex-col gap-4 p-4">
-        {/* Active Project Indicator */}
-        {workingCode && (
-          <div className="px-3 py-2 border border-border rounded-lg bg-muted/30">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-muted-foreground">Active Project ({(workingCode.length / 1000).toFixed(1)}KB)</span>
-              </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleStartFresh}
-                className="h-7 text-xs"
-              >
-                Start Fresh
-              </Button>
-            </div>
-          </div>
-        )}
-        
         <ScrollArea ref={scrollRef} className="flex-1 pr-4">
           <div className="space-y-4">
             {messages.length === 0 && (
@@ -625,10 +549,7 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={workingCode 
-              ? "Modify your project or say 'create new' to start fresh..." 
-              : "Describe what you want to build or change..."
-            }
+            placeholder="Describe what you want to build or change..."
             disabled={isLoading}
             className="min-h-[60px]"
           />

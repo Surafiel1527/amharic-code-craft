@@ -155,7 +155,7 @@ serve(async (req) => {
 
     if (action === 'retrieve') {
       // Retrieve relevant patterns for a new request
-      const minConfidence = 70;
+      const { requestContext, minConfidence = 70 } = await req.json();
 
       // Get user's high-confidence patterns
       const { data: patterns } = await supabase
@@ -185,9 +185,8 @@ serve(async (req) => {
     }
 
     if (action === 'apply') {
-      // Get patterns and generate with AI - use body data already parsed
-      const userRequest = context;
-      const currentCode = generatedCode;
+      // Get patterns and generate with AI
+      const { userRequest, currentCode } = await req.json();
 
       // Retrieve user's patterns
       const { data: patterns } = await supabase

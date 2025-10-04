@@ -92,31 +92,13 @@ Your task: Create a comprehensive plan BEFORE any code generation. Respond in JS
       const planData = await planResponse.json();
       let planContent = planData.choices[0].message.content;
       
-      console.log('📄 Raw AI response length:', planContent.length);
-      
-      // Extract JSON from response - try to find valid JSON block
-      let jsonMatch = planContent.match(/```json\s*([\s\S]*?)```/);
+      // Extract JSON from response
+      const jsonMatch = planContent.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        jsonMatch = planContent.match(/\{[\s\S]*\}/);
+        throw new Error('Failed to parse plan');
       }
       
-      if (!jsonMatch) {
-        console.error('❌ No JSON found in response:', planContent.substring(0, 500));
-        throw new Error('Failed to extract JSON from plan response');
-      }
-      
-      const jsonString = jsonMatch[1] || jsonMatch[0];
-      console.log('📋 Extracted JSON length:', jsonString.length);
-      
-      let plan;
-      try {
-        plan = JSON.parse(jsonString);
-        console.log('✅ Successfully parsed plan JSON');
-      } catch (parseError: any) {
-        console.error('❌ JSON parse error:', parseError.message);
-        console.error('❌ Failed JSON string:', jsonString.substring(0, 1000));
-        throw new Error(`Invalid JSON in plan response: ${parseError.message}`);
-      }
+      const plan = JSON.parse(jsonMatch[0]);
       
       // Save plan to database
       const { data: savedPlan, error: planError } = await supabase
@@ -137,23 +119,19 @@ Your task: Create a comprehensive plan BEFORE any code generation. Respond in JS
         .single();
 
       if (planError) {
-        console.error('❌ Error saving plan:', planError);
-        throw new Error(`Failed to save plan: ${planError.message}`);
+        console.error('Error saving plan:', planError);
       }
 
-      if (!savedPlan || !savedPlan.id) {
-        console.error('❌ Plan saved but no ID returned:', savedPlan);
-        throw new Error('Plan saved but no ID returned');
-      }
-
-      console.log('✅ Plan created and saved with ID:', savedPlan.id);
+      console.log('✅ Plan created and saved');
 
       return new Response(
         JSON.stringify({
           success: true,
           phase: 'plan',
-          planId: savedPlan.id,
-          plan: plan
+          plan: {
+            ...plan,
+            planId: savedPlan?.id
+          }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -162,31 +140,17 @@ Your task: Create a comprehensive plan BEFORE any code generation. Respond in JS
     // PHASE 2: GENERATION - Generate code based on approved plan
     if (phase === 'generate') {
       console.log('🚀 PHASE 2: Generating code from plan...');
-      console.log('📋 Plan ID received:', planId);
-      
-      if (!planId) {
-        console.error('❌ No planId provided for generate phase');
-        throw new Error('Plan ID is required for generate phase');
-      }
       
       // Get the approved plan
-      const { data: plan, error: planFetchError } = await supabase
+      const { data: plan } = await supabase
         .from('architecture_plans')
         .select('*')
         .eq('id', planId)
         .single();
 
-      if (planFetchError) {
-        console.error('❌ Error fetching plan:', planFetchError);
-        throw new Error(`Failed to fetch plan: ${planFetchError.message}`);
-      }
-
       if (!plan) {
-        console.error('❌ Plan not found for ID:', planId);
         throw new Error('Plan not found');
       }
-      
-      console.log('✅ Plan retrieved successfully');
 
       // Get project memory
       const { data: memory } = await supabase
@@ -195,17 +159,9 @@ Your task: Create a comprehensive plan BEFORE any code generation. Respond in JS
         .eq('conversation_id', conversationId)
         .single();
 
-      const generationPrompt = `You are an expert web developer creating a complete, standalone website FOR PREVIEW IN A BROWSER.
+      const generationPrompt = `You are an expert developer implementing an approved architecture plan.
 
-🚨 CRITICAL RULES - READ CAREFULLY:
-1. You MUST output ONLY HTML code - nothing else
-2. The ENTIRE output must be ONE single HTML file
-3. DO NOT create tailwind.config.js, package.json, or ANY config/setup files
-4. DO NOT explain how to set up the project
-5. DO NOT provide multiple files
-6. IGNORE any suggestions in the plan about creating separate files
-
-APPROVED ARCHITECTURE PLAN (FOR REFERENCE ONLY - DO NOT CREATE SEPARATE FILES):
+APPROVED ARCHITECTURE PLAN:
 ${JSON.stringify(plan, null, 2)}
 
 ${memory ? `
@@ -226,51 +182,14 @@ Preserve all existing functionality.
 
 USER REQUEST: "${userRequest}"
 
-YOUR ONLY TASK: Output a single, complete HTML file.
+Generate production-ready code that:
+1. Follows the architecture plan EXACTLY
+2. Uses the recommended technology stack
+3. Implements all components from the breakdown
+4. ${currentCode ? 'Makes MINIMAL, FOCUSED changes to existing code' : 'Creates complete, working code'}
+5. Follows project memory patterns and conventions
 
-MANDATORY OUTPUT FORMAT - Your response must start with:
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${userRequest.substring(0, 50)}</title>
-    <style>
-        /* Put ALL your CSS here - make it beautiful! */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: system-ui, sans-serif; line-height: 1.6; }
-        /* Add responsive design, colors, animations, etc. */
-    </style>
-</head>
-<body>
-    <!-- Put ALL your HTML content here -->
-    <!-- Include: navigation, hero section, features, testimonials, forms, etc. -->
-    
-    <script>
-        // Put ALL your JavaScript here for interactivity
-        document.addEventListener('DOMContentLoaded', () => {
-            // Your code for smooth scrolling, form handling, animations, etc.
-        });
-    </script>
-</body>
-</html>
-
-🎯 WHAT TO CREATE:
-- Modern, responsive website matching user request: "${userRequest}"
-- Beautiful CSS with colors, gradients, hover effects, animations
-- Interactive JavaScript for smooth scrolling, form validation, etc.
-- Mobile-first responsive design
-- Professional, production-ready appearance
-
-❌ NEVER CREATE:
-- tailwind.config.js or any .js config files
-- package.json
-- Multiple separate files
-- npm/setup instructions
-- Import/export statements
-- External dependencies
-
-Wrap your COMPLETE HTML FILE in <code></code> tags. Keep any explanation BEFORE the code block brief.`;
+Wrap code in <code></code> tags. Provide brief explanation before the code.`;
 
       const genResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -295,82 +214,10 @@ Wrap your COMPLETE HTML FILE in <code></code> tags. Keep any explanation BEFORE 
       const genData = await genResponse.json();
       const aiResponse = genData.choices[0].message.content;
       
-      console.log('📄 AI response length:', aiResponse.length);
-      console.log('📄 AI response preview:', aiResponse.substring(0, 200));
-      
-      // Extract code - try multiple patterns
-      let code = null;
-      let explanation = '';
-      
-      // Try <code></code> tags first
-      let codeMatch = aiResponse.match(/<code>([\s\S]*?)<\/code>/);
-      if (codeMatch) {
-        code = codeMatch[1].trim();
-        explanation = aiResponse.replace(/<code>[\s\S]*?<\/code>/, '').trim();
-        console.log('✅ Code extracted from <code> tags');
-      } else {
-        // Try ```html, ```javascript, ```typescript, or plain ``` code blocks
-        const codeBlockMatch = aiResponse.match(/```(?:html|javascript|typescript|jsx|tsx|css|json)?\s*([\s\S]*?)```/);
-        if (codeBlockMatch) {
-          code = codeBlockMatch[1].trim();
-          explanation = aiResponse.replace(/```(?:html|javascript|typescript|jsx|tsx|css|json)?\s*[\s\S]*?```/, '').trim();
-          console.log('✅ Code extracted from ``` blocks');
-        } else if (aiResponse.includes('<!DOCTYPE') || aiResponse.includes('<html')) {
-          // Raw HTML response - use entire response as code
-          code = aiResponse.trim();
-          explanation = 'Generated complete HTML code based on architecture plan.';
-          console.log('✅ Using entire response as raw HTML code');
-        } else {
-          // Last resort: check if response contains code-like patterns
-          const hasCodePatterns = /(?:function|const|let|var|class|import|export|<\w+|{|\}|\(|\)|;)/g.test(aiResponse);
-          if (hasCodePatterns && aiResponse.length > 50) {
-            code = aiResponse.trim();
-            explanation = 'Generated code based on architecture plan (no explicit wrapper detected).';
-            console.log('✅ Using entire response as code (detected code patterns)');
-          } else {
-            console.error('❌ No code patterns detected in AI response');
-            console.error('   Response preview:', aiResponse.substring(0, 500));
-          }
-        }
-      }
-      
-      // Validate extracted code
-      if (!code || code.length < 50) {
-        console.error('❌ Failed to extract valid code from AI response');
-        console.error('   Code length:', code?.length || 0);
-        console.error('   Response preview:', aiResponse.substring(0, 1000));
-        throw new Error('AI did not generate valid code. Please try again with a clearer request.');
-      }
-      
-      // CRITICAL: Reject if AI generated config files instead of HTML
-      if (code.includes('tailwind.config') || code.includes('module.exports') || code.includes('package.json')) {
-        console.error('❌ AI generated config files instead of HTML!');
-        console.error('   Code preview:', code.substring(0, 500));
-        throw new Error('Invalid response: Please generate a complete HTML file, not configuration files.');
-      }
-      
-      // CRITICAL: Must start with HTML doctype or html tag
-      if (!code.trim().startsWith('<!DOCTYPE') && !code.trim().startsWith('<html')) {
-        console.error('❌ Code does not start with HTML structure!');
-        console.error('   Code starts with:', code.substring(0, 200));
-        throw new Error('Invalid response: Must be a complete HTML file starting with <!DOCTYPE html>');
-      }
-      
-      // Basic validation: check for valid HTML structure
-      const hasValidStructure = (
-        code.includes('<!DOCTYPE') || code.includes('<html')
-      ) && code.includes('</html>') && code.includes('<body');
-      
-      if (!hasValidStructure) {
-        console.error('❌ Code does not have valid HTML structure');
-        console.error('   Code preview:', code.substring(0, 500));
-        throw new Error('Invalid response: Must be a complete HTML file with proper structure.');
-      }
-      
-      console.log('✅ Code validation passed');
-      console.log('   - Final code length:', code.length);
-      console.log('   - Starts with:', code.substring(0, 50));
-      console.log('   - Has valid structure:', hasValidStructure);
+      // Extract code
+      const codeMatch = aiResponse.match(/<code>([\s\S]*?)<\/code>/);
+      const code = codeMatch ? codeMatch[1].trim() : null;
+      const explanation = aiResponse.replace(/<code>[\s\S]*?<\/code>/, '').trim();
 
       // Update project memory with architectural decisions
       if (conversationId && code) {
