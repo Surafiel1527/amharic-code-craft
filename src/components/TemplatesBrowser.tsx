@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Star, TrendingUp, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Template {
   id: string;
@@ -26,6 +27,7 @@ interface TemplatesBrowserProps {
 }
 
 export const TemplatesBrowser = ({ onSelectTemplate }: TemplatesBrowserProps) => {
+  const { t } = useLanguage();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,7 +49,7 @@ export const TemplatesBrowser = ({ onSelectTemplate }: TemplatesBrowserProps) =>
       setTemplates(data || []);
     } catch (error) {
       console.error('Error fetching templates:', error);
-      toast.error("አብነቶችን ማምጣት አልተቻለም");
+      toast.error(t("templates.fetchError"));
     } finally {
       setLoading(false);
     }
@@ -62,10 +64,10 @@ export const TemplatesBrowser = ({ onSelectTemplate }: TemplatesBrowserProps) =>
         .eq('id', template.id);
 
       onSelectTemplate(template);
-      toast.success(`"${template.title}" አብነት ተመርጧል`);
+      toast.success(`"${template.title}" ${t("templates.selected")}`);
     } catch (error) {
       console.error('Error using template:', error);
-      toast.error("አብነት መጠቀም አልተቻለም");
+      toast.error(t("templates.useError"));
     }
   };
 
@@ -98,7 +100,7 @@ export const TemplatesBrowser = ({ onSelectTemplate }: TemplatesBrowserProps) =>
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="አብነቶችን ፈልግ..."
+            placeholder={t("templates.search")}
             className="pl-10"
           />
         </div>
@@ -107,7 +109,7 @@ export const TemplatesBrowser = ({ onSelectTemplate }: TemplatesBrowserProps) =>
           <TabsList className="w-full justify-start overflow-x-auto">
             {categories.map(category => (
               <TabsTrigger key={category} value={category} className="capitalize">
-                {category === 'all' ? 'ሁሉም' : category}
+                {category === 'all' ? t("templates.all") : category}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -117,7 +119,7 @@ export const TemplatesBrowser = ({ onSelectTemplate }: TemplatesBrowserProps) =>
       {filteredTemplates.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Layers className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>ምንም አብነት አልተገኘም</p>
+          <p>{t("templates.noTemplates")}</p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -150,7 +152,7 @@ export const TemplatesBrowser = ({ onSelectTemplate }: TemplatesBrowserProps) =>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <TrendingUp className="h-3 w-3" />
-                    {template.usage_count} አጠቃቀም
+                    {template.usage_count} {t("templates.usage")}
                   </span>
                 </div>
 
@@ -158,7 +160,7 @@ export const TemplatesBrowser = ({ onSelectTemplate }: TemplatesBrowserProps) =>
                   onClick={() => handleUseTemplate(template)}
                   className="w-full"
                 >
-                  ይህን አብነት ተጠቀም
+                  {t("templates.useThis")}
                 </Button>
               </CardContent>
             </Card>

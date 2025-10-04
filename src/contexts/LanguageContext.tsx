@@ -254,6 +254,23 @@ const translations = {
     "projectActions.share": "Share",
     "projectActions.shareTitle": "Share Project",
     "projectActions.shareDesc": "Use this link to share the project with others",
+    
+    // Templates Browser
+    "templates.fetchError": "Failed to load templates",
+    "templates.selected": "template selected",
+    "templates.useError": "Failed to use template",
+    "templates.search": "Search templates...",
+    "templates.all": "All",
+    "templates.noTemplates": "No templates found",
+    "templates.usage": "usage",
+    "templates.useThis": "Use This Template",
+    
+    // Explore
+    "explore.title": "Explore Public Projects",
+    "explore.subtitle": "Discover amazing projects from the community",
+    "explore.search": "Search projects...",
+    "explore.noProjects": "No projects found",
+    "explore.fetchError": "Failed to load projects",
   },
   am: {
     // Meta
@@ -497,6 +514,23 @@ const translations = {
     "projectActions.share": "አጋራ",
     "projectActions.shareTitle": "ፕሮጀክት አጋራ",
     "projectActions.shareDesc": "ፕሮጀክቱን ለሌሎች ለማጋራት ይህንን አገናኝ ይጠቀሙ",
+    
+    // Templates Browser
+    "templates.fetchError": "አብነቶችን ማምጣት አልተቻለም",
+    "templates.selected": "አብነት ተመርጧል",
+    "templates.useError": "አብነት መጠቀም አልተቻለም",
+    "templates.search": "አብነቶችን ፈልግ...",
+    "templates.all": "ሁሉም",
+    "templates.noTemplates": "ምንም አብነት አልተገኘም",
+    "templates.usage": "አጠቃቀም",
+    "templates.useThis": "ይህን አብነት ተጠቀም",
+    
+    // Explore
+    "explore.title": "ይፋዊ ፕሮጀክቶችን አስስ",
+    "explore.subtitle": "ከማህበረሰቡ አስደናቂ ፕሮጀክቶችን ያግኙ",
+    "explore.search": "ፕሮጀክቶችን ፈልግ...",
+    "explore.noProjects": "ምንም ፕሮጀክት አልተገኘም",
+    "explore.fetchError": "ፕሮጀክቶችን ማምጣት አልተቻለም",
   },
 };
 

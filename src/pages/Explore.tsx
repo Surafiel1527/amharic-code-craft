@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Search, TrendingUp, Eye, Heart, GitFork } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface PublicProject {
   id: string;
@@ -21,6 +22,7 @@ interface PublicProject {
 
 export default function Explore() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [projects, setProjects] = useState<PublicProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,7 +44,7 @@ export default function Explore() {
       setProjects(data || []);
     } catch (error) {
       console.error('Error fetching public projects:', error);
-      toast.error("ፕሮጀክቶችን ማምጣት አልተቻለም");
+      toast.error(t("explore.fetchError"));
     } finally {
       setLoading(false);
     }
@@ -78,10 +80,10 @@ export default function Explore() {
             </Button>
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                ይፋዊ ፕሮጀክቶችን አስስ
+                {t("explore.title")}
               </h1>
               <p className="text-muted-foreground mt-1">
-                ከማህበረሰቡ አስደናቂ ፕሮጀክቶችን ያግኙ
+                {t("explore.subtitle")}
               </p>
             </div>
           </div>
@@ -93,7 +95,7 @@ export default function Explore() {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="ፕሮጀክቶችን ፈልግ..."
+            placeholder={t("explore.search")}
             className="pl-10"
           />
         </div>
@@ -102,7 +104,7 @@ export default function Explore() {
         {filteredProjects.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <Search className="h-16 w-16 mx-auto mb-4 opacity-30" />
-            <p>ምንም ፕሮጀክት አልተገኘም</p>
+            <p>{t("explore.noProjects")}</p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
