@@ -57,12 +57,17 @@ const Auth = () => {
       });
 
       if (error) {
-        if (error.message.includes("already registered") || error.message.includes("User already registered")) {
-          toast.error("This email is already registered. Please sign in.");
+        // Handle various signup errors with user-friendly messages
+        if (error.message.includes("already registered") || 
+            error.message.includes("User already registered") ||
+            error.message.includes("Database error saving new user")) {
+          toast.error("This email is already registered. Please sign in instead.");
         } else if (error.message.includes("Invalid email")) {
-          toast.error("Please enter a valid email");
+          toast.error("Please enter a valid email address");
         } else if (error.message.includes("Password")) {
-          toast.error("Password is too short. Enter at least 6 characters");
+          toast.error("Password must be at least 6 characters");
+        } else if (error.message.includes("Email rate limit exceeded")) {
+          toast.error("Too many attempts. Please try again later.");
         } else {
           toast.error(`Sign up failed: ${error.message}`);
         }
