@@ -180,6 +180,13 @@ export const ChatInterface = ({
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    // Check authentication first
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      toast.error("Please log in to use AI generation");
+      return;
+    }
+
     const userMessage = input.trim();
     const hasActiveProject = !!activeProjectCode;
     
@@ -335,9 +342,17 @@ export const ChatInterface = ({
         })
         .eq("id", activeConvId);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending message:", error);
-      toast.error(t("chat.sendFailed"));
+      
+      // Handle specific error cases
+      if (error?.message?.includes('Unauthorized') || error?.message?.includes('authentication')) {
+        toast.error("Authentication error. Please log in again.");
+      } else if (error?.message?.includes('FunctionsRelayError') || error?.message?.includes('FunctionsHttpError')) {
+        toast.error("Service error. Please try again in a moment.");
+      } else {
+        toast.error(error?.message || t("chat.sendFailed"));
+      }
     } finally {
       setIsLoading(false);
       setCurrentPhase("");
