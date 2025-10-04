@@ -41,29 +41,36 @@ serve(async (req) => {
           headers: { Authorization: authHeader } 
         },
         auth: {
-          persistSession: false // Edge functions don't persist sessions
+          persistSession: false, // Edge functions don't persist sessions
+          autoRefreshToken: false, // Don't auto-refresh in edge function
         }
       }
     );
 
     // 4. Validate user authentication
     console.log('🔐 Validating user authentication...');
+    
+    // First try to get user from JWT in the Authorization header
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     
     if (authError) {
       console.error('❌ Authentication error:', authError.message);
-      console.error('   Error details:', JSON.stringify(authError));
+      console.error('   Error name:', authError.name);
+      console.error('   Error status:', authError.status);
+      console.error('   Auth header format:', authHeader.split(' ')[0]); // Should be "Bearer"
       throw new Error(`Authentication failed: ${authError.message}`);
     }
     
     if (!user) {
       console.error('❌ No user found in auth session');
+      console.error('   This usually means the JWT token is invalid or expired');
       throw new Error('Unauthorized: Invalid or expired session');
     }
     
     console.log('✅ User authenticated successfully');
     console.log('   User ID:', user.id);
     console.log('   Email:', user.email);
+    console.log('   Email confirmed:', user.email_confirmed_at ? 'Yes' : 'No');
 
     const startTime = Date.now();
     const phases: any[] = [];

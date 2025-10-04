@@ -355,11 +355,20 @@ export const ChatInterface = ({
           }
         }, 800);
 
-        // Call smart-orchestrator with explicit auth context
+        // Call smart-orchestrator with EXPLICIT auth token
         console.log('📡 Calling smart-orchestrator...');
         console.log('   - Conversation:', activeConvId);
         console.log('   - Has existing code:', !!codeToModify);
-        console.log('   - Auth token:', session.access_token.substring(0, 20) + '...');
+        console.log('   - Session access token available:', !!session.access_token);
+        
+        // Get fresh session to ensure token is valid
+        const { data: { session: freshSession } } = await supabase.auth.getSession();
+        if (!freshSession?.access_token) {
+          console.error('❌ Fresh session check failed - no access token');
+          throw new Error('Session expired. Please refresh the page and try again.');
+        }
+        
+        console.log('   - Fresh session obtained, token length:', freshSession.access_token.length);
         
         const response = await supabase.functions.invoke("smart-orchestrator", {
           body: {
@@ -370,6 +379,10 @@ export const ChatInterface = ({
             autoLearn: true,
           },
         });
+        
+        console.log('📥 Response received from smart-orchestrator');
+        console.log('   - Has data:', !!response.data);
+        console.log('   - Has error:', !!response.error);
 
         clearInterval(progressInterval);
         data = response.data;
