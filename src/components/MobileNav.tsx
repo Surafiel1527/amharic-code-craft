@@ -20,7 +20,7 @@ export const MobileNav = ({ isAdmin, onShowShortcuts, onSignOut }: MobileNavProp
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="md:hidden">
+        <Button variant="outline" size="icon">
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
