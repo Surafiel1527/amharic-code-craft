@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Loader2, Send, Save, ArrowLeft, Maximize2, Minimize2, 
-  History, Code2, Eye, MessageSquare, Sparkles, RotateCcw
+  History, Code2, Eye, MessageSquare, Sparkles, RotateCcw, Target
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,11 +17,20 @@ import { Badge } from "@/components/ui/badge";
 import { VersionHistory } from "@/components/VersionHistory";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PatternLearner } from "@/components/PatternLearner";
+import { OrchestrationProgress } from "@/components/OrchestrationProgress";
+import { ArchitecturePlanViewer } from "@/components/ArchitecturePlanViewer";
+import { QualityMetrics } from "@/components/QualityMetrics";
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  orchestrationData?: {
+    phases: any[];
+    plan?: any;
+    qualityMetrics?: any;
+    totalDuration?: number;
+  };
 }
 
 interface Project {
@@ -47,6 +56,12 @@ export default function Workspace() {
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [currentOrchestration, setCurrentOrchestration] = useState<{
+    phases: any[];
+    plan?: any;
+    qualityMetrics?: any;
+    totalDuration?: number;
+  } | null>(null);
 
   const handleRestoreVersion = async (htmlCode: string) => {
     if (!project) return;
@@ -203,6 +218,9 @@ export default function Workspace() {
         throw new Error('No active session. Please log in again.');
       }
 
+      // Initialize orchestration tracking
+      setCurrentOrchestration({ phases: [] });
+
       // Use smart orchestrator for enhancement
       const { data, error } = await supabase.functions.invoke('smart-orchestrator', {
         body: {
@@ -224,12 +242,22 @@ export default function Workspace() {
       // Update project with new code
       setProject(prev => prev ? { ...prev, html_code: finalCode } : null);
 
-      // Add assistant message with details
+      // Store orchestration data
+      const orchestrationData = {
+        phases: data.phases || [],
+        plan: data.plan,
+        qualityMetrics: data.qualityMetrics,
+        totalDuration: data.totalDuration
+      };
+      setCurrentOrchestration(orchestrationData);
+
+      // Add assistant message with orchestration details
       const phaseNames = data.phases?.map((p: any) => p.name).join(', ') || 'code generation';
       const assistantMessage: Message = {
         role: 'assistant',
-        content: `✨ Enhanced with Smart Orchestrator!\n\nPhases: ${phaseNames}\n\n${data.plan?.architecture_overview || 'Improvements applied successfully'}`,
-        timestamp: new Date().toISOString()
+        content: `✨ Enhanced with Smart Orchestrator!\n\n**Phases Completed:** ${phaseNames}\n\n**Overview:** ${data.plan?.architecture_overview || 'Improvements applied successfully'}\n\n**Duration:** ${data.totalDuration ? (data.totalDuration / 1000).toFixed(2) + 's' : 'N/A'}`,
+        timestamp: new Date().toISOString(),
+        orchestrationData
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -401,6 +429,16 @@ export default function Workspace() {
                       )}
                     </div>
                   </ScrollArea>
+
+                  {isLoading && currentOrchestration && (
+                    <div className="px-4 pb-4">
+                      <OrchestrationProgress 
+                        phases={currentOrchestration.phases}
+                        isLoading={isLoading}
+                        totalDuration={currentOrchestration.totalDuration}
+                      />
+                    </div>
+                  )}
                 </>
               )}
 
@@ -439,16 +477,43 @@ export default function Workspace() {
           {/* Preview Panel */}
           <div className={`flex flex-col bg-background ${isPreviewExpanded ? 'w-full' : 'flex-1'}`}>
             {!isPreviewExpanded && (
-              <div className="p-4 border-b flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Eye className="w-4 h-4" />
-                  Live Preview
-                </div>
+              <div className="p-4 border-b">
+                <Tabs defaultValue="preview" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="preview">
+                      <Eye className="w-4 h-4 mr-2" />
+                      Preview
+                    </TabsTrigger>
+                    <TabsTrigger value="plan" disabled={!currentOrchestration?.plan}>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Architecture
+                    </TabsTrigger>
+                    <TabsTrigger value="metrics" disabled={!currentOrchestration?.qualityMetrics}>
+                      <Target className="w-4 h-4 mr-2" />
+                      Quality
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="preview" className="mt-4">
+                    <DevicePreview generatedCode={project.html_code} />
+                  </TabsContent>
+                  <TabsContent value="plan" className="mt-4">
+                    {currentOrchestration?.plan && (
+                      <ArchitecturePlanViewer plan={currentOrchestration.plan} />
+                    )}
+                  </TabsContent>
+                  <TabsContent value="metrics" className="mt-4">
+                    {currentOrchestration?.qualityMetrics && (
+                      <QualityMetrics metrics={currentOrchestration.qualityMetrics} />
+                    )}
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
-            <div className={`flex-1 overflow-hidden ${isPreviewExpanded ? 'p-0' : 'p-4'}`}>
-              <DevicePreview generatedCode={project.html_code} />
-            </div>
+            {isPreviewExpanded && (
+              <div className="flex-1 overflow-hidden p-0">
+                <DevicePreview generatedCode={project.html_code} />
+              </div>
+            )}
           </div>
         </div>
       </div>
