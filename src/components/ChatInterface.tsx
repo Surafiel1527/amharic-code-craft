@@ -42,6 +42,7 @@ export const ChatInterface = ({
   const [isLoading, setIsLoading] = useState(false);
   const [currentPhase, setCurrentPhase] = useState("");
   const [progress, setProgress] = useState(0);
+  const [activeProjectCode, setActiveProjectCode] = useState(currentCode || "");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,6 +54,13 @@ export const ChatInterface = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Sync active project code with prop changes
+  useEffect(() => {
+    if (currentCode) {
+      setActiveProjectCode(currentCode);
+    }
+  }, [currentCode]);
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -156,6 +164,12 @@ export const ChatInterface = ({
     if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
+    const hasActiveProject = !!activeProjectCode;
+    
+    // Detect if user wants to start fresh
+    const wantsNewProject = userMessage.toLowerCase().match(/\b(create|build|make|generate|new)\b.*\b(project|app|website|game)\b/i) && 
+                            !userMessage.toLowerCase().match(/\b(update|modify|change|fix|add to|improve)\b/i);
+    
     setInput("");
     setIsLoading(true);
 
@@ -183,21 +197,26 @@ export const ChatInterface = ({
         content: userMessage,
       });
 
+      // Determine the right code to use based on context
+      const codeToModify = wantsNewProject ? "" : activeProjectCode;
+      
       // Detect if this is a simple modification (use fast path)
-      const isSimpleChange = currentCode && userMessage.toLowerCase().match(/\b(change|update|modify|fix|adjust|set|make)\b.*\b(color|style|text|size|font|background)\b/i);
+      const isSimpleChange = hasActiveProject && 
+                            !wantsNewProject && 
+                            userMessage.toLowerCase().match(/\b(change|update|modify|fix|adjust|set|make)\b.*\b(color|style|text|size|font|background)\b/i);
       
       let data, error;
       
       if (isSimpleChange) {
         // Fast path: Use smart-diff-update for simple style changes
-        console.log('🚀 Using fast smart-diff-update');
-        setCurrentPhase('Analyzing changes');
+        console.log('🚀 Using fast smart-diff-update on existing project');
+        setCurrentPhase('Updating existing project');
         setProgress(50);
         
         const response = await supabase.functions.invoke("smart-diff-update", {
           body: {
             userRequest: userMessage,
-            currentCode,
+            currentCode: activeProjectCode,
           },
         });
         
@@ -206,7 +225,13 @@ export const ChatInterface = ({
         setProgress(100);
       } else {
         // Full orchestration for complex changes or new projects
-        console.log('🚀 Using full smart orchestration');
+        const isModification = hasActiveProject && !wantsNewProject;
+        console.log('🚀 Using full smart orchestration:', { 
+          isModification, 
+          hasCode: !!codeToModify,
+          wantsNew: wantsNewProject 
+        });
+        
         const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
         let currentPhaseIdx = 0;
         
@@ -222,7 +247,7 @@ export const ChatInterface = ({
           body: {
             userRequest: userMessage,
             conversationId: activeConvId,
-            currentCode,
+            currentCode: codeToModify,
             autoRefine: true,
             autoLearn: true,
           },
@@ -269,10 +294,18 @@ export const ChatInterface = ({
         generated_code: generatedCode,
       });
 
-      // Update code preview if code was generated
+      // Update code preview and active project if code was generated
       if (generatedCode) {
+        setActiveProjectCode(generatedCode);
         onCodeGenerated(generatedCode);
-        toast.success(t("chat.codeUpdated"));
+        
+        if (isSimpleChange) {
+          toast.success("⚡ Updated instantly!");
+        } else if (hasActiveProject && !wantsNewProject) {
+          toast.success("🔧 Project updated!");
+        } else {
+          toast.success("✨ New project created!");
+        }
       }
 
       // Update conversation timestamp
@@ -298,8 +331,34 @@ export const ChatInterface = ({
     }
   };
 
+  const handleStartFresh = () => {
+    setActiveProjectCode("");
+    setMessages([]);
+    toast.info("Starting fresh project");
+  };
+
   return (
     <div className="flex flex-col h-full">
+      {/* Project Status Header */}
+      {activeProjectCode && (
+        <div className="px-4 py-2 border-b border-border bg-muted/30">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+              <span className="text-muted-foreground">Active Project ({(activeProjectCode.length / 1000).toFixed(1)}KB)</span>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleStartFresh}
+              className="h-7 text-xs"
+            >
+              Start Fresh
+            </Button>
+          </div>
+        </div>
+      )}
+      
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-4">
           {messages.length === 0 && (
@@ -314,6 +373,10 @@ export const ChatInterface = ({
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
                   {t("chat.assistantDesc")}
                 </p>
+                <div className="text-xs text-muted-foreground mt-4 p-3 bg-primary/5 rounded-lg">
+                  <strong>💡 Smart Context:</strong> I'll remember your project throughout the conversation. 
+                  Just ask to modify it naturally, or say "create new" to start fresh.
+                </div>
               </div>
             </Card>
           )}
@@ -403,7 +466,10 @@ export const ChatInterface = ({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={t("chat.writeMessage")}
+            placeholder={activeProjectCode 
+              ? "Modify your project or say 'create new' to start fresh..." 
+              : t("chat.writeMessage")
+            }
             disabled={isLoading}
             className="flex-1"
             dir="auto"
