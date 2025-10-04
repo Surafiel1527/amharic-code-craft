@@ -173,7 +173,8 @@ serve(async (req) => {
         userRequest,
         conversationId,
         currentCode,
-        plan: currentResult.plan,
+        planId: currentResult.plan?.planId,
+        userId: user.id,
         suggestedPatterns: currentResult.suggestedPatterns || []
       }
     });
