@@ -494,6 +494,174 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* Additional Feature Sections */}
+      <div className="container mx-auto px-4 py-8 space-y-12">
+        {/* Trending Tags */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Search className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold">Trending Tags</h2>
+              <p className="text-sm text-muted-foreground">Most used tags</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Platform Statistics */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold">Platform Statistics</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+              <CardHeader>
+                <CardTitle className="text-4xl font-bold text-blue-500">0</CardTitle>
+                <p className="text-sm text-muted-foreground">Total Template Usage</p>
+              </CardHeader>
+            </Card>
+            <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+              <CardHeader>
+                <CardTitle className="text-4xl font-bold text-purple-500">0</CardTitle>
+                <p className="text-sm text-muted-foreground">Total Tags</p>
+              </CardHeader>
+            </Card>
+          </div>
+        </section>
+
+        {/* Premium Templates Marketplace */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold">Premium Templates Marketplace</h2>
+                <p className="text-sm text-muted-foreground">High-quality templates for your projects</p>
+              </div>
+            </div>
+            <Button className="gap-2">
+              <Plus className="w-4 h-4" />
+              Create Template
+            </Button>
+          </div>
+          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+            <CardContent className="p-12 text-center">
+              <p className="text-muted-foreground">No templates available yet</p>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Team Workspaces */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Grid3x3 className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold">Team Workspaces</h2>
+                <p className="text-sm text-muted-foreground">Collaborate with your team members</p>
+              </div>
+            </div>
+            <Button className="gap-2">
+              <Plus className="w-4 h-4" />
+              Create Workspace
+            </Button>
+          </div>
+          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+            <CardHeader>
+              <CardTitle>Workspaces</CardTitle>
+            </CardHeader>
+            <CardContent className="p-12 text-center">
+              <p className="text-muted-foreground">No workspaces yet. Create one to get started!</p>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* API Access */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Clock className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold">API Access</h2>
+                <p className="text-sm text-muted-foreground">Programmatic project generation for businesses</p>
+              </div>
+            </div>
+            <Button className="gap-2">
+              <Plus className="w-4 h-4" />
+              Create API Key
+            </Button>
+          </div>
+          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+            <CardHeader>
+              <CardTitle>Your API Keys</CardTitle>
+              <p className="text-sm text-muted-foreground">Manage your API keys and access tokens</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No API keys created yet</p>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Backup & Restore */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Clock className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold">Backup & Restore</h2>
+              <p className="text-sm text-muted-foreground">Back up and manage all your projects</p>
+            </div>
+          </div>
+          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold">Current Data</h3>
+                  <p className="text-sm text-muted-foreground">{projects.length} Your Projects</p>
+                </div>
+                <Button className="gap-2">
+                  Create Backup
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Usage Insights */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold">Usage Insights</h2>
+          </div>
+          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+            <CardHeader>
+              <CardTitle>Popular Templates</CardTitle>
+              <p className="text-sm text-muted-foreground">Most used templates</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No template usage data available yet</p>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      </div>
+
       {/* Create Project Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>

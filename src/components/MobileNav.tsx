@@ -41,6 +41,15 @@ export const MobileNav = ({ isAdmin, onShowShortcuts, onSignOut }: MobileNavProp
               {t("header.explore")}
             </Button>
 
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-2"
+              onClick={() => navigate("/dashboard")}
+            >
+              <Code className="h-4 w-4" />
+              My Projects
+            </Button>
+
             {isAdmin && (
               <Button
                 variant="ghost"
