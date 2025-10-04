@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Image as ImageIcon, Download, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ImageGeneratorProps {
   projectId?: string;
@@ -12,6 +13,7 @@ interface ImageGeneratorProps {
 }
 
 export const ImageGenerator = ({ projectId, onImageGenerated }: ImageGeneratorProps) => {
+  const { t } = useLanguage();
   const [prompt, setPrompt] = useState("");
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -19,7 +21,7 @@ export const ImageGenerator = ({ projectId, onImageGenerated }: ImageGeneratorPr
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
-      toast.error("እባክዎ የምስል መግለጫ ያስገቡ");
+      toast.error(t("imageGen.enterPrompt"));
       return;
     }
 
@@ -31,11 +33,11 @@ export const ImageGenerator = ({ projectId, onImageGenerated }: ImageGeneratorPr
 
       if (error) {
         if (error.message.includes('429')) {
-          toast.error("በጣም ብዙ ጥያቄዎች። እባክዎ ትንሽ ይቆዩ።");
+          toast.error(t("imageGen.tooManyRequests"));
         } else if (error.message.includes('402')) {
-          toast.error("ክፍያ ያስፈልጋል። እባክዎ የእርስዎን መለያ ይሙሉ።");
+          toast.error(t("imageGen.paymentRequired"));
         } else {
-          toast.error("ምስል መፍጠር አልተቻለም");
+          toast.error(t("imageGen.failed"));
         }
         throw error;
       }
@@ -58,7 +60,7 @@ export const ImageGenerator = ({ projectId, onImageGenerated }: ImageGeneratorPr
         onImageGenerated(imageUrl);
       }
 
-      toast.success("ምስል በተሳካ ሁኔታ ተፈጥሯል!");
+      toast.success(t("imageGen.success"));
     } catch (error) {
       console.error('Error generating image:', error);
     } finally {
@@ -75,7 +77,7 @@ export const ImageGenerator = ({ projectId, onImageGenerated }: ImageGeneratorPr
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("ምስል ወረደ!");
+    toast.success(t("imageGen.downloaded"));
   };
 
   const handleCopy = () => {
@@ -83,7 +85,7 @@ export const ImageGenerator = ({ projectId, onImageGenerated }: ImageGeneratorPr
 
     navigator.clipboard.writeText(generatedImage);
     setCopied(true);
-    toast.success("የምስል ውሂብ ተቀድቷል!");
+    toast.success(t("imageGen.dataCopied"));
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -92,15 +94,15 @@ export const ImageGenerator = ({ projectId, onImageGenerated }: ImageGeneratorPr
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ImageIcon className="h-5 w-5" />
-          AI ምስል አመንጪ
+          {t("imageGen.title")}
         </CardTitle>
         <CardDescription>
-          በ AI በመጠቀም ለድህረ ገፅዎ ምስሎችን ይፍጠሩ
+          {t("imageGen.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Textarea
-          placeholder="ምሳሌ: ለቡና ቤት የቡና ኩባያ ውብ ምስል፣ ሙቅ እና አስተማማኝ ድባብ..."
+          placeholder={t("imageGen.placeholder")}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           className="min-h-[100px]"
@@ -115,12 +117,12 @@ export const ImageGenerator = ({ projectId, onImageGenerated }: ImageGeneratorPr
           {isGenerating ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              በመፍጠር ላይ...
+              {t("imageGen.generating")}
             </>
           ) : (
             <>
               <ImageIcon className="mr-2 h-4 w-4" />
-              ምስል ፍጠር
+              {t("imageGen.generate")}
             </>
           )}
         </Button>
@@ -138,18 +140,18 @@ export const ImageGenerator = ({ projectId, onImageGenerated }: ImageGeneratorPr
             <div className="flex gap-2">
               <Button onClick={handleDownload} variant="outline" className="flex-1">
                 <Download className="mr-2 h-4 w-4" />
-                አውርድ
+                {t("imageGen.download")}
               </Button>
               <Button onClick={handleCopy} variant="outline" className="flex-1">
                 {copied ? (
                   <>
                     <Check className="mr-2 h-4 w-4" />
-                    ተቀድቷል
+                    {t("imageGen.copied")}
                   </>
                 ) : (
                   <>
                     <Copy className="mr-2 h-4 w-4" />
-                    ውሂብ ቅዳ
+                    {t("imageGen.copyData")}
                   </>
                 )}
               </Button>

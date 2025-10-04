@@ -314,6 +314,29 @@ const translations = {
     "explore.search": "Search projects...",
     "explore.noProjects": "No projects found",
     "explore.fetchError": "Failed to load projects",
+    
+    // Device Preview
+    "preview.mobile": "Mobile",
+    "preview.tablet": "Tablet",
+    "preview.desktop": "Desktop",
+    "preview.placeholder": "Your website will appear here",
+    
+    // Image Generator
+    "imageGen.title": "AI Image Generator",
+    "imageGen.description": "Generate images for your website using AI",
+    "imageGen.placeholder": "Example: Beautiful image of coffee cup for coffee shop, warm and cozy atmosphere...",
+    "imageGen.generate": "Generate Image",
+    "imageGen.generating": "Generating...",
+    "imageGen.download": "Download",
+    "imageGen.copied": "Copied",
+    "imageGen.copyData": "Copy Data",
+    "imageGen.enterPrompt": "Please enter image description",
+    "imageGen.tooManyRequests": "Too many requests. Please wait a bit.",
+    "imageGen.paymentRequired": "Payment required. Please fill your account.",
+    "imageGen.failed": "Failed to create image",
+    "imageGen.success": "Image generated successfully!",
+    "imageGen.downloaded": "Image downloaded!",
+    "imageGen.dataCopied": "Image data copied!",
   },
   am: {
     // Meta
@@ -617,6 +640,29 @@ const translations = {
     "explore.search": "ፕሮጀክቶችን ፈልግ...",
     "explore.noProjects": "ምንም ፕሮጀክት አልተገኘም",
     "explore.fetchError": "ፕሮጀክቶችን ማምጣት አልተቻለም",
+    
+    // Device Preview
+    "preview.mobile": "ሞባይል",
+    "preview.tablet": "ታብሌት",
+    "preview.desktop": "ዴስክቶፕ",
+    "preview.placeholder": "የእርስዎ ድህረ ገፅ እዚህ ላይ ይታያል",
+    
+    // Image Generator
+    "imageGen.title": "AI ምስል አመንጪ",
+    "imageGen.description": "በ AI በመጠቀም ለድህረ ገፅዎ ምስሎችን ይፍጠሩ",
+    "imageGen.placeholder": "ምሳሌ: ለቡና ቤት የቡና ኩባያ ውብ ምስል፣ ሙቅ እና አስተማማኝ ድባብ...",
+    "imageGen.generate": "ምስል ፍጠር",
+    "imageGen.generating": "በመፍጠር ላይ...",
+    "imageGen.download": "አውርድ",
+    "imageGen.copied": "ተቀድቷል",
+    "imageGen.copyData": "ውሂብ ቅዳ",
+    "imageGen.enterPrompt": "እባክዎ የምስል መግለጫ ያስገቡ",
+    "imageGen.tooManyRequests": "በጣም ብዙ ጥያቄዎች። እባክዎ ትንሽ ይቆዩ።",
+    "imageGen.paymentRequired": "ክፍያ ያስፈልጋል። እባክዎ የእርስዎን መለያ ይሙሉ።",
+    "imageGen.failed": "ምስል መፍጠር አልተቻለም",
+    "imageGen.success": "ምስል በተሳካ ሁኔታ ተፈጥሯል!",
+    "imageGen.downloaded": "ምስል ወረደ!",
+    "imageGen.dataCopied": "የምስል ውሂብ ተቀድቷል!",
   },
 };
 
