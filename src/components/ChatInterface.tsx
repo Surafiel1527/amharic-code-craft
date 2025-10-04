@@ -48,26 +48,37 @@ export const ChatInterface = ({
   const [progress, setProgress] = useState(0);
   const [activeProjectCode, setActiveProjectCode] = useState(currentCode || "");
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Auto-send initial prompt if provided
-  useEffect(() => {
-    if (autoSendPrompt && conversationId && !isLoading) {
-      setInput(autoSendPrompt);
-      // Small delay to ensure UI is ready
-      setTimeout(() => {
-        handleSend();
-        if (onAutoSendComplete) {
-          onAutoSendComplete();
-        }
-      }, 500);
-    }
-  }, [autoSendPrompt, conversationId]);
+  const hasAutoSent = useRef(false);
+  const [conversationLoaded, setConversationLoaded] = useState(false);
 
   useEffect(() => {
     if (conversationId) {
       loadConversation(conversationId);
     }
   }, [conversationId]);
+
+  // Auto-send initial prompt after conversation is loaded
+  useEffect(() => {
+    if (
+      autoSendPrompt && 
+      conversationId && 
+      conversationLoaded && 
+      !isLoading && 
+      !hasAutoSent.current
+    ) {
+      console.log('🚀 Auto-sending initial prompt:', autoSendPrompt);
+      hasAutoSent.current = true;
+      setInput(autoSendPrompt);
+      
+      // Small delay to ensure everything is ready
+      setTimeout(() => {
+        handleSend();
+        if (onAutoSendComplete) {
+          onAutoSendComplete();
+        }
+      }, 1000);
+    }
+  }, [autoSendPrompt, conversationId, conversationLoaded, isLoading]);
 
   useEffect(() => {
     scrollToBottom();
@@ -88,6 +99,7 @@ export const ChatInterface = ({
 
   const loadConversation = async (convId: string) => {
     console.log('💬 Chat: Loading conversation:', convId);
+    setConversationLoaded(false);
     try {
       // Load conversation with current_code
       const { data: convData, error: convError } = await supabase
@@ -130,6 +142,8 @@ export const ChatInterface = ({
         }));
       
       setMessages(typedMessages);
+      setConversationLoaded(true);
+      console.log('✅ Chat: Conversation loaded successfully');
     } catch (error) {
       console.error("❌ Chat: Error loading conversation:", error);
       
@@ -150,6 +164,7 @@ export const ChatInterface = ({
       }).catch(err => console.error('Failed to report error:', err));
       
       toast.error(t("chat.loadFailed"));
+      setConversationLoaded(true); // Set to true even on error to prevent infinite waiting
     }
   };
 
