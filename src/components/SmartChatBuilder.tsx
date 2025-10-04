@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Send, Code, AlertTriangle, CheckCircle2, Lightbulb, Settings, AlertCircle, Activity, Save, LayoutDashboard } from "lucide-react";
+import { Loader2, Send, Code, AlertTriangle, CheckCircle2, Lightbulb, Settings, AlertCircle, Activity, Save, LayoutDashboard, History as HistoryIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProjectInstructionsPanel } from "./ProjectInstructionsPanel";
@@ -13,6 +13,7 @@ import { SnapshotManager } from "./SnapshotManager";
 import { AICapabilitiesGuide } from "./AICapabilitiesGuide";
 import { EnterpriseProjectDashboard } from "./EnterpriseProjectDashboard";
 import { CollaborationIndicator } from "./CollaborationIndicator";
+import { ProjectHistory } from "./ProjectHistory";
 import { useErrorMonitor } from "@/hooks/useErrorMonitor";
 import { useProactiveMonitoring } from "@/hooks/useProactiveMonitoring";
 import {
@@ -53,6 +54,8 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
   const [monitorOpen, setMonitorOpen] = useState(false);
   const [snapshotOpen, setSnapshotOpen] = useState(false);
   const [dashboardOpen, setDashboardOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Create conversation on mount
@@ -212,6 +215,24 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
     }
   };
 
+  const handleLoadProject = (project: any) => {
+    setWorkingCode(project.html_code);
+    setCurrentProjectId(project.id);
+    if (onCodeGenerated) {
+      onCodeGenerated(project.html_code);
+    }
+    
+    // Add system message to chat
+    const systemMessage: Message = {
+      role: 'assistant',
+      content: `Loaded project: "${project.title}". You can now continue building on this project. What would you like to add or modify?`,
+      code: project.html_code
+    };
+    setMessages(prev => [...prev, systemMessage]);
+    setHistoryOpen(false);
+    toast.success(`Project "${project.title}" loaded successfully`);
+  };
+
   return (
     <Card className="h-[600px] flex flex-col">
       <CardHeader>
@@ -252,6 +273,25 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
               </SheetTrigger>
               <SheetContent className="overflow-y-auto">
                 <SnapshotManager />
+              </SheetContent>
+            </Sheet>
+            
+            <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" title="Project History">
+                  <HistoryIcon className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Project History</SheetTitle>
+                  <SheetDescription>
+                    Load previous projects to continue working on them
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="mt-6">
+                  <ProjectHistory onLoadProject={handleLoadProject} />
+                </div>
               </SheetContent>
             </Sheet>
             
