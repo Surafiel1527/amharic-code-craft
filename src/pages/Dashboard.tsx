@@ -205,33 +205,37 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="border-b bg-card/50 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Sparkles className="w-8 h-8 text-primary" />
+              <h1 className="text-4xl font-bold flex items-center gap-3">
+                <Sparkles className="w-9 h-9 text-primary" />
                 My Projects
               </h1>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-2 text-base">
                 Create and manage your AI-powered projects
               </p>
             </div>
-            <Button onClick={() => setShowCreateDialog(true)} size="lg">
-              <Plus className="w-4 h-4 mr-2" />
+            <Button 
+              onClick={() => setShowCreateDialog(true)} 
+              size="lg"
+              className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+            >
+              <Plus className="w-5 h-5 mr-2" />
               New Project
             </Button>
           </div>
 
           {/* Search and View Toggle */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-6">
+          <div className="flex flex-col sm:flex-row gap-4 mt-8">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 placeholder="Search projects..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-12 h-12 bg-background/50 backdrop-blur-sm border-border/50"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -239,15 +243,17 @@ export default function Dashboard() {
                 variant={view === "grid" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setView("grid")}
+                className="h-12 w-12"
               >
-                <Grid3x3 className="w-4 h-4" />
+                <Grid3x3 className="w-5 h-5" />
               </Button>
               <Button
                 variant={view === "list" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setView("list")}
+                className="h-12 w-12"
               >
-                <List className="w-4 h-4" />
+                <List className="w-5 h-5" />
               </Button>
             </div>
           </div>
@@ -281,33 +287,33 @@ export default function Dashboard() {
             )}
           </div>
         ) : (
-          <Tabs defaultValue="all" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="all">
+          <Tabs defaultValue="all" className="space-y-8">
+            <TabsList className="bg-card/50 backdrop-blur-sm border border-border/50">
+              <TabsTrigger value="all" className="data-[state=active]:bg-background">
                 All Projects ({filteredProjects.length})
               </TabsTrigger>
-              <TabsTrigger value="favorites">
+              <TabsTrigger value="favorites" className="data-[state=active]:bg-background">
                 <Star className="w-4 h-4 mr-2" />
                 Favorites ({favoriteProjects.length})
               </TabsTrigger>
-              <TabsTrigger value="recent">
+              <TabsTrigger value="recent" className="data-[state=active]:bg-background">
                 <Clock className="w-4 h-4 mr-2" />
                 Recent
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="all">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className={`${view === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}`}>
                 {filteredProjects.map((project) => (
                   <Card
                     key={project.id}
-                    className="hover:shadow-lg transition-all cursor-pointer group"
+                    className="hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 cursor-pointer group bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/50"
                     onClick={() => handleProjectClick(project.id)}
                   >
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="line-clamp-1 group-hover:text-primary transition-colors">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-xl line-clamp-2 group-hover:text-primary transition-colors">
                             {project.title}
                           </CardTitle>
                           {project.description && (
@@ -319,36 +325,37 @@ export default function Dashboard() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="hover:bg-background/80 shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleToggleFavorite(project.id, project.is_favorite || false);
                           }}
                         >
                           <Star
-                            className={`w-4 h-4 ${
+                            className={`w-5 h-5 transition-colors ${
                               project.is_favorite
                                 ? "fill-yellow-400 text-yellow-400"
-                                : "text-muted-foreground"
+                                : "text-muted-foreground hover:text-yellow-400"
                             }`}
                           />
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span>
-                          Updated{" "}
-                          {new Date(project.updated_at).toLocaleDateString()}
+                    <CardContent className="pt-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Updated {new Date(project.updated_at).toLocaleDateString()}
                         </span>
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="hover:bg-destructive/10 shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteProject(project.id);
                           }}
                         >
-                          <Trash2 className="w-4 h-4 text-destructive" />
+                          <Trash2 className="w-4 h-4 text-destructive hover:text-destructive/80" />
                         </Button>
                       </div>
                     </CardContent>
@@ -359,24 +366,24 @@ export default function Dashboard() {
 
             <TabsContent value="favorites">
               {favoriteProjects.length === 0 ? (
-                <div className="text-center py-12">
-                  <Star className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">
+                <div className="text-center py-16">
+                  <Star className="w-20 h-20 text-muted-foreground/50 mx-auto mb-4" />
+                  <p className="text-muted-foreground text-lg">
                     No favorite projects yet
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className={`${view === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}`}>
                   {favoriteProjects.map((project) => (
                     <Card
                       key={project.id}
-                      className="hover:shadow-lg transition-all cursor-pointer group"
+                      className="hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 cursor-pointer group bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/50"
                       onClick={() => handleProjectClick(project.id)}
                     >
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="line-clamp-1 group-hover:text-primary transition-colors">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-xl line-clamp-2 group-hover:text-primary transition-colors">
                               {project.title}
                             </CardTitle>
                             {project.description && (
@@ -388,32 +395,31 @@ export default function Dashboard() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="hover:bg-background/80 shrink-0"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleToggleFavorite(project.id, project.is_favorite || false);
                             }}
                           >
-                            <Star
-                              className={`w-4 h-4 fill-yellow-400 text-yellow-400`}
-                            />
+                            <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                           </Button>
                         </div>
                       </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center justify-between text-sm text-muted-foreground">
-                          <span>
-                            Updated{" "}
-                            {new Date(project.updated_at).toLocaleDateString()}
+                      <CardContent className="pt-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            Updated {new Date(project.updated_at).toLocaleDateString()}
                           </span>
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="hover:bg-destructive/10 shrink-0"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeleteProject(project.id);
                             }}
                           >
-                            <Trash2 className="w-4 h-4 text-destructive" />
+                            <Trash2 className="w-4 h-4 text-destructive hover:text-destructive/80" />
                           </Button>
                         </div>
                       </CardContent>
@@ -424,17 +430,17 @@ export default function Dashboard() {
             </TabsContent>
 
             <TabsContent value="recent">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {recentProjects.slice(0, 6).map((project) => (
+              <div className={`${view === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}`}>
+                {recentProjects.slice(0, 9).map((project) => (
                   <Card
                     key={project.id}
-                    className="hover:shadow-lg transition-all cursor-pointer group"
+                    className="hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 cursor-pointer group bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/50"
                     onClick={() => handleProjectClick(project.id)}
                   >
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="line-clamp-1 group-hover:text-primary transition-colors">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-xl line-clamp-2 group-hover:text-primary transition-colors">
                             {project.title}
                           </CardTitle>
                           {project.description && (
@@ -446,36 +452,37 @@ export default function Dashboard() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="hover:bg-background/80 shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleToggleFavorite(project.id, project.is_favorite || false);
                           }}
                         >
                           <Star
-                            className={`w-4 h-4 ${
+                            className={`w-5 h-5 transition-colors ${
                               project.is_favorite
                                 ? "fill-yellow-400 text-yellow-400"
-                                : "text-muted-foreground"
+                                : "text-muted-foreground hover:text-yellow-400"
                             }`}
                           />
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span>
-                          Updated{" "}
-                          {new Date(project.updated_at).toLocaleDateString()}
+                    <CardContent className="pt-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Updated {new Date(project.updated_at).toLocaleDateString()}
                         </span>
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="hover:bg-destructive/10 shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteProject(project.id);
                           }}
                         >
-                          <Trash2 className="w-4 h-4 text-destructive" />
+                          <Trash2 className="w-4 h-4 text-destructive hover:text-destructive/80" />
                         </Button>
                       </div>
                     </CardContent>
