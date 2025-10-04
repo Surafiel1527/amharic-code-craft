@@ -26,7 +26,7 @@ const translations = {
     
     // Hero
     "hero.title": "Create Websites in English",
-    "hero.subtitle": "Build your website by chatting with AI or with simple descriptions. Like Lovable and Replit!",
+    "hero.subtitle": "Build your website by chatting with AI or with simple descriptions.",
     
     // Examples
     "examples.title": "Examples",
@@ -405,7 +405,7 @@ const translations = {
     
     // Hero
     "hero.title": "በአማርኛ ድህረ ገፆችን ይፍጠሩ",
-    "hero.subtitle": "AI ጋር በመወያየት ወይም በቀላል መግለጫ ድህረ ገፅዎን ይገንቡ። እንደ Lovable እና Replit!",
+    "hero.subtitle": "AI ጋር በመወያየት ወይም በቀላል መግለጫ ድህረ ገፅዎን ይገንቡ።",
     
     // Examples
     "examples.title": "ምሳሌዎች",
