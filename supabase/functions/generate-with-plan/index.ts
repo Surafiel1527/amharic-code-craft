@@ -197,6 +197,14 @@ Your task: Create a comprehensive plan BEFORE any code generation. Respond in JS
 
       const generationPrompt = `You are an expert developer implementing an approved architecture plan.
 
+CRITICAL INSTRUCTIONS:
+- Generate ACTUAL SOURCE CODE (HTML/CSS/JavaScript/React/TypeScript files)
+- DO NOT generate setup instructions, bash commands, or npm commands
+- DO NOT include installation steps or project initialization commands
+- Return ONLY the complete, ready-to-use code that runs in a browser
+- For web projects: Generate complete HTML/CSS/JS that works immediately
+- For React projects: Generate complete React/TypeScript components with imports
+
 APPROVED ARCHITECTURE PLAN:
 ${JSON.stringify(plan, null, 2)}
 
@@ -218,14 +226,30 @@ Preserve all existing functionality.
 
 USER REQUEST: "${userRequest}"
 
-Generate production-ready code that:
+YOUR TASK:
+Generate production-ready, executable source code that:
 1. Follows the architecture plan EXACTLY
 2. Uses the recommended technology stack
 3. Implements all components from the breakdown
-4. ${currentCode ? 'Makes MINIMAL, FOCUSED changes to existing code' : 'Creates complete, working code'}
+4. ${currentCode ? 'Makes MINIMAL, FOCUSED changes to existing code' : 'Creates complete, working HTML/CSS/JavaScript code'}
 5. Follows project memory patterns and conventions
+6. Can be directly rendered in a browser or executed immediately
 
-Wrap code in <code></code> tags. Provide brief explanation before the code.`;
+WHAT TO GENERATE:
+✅ Complete HTML structure with all sections
+✅ CSS styles for responsive design
+✅ JavaScript for interactive features
+✅ React components if using React
+✅ Working, executable code
+
+WHAT NOT TO GENERATE:
+❌ npm install commands
+❌ Project setup instructions
+❌ Bash/terminal commands
+❌ Package.json files
+❌ Build configuration
+
+Wrap the ACTUAL SOURCE CODE in <code></code> tags. Provide brief explanation before the code.`;
 
       const genResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
