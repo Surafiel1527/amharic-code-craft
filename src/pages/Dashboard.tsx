@@ -5,13 +5,14 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Grid3x3, List, Star, Clock, Sparkles, Trash2, Loader2 } from "lucide-react";
+import { Plus, Search, Grid3x3, List, Star, Clock, Sparkles, Trash2, Loader2, Target, Zap, Code2, CheckCircle2, Brain } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { MobileNav } from "@/components/MobileNav";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Progress } from "@/components/ui/progress";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -71,6 +72,12 @@ export default function Dashboard() {
   });
   const [creating, setCreating] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{title?: string; prompt?: string}>({});
+  
+  // Generation overlay state
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationPhase, setGenerationPhase] = useState<"planning" | "analyzing" | "generating" | "refining" | "learning">("planning");
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -167,10 +174,6 @@ export default function Dashboard() {
     }
 
     setCreating(true);
-    
-    const loadingToast = toast.loading("🚀 Preparing your project...", {
-      description: "Setting up workspace and initializing AI"
-    });
 
     try {
       // Verify session is still valid before creating project
@@ -205,27 +208,35 @@ export default function Dashboard() {
       }
 
       console.log("✅ Project created:", data.id);
+
+      // Create conversation
+      const { data: convData, error: convError } = await supabase
+        .from("conversations")
+        .insert({
+          project_id: data.id,
+          user_id: user.id,
+          current_code: "<!-- Generating... -->",
+        })
+        .select()
+        .single();
+
+      if (convError) {
+        console.error("❌ Error creating conversation:", convError);
+        throw convError;
+      }
       
-      // Success feedback
-      toast.dismiss(loadingToast);
-      toast.success("✨ Project created successfully!", {
-        description: "Your AI is now generating the code. This takes 10-30 seconds.",
-        duration: 4000,
-      });
-      
-      // Close dialog and reset
+      // Close dialog and start generation overlay
       setShowCreateDialog(false);
-      setNewProject({ title: "", prompt: "", template: "blank" });
-      setValidationErrors({});
-      
-      // Small delay for smooth transition
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Navigate with initial prompt to trigger auto-generation
-      navigate(`/project/${data.id}?generate=true`);
+      setCurrentProjectId(data.id);
+      setIsGenerating(true);
+      setGenerationPhase("planning");
+      setGenerationProgress(0);
+
+      // Start AI generation (stays on Dashboard)
+      await generateProjectCode(data.id, convData.id, newProject.title.trim(), newProject.prompt.trim());
+
     } catch (error: any) {
       console.error("Error creating project:", error);
-      toast.dismiss(loadingToast);
       
       // Provide more specific error messages
       if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_CONNECTION')) {
@@ -242,8 +253,107 @@ export default function Dashboard() {
           description: error.message || "An unexpected error occurred. Please try again."
         });
       }
+      setIsGenerating(false);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const generateProjectCode = async (projectId: string, conversationId: string, projectName: string, prompt: string) => {
+    try {
+      console.log("🚀 Starting AI generation for project:", projectId);
+      
+      // Phase 1: Planning
+      setGenerationPhase("planning");
+      setGenerationProgress(10);
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Phase 2: Analyzing
+      setGenerationPhase("analyzing");
+      setGenerationProgress(25);
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      // Phase 3: Generating (actual AI call)
+      setGenerationPhase("generating");
+      setGenerationProgress(40);
+
+      const { data: orchestrationData, error: orchestrationError } = await supabase.functions.invoke(
+        "smart-orchestrator",
+        {
+          body: {
+            userRequest: prompt,
+            conversationId: conversationId,
+            currentCode: "<!-- Starting generation... -->",
+            autoRefine: true,
+            autoLearn: true,
+          },
+        }
+      );
+
+      if (orchestrationError) {
+        console.error("❌ Orchestration error:", orchestrationError);
+        throw new Error("AI generation failed: " + (orchestrationError.message || "Unknown error"));
+      }
+
+      setGenerationProgress(70);
+
+      // Phase 4: Refining
+      setGenerationPhase("refining");
+      setGenerationProgress(80);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Phase 5: Learning
+      setGenerationPhase("learning");
+      setGenerationProgress(95);
+      await new Promise(resolve => setTimeout(resolve, 400));
+
+      // Save generated code
+      const generatedCode = orchestrationData?.result?.code || orchestrationData?.code || "<!-- Generation complete -->";
+      
+      const { error: updateError } = await supabase
+        .from("projects")
+        .update({ 
+          html_code: generatedCode,
+          status: "active"
+        })
+        .eq("id", projectId);
+
+      if (updateError) {
+        console.error("❌ Error updating project:", updateError);
+        throw new Error("Failed to save generated code");
+      }
+
+      // Update conversation
+      await supabase
+        .from("conversations")
+        .update({ current_code: generatedCode })
+        .eq("id", conversationId);
+
+      setGenerationProgress(100);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Success - navigate to workspace with completed code
+      toast.success("✨ Project generated successfully!");
+      navigate(`/project/${projectId}`);
+
+    } catch (error: any) {
+      console.error("❌ Generation error:", error);
+      toast.error("Failed to generate project", {
+        description: error.message || "Please try again or contact support"
+      });
+      
+      // Update project status to active (user can retry from workspace)
+      if (projectId) {
+        await supabase
+          .from("projects")
+          .update({ status: "active" })
+          .eq("id", projectId);
+      }
+    } finally {
+      setIsGenerating(false);
+      setNewProject({ title: "", prompt: "", template: "blank" });
+      setValidationErrors({});
+      setCurrentProjectId(null);
     }
   };
 
@@ -996,6 +1106,80 @@ export default function Dashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Generation Progress Overlay */}
+      {isGenerating && (
+        <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-2xl border-2">
+            <CardContent className="p-8">
+              <div className="text-center space-y-6">
+                <div className="flex items-center justify-center gap-3">
+                  <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+                  <h2 className="text-3xl font-bold">Generating Your Project</h2>
+                </div>
+                
+                <p className="text-muted-foreground text-lg">
+                  AI is building {newProject.title || "your project"}...
+                </p>
+
+                {/* Phase Display */}
+                <div className="space-y-4 py-6">
+                  {[
+                    { phase: "planning", label: "Planning Architecture", icon: Target, description: "Analyzing requirements and planning structure", threshold: 10 },
+                    { phase: "analyzing", label: "Component Analysis", icon: Zap, description: "Breaking down into reusable components", threshold: 25 },
+                    { phase: "generating", label: "Code Generation", icon: Code2, description: "Writing optimized production code", threshold: 40 },
+                    { phase: "refining", label: "Quality Refinement", icon: CheckCircle2, description: "Optimizing and polishing output", threshold: 70 },
+                    { phase: "learning", label: "Learning Patterns", icon: Brain, description: "Saving insights for future projects", threshold: 80 },
+                  ].map(({ phase, label, icon: Icon, description, threshold }) => (
+                    <div
+                      key={phase}
+                      className={`flex items-center gap-4 p-4 rounded-lg transition-all duration-300 ${
+                        generationPhase === phase
+                          ? "bg-primary/10 border-2 border-primary scale-105"
+                          : generationProgress > threshold
+                          ? "bg-primary/5 border border-primary/20"
+                          : "bg-muted/30 border border-transparent"
+                      }`}
+                    >
+                      <Icon 
+                        className={`h-6 w-6 flex-shrink-0 ${
+                          generationPhase === phase 
+                            ? "text-primary animate-pulse" 
+                            : generationProgress > threshold
+                            ? "text-primary"
+                            : "text-muted-foreground"
+                        }`}
+                      />
+                      <div className="flex-1 text-left">
+                        <div className="font-semibold">{label}</div>
+                        {generationPhase === phase && (
+                          <div className="text-sm text-muted-foreground mt-1">{description}</div>
+                        )}
+                      </div>
+                      {generationProgress > threshold && (
+                        <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Progress Bar */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className="font-semibold text-primary">{generationProgress}%</span>
+                  </div>
+                  <Progress value={generationProgress} className="h-3" />
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  This usually takes 30-60 seconds. Please don't close this window.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

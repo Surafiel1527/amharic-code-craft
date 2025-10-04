@@ -57,28 +57,7 @@ export const ChatInterface = ({
     }
   }, [conversationId]);
 
-  // Auto-send initial prompt after conversation is loaded
-  useEffect(() => {
-    if (
-      autoSendPrompt && 
-      conversationId && 
-      conversationLoaded && 
-      !isLoading && 
-      !hasAutoSent.current
-    ) {
-      console.log('🚀 Auto-sending initial prompt:', autoSendPrompt);
-      hasAutoSent.current = true;
-      
-      // Add a longer delay to ensure auth session is fully established
-      setTimeout(() => {
-        console.log('📤 Executing auto-send now...');
-        handleSend(autoSendPrompt);
-        if (onAutoSendComplete) {
-          onAutoSendComplete();
-        }
-      }, 1500); // Increased delay to 1.5 seconds
-    }
-  }, [autoSendPrompt, conversationId, conversationLoaded, isLoading]);
+  // Auto-send removed - generation now happens on Dashboard before navigation
 
   useEffect(() => {
     scrollToBottom();
