@@ -25,7 +25,7 @@ interface Message {
 
 interface ChatInterfaceProps {
   conversationId: string | null;
-  onCodeGenerated: (code: string) => void;
+  onCodeGenerated: (code: string, shouldSaveVersion?: boolean) => void;
   currentCode: string;
   onConversationChange: (id: string) => void;
 }
@@ -83,7 +83,8 @@ export const ChatInterface = ({
       } else if (convData?.current_code) {
         console.log('✅ Chat: Loaded project code from conversation');
         setActiveProjectCode(convData.current_code);
-        onCodeGenerated(convData.current_code);
+        // Pass false to prevent creating a version on initial load
+        onCodeGenerated(convData.current_code, false);
       }
 
       // Load messages
@@ -313,7 +314,8 @@ export const ChatInterface = ({
       // Update code preview and active project if code was generated
       if (generatedCode) {
         setActiveProjectCode(generatedCode);
-        onCodeGenerated(generatedCode);
+        // Pass true to save a version for new generations
+        onCodeGenerated(generatedCode, true);
         
         if (isSimpleChange) {
           toast.success("⚡ Updated instantly!");

@@ -95,12 +95,14 @@ export const UserWorkspace = ({
     }
   };
 
-  const handleCodeGenerated = (code: string) => {
+  const handleCodeGenerated = (code: string, shouldSaveVersion: boolean = true) => {
     setWorkingCode(code);
     onCodeUpdate(code);
     
-    // Create a version snapshot
-    saveVersion(code);
+    // Only create a version snapshot if this is a new generation (not initial load)
+    if (shouldSaveVersion && code !== initialCode) {
+      saveVersion(code);
+    }
   };
 
   const saveVersion = async (code: string) => {
