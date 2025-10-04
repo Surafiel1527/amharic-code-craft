@@ -95,3 +95,15 @@ verify_jwt = false
 
 [functions.smart-diff-update]
 verify_jwt = false
+
+[functions.learn-user-preferences]
+verify_jwt = false
+
+[functions.multi-project-learn]
+verify_jwt = false
+
+[functions.iterative-refine]
+verify_jwt = false
+
+[functions.component-awareness]
+verify_jwt = false

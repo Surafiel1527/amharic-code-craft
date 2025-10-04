@@ -523,6 +523,45 @@ export type Database = {
           },
         ]
       }
+      component_dependencies: {
+        Row: {
+          complexity_score: number | null
+          component_name: string
+          component_type: string
+          conversation_id: string
+          created_at: string
+          criticality: string | null
+          depends_on: Json | null
+          id: string
+          last_modified_at: string
+          used_by: Json | null
+        }
+        Insert: {
+          complexity_score?: number | null
+          component_name: string
+          component_type: string
+          conversation_id: string
+          created_at?: string
+          criticality?: string | null
+          depends_on?: Json | null
+          id?: string
+          last_modified_at?: string
+          used_by?: Json | null
+        }
+        Update: {
+          complexity_score?: number | null
+          component_name?: string
+          component_type?: string
+          conversation_id?: string
+          created_at?: string
+          criticality?: string | null
+          depends_on?: Json | null
+          id?: string
+          last_modified_at?: string
+          used_by?: Json | null
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
@@ -544,6 +583,48 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      cross_project_patterns: {
+        Row: {
+          confidence_score: number | null
+          contexts: Json | null
+          first_seen_at: string
+          id: string
+          last_used_at: string
+          pattern_code: string
+          pattern_name: string
+          pattern_type: string
+          success_rate: number | null
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          contexts?: Json | null
+          first_seen_at?: string
+          id?: string
+          last_used_at?: string
+          pattern_code: string
+          pattern_name: string
+          pattern_type: string
+          success_rate?: number | null
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          contexts?: Json | null
+          first_seen_at?: string
+          id?: string
+          last_used_at?: string
+          pattern_code?: string
+          pattern_name?: string
+          pattern_type?: string
+          success_rate?: number | null
+          usage_count?: number | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -907,6 +988,50 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generation_iterations: {
+        Row: {
+          analysis_results: Json
+          created_at: string
+          id: string
+          improvements_made: Json
+          iteration_number: number
+          parent_generation_id: string | null
+          quality_score_after: number | null
+          quality_score_before: number | null
+          refinement_type: string
+        }
+        Insert: {
+          analysis_results: Json
+          created_at?: string
+          id?: string
+          improvements_made: Json
+          iteration_number: number
+          parent_generation_id?: string | null
+          quality_score_after?: number | null
+          quality_score_before?: number | null
+          refinement_type: string
+        }
+        Update: {
+          analysis_results?: Json
+          created_at?: string
+          id?: string
+          improvements_made?: Json
+          iteration_number?: number
+          parent_generation_id?: string | null
+          quality_score_after?: number | null
+          quality_score_before?: number | null
+          refinement_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_iterations_parent_generation_id_fkey"
+            columns: ["parent_generation_id"]
+            isOneToOne: false
+            referencedRelation: "generation_analytics"
             referencedColumns: ["id"]
           },
         ]
@@ -1640,6 +1765,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_coding_preferences: {
+        Row: {
+          avoid_patterns: Json | null
+          code_style: Json | null
+          comment_style: string | null
+          created_at: string
+          framework_preferences: Json | null
+          id: string
+          naming_convention: string | null
+          preferred_patterns: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avoid_patterns?: Json | null
+          code_style?: Json | null
+          comment_style?: string | null
+          created_at?: string
+          framework_preferences?: Json | null
+          id?: string
+          naming_convention?: string | null
+          preferred_patterns?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avoid_patterns?: Json | null
+          code_style?: Json | null
+          comment_style?: string | null
+          created_at?: string
+          framework_preferences?: Json | null
+          id?: string
+          naming_convention?: string | null
+          preferred_patterns?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_follows: {
         Row: {
