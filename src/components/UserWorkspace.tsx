@@ -125,12 +125,17 @@ export const UserWorkspace = ({
   };
 
   const handleCodeGenerated = (code: string, shouldSaveVersion: boolean = true) => {
-    console.log('🎨 UserWorkspace: Code generated, length:', code?.length || 0, 'shouldSaveVersion:', shouldSaveVersion);
+    console.log('🎨 UserWorkspace: handleCodeGenerated CALLED');
+    console.log('   - code length:', code?.length || 0);
+    console.log('   - shouldSaveVersion:', shouldSaveVersion);
+    console.log('   - code preview:', code?.substring(0, 100));
+    
     setWorkingCode(code);
     onCodeUpdate(code);
     
     // Only create a version snapshot if this is a new generation (not initial load)
     if (shouldSaveVersion && code !== initialCode) {
+      console.log('💾 UserWorkspace: Saving version...');
       saveVersion(code);
     }
     console.log('✅ UserWorkspace: workingCode updated to generated code');

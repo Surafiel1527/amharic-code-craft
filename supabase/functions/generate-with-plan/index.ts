@@ -250,10 +250,44 @@ Wrap code in <code></code> tags. Provide brief explanation before the code.`;
       const genData = await genResponse.json();
       const aiResponse = genData.choices[0].message.content;
       
-      // Extract code
-      const codeMatch = aiResponse.match(/<code>([\s\S]*?)<\/code>/);
-      const code = codeMatch ? codeMatch[1].trim() : null;
-      const explanation = aiResponse.replace(/<code>[\s\S]*?<\/code>/, '').trim();
+      console.log('📄 AI response length:', aiResponse.length);
+      console.log('📄 AI response preview:', aiResponse.substring(0, 200));
+      
+      // Extract code - try multiple patterns
+      let code = null;
+      let explanation = '';
+      
+      // Try <code></code> tags first
+      let codeMatch = aiResponse.match(/<code>([\s\S]*?)<\/code>/);
+      if (codeMatch) {
+        code = codeMatch[1].trim();
+        explanation = aiResponse.replace(/<code>[\s\S]*?<\/code>/, '').trim();
+        console.log('✅ Code extracted from <code> tags');
+      } else {
+        // Try ```html or ``` code blocks
+        const codeBlockMatch = aiResponse.match(/```(?:html)?\s*([\s\S]*?)```/);
+        if (codeBlockMatch) {
+          code = codeBlockMatch[1].trim();
+          explanation = aiResponse.replace(/```(?:html)?\s*[\s\S]*?```/, '').trim();
+          console.log('✅ Code extracted from ``` blocks');
+        } else if (aiResponse.includes('<!DOCTYPE') || aiResponse.includes('<html')) {
+          // If response looks like HTML but no tags, use entire response as code
+          code = aiResponse.trim();
+          explanation = 'Generated complete HTML code based on architecture plan.';
+          console.log('✅ Using entire response as HTML code');
+        } else {
+          // Last resort: check if it's mostly code-like content
+          console.warn('⚠️ No standard code wrapper found');
+          console.warn('⚠️ Response content:', aiResponse.substring(0, 500));
+        }
+      }
+      
+      if (!code) {
+        console.error('❌ Failed to extract code from AI response');
+        throw new Error('AI did not generate valid code. Please try again with a clearer request.');
+      }
+      
+      console.log('✅ Final code length:', code.length);
 
       // Update project memory with architectural decisions
       if (conversationId && code) {

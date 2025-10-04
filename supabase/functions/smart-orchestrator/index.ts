@@ -190,12 +190,24 @@ serve(async (req) => {
 
     if (generateResponse.error) throw generateResponse.error;
     
+    console.log('✅ Generation response received');
+    console.log('   - Response data keys:', Object.keys(generateResponse.data || {}));
+    console.log('   - Code field exists:', 'code' in (generateResponse.data || {}));
+    console.log('   - Code length:', generateResponse.data?.code?.length || 0);
+    
+    if (!generateResponse.data?.code) {
+      console.error('❌ No code in generation response!');
+      console.error('   Full response:', JSON.stringify(generateResponse.data).substring(0, 500));
+      throw new Error('Code generation failed: No code returned from generation phase');
+    }
+    
     phases.push({ 
       name: 'generation', 
       duration: Date.now() - genStart,
       result: generateResponse.data 
     });
     currentResult.generatedCode = generateResponse.data.code;
+    console.log('✅ Generated code stored, length:', currentResult.generatedCode.length);
 
     // PHASE 5: Automatic Refinement (if enabled)
     if (autoRefine && currentResult.generatedCode) {
@@ -261,13 +273,28 @@ serve(async (req) => {
       })
       .eq('id', runRecord.id);
 
+    const finalCode = currentResult.refinedCode || currentResult.generatedCode;
+    
+    console.log('🎉 Orchestration complete!');
+    console.log('   - Total phases:', phases.length);
+    console.log('   - Total duration:', totalDuration, 'ms');
+    console.log('   - Final code length:', finalCode?.length || 0);
+    console.log('   - Has refinedCode:', !!currentResult.refinedCode);
+    console.log('   - Has generatedCode:', !!currentResult.generatedCode);
+    
+    if (!finalCode) {
+      console.error('❌ No final code available!');
+      console.error('   currentResult:', JSON.stringify(currentResult, null, 2).substring(0, 1000));
+      throw new Error('Code generation completed but no code was produced');
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         orchestrationId: runRecord.id,
         phases,
         totalDuration,
-        finalCode: currentResult.refinedCode || currentResult.generatedCode,
+        finalCode,
         plan: currentResult.plan,
         impactAnalysis: currentResult.impactAnalysis,
         suggestedPatterns: currentResult.suggestedPatterns,

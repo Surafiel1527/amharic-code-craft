@@ -398,6 +398,13 @@ export const ChatInterface = ({
         : (data.plan?.architecture_overview || "I've generated the code based on your request with smart optimization.");
       const generatedCode = isSimpleChange ? data.updatedCode : data.finalCode;
       
+      console.log('🎨 ChatInterface: Code extraction complete');
+      console.log('   - isSimpleChange:', isSimpleChange);
+      console.log('   - generatedCode length:', generatedCode?.length || 0);
+      console.log('   - data keys:', Object.keys(data || {}));
+      console.log('   - data.finalCode length:', data?.finalCode?.length || 0);
+      console.log('   - data.updatedCode length:', data?.updatedCode?.length || 0);
+      
       // Add assistant message with orchestration info
       const assistantMsg: Message = {
         id: crypto.randomUUID(),
@@ -426,10 +433,15 @@ export const ChatInterface = ({
       });
 
       // Update code preview and active project if code was generated
+      console.log('🔍 ChatInterface: Checking if should update code, generatedCode exists:', !!generatedCode);
+      
       if (generatedCode) {
+        console.log('✅ ChatInterface: Updating code, length:', generatedCode.length);
         setActiveProjectCode(generatedCode);
         // Pass true to save a version for new generations
+        console.log('📞 ChatInterface: Calling onCodeGenerated...');
         onCodeGenerated(generatedCode, true);
+        console.log('✅ ChatInterface: onCodeGenerated called successfully');
         
         if (isSimpleChange) {
           toast.success("⚡ Updated instantly!");
