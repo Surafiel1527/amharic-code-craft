@@ -50,20 +50,28 @@ serve(async (req) => {
     // 4. Validate user authentication
     console.log('🔐 Validating user authentication...');
     
-    // First try to get user from JWT in the Authorization header
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    // Extract the JWT token from the Authorization header
+    const token = authHeader.replace('Bearer ', '');
+    
+    if (!token) {
+      console.error('❌ No token found in Authorization header');
+      throw new Error('Authentication required: Invalid token format');
+    }
+    
+    console.log('   Token extracted, length:', token.length);
+    
+    // Validate the token by passing it explicitly to getUser
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
     
     if (authError) {
       console.error('❌ Authentication error:', authError.message);
       console.error('   Error name:', authError.name);
       console.error('   Error status:', authError.status);
-      console.error('   Auth header format:', authHeader.split(' ')[0]); // Should be "Bearer"
       throw new Error(`Authentication failed: ${authError.message}`);
     }
     
     if (!user) {
       console.error('❌ No user found in auth session');
-      console.error('   This usually means the JWT token is invalid or expired');
       throw new Error('Unauthorized: Invalid or expired session');
     }
     
