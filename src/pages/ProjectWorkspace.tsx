@@ -105,10 +105,18 @@ export default function ProjectWorkspace() {
           setConversationId(newConv.id);
         }
 
-        // Trigger auto-generation if this is a new project
-        if (shouldGenerate && projectData.prompt) {
+        // Check for auto-generation parameters (new approach)
+        const autoPrompt = urlParams.get('autoPrompt');
+        
+        if (autoPrompt) {
+          console.log('🚀 Auto-prompt detected:', autoPrompt);
+          setAutoGeneratePrompt(autoPrompt);
+          // Clear URL parameter after capturing it
+          window.history.replaceState({}, '', `/project/${projectId}`);
+        } else if (shouldGenerate && projectData.prompt) {
+          // Fallback: Legacy support for ?generate=true
+          console.log('🚀 Legacy generate flag detected');
           setAutoGeneratePrompt(projectData.prompt);
-          // Clear the URL parameter
           window.history.replaceState({}, '', `/project/${projectId}`);
         }
       } catch (error: any) {

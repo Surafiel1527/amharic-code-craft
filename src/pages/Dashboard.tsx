@@ -156,7 +156,12 @@ export default function Dashboard() {
     return Object.keys(errors).length === 0;
   };
 
+  /**
+   * Creates a new project and navigates to workspace for AI generation
+   * Follows Lovable-style "instant workspace" pattern
+   */
   const handleCreateProject = async () => {
+    // Validation
     if (!user) {
       toast.error("Please log in to create a project");
       return;
@@ -169,84 +174,84 @@ export default function Dashboard() {
     setCreating(true);
 
     try {
-      // Verify session is still valid before creating project
+      // 1. Verify active session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) {
-        console.error("❌ Invalid session:", sessionError);
+        console.error("❌ Session validation failed:", sessionError);
         toast.error("Your session has expired. Please log in again.");
         navigate("/auth");
         return;
       }
 
-      console.log("✅ Creating project for user:", user.id);
+      console.log("✅ Session validated for user:", user.id);
 
-      const { data, error } = await supabase
+      // 2. Create project with placeholder code
+      const { data: project, error: projectError } = await supabase
         .from("projects")
         .insert({
           user_id: user.id,
           title: newProject.title.trim(),
           prompt: newProject.prompt.trim(),
           description: newProject.prompt.trim(),
-          html_code: "<!-- AI is generating your project... -->",
-          status: "generating",
+          html_code: "<!-- Generating your project... Please wait -->",
+          status: "active", // Set to active, generation will update it
           is_public: false,
           tags: [newProject.template],
         })
         .select()
         .single();
 
-      if (error) {
-        console.error("❌ Error creating project:", error);
-        throw error;
+      if (projectError) {
+        console.error("❌ Project creation failed:", projectError);
+        throw new Error(projectError.message);
       }
 
-      console.log("✅ Project created:", data.id);
+      console.log("✅ Project created:", project.id);
 
-      // Create conversation
+      // 3. Create conversation for AI chat
       const { error: convError } = await supabase
         .from("conversations")
         .insert({
-          project_id: data.id,
+          project_id: project.id,
           user_id: user.id,
-          current_code: "<!-- Initializing... -->",
+          current_code: "<!-- Initializing workspace... -->",
         });
 
       if (convError) {
-        console.error("❌ Error creating conversation:", convError);
+        console.warn("⚠️ Conversation creation failed:", convError);
+        // Non-critical - workspace will create it if missing
       }
       
-      // Success feedback
-      toast.success("✨ Project created!", {
-        description: "Redirecting to workspace to start AI generation...",
-        duration: 2000,
+      // 4. Success feedback
+      toast.success("✨ Opening workspace...", {
+        description: "Your AI will start generating the project",
       });
       
-      // Close dialog and reset
+      // 5. Clean up and navigate
       setShowCreateDialog(false);
       setNewProject({ title: "", prompt: "", template: "blank" });
       setValidationErrors({});
       
-      // Small delay for smooth transition
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // 6. Navigate to workspace with auto-prompt parameter
+      // The workspace will detect this and trigger AI generation
+      navigate(`/project/${project.id}?autoPrompt=${encodeURIComponent(newProject.prompt.trim())}`);
       
-      // Navigate to workspace with generate flag - generation happens there
-      navigate(`/project/${data.id}?generate=true`);
     } catch (error: any) {
-      console.error("Error creating project:", error);
+      console.error("❌ Project creation error:", error);
       
-      // Provide more specific error messages
+      // Provide specific user feedback
       if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_CONNECTION')) {
         toast.error("Connection error", {
-          description: "Please check your internet connection and try again."
+          description: "Please check your internet and try again."
         });
-      } else if (error.message?.includes('row-level security')) {
+      } else if (error.message?.includes('row-level security') || error.message?.includes('policy')) {
         toast.error("Permission denied", {
-          description: "Your session may have expired. Please log in again."
+          description: "Please log in again."
         });
         navigate("/auth");
       } else {
         toast.error("Failed to create project", {
-          description: error.message || "An unexpected error occurred. Please try again."
+          description: error.message || "Please try again."
         });
       }
     } finally {

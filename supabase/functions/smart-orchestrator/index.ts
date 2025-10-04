@@ -13,31 +13,57 @@ serve(async (req) => {
   }
 
   try {
+    // 1. Parse request body
     const { userRequest, conversationId, currentCode, autoRefine = true, autoLearn = true } = await req.json();
     
+    console.log('📥 Smart orchestrator request received');
+    console.log('   - User request length:', userRequest?.length || 0);
+    console.log('   - Conversation ID:', conversationId);
+    console.log('   - Has current code:', !!currentCode);
+    
+    // 2. Validate Authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('No Authorization header provided');
-      throw new Error('Missing authorization header');
+      console.error('❌ Missing Authorization header');
+      console.error('   Available headers:', Object.fromEntries(req.headers.entries()));
+      throw new Error('Authentication required: Missing Authorization header');
     }
 
+    console.log('✅ Authorization header present');
+    console.log('   Token preview:', authHeader.substring(0, 30) + '...');
+
+    // 3. Create Supabase client with auth context
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
+      { 
+        global: { 
+          headers: { Authorization: authHeader } 
+        },
+        auth: {
+          persistSession: false // Edge functions don't persist sessions
+        }
+      }
     );
 
+    // 4. Validate user authentication
+    console.log('🔐 Validating user authentication...');
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    
     if (authError) {
-      console.error('Authentication error:', authError);
+      console.error('❌ Authentication error:', authError.message);
+      console.error('   Error details:', JSON.stringify(authError));
       throw new Error(`Authentication failed: ${authError.message}`);
     }
+    
     if (!user) {
-      console.error('No user found in session');
-      throw new Error('Unauthorized: No valid user session');
+      console.error('❌ No user found in auth session');
+      throw new Error('Unauthorized: Invalid or expired session');
     }
     
-    console.log('Authenticated user:', user.id);
+    console.log('✅ User authenticated successfully');
+    console.log('   User ID:', user.id);
+    console.log('   Email:', user.email);
 
     const startTime = Date.now();
     const phases: any[] = [];
@@ -226,10 +252,35 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('Smart orchestrator error:', error);
+    console.error('❌ Smart orchestrator error:', error);
+    console.error('   Error type:', error.constructor.name);
+    console.error('   Error message:', error.message);
+    console.error('   Stack trace:', error.stack);
+    
+    // Determine error type and provide specific feedback
+    let statusCode = 500;
+    let errorMessage = error.message || 'Internal server error';
+    
+    if (error.message?.includes('Authentication') || error.message?.includes('Unauthorized')) {
+      statusCode = 401;
+      errorMessage = 'Authentication failed. Please log in again.';
+    } else if (error.message?.includes('Authorization')) {
+      statusCode = 403;
+      errorMessage = 'Access denied. You do not have permission.';
+    } else if (error.message?.includes('not found')) {
+      statusCode = 404;
+      errorMessage = 'Resource not found.';
+    }
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        error: errorMessage,
+        details: Deno.env.get('ENVIRONMENT') === 'development' ? error.stack : undefined
+      }),
+      { 
+        status: statusCode, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
   }
 });

@@ -57,27 +57,45 @@ export const ChatInterface = ({
     }
   }, [conversationId]);
 
-  // Auto-send initial prompt after conversation is loaded
+  /**
+   * Auto-sends initial prompt when landing in workspace from project creation
+   * Ensures auth context is fully established before making API calls
+   */
   useEffect(() => {
+    // Guard: Only run if all conditions are met
     if (
-      autoSendPrompt && 
-      conversationId && 
-      conversationLoaded && 
-      !isLoading && 
-      !hasAutoSent.current
+      !autoSendPrompt ||           // No prompt to send
+      !conversationId ||            // No conversation context
+      !conversationLoaded ||        // Conversation not loaded yet
+      isLoading ||                  // Already generating
+      hasAutoSent.current           // Already sent (prevent duplicates)
     ) {
-      console.log('🚀 Auto-sending initial prompt:', autoSendPrompt);
-      hasAutoSent.current = true;
-      
-      // Longer delay to ensure auth session is fully established
-      setTimeout(() => {
-        console.log('📤 Executing auto-send now...');
-        handleSend(autoSendPrompt);
-        if (onAutoSendComplete) {
-          onAutoSendComplete();
-        }
-      }, 2000); // 2 second delay for stable auth
+      return;
     }
+
+    console.log('🎯 Auto-send conditions met, initializing...');
+    hasAutoSent.current = true; // Mark as sent immediately to prevent race conditions
+
+    // Delay to ensure:
+    // 1. Auth session is fully synced across app
+    // 2. Supabase client has valid auth context
+    // 3. Edge functions receive valid Authorization header
+    const AUTO_SEND_DELAY = 2000; // 2 seconds for stable auth
+
+    const timerId = setTimeout(() => {
+      console.log('🚀 Executing auto-send with prompt:', autoSendPrompt.substring(0, 50) + '...');
+      
+      // Trigger generation
+      handleSend(autoSendPrompt);
+      
+      // Notify parent component
+      if (onAutoSendComplete) {
+        onAutoSendComplete();
+      }
+    }, AUTO_SEND_DELAY);
+
+    // Cleanup timeout on unmount
+    return () => clearTimeout(timerId);
   }, [autoSendPrompt, conversationId, conversationLoaded, isLoading]);
 
   useEffect(() => {
@@ -210,30 +228,52 @@ export const ChatInterface = ({
     }
   };
 
+  /**
+   * Handles sending messages to AI with robust auth validation
+   * Supports both user input and programmatic calls (auto-send)
+   */
   const handleSend = async (messageOverrideOrEvent?: string | React.MouseEvent) => {
-    // Extract message text from override or input
+    // 1. Extract message text
     const messageText = typeof messageOverrideOrEvent === 'string' 
       ? messageOverrideOrEvent 
       : input.trim();
     
-    if (!messageText || isLoading) return;
+    if (!messageText || isLoading) {
+      console.warn('⚠️ Cannot send: empty message or already loading');
+      return;
+    }
 
-    // Check authentication and ensure session is valid
+    // 2. Validate authentication with detailed logging
+    console.log('🔐 Validating authentication...');
+    
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      console.error('❌ No valid session:', sessionError);
+    if (sessionError) {
+      console.error('❌ Session error:', sessionError.message);
+      toast.error("Authentication error. Please log in again.");
+      return;
+    }
+    
+    if (!session) {
+      console.error('❌ No active session');
       toast.error("Please log in to use AI generation");
       return;
     }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      console.error('❌ User not authenticated:', authError);
+    if (authError) {
+      console.error('❌ Auth error:', authError.message);
+      toast.error("Authentication error. Please log in again.");
+      return;
+    }
+    
+    if (!user) {
+      console.error('❌ No user found');
       toast.error("Please log in to use AI generation");
       return;
     }
     
-    console.log('✅ User authenticated:', user.id);
+    console.log('✅ Authentication validated - User:', user.id);
+    console.log('✅ Session valid - Expires:', new Date(session.expires_at! * 1000).toISOString());
 
     const userMessage = messageText;
     const hasActiveProject = !!activeProjectCode;
@@ -315,6 +355,12 @@ export const ChatInterface = ({
           }
         }, 800);
 
+        // Call smart-orchestrator with explicit auth context
+        console.log('📡 Calling smart-orchestrator...');
+        console.log('   - Conversation:', activeConvId);
+        console.log('   - Has existing code:', !!codeToModify);
+        console.log('   - Auth token:', session.access_token.substring(0, 20) + '...');
+        
         const response = await supabase.functions.invoke("smart-orchestrator", {
           body: {
             userRequest: userMessage,
