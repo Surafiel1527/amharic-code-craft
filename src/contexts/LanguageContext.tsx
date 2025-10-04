@@ -521,6 +521,11 @@ const translations = {
     "themeGallery.applyFailed": "Failed to apply theme",
     "themeGallery.deleteFailed": "Failed to delete theme",
     "themeGallery.loadFailed": "Failed to load themes",
+    
+    // Version History
+    "version.update": "Update",
+    "version.history": "Version History",
+    "version.restore": "Restore any previous version of your project",
   },
   am: {
     // Meta
@@ -544,6 +549,11 @@ const translations = {
     "templates.usage": "አጠቃቀም",
     "templates.useThis": "ይህን አብነት ተጠቀም",
     "templates.loaded": "አብነት ተጫነ",
+    
+    // Version History - Amharic
+    "version.update": "የእውታዋን ስራት",
+    "version.history": "የስሪት ታሪክ",
+    "version.restore": "የፕሮጀክትዎን ቀደም ያሉ ስሪቶች መልሰው ይመልሱ",
     
     // Chat Interface - Amharic
     "chat.conversations": "ውይይቶች",

@@ -19,6 +19,7 @@ import {
 import { ChatInterface } from "./ChatInterface";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Message {
   id: string;
@@ -43,6 +44,7 @@ export const UserWorkspace = ({
   onCodeUpdate,
   autoGeneratePrompt
 }: UserWorkspaceProps) => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>("chat");
   const [workingCode, setWorkingCode] = useState(initialCode);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -136,7 +138,7 @@ export const UserWorkspace = ({
         project_id: projectId,
         version_number: nextVersion,
         html_code: code,
-        changes_summary: `Update ${nextVersion}`
+        changes_summary: `${t("version.update")} ${nextVersion}`
       });
 
       loadVersionHistory();
@@ -317,9 +319,9 @@ export const UserWorkspace = ({
             <div className="p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <h3 className="text-base font-semibold">Version History</h3>
+                  <h3 className="text-base font-semibold">{t("version.history")}</h3>
                   <p className="text-xs text-muted-foreground">
-                    Restore any previous version of your project
+                    {t("version.restore")}
                   </p>
                 </div>
                 <Button
@@ -361,7 +363,7 @@ export const UserWorkspace = ({
                               </span>
                             </div>
                             <p className="text-sm mb-2 truncate">
-                              {version.changes_summary || `Update ${version.version_number}`}
+                              {version.changes_summary || `${t("version.update")} ${version.version_number}`}
                             </p>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
                               <span>{(version.html_code.length / 1000).toFixed(1)}KB</span>
