@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { Menu, TrendingUp, Shield, Settings, LogOut, Keyboard, Code } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -32,62 +32,74 @@ export const MobileNav = ({ isAdmin, onShowShortcuts, onSignOut }: MobileNavProp
           </div>
           
           <div className="border-t pt-4 space-y-2">
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2"
-              onClick={() => navigate("/explore")}
-            >
-              <TrendingUp className="h-4 w-4" />
-              {t("header.explore")}
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2"
-              onClick={() => navigate("/")}
-            >
-              <Code className="h-4 w-4" />
-              My Projects
-            </Button>
-
-            {isAdmin && (
+            <SheetClose asChild>
               <Button
                 variant="ghost"
                 className="w-full justify-start gap-2"
-                onClick={() => navigate("/admin")}
+                onClick={() => navigate("/explore")}
               >
-                <Shield className="h-4 w-4" />
-                {t("header.admin")}
+                <TrendingUp className="h-4 w-4" />
+                {t("header.explore")}
               </Button>
-            )}
+            </SheetClose>
 
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2"
-              onClick={onShowShortcuts}
-            >
-              <Keyboard className="h-4 w-4" />
-              {t("shortcuts.title")}
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2"
-              onClick={() => navigate("/settings")}
-            >
-              <Settings className="h-4 w-4" />
-              {t("header.settings")}
-            </Button>
-
-            <DynamicComponent name="Button-SignOut">
+            <SheetClose asChild>
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-2 text-destructive hover:text-destructive"
-                onClick={onSignOut}
+                className="w-full justify-start gap-2"
+                onClick={() => navigate("/")}
               >
-                <LogOut className="h-4 w-4" />
-                {t("header.logout")}
+                <Code className="h-4 w-4" />
+                My Projects
               </Button>
+            </SheetClose>
+
+            {isAdmin && (
+              <SheetClose asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2"
+                  onClick={() => navigate("/admin")}
+                >
+                  <Shield className="h-4 w-4" />
+                  {t("header.admin")}
+                </Button>
+              </SheetClose>
+            )}
+
+            <SheetClose asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2"
+                onClick={onShowShortcuts}
+              >
+                <Keyboard className="h-4 w-4" />
+                {t("shortcuts.title")}
+              </Button>
+            </SheetClose>
+
+            <SheetClose asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2"
+                onClick={() => navigate("/settings")}
+              >
+                <Settings className="h-4 w-4" />
+                {t("header.settings")}
+              </Button>
+            </SheetClose>
+
+            <DynamicComponent name="Button-SignOut">
+              <SheetClose asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+                  onClick={onSignOut}
+                >
+                  <LogOut className="h-4 w-4" />
+                  {t("header.logout")}
+                </Button>
+              </SheetClose>
             </DynamicComponent>
           </div>
         </div>
