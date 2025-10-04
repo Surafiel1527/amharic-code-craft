@@ -529,7 +529,7 @@ const Index = () => {
           {/* Sidebar - Conversations List - Hidden on Mobile */}
           {mode === "chat" && (
             <Card className="hidden lg:block p-4 space-y-4 h-[calc(100vh-350px)] flex-col">
-              <h3 className="font-semibold text-sm">ውይይቶች</h3>
+              <h3 className="font-semibold text-sm">{t("chat.conversations")}</h3>
               <ConversationSidebar
                 conversations={conversations}
                 activeConversation={activeConversation}
@@ -581,12 +581,12 @@ const Index = () => {
                       {isGenerating ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          በመፍጠር ላይ...
+                          {t("chat.generating")}
                         </>
                       ) : (
                         <>
                           <Sparkles className="mr-2 h-4 w-4" />
-                          ድህረ ገፅ ፍጠር
+                          {t("chat.createWebsite")}
                         </>
                       )}
                     </Button>
@@ -600,12 +600,12 @@ const Index = () => {
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>ፕሮጀክት አስቀምጥ</DialogTitle>
-                            <DialogDescription>የፕሮጀክት ስም ያስገቡ</DialogDescription>
+                            <DialogTitle>{t("chat.saveProject")}</DialogTitle>
+                            <DialogDescription>{t("chat.enterProjectName")}</DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4 pt-4">
                             <Input
-                              placeholder="የፕሮጀክት ስም"
+                              placeholder={t("chat.projectName")}
                               value={projectTitle}
                               onChange={(e) => setProjectTitle(e.target.value)}
                             />
@@ -613,10 +613,10 @@ const Index = () => {
                               {isSaving ? (
                                 <>
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  በማስቀመጥ ላይ...
+                                  {t("chat.saving")}
                                 </>
                               ) : (
-                                "አስቀምጥ"
+                                t("chat.save")
                               )}
                             </Button>
                           </div>
@@ -632,7 +632,7 @@ const Index = () => {
                       setPrompt(template.prompt);
                       setGeneratedCode(template.html_code);
                       setActiveTab("quick");
-                      toast.success(`"${template.title}" አብነት ተጫነ`);
+                      toast.success(`"${template.title}" ${t("templates.loaded")}`);
                     }}
                   />
                 </TabsContent>
@@ -675,7 +675,7 @@ const Index = () => {
           <Card className="p-6 space-y-4 bg-card border-border shadow-lg">
             <div className="flex items-center justify-between">
               <label className="text-sm font-semibold flex items-center gap-2">
-                🎨 ቅድመ እይታ
+                🎨 {t("chat.preview")}
               </label>
               {generatedCode && (
                 <div className="flex gap-2">
@@ -692,18 +692,18 @@ const Index = () => {
                     {copied ? (
                       <>
                         <Check className="h-3 w-3" />
-                        ተቀድቷል
+                        {t("chat.copied")}
                       </>
                     ) : (
                       <>
                         <Copy className="h-3 w-3" />
-                        ቅዳ
+                        {t("chat.copy")}
                       </>
                     )}
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleDownload} className="gap-2">
                     <Download className="h-3 w-3" />
-                    አውርድ
+                    {t("chat.download")}
                   </Button>
                 </div>
               )}
@@ -717,21 +717,21 @@ const Index = () => {
             <div className="space-y-4">
               <Tabs defaultValue="analysis" className="w-full">
                 <TabsList className="grid w-full grid-cols-6 lg:grid-cols-15">
-                  <TabsTrigger value="analysis" className="text-xs">ትንተና</TabsTrigger>
-                  <TabsTrigger value="assistant" className="text-xs">ረዳት</TabsTrigger>
-                  <TabsTrigger value="versions" className="text-xs">ስሪቶች</TabsTrigger>
-                  <TabsTrigger value="design" className="text-xs">ዲዛይን</TabsTrigger>
-                  <TabsTrigger value="a11y" className="text-xs">ተደራሽነት</TabsTrigger>
-                  <TabsTrigger value="seo" className="text-xs">SEO</TabsTrigger>
-                  <TabsTrigger value="export" className="text-xs">ውጤት</TabsTrigger>
-                  <TabsTrigger value="components" className="text-xs">አካላት</TabsTrigger>
-                  <TabsTrigger value="api" className="text-xs">API</TabsTrigger>
-                  <TabsTrigger value="analytics" className="text-xs">ትንታኔ</TabsTrigger>
-                  <TabsTrigger value="security" className="text-xs">ደህንነት</TabsTrigger>
-                  <TabsTrigger value="privacy" className="text-xs">ግላዊነት</TabsTrigger>
-                  <TabsTrigger value="marketplace" className="text-xs">ገበያ</TabsTrigger>
-                  <TabsTrigger value="teams" className="text-xs">ቡድኖች</TabsTrigger>
-                  <TabsTrigger value="apikeys" className="text-xs">API ቁልፎች</TabsTrigger>
+                  <TabsTrigger value="analysis" className="text-xs">{t("aiFeatures.analysis")}</TabsTrigger>
+                  <TabsTrigger value="assistant" className="text-xs">{t("aiFeatures.assistant")}</TabsTrigger>
+                  <TabsTrigger value="versions" className="text-xs">{t("aiFeatures.versions")}</TabsTrigger>
+                  <TabsTrigger value="design" className="text-xs">{t("aiFeatures.design")}</TabsTrigger>
+                  <TabsTrigger value="a11y" className="text-xs">{t("aiFeatures.accessibility")}</TabsTrigger>
+                  <TabsTrigger value="seo" className="text-xs">{t("aiFeatures.seo")}</TabsTrigger>
+                  <TabsTrigger value="export" className="text-xs">{t("aiFeatures.export")}</TabsTrigger>
+                  <TabsTrigger value="components" className="text-xs">{t("aiFeatures.components")}</TabsTrigger>
+                  <TabsTrigger value="api" className="text-xs">{t("aiFeatures.api")}</TabsTrigger>
+                  <TabsTrigger value="analytics" className="text-xs">{t("aiFeatures.analytics")}</TabsTrigger>
+                  <TabsTrigger value="security" className="text-xs">{t("aiFeatures.security")}</TabsTrigger>
+                  <TabsTrigger value="privacy" className="text-xs">{t("aiFeatures.privacy")}</TabsTrigger>
+                  <TabsTrigger value="marketplace" className="text-xs">{t("aiFeatures.marketplace")}</TabsTrigger>
+                  <TabsTrigger value="teams" className="text-xs">{t("aiFeatures.teams")}</TabsTrigger>
+                  <TabsTrigger value="apikeys" className="text-xs">{t("aiFeatures.apikeys")}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="analysis" className="mt-4">
@@ -740,7 +740,7 @@ const Index = () => {
                     projectId={currentProjectId || undefined}
                     onOptimize={(optimizedCode) => {
                       setGeneratedCode(optimizedCode);
-                      toast.success("ኮድ በራስ ተመሻሽሏል!");
+                      toast.success(t("chat.codeOptimized"));
                     }}
                   />
                 </TabsContent>

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Loader2, Send, Bot, User, Code, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Message {
   id: string;
@@ -28,6 +29,7 @@ export const ChatInterface = ({
   currentCode,
   onConversationChange 
 }: ChatInterfaceProps) => {
+  const { t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -95,7 +97,7 @@ export const ChatInterface = ({
         }
       }).catch(err => console.error('Failed to report error:', err));
       
-      toast.error("ውይይትን መጫን አልተቻለም");
+      toast.error(t("chat.loadFailed"));
     }
   };
 
@@ -110,7 +112,7 @@ export const ChatInterface = ({
 
       const { data, error } = await supabase
         .from("conversations")
-        .insert({ title: "አዲስ ውይይት", user_id: user.id })
+        .insert({ title: t("chat.newConversation"), user_id: user.id })
         .select()
         .single();
 
@@ -214,7 +216,7 @@ export const ChatInterface = ({
       // Update code preview if code was generated
       if (generatedCode) {
         onCodeGenerated(generatedCode);
-        toast.success("ኮድ ተዘምኗል!");
+        toast.success(t("chat.codeUpdated"));
       }
 
       // Update conversation timestamp
@@ -225,7 +227,7 @@ export const ChatInterface = ({
 
     } catch (error) {
       console.error("Error sending message:", error);
-      toast.error("መልእክት መላክ አልተቻለም");
+      toast.error(t("chat.sendFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -250,10 +252,9 @@ export const ChatInterface = ({
                 </div>
               </div>
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold">AI ረዳትዎ ዝግጁ ነው!</h3>
+                <h3 className="text-lg font-semibold">{t("chat.assistantReady")}</h3>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  ድህረ ገፅዎን ለመገንባት ወይም ለማሻሻል የሚፈልጉትን በአማርኛ ይግለጹ። 
-                  ለምሳሌ፡ "ለንግዴ አዲስ የማረፊያ ገፅ ፍጠር" ወይም "ቀለሙን አረንጓዴ አድርግ"
+                  {t("chat.assistantDesc")}
                 </p>
               </div>
             </Card>
@@ -282,7 +283,7 @@ export const ChatInterface = ({
                   <div className="mt-3 pt-3 border-t border-border/50">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Code className="h-3 w-3" />
-                      <span>ኮድ ተፈጥሯል</span>
+                      <span>{t("chat.codeGenerated")}</span>
                     </div>
                   </div>
                 )}
@@ -304,7 +305,7 @@ export const ChatInterface = ({
               <Card className="p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">በማሰብ ላይ...</span>
+                  <span className="text-sm">{t("chat.thinking")}</span>
                 </div>
               </Card>
             </div>
@@ -318,7 +319,7 @@ export const ChatInterface = ({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="መልእክትዎን ይፃፉ..."
+            placeholder={t("chat.writeMessage")}
             disabled={isLoading}
             className="flex-1"
             dir="auto"

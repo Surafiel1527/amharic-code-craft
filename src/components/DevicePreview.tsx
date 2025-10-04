@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Monitor, Smartphone, Tablet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type DeviceSize = "mobile" | "tablet" | "desktop";
 
@@ -9,14 +10,15 @@ interface DevicePreviewProps {
   generatedCode: string;
 }
 
-const deviceSizes = {
-  mobile: { width: "375px", icon: Smartphone, label: "ሞባይል" },
-  tablet: { width: "768px", icon: Tablet, label: "ታብሌት" },
-  desktop: { width: "100%", icon: Monitor, label: "ዴስክቶፕ" },
-};
-
 export function DevicePreview({ generatedCode }: DevicePreviewProps) {
+  const { t } = useLanguage();
   const [deviceSize, setDeviceSize] = useState<DeviceSize>("desktop");
+  
+  const deviceSizes = {
+    mobile: { width: "375px", icon: Smartphone, label: t("preview.mobile") },
+    tablet: { width: "768px", icon: Tablet, label: t("preview.tablet") },
+    desktop: { width: "100%", icon: Monitor, label: t("preview.desktop") },
+  };
 
   return (
     <div className="space-y-4">
@@ -62,7 +64,7 @@ export function DevicePreview({ generatedCode }: DevicePreviewProps) {
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
             <div className="text-center space-y-3 p-6">
               <div className="text-5xl opacity-20">🌐</div>
-              <p className="text-sm">የእርስዎ ድህረ ገፅ እዚህ ይታያል</p>
+              <p className="text-sm">{t("chat.websiteAppears")}</p>
             </div>
           </div>
         )}
