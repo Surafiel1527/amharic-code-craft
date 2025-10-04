@@ -218,6 +218,17 @@ const Index = () => {
     }
   }, [user]);
 
+  const handleSignOut = async () => {
+    try {
+      toast.loading(t("toast.signingOut") || "Signing out...");
+      await signOut();
+      toast.success(t("toast.signedOut") || "Signed out successfully");
+    } catch (error) {
+      console.error('Sign out error:', error);
+      toast.error(t("toast.signOutError") || "Error signing out, but you've been logged out locally");
+    }
+  };
+
   const fetchRecentProjects = async () => {
     setIsLoadingProjects(true);
     try {
@@ -509,7 +520,7 @@ const Index = () => {
                   <Settings className="h-4 w-4" />
                   <span className="hidden lg:inline">{t("header.settings")}</span>
                 </Button>
-                <Button variant="outline" size="sm" onClick={signOut} className="gap-2 hover-scale">
+                <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2 hover-scale">
                   <LogOut className="h-4 w-4" />
                   <span className="hidden lg:inline">{t("header.logout")}</span>
                 </Button>
@@ -520,7 +531,7 @@ const Index = () => {
                 <MobileNav 
                   isAdmin={isAdmin}
                   onShowShortcuts={() => setShowShortcuts(!showShortcuts)}
-                  onSignOut={signOut}
+                  onSignOut={handleSignOut}
                 />
               </div>
             </div>

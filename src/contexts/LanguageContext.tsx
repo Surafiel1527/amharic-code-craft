@@ -111,6 +111,9 @@ const translations = {
     "toast.dataFetchError": "Error fetching data",
     "toast.roleUpdated": "User role updated successfully",
     "toast.roleUpdateError": "Error updating role",
+    "toast.signingOut": "Signing out...",
+    "toast.signedOut": "Signed out successfully",
+    "toast.signOutError": "Error signing out, but you've been logged out locally",
     
     // Sections
     "section.backup": "Backup & Restore",
@@ -671,6 +674,9 @@ const translations = {
     "toast.dataFetchError": "መረጃ በማምጣት ላይ ስህተት ተፈጥሯል",
     "toast.roleUpdated": "የተጠቃሚ ሚና ተቀይሯል",
     "toast.roleUpdateError": "ሚና በመቀየር ላይ ስህተት ተፈጥሯል",
+    "toast.signingOut": "በመውጣት ላይ...",
+    "toast.signedOut": "በተሳካ ሁኔታ ወጥተዋል",
+    "toast.signOutError": "በመውጣት ላይ ስህተት፣ ግን በአካባቢያዊ ተወግደዋል",
     
     // Sections
     "section.backup": "ምትኪ እና መመለሻ",
