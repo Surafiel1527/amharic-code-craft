@@ -172,19 +172,19 @@ export default function APIAccessManager() {
         <TabsContent value="keys">
           <Card>
             <CardHeader>
-              <CardTitle>Your API Keys</CardTitle>
-              <CardDescription>Manage your API keys and access tokens</CardDescription>
+              <CardTitle>{t("api.keysTitle")}</CardTitle>
+              <CardDescription>{t("api.keysSubtitle")}</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>API Key</TableHead>
-                    <TableHead>Usage</TableHead>
-                    <TableHead>Rate Limit</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>{t("api.name")}</TableHead>
+                    <TableHead>{t("api.apiKey")}</TableHead>
+                    <TableHead>{t("api.usage")}</TableHead>
+                    <TableHead>{t("api.rateLimit")}</TableHead>
+                    <TableHead>{t("api.status")}</TableHead>
+                    <TableHead>{t("api.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -209,7 +209,7 @@ export default function APIAccessManager() {
                       <TableCell>{key.rate_limit}/min</TableCell>
                       <TableCell>
                         <Badge variant={key.is_active ? "default" : "secondary"}>
-                          {key.is_active ? "Active" : "Inactive"}
+                          {key.is_active ? t("api.active") : t("api.inactive")}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -219,7 +219,7 @@ export default function APIAccessManager() {
                             variant="outline"
                             onClick={() => handleToggleKey(key.id, key.is_active)}
                           >
-                            {key.is_active ? "Disable" : "Enable"}
+                            {key.is_active ? t("api.disable") : t("api.enable")}
                           </Button>
                           <Button
                             size="sm"
@@ -293,17 +293,17 @@ export default function APIAccessManager() {
         <TabsContent value="docs">
           <Card>
             <CardHeader>
-              <CardTitle>API Documentation</CardTitle>
-              <CardDescription>Learn how to integrate with our API</CardDescription>
+              <CardTitle>{t("api.docsTitle")}</CardTitle>
+              <CardDescription>{t("api.docsSubtitle")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
                   <BookOpen className="h-5 w-5" />
-                  Authentication
+                  {t("api.authentication")}
                 </h3>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Include your API key in the Authorization header:
+                  {t("api.authDescription")}
                 </p>
                 <Textarea
                   readOnly
@@ -315,7 +315,7 @@ export default function APIAccessManager() {
               <div>
                 <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
                   <Code className="h-5 w-5" />
-                  Example Request
+                  {t("api.exampleRequest")}
                 </h3>
                 <Textarea
                   readOnly
@@ -333,10 +333,9 @@ export default function APIAccessManager() {
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold mb-2">Rate Limits</h3>
+                <h3 className="text-lg font-semibold mb-2">{t("api.rateLimitsTitle")}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Rate limits are enforced per API key. Exceeding your limit will result in a 429 error.
-                  Contact support to increase your limits.
+                  {t("api.rateLimitsDescription")}
                 </p>
               </div>
             </CardContent>
