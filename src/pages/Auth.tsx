@@ -158,11 +158,16 @@ const Auth = () => {
         return;
       }
 
-      toast.success("Password reset link sent to your email!");
+      toast.success("Password reset link sent!", {
+        description: "Check your email (and spam folder) for the reset link. It may take a few minutes to arrive.",
+        duration: 8000,
+      });
       setShowForgotPassword(false);
     } catch (error: any) {
       console.error("Forgot password error:", error);
-      toast.error(error?.message || "Failed to send reset email");
+      toast.error("Failed to send reset email", {
+        description: error?.message || "Please check your email address and try again",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -301,6 +306,11 @@ const Auth = () => {
             <div className="text-center space-y-2">
               <h2 className="text-xl font-semibold">Forgot Password</h2>
               <p className="text-sm text-muted-foreground">Enter your email to receive a reset link</p>
+              <div className="bg-muted/50 border border-border rounded-lg p-3 mt-3">
+                <p className="text-xs text-muted-foreground">
+                  💡 <strong>Note:</strong> Check your spam/junk folder if you don't see the email within a few minutes.
+                </p>
+              </div>
             </div>
             
             <form onSubmit={handleForgotPassword} className="space-y-4">
