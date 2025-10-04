@@ -71,9 +71,13 @@ const Auth = () => {
 
       if (error) {
         // Handle various signup errors with user-friendly messages
-        if (error.message.includes("already registered") || 
-            error.message.includes("User already registered") ||
-            error.message.includes("Database error saving new user")) {
+        if (error.message.includes("Database error saving new user")) {
+          toast.error("Account setup error", {
+            description: "There may be an incomplete account with this email. Please try signing in, or contact support if the issue persists.",
+            duration: 8000,
+          });
+        } else if (error.message.includes("already registered") || 
+            error.message.includes("User already registered")) {
           toast.error("This email is already registered. Please sign in instead.");
         } else if (error.message.includes("Invalid email")) {
           toast.error("Please enter a valid email address");
