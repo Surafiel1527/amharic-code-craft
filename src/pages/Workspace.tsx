@@ -135,6 +135,13 @@ export default function Workspace() {
     setIsLoading(true);
 
     try {
+      // Get current session to ensure we have a valid token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session. Please log in again.');
+      }
+
       // Use smart orchestrator for enhancement
       const { data, error } = await supabase.functions.invoke('smart-orchestrator', {
         body: {
