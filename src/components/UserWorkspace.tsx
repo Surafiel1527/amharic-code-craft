@@ -60,9 +60,19 @@ export const UserWorkspace = ({
   // Sync workingCode with initialCode when it changes (after DB updates)
   useEffect(() => {
     console.log('📝 UserWorkspace: initialCode changed, length:', initialCode?.length || 0);
-    if (initialCode) {
-      setWorkingCode(initialCode);
-      console.log('✅ UserWorkspace: workingCode updated from initialCode');
+    const placeholder = "<!-- Initializing workspace... -->";
+    
+    // Only update if initialCode has real content (not placeholder or empty)
+    // AND if workingCode is still the placeholder or empty
+    if (initialCode && initialCode !== placeholder && initialCode.trim().length > 0) {
+      const currentIsPlaceholder = !workingCode || workingCode === placeholder || workingCode.trim().length === 0;
+      
+      if (currentIsPlaceholder || initialCode.length > workingCode.length) {
+        setWorkingCode(initialCode);
+        console.log('✅ UserWorkspace: workingCode updated from initialCode');
+      } else {
+        console.log('⏭️ UserWorkspace: Skipping update - workingCode already has content');
+      }
     }
   }, [initialCode]);
 
@@ -242,14 +252,20 @@ export const UserWorkspace = ({
           <ScrollArea className="h-full">
             <div className="p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <h3 className="text-base font-semibold">Project Code</h3>
+              <div className="space-y-1">
+                <h3 className="text-base font-semibold">Project Code</h3>
+                {workingCode && workingCode !== "<!-- Initializing workspace... -->" ? (
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>{(workingCode.length / 1000).toFixed(1)}KB</span>
                     <span>•</span>
                     <span>{workingCode.split('\n').length} lines</span>
                   </div>
-                </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    No code generated yet
+                  </p>
+                )}
+              </div>
                 <Button
                   variant="outline"
                   size="sm"
@@ -262,8 +278,7 @@ export const UserWorkspace = ({
                   Copy Code
                 </Button>
               </div>
-              
-              {workingCode ? (
+              {workingCode && workingCode !== "<!-- Initializing workspace... -->" ? (
                 <Card className="border bg-card">
                   <div className="p-4 bg-muted/30 border-b">
                     <p className="text-xs text-muted-foreground">Full source code</p>
@@ -290,7 +305,7 @@ export const UserWorkspace = ({
         {/* Preview Tab */}
         <TabsContent value="preview" className="flex-1 m-0 h-[calc(100vh-240px)]">
           <div className="h-full p-4">
-            {workingCode ? (
+          {workingCode && workingCode !== "<!-- Initializing workspace... -->" ? (
               <div className="h-full border rounded-lg overflow-hidden bg-white shadow-sm">
                 <iframe
                   srcDoc={workingCode}

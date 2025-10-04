@@ -138,11 +138,12 @@ export default function ProjectWorkspace() {
 
     try {
       console.log('💾 ProjectWorkspace: Updating code, length:', newCode?.length || 0);
+      console.log('💾 ProjectWorkspace: Code preview:', newCode?.substring(0, 100));
       
       // Update local state immediately for instant UI feedback
       setConversationCode(newCode);
       setProject((prev) => prev ? { ...prev, html_code: newCode } : null);
-      console.log('✅ ProjectWorkspace: Local state updated');
+      console.log('✅ ProjectWorkspace: Local state updated (conversationCode and project)');
 
       // Update project code in background
       const { error: projectError } = await supabase
@@ -255,7 +256,7 @@ export default function ProjectWorkspace() {
               <UserWorkspace
                 projectId={projectId!}
                 conversationId={conversationId}
-                initialCode={conversationCode}
+                initialCode={conversationCode && conversationCode !== "<!-- Initializing workspace... -->" ? conversationCode : ""}
                 onCodeUpdate={handleCodeUpdate}
                 autoGeneratePrompt={autoGeneratePrompt}
               />
