@@ -89,3 +89,9 @@ verify_jwt = true
 
 [functions.generate-docs]
 verify_jwt = true
+
+[functions.generate-with-plan]
+verify_jwt = false
+
+[functions.smart-diff-update]
+verify_jwt = false

@@ -22,6 +22,12 @@ interface ProjectMemory {
   codeStructure: string;
   customInstructions?: string;
   fileStructure?: string;
+  architecturalDecisions?: Array<{ decision: string; reasoning: string; timestamp: string; impact?: string }>;
+  componentRelationships?: Record<string, any>;
+  codingPatterns?: Record<string, any>;
+  performanceNotes?: string;
+  securityConsiderations?: string;
+  lastPlan?: any;
 }
 
 // Summarize old messages to save tokens
@@ -73,8 +79,14 @@ function analyzeCodeStructure(code: string): string {
   return structure.join('\n');
 }
 
-// Store project memory in database
-async function saveProjectMemory(conversationId: string, memory: Partial<ProjectMemory>) {
+// Enhanced project memory saving with architectural decisions
+async function saveProjectMemory(conversationId: string, memory: Partial<ProjectMemory> & {
+  architecturalDecisions?: any[];
+  componentRelationships?: any;
+  codingPatterns?: any;
+  performanceNotes?: string;
+  securityConsiderations?: string;
+}) {
   try {
     const { error } = await supabase
       .from('project_memory')
@@ -87,6 +99,11 @@ async function saveProjectMemory(conversationId: string, memory: Partial<Project
         code_structure: memory.codeStructure,
         custom_instructions: memory.customInstructions,
         file_structure: memory.fileStructure,
+        architectural_decisions: memory.architecturalDecisions || [],
+        component_relationships: memory.componentRelationships || {},
+        coding_patterns: memory.codingPatterns || {},
+        performance_notes: memory.performanceNotes,
+        security_considerations: memory.securityConsiderations,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'conversation_id'
@@ -95,7 +112,7 @@ async function saveProjectMemory(conversationId: string, memory: Partial<Project
     if (error) {
       console.error('Error saving project memory:', error);
     } else {
-      console.log('✅ Project memory saved');
+      console.log('✅ Enhanced project memory saved');
     }
   } catch (error) {
     console.error('Failed to save project memory:', error);
@@ -155,15 +172,23 @@ serve(async (req) => {
       console.log('📊 Code structure:', codeStructure);
     }
 
-    // Build enhanced system prompt with memory
-    let systemPrompt = `You are an advanced AI senior developer that can build and maintain large, complex projects.
+    // Build enhanced system prompt with deep memory integration
+    let systemPrompt = `You are an advanced AI senior developer with DEEP PROJECT UNDERSTANDING.
+
+🧠 INTELLIGENCE ENHANCEMENTS:
+1. You maintain COMPLETE project context and architectural memory
+2. You make SURGICAL changes that preserve existing functionality
+3. You understand component relationships and dependencies
+4. You follow established coding patterns automatically
+5. You consider performance and security implications
+6. You learn from past decisions and avoid repeating mistakes
 
 CAPABILITIES:
 1. CREATE complete projects from descriptions (e.g., "Facebook clone")
-2. MODIFY existing code intelligently, even in large codebases
+2. MODIFY existing code intelligently with MINIMAL changes
 3. FIX errors with detailed explanations
 4. BUILD and MAINTAIN projects with 40+ functions/classes
-5. REMEMBER project architecture and make consistent changes
+5. REMEMBER architectural decisions and their reasoning
 6. TEST and DEBUG complex applications
 
 CRITICAL RULES:
@@ -197,11 +222,26 @@ Project Complexity: ${currentCode ? `${currentCode.length} characters` : 'New pr
 ${error ? `Error to Fix: ${error}` : ''}
 
 ${projectMemory ? `
-PROJECT MEMORY:
+🧠 DEEP PROJECT MEMORY:
 Architecture: ${projectMemory.architecture}
 Features: ${projectMemory.features.join(', ')}
 Tech Stack: ${projectMemory.techStack.join(', ')}
-Recent Changes: ${projectMemory.recentChanges.slice(-3).map(c => c.change).join(', ')}
+
+Architectural Decisions Made:
+${projectMemory.architecturalDecisions?.slice(-3).map((d: any) => 
+  `- ${d.decision}: ${d.reasoning}`).join('\n') || 'No decisions recorded yet'}
+
+Component Relationships:
+${JSON.stringify(projectMemory.componentRelationships || {}, null, 2)}
+
+Coding Patterns to Follow:
+${JSON.stringify(projectMemory.codingPatterns || {}, null, 2)}
+
+Recent Changes: ${projectMemory.recentChanges.slice(-3).map((c: any) => c.change).join(' → ')}
+
+${projectMemory.performanceNotes ? `Performance Notes: ${projectMemory.performanceNotes}` : ''}
+${projectMemory.securityConsiderations ? `Security: ${projectMemory.securityConsiderations}` : ''}
+
 Code Structure: ${projectMemory.codeStructure}
 ${projectMemory.customInstructions ? `\nCUSTOM PROJECT INSTRUCTIONS:\n${projectMemory.customInstructions}\n⚠️ CRITICAL: Follow these instructions EXACTLY when generating code.` : ''}
 ${projectMemory.fileStructure ? `\nREQUIRED FILE STRUCTURE:\n${projectMemory.fileStructure}\n⚠️ CRITICAL: Maintain this exact file structure.` : ''}
@@ -303,12 +343,45 @@ For large projects:
           if (featureMentions.includes('responsive') || featureMentions.includes('mobile')) detectedFeatures.push('responsive-design');
           if (featureMentions.includes('api') || featureMentions.includes('fetch')) detectedFeatures.push('api-integration');
           
-          const updatedMemory: Partial<ProjectMemory> = {
+          // Extract architectural decisions from the explanation
+          const architecturalDecisions = [];
+          if (action === 'create' || explanation.includes('architecture') || explanation.includes('pattern')) {
+            architecturalDecisions.push({
+              decision: `${action}: ${message.substring(0, 100)}`,
+              reasoning: explanation.substring(0, 200),
+              timestamp: new Date().toISOString(),
+              impact: detectedFeatures.join(', ')
+            });
+          }
+
+          // Extract component relationships
+          const componentRelationships: any = {};
+          if (code.includes('function') || code.includes('class')) {
+            const funcMatches = code.match(/function\s+(\w+)|const\s+(\w+)\s*=/g);
+            if (funcMatches) {
+              funcMatches.forEach((match: string) => {
+                const name = match.replace(/function\s+|const\s+|\s*=/g, '');
+                componentRelationships[name] = {
+                  type: match.includes('function') ? 'function' : 'component',
+                  addedIn: action
+                };
+              });
+            }
+          }
+
+          // Detect coding patterns
+          const codingPatterns: any = {};
+          if (code.includes('async')) codingPatterns.asyncAwait = true;
+          if (code.includes('class')) codingPatterns.objectOriented = true;
+          if (code.includes('=>')) codingPatterns.arrowFunctions = true;
+          if (code.includes('addEventListener')) codingPatterns.eventDriven = true;
+
+          const updatedMemory = {
             architecture: action === 'create' ? 'Single-page application' : projectMemory?.architecture,
             features: [...new Set([...(projectMemory?.features || []), ...detectedFeatures])],
             techStack: ['HTML', 'CSS', 'JavaScript'],
             recentChanges: [
-              ...(projectMemory?.recentChanges || []).slice(-5), // Keep last 5
+              ...(projectMemory?.recentChanges || []).slice(-5),
               {
                 change: `${action}: ${message.substring(0, 100)}`,
                 timestamp: new Date().toISOString()
@@ -316,7 +389,21 @@ For large projects:
             ],
             codeStructure: newCodeStructure,
             customInstructions: customInstructions || projectMemory?.customInstructions,
-            fileStructure: fileStructure || projectMemory?.fileStructure
+            fileStructure: fileStructure || projectMemory?.fileStructure,
+            architecturalDecisions: [
+              ...(projectMemory?.architecturalDecisions || []).slice(-10),
+              ...architecturalDecisions
+            ],
+            componentRelationships: {
+              ...(projectMemory?.componentRelationships || {}),
+              ...componentRelationships
+            },
+            codingPatterns: {
+              ...(projectMemory?.codingPatterns || {}),
+              ...codingPatterns
+            },
+            performanceNotes: projectMemory?.performanceNotes,
+            securityConsiderations: projectMemory?.securityConsiderations
           };
           
           await saveProjectMemory(conversationId, updatedMemory);

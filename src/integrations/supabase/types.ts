@@ -217,6 +217,57 @@ export type Database = {
         }
         Relationships: []
       }
+      architecture_plans: {
+        Row: {
+          approved: boolean | null
+          approved_at: string | null
+          architecture_overview: string
+          component_breakdown: Json
+          conversation_id: string
+          created_at: string
+          estimated_complexity: string | null
+          file_structure: Json
+          id: string
+          plan_type: string
+          potential_challenges: Json | null
+          recommended_approach: string | null
+          technology_stack: Json
+          user_request: string
+        }
+        Insert: {
+          approved?: boolean | null
+          approved_at?: string | null
+          architecture_overview: string
+          component_breakdown?: Json
+          conversation_id: string
+          created_at?: string
+          estimated_complexity?: string | null
+          file_structure?: Json
+          id?: string
+          plan_type?: string
+          potential_challenges?: Json | null
+          recommended_approach?: string | null
+          technology_stack?: Json
+          user_request: string
+        }
+        Update: {
+          approved?: boolean | null
+          approved_at?: string | null
+          architecture_overview?: string
+          component_breakdown?: Json
+          conversation_id?: string
+          created_at?: string
+          estimated_complexity?: string | null
+          file_structure?: Json
+          id?: string
+          plan_type?: string
+          potential_challenges?: Json | null
+          recommended_approach?: string | null
+          technology_stack?: Json
+          user_request?: string
+        }
+        Relationships: []
+      }
       assistant_conversations: {
         Row: {
           context: Json | null
@@ -1065,41 +1116,59 @@ export type Database = {
       }
       project_memory: {
         Row: {
+          architectural_decisions: Json | null
           architecture: string | null
           code_structure: string | null
+          coding_patterns: Json | null
+          component_relationships: Json | null
           conversation_id: string
           created_at: string | null
           custom_instructions: string | null
           features: string[] | null
           file_structure: string | null
           id: string
+          last_plan: Json | null
+          performance_notes: string | null
           recent_changes: Json | null
+          security_considerations: string | null
           tech_stack: string[] | null
           updated_at: string | null
         }
         Insert: {
+          architectural_decisions?: Json | null
           architecture?: string | null
           code_structure?: string | null
+          coding_patterns?: Json | null
+          component_relationships?: Json | null
           conversation_id: string
           created_at?: string | null
           custom_instructions?: string | null
           features?: string[] | null
           file_structure?: string | null
           id?: string
+          last_plan?: Json | null
+          performance_notes?: string | null
           recent_changes?: Json | null
+          security_considerations?: string | null
           tech_stack?: string[] | null
           updated_at?: string | null
         }
         Update: {
+          architectural_decisions?: Json | null
           architecture?: string | null
           code_structure?: string | null
+          coding_patterns?: Json | null
+          component_relationships?: Json | null
           conversation_id?: string
           created_at?: string | null
           custom_instructions?: string | null
           features?: string[] | null
           file_structure?: string | null
           id?: string
+          last_plan?: Json | null
+          performance_notes?: string | null
           recent_changes?: Json | null
+          security_considerations?: string | null
           tech_stack?: string[] | null
           updated_at?: string | null
         }
