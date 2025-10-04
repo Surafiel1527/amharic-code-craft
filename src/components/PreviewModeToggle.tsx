@@ -1,6 +1,7 @@
 import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface PreviewModeToggleProps {
   isPreviewMode: boolean;
@@ -10,6 +11,7 @@ interface PreviewModeToggleProps {
 }
 
 export function PreviewModeToggle({ isPreviewMode, onToggle, pendingCount, affectedPages = [] }: PreviewModeToggleProps) {
+  const { t } = useLanguage();
   const getPageName = (path: string) => {
     const pageNames: Record<string, string> = {
       '/': 'Home',
@@ -32,12 +34,12 @@ export function PreviewModeToggle({ isPreviewMode, onToggle, pendingCount, affec
         {isPreviewMode ? (
           <>
             <Eye className="h-4 w-4" />
-            Preview Mode: ON
+            {t("preview.on")}
           </>
         ) : (
           <>
             <EyeOff className="h-4 w-4" />
-            Preview Mode: OFF
+            {t("preview.off")}
           </>
         )}
         {pendingCount > 0 && !isPreviewMode && (
@@ -51,7 +53,7 @@ export function PreviewModeToggle({ isPreviewMode, onToggle, pendingCount, affec
       </Button>
       {isPreviewMode && affectedPages.length > 0 && (
         <div className="text-xs text-muted-foreground">
-          Changes on: {affectedPages.map(getPageName).join(', ')}
+          {t("preview.changesOn")} {affectedPages.map(getPageName).join(', ')}
         </div>
       )}
     </div>

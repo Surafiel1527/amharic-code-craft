@@ -1,6 +1,7 @@
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +11,7 @@ import {
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme();
+  const { t } = useLanguage();
 
   return (
     <DropdownMenu>
@@ -23,15 +25,15 @@ export function ThemeToggle() {
       <DropdownMenuContent align="end" className="bg-popover z-50">
         <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer">
           <Sun className="mr-2 h-4 w-4" />
-          <span>ብርሃን</span>
+          <span>{t("theme.light")}</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("dark")} className="cursor-pointer">
           <Moon className="mr-2 h-4 w-4" />
-          <span>ጨለማ</span>
+          <span>{t("theme.dark")}</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer">
           <span className="mr-2">💻</span>
-          <span>ስርዓት</span>
+          <span>{t("theme.system")}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

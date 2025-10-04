@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Sparkles, Tag, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Template {
   id: string;
@@ -14,6 +15,7 @@ interface Template {
 }
 
 export const UsageInsights = () => {
+  const { t } = useLanguage();
   const [popularTemplates, setPopularTemplates] = useState<Template[]>([]);
   const [trendingTags, setTrendingTags] = useState<{ tag: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +65,7 @@ export const UsageInsights = () => {
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <div className="animate-pulse">መረጃ እየተጫነ ነው...</div>
+          <div className="animate-pulse">{t("insights.loading")}</div>
         </CardContent>
       </Card>
     );
@@ -76,9 +78,9 @@ export const UsageInsights = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5" />
-            ታዋቂ ቅንብሮች
+            {t("insights.popularTemplates")}
           </CardTitle>
-          <CardDescription>በብዛት ጥቅም ላይ የዋሉ ቅንብሮች</CardDescription>
+          <CardDescription>{t("insights.mostUsedTemplates")}</CardDescription>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[400px]">
@@ -97,7 +99,7 @@ export const UsageInsights = () => {
                       <Badge variant="outline">{template.category}</Badge>
                       <span className="flex items-center gap-1">
                         <Users className="w-3 h-3" />
-                        {template.usage_count} ጊዜ
+                        {template.usage_count} {t("insights.times")}
                       </span>
                     </div>
                     {template.tags && template.tags.length > 0 && (
@@ -122,9 +124,9 @@ export const UsageInsights = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Tag className="w-5 h-5" />
-            የግል ምልክቶች
+            {t("insights.trendingTags")}
           </CardTitle>
-          <CardDescription>በብዛት ጥቅም ላይ የዋሉ መለያዎች</CardDescription>
+          <CardDescription>{t("insights.mostUsedTags")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -142,7 +144,7 @@ export const UsageInsights = () => {
                   </Badge>
                 </div>
                 <span className="text-sm text-muted-foreground">
-                  {item.count} ፕሮጀክቶች
+                  {item.count} {t("insights.projects")}
                 </span>
               </div>
             ))}
@@ -152,7 +154,7 @@ export const UsageInsights = () => {
           <div className="mt-6 pt-6 border-t">
             <h4 className="font-semibold mb-3 flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
-              የመድረክ ስታቲስቲክስ
+              {t("insights.platformStats")}
             </h4>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
@@ -160,7 +162,7 @@ export const UsageInsights = () => {
                   {popularTemplates.reduce((sum, t) => sum + (t.usage_count || 0), 0)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  ጠቅላላ ቅንብር አጠቃቀም
+                  {t("insights.totalTemplateUsage")}
                 </p>
               </div>
               <div className="p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
@@ -168,7 +170,7 @@ export const UsageInsights = () => {
                   {trendingTags.reduce((sum, t) => sum + t.count, 0)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  ጠቅላላ መለያዎች
+                  {t("insights.totalTags")}
                 </p>
               </div>
             </div>

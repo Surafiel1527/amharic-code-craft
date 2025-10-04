@@ -5,9 +5,11 @@ import { Database, Download, Upload, History, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const BackupRestore = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [projects, setProjects] = useState<any[]>([]);
   const [backingUp, setBackingUp] = useState(false);
   const [lastBackup, setLastBackup] = useState<Date | null>(null);
@@ -34,7 +36,7 @@ export const BackupRestore = () => {
 
   const handleBackup = async () => {
     if (!user) {
-      toast.error("እባክዎ ይግቡ");
+      toast.error(t("toast.loginRequired"));
       return;
     }
 
@@ -63,10 +65,10 @@ export const BackupRestore = () => {
       URL.revokeObjectURL(url);
 
       setLastBackup(new Date());
-      toast.success("ምትኪ በተሳካ ሁኔታ ተፈጠረ!");
+      toast.success(t("backup.createBackup") + " successful!");
     } catch (error) {
       console.error("Error creating backup:", error);
-      toast.error("ምትኪ መፍጠር አልተቻለም");
+      toast.error("Failed to create backup");
     } finally {
       setBackingUp(false);
     }
@@ -77,7 +79,7 @@ export const BackupRestore = () => {
     if (!file) return;
 
     if (!file.name.endsWith('.json')) {
-      toast.error("እባክዎ የምትኪ JSON ፋይል ይምረጡ");
+      toast.error(t("backup.selectJsonError"));
       return;
     }
 
@@ -91,8 +93,8 @@ export const BackupRestore = () => {
 
       // Restore confirmation
       const confirmed = window.confirm(
-        `${backupData.projects.length} ፕሮጀክቶችን ወደነበሩበት መመለስ ይፈልጋሉ?\n\n` +
-        "ማስጠንቀቂያ: ይህ አሁን ያሉ ፕሮጀክቶችን አይተካም፣ በምትኩ አዳዲስ ቅጂዎችን ይፈጥራል።"
+        `Restore ${backupData.projects.length} projects?\n\n` +
+        "Warning: This will not replace existing projects, it will create new copies."
       );
 
       if (!confirmed) return;
@@ -105,17 +107,17 @@ export const BackupRestore = () => {
         const { error } = await supabase.from("projects").insert({
           ...projectData,
           user_id: user?.id,
-          title: `${projectData.title} (የተመለሰ)`
+          title: `${projectData.title} ${t("backup.restored")}`
         });
 
         if (!error) successCount++;
       }
 
-      toast.success(`${successCount} ፕሮጀክቶች በተሳካ ሁኔታ ተመልሰዋል!`);
+      toast.success(`${successCount} projects restored successfully!`);
       fetchProjects();
     } catch (error) {
       console.error("Error restoring backup:", error);
-      toast.error("ምትኪን መመለስ አልተቻለም");
+      toast.error("Failed to restore backup");
     }
 
     // Reset file input
@@ -127,10 +129,10 @@ export const BackupRestore = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Database className="w-5 h-5" />
-          ምትኪ እና መመለሻ
+          {t("backup.title")}
         </CardTitle>
         <CardDescription>
-          የእርስዎን ሁሉንም ፕሮጀክቶች ምትኪ ያድርጉ እና ያደራጁ
+          {t("backup.subtitle")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -138,18 +140,18 @@ export const BackupRestore = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
             <div>
-              <h4 className="font-semibold">የአሁኑ ዳታ</h4>
+              <h4 className="font-semibold">{t("backup.currentData")}</h4>
               <p className="text-sm text-muted-foreground">
-                {projects.length} ፕሮጀክቶች ምትኪ ለማድረግ ዝግጁ
+                {projects.length} {t("projects.title")}
               </p>
             </div>
             <Button onClick={handleBackup} disabled={backingUp || projects.length === 0}>
               {backingUp ? (
-                <span>መቀመጥ እየተጠበቀ ነው...</span>
+                <span>{t("backup.unsaved")}</span>
               ) : (
                 <>
                   <Download className="w-4 h-4 mr-2" />
-                  ምትኪ ፍጠር
+                  {t("backup.createBackup")}
                 </>
               )}
             </Button>
@@ -158,7 +160,7 @@ export const BackupRestore = () => {
           {lastBackup && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CheckCircle className="w-4 h-4 text-green-600" />
-              የመጨረሻ ምትኪ: {lastBackup.toLocaleString('am-ET')}
+              {t("backup.lastBackup")} {lastBackup.toLocaleString()}
             </div>
           )}
         </div>
@@ -167,12 +169,12 @@ export const BackupRestore = () => {
         <div className="space-y-3">
           <h4 className="font-semibold flex items-center gap-2">
             <History className="w-4 h-4" />
-            ከምትኪ መመለስ
+            {t("backup.restore")}
           </h4>
           <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
             <Upload className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
             <p className="text-sm text-muted-foreground mb-4">
-              የምትኪ JSON ፋይልን ይምረጡ
+              {t("backup.selectFile")}
             </p>
             <input
               type="file"
@@ -183,7 +185,7 @@ export const BackupRestore = () => {
             />
             <label htmlFor="restore-input">
               <Button variant="outline" asChild>
-                <span>ፋይል ምረጥ</span>
+                <span>{t("backup.chooseFile")}</span>
               </Button>
             </label>
           </div>
@@ -191,12 +193,12 @@ export const BackupRestore = () => {
 
         {/* Information */}
         <div className="bg-yellow-50 dark:bg-yellow-950 p-4 rounded-lg space-y-2">
-          <h4 className="font-semibold text-sm">አስፈላጊ መረጃ</h4>
+          <h4 className="font-semibold text-sm">{t("backup.importantNotes")}</h4>
           <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-            <li>ምትኪዎች ሁሉንም የፕሮጀክት ውሂብ እና ኮድ ይይዛሉ</li>
-            <li>መመለስ አሁን ያሉ ፕሮጀክቶችን አይተካም</li>
-            <li>የተመለሱ ፕሮጀክቶች በርዕስ ላይ "(የተመለሰ)" ያላቸው ናቸው</li>
-            <li>መደበኛ ምትኪዎችን ያስቀምጡ ለአደጋ መቋቋም</li>
+            <li>{t("backup.note1")}</li>
+            <li>{t("backup.note2")}</li>
+            <li>{t("backup.note3")}</li>
+            <li>{t("backup.note4")}</li>
           </ul>
         </div>
       </CardContent>

@@ -184,6 +184,38 @@ const translations = {
     "admin.selectRole": "Select Role",
     "admin.roleUser": "User",
     "admin.roleAdmin": "Admin",
+    
+    // Theme
+    "theme.light": "Light",
+    "theme.dark": "Dark",
+    "theme.system": "System",
+    
+    // Preview Mode
+    "preview.on": "Preview Mode: ON",
+    "preview.off": "Preview Mode: OFF",
+    "preview.changesOn": "Changes on:",
+    "preview.showing": "Preview Mode: Showing",
+    "preview.pendingChanges": "pending change",
+    "preview.pendingChangesPlural": "pending changes",
+    "preview.navigateTo": "Navigate to",
+    "preview.toSee": "to see",
+    "preview.those": "those",
+    "preview.that": "that",
+    "preview.previews": "previews",
+    "preview.approveOrReject": "Go to the Self-Modify tab to approve or reject.",
+    "preview.goTo": "Go to",
+    
+    // Insights
+    "insights.popularTemplates": "Popular Templates",
+    "insights.mostUsedTemplates": "Most used templates",
+    "insights.trendingTags": "Trending Tags",
+    "insights.mostUsedTags": "Most used tags",
+    "insights.platformStats": "Platform Statistics",
+    "insights.totalTemplateUsage": "Total Template Usage",
+    "insights.totalTags": "Total Tags",
+    "insights.loading": "Loading data...",
+    "insights.times": "times",
+    "insights.projects": "projects",
   },
   am: {
     // Meta
@@ -357,6 +389,38 @@ const translations = {
     "admin.selectRole": "ሚና ይምረጡ",
     "admin.roleUser": "ተጠቃሚ",
     "admin.roleAdmin": "አስተዳዳሪ",
+    
+    // Theme
+    "theme.light": "ብርሃን",
+    "theme.dark": "ጨለማ",
+    "theme.system": "ስርዓት",
+    
+    // Preview Mode
+    "preview.on": "የቅድመ እይታ ሁነታ: ከፍቷል",
+    "preview.off": "የቅድመ እይታ ሁነታ: ዝግ",
+    "preview.changesOn": "ለውጦች በ:",
+    "preview.showing": "የቅድመ እይታ ሁነታ: በማሳየት ላይ",
+    "preview.pendingChanges": "እየተጠበቀ ያለ ለውጥ",
+    "preview.pendingChangesPlural": "እየተጠበቁ ያሉ ለውጦች",
+    "preview.navigateTo": "ወደ",
+    "preview.toSee": "ለማየት",
+    "preview.those": "እነዚያ",
+    "preview.that": "ያ",
+    "preview.previews": "ቅድመ እይታዎች",
+    "preview.approveOrReject": "ለማጽደቅ ወይም ለመቀበል ወደ የራስ-ማስተካከያ ትር ይሂዱ።",
+    "preview.goTo": "ወደ",
+    
+    // Insights
+    "insights.popularTemplates": "ታዋቂ ቅንብሮች",
+    "insights.mostUsedTemplates": "በብዛት ጥቅም ላይ የዋሉ ቅንብሮች",
+    "insights.trendingTags": "የግል ምልክቶች",
+    "insights.mostUsedTags": "በብዛት ጥቅም ላይ የዋሉ መለያዎች",
+    "insights.platformStats": "የመድረክ ስታቲስቲክስ",
+    "insights.totalTemplateUsage": "ጠቅላላ ቅንብር አጠቃቀም",
+    "insights.totalTags": "ጠቅላላ መለያዎች",
+    "insights.loading": "መረጃ እየተጫነ ነው...",
+    "insights.times": "ጊዜ",
+    "insights.projects": "ፕሮጀክቶች",
   },
 };
 

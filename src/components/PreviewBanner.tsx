@@ -2,6 +2,7 @@ import { Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface PreviewBannerProps {
   pendingCount: number;
@@ -9,6 +10,7 @@ interface PreviewBannerProps {
 }
 
 export function PreviewBanner({ pendingCount, affectedPages }: PreviewBannerProps) {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -32,13 +34,13 @@ export function PreviewBanner({ pendingCount, affectedPages }: PreviewBannerProp
       <Info className="h-4 w-4" />
       <AlertDescription className="flex items-center justify-between gap-4">
         <div>
-          🔍 <strong>Preview Mode:</strong> Showing {pendingCount} pending change{pendingCount > 1 ? 's' : ''}. 
+          🔍 <strong>{t("preview.showing")}</strong> {pendingCount} {pendingCount > 1 ? t("preview.pendingChangesPlural") : t("preview.pendingChanges")}. 
           {otherPages.length > 0 && (
             <span className="ml-1">
-              Navigate to <strong>{otherPages.map(getPageName).join(', ')}</strong> to see {otherPages.length > 1 ? 'those' : 'that'} preview{otherPages.length > 1 ? 's' : ''}.
+              {t("preview.navigateTo")} <strong>{otherPages.map(getPageName).join(', ')}</strong> {t("preview.toSee")} {otherPages.length > 1 ? t("preview.those") : t("preview.that")} {t("preview.previews")}.
             </span>
           )}
-          <span className="ml-1">Go to the Self-Modify tab to approve or reject.</span>
+          <span className="ml-1">{t("preview.approveOrReject")}</span>
         </div>
         {otherPages.length > 0 && (
           <Button
@@ -46,7 +48,7 @@ export function PreviewBanner({ pendingCount, affectedPages }: PreviewBannerProp
             variant="outline"
             size="sm"
           >
-            Go to {getPageName(otherPages[0])}
+            {t("preview.goTo")} {getPageName(otherPages[0])}
           </Button>
         )}
       </AlertDescription>
