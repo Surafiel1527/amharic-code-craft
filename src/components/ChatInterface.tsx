@@ -347,10 +347,14 @@ export const ChatInterface = ({
         const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
         let currentPhaseIdx = 0;
         
+        // Show initialization phase for cold starts
+        setCurrentPhase('Initializing AI service...');
+        setProgress(5);
+        
         const progressInterval = setInterval(() => {
           if (currentPhaseIdx < phases.length) {
             setCurrentPhase(phases[currentPhaseIdx]);
-            setProgress((currentPhaseIdx + 1) * 20);
+            setProgress((currentPhaseIdx + 1) * 19 + 5); // Offset by initial 5%
             currentPhaseIdx++;
           }
         }, 800);
@@ -370,15 +374,45 @@ export const ChatInterface = ({
         
         console.log('   - Fresh session obtained, token length:', freshSession.access_token.length);
         
-        const response = await supabase.functions.invoke("smart-orchestrator", {
-          body: {
-            userRequest: userMessage,
-            conversationId: activeConvId,
-            currentCode: codeToModify,
-            autoRefine: true,
-            autoLearn: true,
-          },
-        });
+        // Call smart-orchestrator with retry logic for cold starts
+        let response;
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount < maxRetries) {
+          try {
+            console.log(`📡 Calling smart-orchestrator (attempt ${retryCount + 1}/${maxRetries})...`);
+            
+            response = await supabase.functions.invoke("smart-orchestrator", {
+              body: {
+                userRequest: userMessage,
+                conversationId: activeConvId,
+                currentCode: codeToModify,
+                autoRefine: true,
+                autoLearn: true,
+              },
+            });
+            
+            // If we get here without throwing, break the retry loop
+            break;
+          } catch (invokeError: any) {
+            retryCount++;
+            console.error(`❌ Attempt ${retryCount} failed:`, invokeError.message);
+            
+            if (retryCount < maxRetries) {
+              const delayMs = Math.min(1000 * Math.pow(2, retryCount - 1), 5000);
+              console.log(`⏱️ Retrying in ${delayMs}ms...`);
+              await new Promise(resolve => setTimeout(resolve, delayMs));
+            } else {
+              // Max retries exceeded
+              throw new Error('Service temporarily unavailable. Please try again in a moment.');
+            }
+          }
+        }
+        
+        if (!response) {
+          throw new Error('Failed to get response from service');
+        }
         
         console.log('📥 Response received from smart-orchestrator');
         console.log('   - Has data:', !!response.data);

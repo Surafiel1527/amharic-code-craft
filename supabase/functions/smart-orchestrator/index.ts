@@ -8,13 +8,38 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests immediately
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    });
   }
 
   try {
-    // 1. Parse request body
-    const { userRequest, conversationId, currentCode, autoRefine = true, autoLearn = true } = await req.json();
+    console.log('🚀 Smart orchestrator function started');
+    console.log('   - Method:', req.method);
+    console.log('   - URL:', req.url);
+    
+    // 1. Parse request body with error handling
+    let userRequest, conversationId, currentCode, autoRefine, autoLearn;
+    try {
+      const body = await req.json();
+      userRequest = body.userRequest;
+      conversationId = body.conversationId;
+      currentCode = body.currentCode;
+      autoRefine = body.autoRefine ?? true;
+      autoLearn = body.autoLearn ?? true;
+    } catch (parseError: any) {
+      console.error('❌ Failed to parse request body:', parseError.message);
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body format' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
     
     console.log('📥 Smart orchestrator request received');
     console.log('   - User request length:', userRequest?.length || 0);
