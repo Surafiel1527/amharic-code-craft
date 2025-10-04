@@ -566,7 +566,7 @@ const Index = () => {
 
       {/* Main Content */}
       <section className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
-        <div className={`grid ${showAIFeatures ? 'lg:grid-cols-[1fr_1fr_350px]' : 'lg:grid-cols-[300px_1fr_1fr]'} gap-4 max-w-full mx-auto`}>
+        <div className={`grid ${showAIFeatures ? 'lg:grid-cols-[1fr_2fr_350px]' : 'lg:grid-cols-[300px_1fr_2fr]'} gap-4 max-w-full mx-auto`}>
           {/* Sidebar - Conversations List - Hidden on Mobile */}
           {mode === "chat" && (
             <Card className="hidden lg:block p-4 space-y-4 h-[calc(100vh-350px)] flex-col">
