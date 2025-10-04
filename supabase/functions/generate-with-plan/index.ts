@@ -264,30 +264,62 @@ Wrap code in <code></code> tags. Provide brief explanation before the code.`;
         explanation = aiResponse.replace(/<code>[\s\S]*?<\/code>/, '').trim();
         console.log('✅ Code extracted from <code> tags');
       } else {
-        // Try ```html or ``` code blocks
-        const codeBlockMatch = aiResponse.match(/```(?:html)?\s*([\s\S]*?)```/);
+        // Try ```html, ```javascript, ```typescript, or plain ``` code blocks
+        const codeBlockMatch = aiResponse.match(/```(?:html|javascript|typescript|jsx|tsx|css|json)?\s*([\s\S]*?)```/);
         if (codeBlockMatch) {
           code = codeBlockMatch[1].trim();
-          explanation = aiResponse.replace(/```(?:html)?\s*[\s\S]*?```/, '').trim();
+          explanation = aiResponse.replace(/```(?:html|javascript|typescript|jsx|tsx|css|json)?\s*[\s\S]*?```/, '').trim();
           console.log('✅ Code extracted from ``` blocks');
         } else if (aiResponse.includes('<!DOCTYPE') || aiResponse.includes('<html')) {
-          // If response looks like HTML but no tags, use entire response as code
+          // Raw HTML response - use entire response as code
           code = aiResponse.trim();
           explanation = 'Generated complete HTML code based on architecture plan.';
-          console.log('✅ Using entire response as HTML code');
+          console.log('✅ Using entire response as raw HTML code');
         } else {
-          // Last resort: check if it's mostly code-like content
-          console.warn('⚠️ No standard code wrapper found');
-          console.warn('⚠️ Response content:', aiResponse.substring(0, 500));
+          // Last resort: check if response contains code-like patterns
+          const hasCodePatterns = /(?:function|const|let|var|class|import|export|<\w+|{|\}|\(|\)|;)/g.test(aiResponse);
+          if (hasCodePatterns && aiResponse.length > 50) {
+            code = aiResponse.trim();
+            explanation = 'Generated code based on architecture plan (no explicit wrapper detected).';
+            console.log('✅ Using entire response as code (detected code patterns)');
+          } else {
+            console.error('❌ No code patterns detected in AI response');
+            console.error('   Response preview:', aiResponse.substring(0, 500));
+          }
         }
       }
       
-      if (!code) {
-        console.error('❌ Failed to extract code from AI response');
+      // Validate extracted code
+      if (!code || code.length < 10) {
+        console.error('❌ Failed to extract valid code from AI response');
+        console.error('   Code length:', code?.length || 0);
+        console.error('   Response preview:', aiResponse.substring(0, 1000));
         throw new Error('AI did not generate valid code. Please try again with a clearer request.');
       }
       
-      console.log('✅ Final code length:', code.length);
+      // Basic validation: check for valid code structure
+      const hasValidStructure = (
+        // HTML structure
+        (code.includes('<!DOCTYPE') || code.includes('<html')) ||
+        // JavaScript/TypeScript structure
+        code.includes('function') || code.includes('const') || code.includes('class') ||
+        // React/JSX structure
+        code.includes('export') || code.includes('import') ||
+        // CSS structure
+        code.includes('{') && code.includes('}') ||
+        // JSON structure
+        (code.startsWith('{') && code.endsWith('}'))
+      );
+      
+      if (!hasValidStructure) {
+        console.warn('⚠️ Generated code may not have valid file structure');
+        console.warn('   Code preview:', code.substring(0, 300));
+        // Don't throw - let it through but log warning
+      }
+      
+      console.log('✅ Code validation passed');
+      console.log('   - Final code length:', code.length);
+      console.log('   - Has valid structure:', hasValidStructure);
 
       // Update project memory with architectural decisions
       if (conversationId && code) {

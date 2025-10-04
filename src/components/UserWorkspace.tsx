@@ -128,7 +128,21 @@ export const UserWorkspace = ({
     console.log('🎨 UserWorkspace: handleCodeGenerated CALLED');
     console.log('   - code length:', code?.length || 0);
     console.log('   - shouldSaveVersion:', shouldSaveVersion);
-    console.log('   - code preview:', code?.substring(0, 100));
+    console.log('   - code preview:', code?.substring(0, 100) || 'No code received');
+    
+    // Validate code before proceeding
+    if (!code || code.trim().length === 0) {
+      console.error('❌ UserWorkspace: No valid code received');
+      toast.error('Failed to generate code. Please try again.');
+      return;
+    }
+    
+    // Check if this is just the placeholder
+    const placeholder = "<!-- Initializing workspace... -->";
+    if (code === placeholder) {
+      console.warn('⚠️ UserWorkspace: Received placeholder code, skipping update');
+      return;
+    }
     
     setWorkingCode(code);
     onCodeUpdate(code);

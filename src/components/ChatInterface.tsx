@@ -405,6 +405,13 @@ export const ChatInterface = ({
       console.log('   - data.finalCode length:', data?.finalCode?.length || 0);
       console.log('   - data.updatedCode length:', data?.updatedCode?.length || 0);
       
+      // Validate generated code
+      if (!generatedCode || generatedCode.trim().length === 0) {
+        console.error('❌ ChatInterface: No valid code generated');
+        console.error('   - Response data:', JSON.stringify(data).substring(0, 500));
+        throw new Error('Failed to generate code. Please try rephrasing your request and try again.');
+      }
+      
       // Add assistant message with orchestration info
       const assistantMsg: Message = {
         id: crypto.randomUUID(),
@@ -464,11 +471,17 @@ export const ChatInterface = ({
     } catch (error: any) {
       console.error("Error sending message:", error);
       
-      // Handle specific error cases
+      // Handle specific error cases with user-friendly messages
       if (error?.message?.includes('Unauthorized') || error?.message?.includes('authentication')) {
-        toast.error("Authentication error. Please log in again.");
+        toast.error("Authentication error. Please refresh the page and log in again.");
       } else if (error?.message?.includes('FunctionsRelayError') || error?.message?.includes('FunctionsHttpError')) {
-        toast.error("Service error. Please try again in a moment.");
+        toast.error("Service temporarily unavailable. Please try again in a moment.");
+      } else if (error?.message?.includes('Failed to generate code')) {
+        toast.error("❌ " + error.message);
+      } else if (error?.message?.includes('Rate limit')) {
+        toast.error("⏱️ Too many requests. Please wait a moment and try again.");
+      } else if (error?.message?.includes('No code')) {
+        toast.error("Failed to generate code. Please try rephrasing your request.");
       } else {
         toast.error(error?.message || t("chat.sendFailed"));
       }
