@@ -345,19 +345,27 @@ export const ChatInterface = ({
         });
         
         const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
+        // Variable delays: faster at start, much longer at Learning phase
+        const phaseDelays = [600, 600, 700, 800, 2000]; // Learning phase takes 2 seconds
         let currentPhaseIdx = 0;
+        let progressIntervalId: number;
         
         // Show initialization phase for cold starts
         setCurrentPhase('Initializing AI service...');
         setProgress(5);
         
-        const progressInterval = setInterval(() => {
+        const scheduleNextPhase = () => {
           if (currentPhaseIdx < phases.length) {
             setCurrentPhase(phases[currentPhaseIdx]);
             setProgress((currentPhaseIdx + 1) * 19 + 5); // Offset by initial 5%
+            const currentDelay = phaseDelays[currentPhaseIdx];
             currentPhaseIdx++;
+            progressIntervalId = window.setTimeout(scheduleNextPhase, currentDelay);
           }
-        }, 800);
+        };
+        
+        // Start the phase progression
+        progressIntervalId = window.setTimeout(scheduleNextPhase, 600);
 
         // Call smart-orchestrator with EXPLICIT auth token
         console.log('📡 Calling smart-orchestrator...');
@@ -418,7 +426,7 @@ export const ChatInterface = ({
         console.log('   - Has data:', !!response.data);
         console.log('   - Has error:', !!response.error);
 
-        clearInterval(progressInterval);
+        clearTimeout(progressIntervalId);
         data = response.data;
         error = response.error;
         setProgress(100);
