@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Loader2, Send, Save, ArrowLeft, Maximize2, Minimize2, 
-  History, Code2, Eye, MessageSquare, Sparkles 
+  History, Code2, Eye, MessageSquare, Sparkles, RotateCcw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -14,6 +14,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { DevicePreview } from "@/components/DevicePreview";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { VersionHistory } from "@/components/VersionHistory";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -43,6 +45,16 @@ export default function Workspace() {
   const [isSaving, setIsSaving] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+
+  const handleRestoreVersion = async (htmlCode: string) => {
+    if (!project) return;
+    
+    setProject(prev => prev ? { ...prev, html_code: htmlCode } : null);
+    await handleSave();
+    setShowVersionHistory(false);
+    toast.success("Version restored successfully");
+  };
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -73,26 +85,67 @@ export default function Workspace() {
       setProject(data);
       
       // Create or load conversation
-      const { data: convData, error: convError } = await supabase
-        .from('conversations')
-        .insert({ 
-          title: `Workspace: ${data.title}`,
-          user_id: user.id,
-          project_id: projectId
-        })
-        .select('id')
-        .single();
+      let convId: string | undefined;
       
-      if (!convError && convData) {
-        setConversationId(convData.id);
+      // Try to get the first conversation for this project (with explicit typing)
+      const { data: existingConvs } = await (supabase
+        .from('conversations')
+        .select('id') as any)
+        .eq('project_id', projectId)
+        .eq('user_id', user.id)
+        .limit(1);
+      
+      if (existingConvs && existingConvs.length > 0) {
+        convId = existingConvs[0].id;
       }
 
-      // Add initial context message
-      setMessages([{
-        role: 'assistant',
-        content: `Welcome to your workspace! I can help you enhance "${data.title}". What would you like to add or improve?`,
-        timestamp: new Date().toISOString()
-      }]);
+      if (!convId) {
+        const { data: newConv } = await supabase
+          .from('conversations')
+          .insert({ 
+            title: `Workspace: ${data.title}`,
+            user_id: user.id,
+            project_id: projectId
+          })
+          .select('id')
+          .single();
+        
+        convId = newConv?.id;
+      }
+
+      if (convId) {
+        setConversationId(convId);
+
+        // Load existing messages
+        const { data: existingMessages } = await (supabase
+          .from('messages')
+          .select('*') as any)
+          .eq('conversation_id', convId)
+          .order('created_at', { ascending: true });
+
+        if (existingMessages && existingMessages.length > 0) {
+          setMessages(existingMessages.map((msg: any) => ({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            timestamp: msg.created_at
+          })));
+        } else {
+          // Add initial context message only if no messages exist
+          const initialMsg = {
+            role: 'assistant' as const,
+            content: `Welcome to your workspace! I can help you enhance "${data.title}". What would you like to add or improve?`,
+            timestamp: new Date().toISOString()
+          };
+          setMessages([initialMsg]);
+          
+          // Save initial message
+          await supabase.from('messages').insert({
+            conversation_id: convId,
+            role: initialMsg.role,
+            content: initialMsg.content
+          });
+        }
+      }
     };
 
     loadProject();
@@ -134,6 +187,13 @@ export default function Workspace() {
     setInput("");
     setIsLoading(true);
 
+    // Save user message to database
+    await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      role: userMessage.role,
+      content: userMessage.content
+    });
+
     try {
       // Get current session to ensure we have a valid token
       const { data: { session } } = await supabase.auth.getSession();
@@ -173,14 +233,37 @@ export default function Workspace() {
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Auto-save
-      await supabase
-        .from('projects')
-        .update({ 
+      // Save assistant message to database
+      await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        role: assistantMessage.role,
+        content: assistantMessage.content,
+        generated_code: finalCode
+      });
+
+      // Auto-save project and create version
+      const { data: versions } = await supabase
+        .from('project_versions')
+        .select('version_number')
+        .eq('project_id', project.id)
+        .order('version_number', { ascending: false })
+        .limit(1);
+
+      const nextVersion = (versions?.[0]?.version_number || 0) + 1;
+
+      await Promise.all([
+        supabase.from('projects').update({ 
           html_code: finalCode,
           updated_at: new Date().toISOString()
+        }).eq('id', project.id),
+        
+        supabase.from('project_versions').insert({
+          project_id: project.id,
+          version_number: nextVersion,
+          html_code: finalCode,
+          changes_summary: input.substring(0, 200)
         })
-        .eq('id', project.id);
+      ]);
 
       toast.success("Project enhanced successfully");
     } catch (error: any) {
@@ -221,6 +304,24 @@ export default function Workspace() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Dialog open={showVersionHistory} onOpenChange={setShowVersionHistory}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  History
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[80vh]">
+                <DialogHeader>
+                  <DialogTitle>Version History</DialogTitle>
+                </DialogHeader>
+                <VersionHistory 
+                  projectId={project.id} 
+                  onRestore={handleRestoreVersion}
+                />
+              </DialogContent>
+            </Dialog>
+            
             <Button
               variant="outline"
               size="sm"

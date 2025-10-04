@@ -20,6 +20,24 @@ export function DevicePreview({ generatedCode }: DevicePreviewProps) {
     ?.replace(/^```\s*/i, '')
     ?.replace(/```\s*$/i, '')
     ?.trim() || '';
+
+  // Inject script to fix header navigation
+  const codeWithNavFix = cleanCode ? `
+    ${cleanCode}
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+          anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+              target.scrollIntoView({ behavior: 'smooth' });
+            }
+          });
+        });
+      });
+    </script>
+  ` : '';
   
   const deviceSizes = {
     mobile: { width: "375px", icon: Smartphone, label: t("preview.mobile") },
@@ -61,10 +79,10 @@ export function DevicePreview({ generatedCode }: DevicePreviewProps) {
             }}
           >
             <iframe
-              srcDoc={cleanCode}
+              srcDoc={codeWithNavFix}
               className="w-full h-full border-0"
               title="Preview"
-              sandbox="allow-scripts"
+              sandbox="allow-scripts allow-same-origin"
             />
           </div>
         ) : (
