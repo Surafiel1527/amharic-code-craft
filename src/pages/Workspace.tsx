@@ -20,6 +20,10 @@ import { PatternLearner } from "@/components/PatternLearner";
 import { OrchestrationProgress } from "@/components/OrchestrationProgress";
 import { ArchitecturePlanViewer } from "@/components/ArchitecturePlanViewer";
 import { QualityMetrics } from "@/components/QualityMetrics";
+import { FileTree } from "@/components/FileTree";
+import { CodeEditor } from "@/components/CodeEditor";
+import { ComponentTemplates } from "@/components/ComponentTemplates";
+import { CollaborativePresence } from "@/components/CollaborativePresence";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -62,6 +66,11 @@ export default function Workspace() {
     qualityMetrics?: any;
     totalDuration?: number;
   } | null>(null);
+  
+  // Multi-file system state
+  const [projectFiles, setProjectFiles] = useState<any[]>([]);
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'single' | 'multi'>('single');
 
   const handleRestoreVersion = async (htmlCode: string) => {
     if (!project) return;
@@ -166,6 +175,115 @@ export default function Workspace() {
 
     loadProject();
   }, [projectId, user, navigate]);
+
+  // Load project files for multi-file mode
+  useEffect(() => {
+    if (!projectId) return;
+    
+    const loadProjectFiles = async () => {
+      const { data, error } = await supabase
+        .from('project_files')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('file_path');
+
+      if (!error && data) {
+        setProjectFiles(data);
+      }
+    };
+
+    loadProjectFiles();
+  }, [projectId]);
+
+  const handleCreateFile = async (path: string, type: 'file' | 'folder') => {
+    if (!projectId || !user) return;
+    
+    const { error } = await supabase
+      .from('project_files')
+      .insert({
+        project_id: projectId,
+        file_path: path,
+        file_content: type === 'file' ? '// New file\n' : '',
+        file_type: path.split('.').pop() || 'txt',
+        created_by: user.id
+      });
+
+    if (error) {
+      toast.error('Failed to create file');
+      return;
+    }
+
+    toast.success('File created');
+    // Reload files
+    const { data } = await supabase
+      .from('project_files')
+      .select('*')
+      .eq('project_id', projectId);
+    
+    if (data) setProjectFiles(data);
+  };
+
+  const handleDeleteFile = async (path: string) => {
+    if (!projectId) return;
+    
+    const { error } = await supabase
+      .from('project_files')
+      .delete()
+      .eq('project_id', projectId)
+      .eq('file_path', path);
+
+    if (error) {
+      toast.error('Failed to delete file');
+      return;
+    }
+
+    toast.success('File deleted');
+    setProjectFiles(prev => prev.filter(f => f.file_path !== path));
+    if (selectedFile === path) setSelectedFile(null);
+  };
+
+  const handleRenameFile = async (oldPath: string, newPath: string) => {
+    if (!projectId) return;
+    
+    const { error } = await supabase
+      .from('project_files')
+      .update({ file_path: newPath })
+      .eq('project_id', projectId)
+      .eq('file_path', oldPath);
+
+    if (error) {
+      toast.error('Failed to rename file');
+      return;
+    }
+
+    toast.success('File renamed');
+    setProjectFiles(prev => 
+      prev.map(f => f.file_path === oldPath ? { ...f, file_path: newPath } : f)
+    );
+    if (selectedFile === oldPath) setSelectedFile(newPath);
+  };
+
+  const handleSaveFile = async (content: string) => {
+    if (!projectId || !selectedFile) return;
+    
+    const { error } = await supabase
+      .from('project_files')
+      .update({ 
+        file_content: content,
+        updated_at: new Date().toISOString()
+      })
+      .eq('project_id', projectId)
+      .eq('file_path', selectedFile);
+
+    if (error) {
+      toast.error('Failed to save file');
+      return;
+    }
+
+    setProjectFiles(prev =>
+      prev.map(f => f.file_path === selectedFile ? { ...f, file_content: content } : f)
+    );
+  };
 
   const handleSave = async () => {
     if (!project) return;
@@ -334,6 +452,13 @@ export default function Workspace() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'single' | 'multi')}>
+              <TabsList>
+                <TabsTrigger value="single">Single File</TabsTrigger>
+                <TabsTrigger value="multi">Multi-File</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            
             <Dialog open={showVersionHistory} onOpenChange={setShowVersionHistory}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -380,9 +505,58 @@ export default function Workspace() {
         </div>
       </div>
 
+      {/* Collaborative Presence */}
+      <CollaborativePresence projectId={projectId!} />
+
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
-        <div className={`flex h-full ${isPreviewExpanded ? '' : 'lg:flex-row flex-col'} transition-all`}>
+        {viewMode === 'multi' ? (
+          /* Multi-File View */
+          <div className="flex h-full">
+            {/* File Tree */}
+            <div className="w-64">
+              <FileTree
+                files={projectFiles.map(f => ({
+                  id: f.id,
+                  path: f.file_path,
+                  type: 'file' as const,
+                  content: f.file_content
+                }))}
+                selectedFile={selectedFile}
+                onSelectFile={setSelectedFile}
+                onCreateFile={handleCreateFile}
+                onDeleteFile={handleDeleteFile}
+                onRenameFile={handleRenameFile}
+              />
+            </div>
+
+            {/* Code Editor */}
+            <div className="flex-1 border-r">
+              <CodeEditor
+                filePath={selectedFile}
+                initialContent={projectFiles.find(f => f.file_path === selectedFile)?.file_content || ''}
+                onSave={handleSaveFile}
+              />
+            </div>
+
+            {/* Component Templates Sidebar */}
+            <div className="w-96">
+              <ComponentTemplates
+                onInsertTemplate={(code, name) => {
+                  if (selectedFile) {
+                    const currentContent = projectFiles.find(f => f.file_path === selectedFile)?.file_content || '';
+                    handleSaveFile(currentContent + '\n\n' + code);
+                    toast.success(`Inserted ${name}`);
+                  } else {
+                    toast.info('Please select a file first');
+                  }
+                }}
+              />
+            </div>
+          </div>
+        ) : (
+          /* Single-File View (Original) */
+          <div className={`flex h-full ${isPreviewExpanded ? '' : 'lg:flex-row flex-col'} transition-all`}>
           {/* Chat Panel - Collapsible at bottom when preview expanded */}
           <div className={`flex flex-col border-r bg-card/30 transition-all ${
             isPreviewExpanded 
@@ -515,7 +689,8 @@ export default function Workspace() {
               </div>
             )}
           </div>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

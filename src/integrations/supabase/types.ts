@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      active_sessions: {
+        Row: {
+          current_file: string | null
+          cursor_position: Json | null
+          id: string
+          last_active: string | null
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          current_file?: string | null
+          cursor_position?: Json | null
+          id?: string
+          last_active?: string | null
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          current_file?: string | null
+          cursor_position?: Json | null
+          id?: string
+          last_active?: string | null
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "active_sessions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_chat_messages: {
         Row: {
           content: string
@@ -562,29 +597,88 @@ export type Database = {
         }
         Relationships: []
       }
+      component_templates: {
+        Row: {
+          category: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_public: boolean | null
+          name: string
+          preview_image: string | null
+          tags: string[] | null
+          template_code: string
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          name: string
+          preview_image?: string | null
+          tags?: string[] | null
+          template_code: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          name?: string
+          preview_image?: string | null
+          tags?: string[] | null
+          template_code?: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
+          current_code: string | null
           id: string
+          project_id: string | null
           title: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
           created_at?: string
+          current_code?: string | null
           id?: string
+          project_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           created_at?: string
+          current_code?: string | null
           id?: string
+          project_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conversations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cross_project_patterns: {
         Row: {
@@ -1387,6 +1481,47 @@ export type Database = {
           },
         ]
       }
+      project_files: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          file_content: string
+          file_path: string
+          file_type: string
+          id: string
+          project_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          file_content: string
+          file_path: string
+          file_type: string
+          id?: string
+          project_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          file_content?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          project_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_memory: {
         Row: {
           architectural_decisions: Json | null
@@ -1526,6 +1661,7 @@ export type Database = {
       projects: {
         Row: {
           created_at: string
+          description: string | null
           forked_from: string | null
           html_code: string
           id: string
@@ -1533,6 +1669,7 @@ export type Database = {
           is_public: boolean | null
           prompt: string
           share_token: string | null
+          status: string | null
           tags: string[] | null
           title: string
           updated_at: string
@@ -1542,6 +1679,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           forked_from?: string | null
           html_code: string
           id?: string
@@ -1549,6 +1687,7 @@ export type Database = {
           is_public?: boolean | null
           prompt: string
           share_token?: string | null
+          status?: string | null
           tags?: string[] | null
           title: string
           updated_at?: string
@@ -1558,6 +1697,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           forked_from?: string | null
           html_code?: string
           id?: string
@@ -1565,6 +1705,7 @@ export type Database = {
           is_public?: boolean | null
           prompt?: string
           share_token?: string | null
+          status?: string | null
           tags?: string[] | null
           title?: string
           updated_at?: string

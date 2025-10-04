@@ -116,3 +116,12 @@ verify_jwt = false
 
 [functions.feedback-processor]
 verify_jwt = false
+
+[functions.learn-pattern]
+verify_jwt = false
+
+[functions.multi-file-generate]
+verify_jwt = true
+
+[functions.refactor-code]
+verify_jwt = true
