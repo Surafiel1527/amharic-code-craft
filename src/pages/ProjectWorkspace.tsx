@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SmartChatBuilder } from "@/components/SmartChatBuilder";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EnterpriseProjectDashboard } from "@/components/EnterpriseProjectDashboard";
+import { AdvancedGenerationPanel } from "@/components/AdvancedGenerationPanel";
 
 interface Project {
   id: string;
@@ -30,7 +31,14 @@ export default function ProjectWorkspace() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("builder");
+  const [activeTab, setActiveTab] = useState<string>("generate");
+
+  // Update active tab when role is loaded
+  useEffect(() => {
+    if (!roleLoading) {
+      setActiveTab(isAdmin ? "builder" : "generate");
+    }
+  }, [isAdmin, roleLoading]);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -188,10 +196,18 @@ export default function ProjectWorkspace() {
       <div className="max-w-7xl mx-auto p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-3 lg:w-[400px]' : 'grid-cols-2 lg:w-[300px]'}`}>
-            <TabsTrigger value="builder" className="gap-2">
-              <Sparkles className="w-4 h-4" />
-              AI Builder
-            </TabsTrigger>
+            {!isAdmin && (
+              <TabsTrigger value="generate" className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                Generate
+              </TabsTrigger>
+            )}
+            {isAdmin && (
+              <TabsTrigger value="builder" className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                AI Builder
+              </TabsTrigger>
+            )}
             <TabsTrigger value="code" className="gap-2">
               <Code className="w-4 h-4" />
               Code
@@ -204,14 +220,30 @@ export default function ProjectWorkspace() {
             )}
           </TabsList>
 
-          <TabsContent value="builder" className="space-y-4">
-            <div className="bg-card rounded-lg border p-6">
-              <SmartChatBuilder
-                onCodeGenerated={handleCodeUpdate}
-                currentCode={project.html_code}
-              />
-            </div>
-          </TabsContent>
+          {/* Generate Tab - For Regular Users */}
+          {!isAdmin && (
+            <TabsContent value="generate" className="space-y-4">
+              <div className="bg-card rounded-lg border p-6">
+                <AdvancedGenerationPanel
+                  conversationId={conversationId || ""}
+                  currentCode={project.html_code}
+                  onCodeGenerated={handleCodeUpdate}
+                />
+              </div>
+            </TabsContent>
+          )}
+
+          {/* AI Builder Tab - For Admins Only */}
+          {isAdmin && (
+            <TabsContent value="builder" className="space-y-4">
+              <div className="bg-card rounded-lg border p-6">
+                <SmartChatBuilder
+                  onCodeGenerated={handleCodeUpdate}
+                  currentCode={project.html_code}
+                />
+              </div>
+            </TabsContent>
+          )}
 
           <TabsContent value="code" className="space-y-4">
             <div className="bg-card rounded-lg border p-6">
