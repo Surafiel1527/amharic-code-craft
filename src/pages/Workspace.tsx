@@ -150,6 +150,9 @@ export default function Workspace() {
           currentCode: project.html_code,
           autoRefine: true,
           autoLearn: true
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 
