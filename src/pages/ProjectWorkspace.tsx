@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Save, Sparkles, Code, Eye, Settings } from "lucide-react";
@@ -25,6 +26,7 @@ export default function ProjectWorkspace() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { isAdmin, loading: roleLoading } = useUserRole(user?.id);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -128,7 +130,7 @@ export default function ProjectWorkspace() {
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading || loading || roleLoading) {
     return (
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto space-y-6">
@@ -185,7 +187,7 @@ export default function ProjectWorkspace() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-3 lg:w-[400px]' : 'grid-cols-2 lg:w-[300px]'}`}>
             <TabsTrigger value="builder" className="gap-2">
               <Sparkles className="w-4 h-4" />
               AI Builder
@@ -194,10 +196,12 @@ export default function ProjectWorkspace() {
               <Code className="w-4 h-4" />
               Code
             </TabsTrigger>
-            <TabsTrigger value="manage" className="gap-2">
-              <Settings className="w-4 h-4" />
-              Manage
-            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="manage" className="gap-2">
+                <Settings className="w-4 h-4" />
+                Manage
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="builder" className="space-y-4">
@@ -226,12 +230,14 @@ export default function ProjectWorkspace() {
             </div>
           </TabsContent>
 
-          <TabsContent value="manage" className="space-y-4">
-            <EnterpriseProjectDashboard
-              projectId={projectId}
-              onCodeUpdate={handleCodeUpdate}
-            />
-          </TabsContent>
+          {isAdmin && (
+            <TabsContent value="manage" className="space-y-4">
+              <EnterpriseProjectDashboard
+                projectId={projectId}
+                onCodeUpdate={handleCodeUpdate}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
