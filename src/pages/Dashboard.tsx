@@ -5,8 +5,9 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Grid3x3, List, Star, Clock, Sparkles, Trash2 } from "lucide-react";
+import { Plus, Search, Grid3x3, List, Star, Clock, Sparkles, Trash2, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { MobileNav } from "@/components/MobileNav";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -166,6 +167,11 @@ export default function Dashboard() {
     }
 
     setCreating(true);
+    
+    const loadingToast = toast.loading("🚀 Preparing your project...", {
+      description: "Setting up workspace and initializing AI"
+    });
+
     try {
       // Verify session is still valid before creating project
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -188,7 +194,7 @@ export default function Dashboard() {
           html_code: "<!-- Generating your project... -->",
           status: "generating",
           is_public: false,
-          tags: [],
+          tags: [newProject.template],
         })
         .select()
         .single();
@@ -199,24 +205,42 @@ export default function Dashboard() {
       }
 
       console.log("✅ Project created:", data.id);
-      toast.success("🚀 Starting project generation...");
+      
+      // Success feedback
+      toast.dismiss(loadingToast);
+      toast.success("✨ Project created successfully!", {
+        description: "Your AI is now generating the code. This takes 10-30 seconds.",
+        duration: 4000,
+      });
+      
+      // Close dialog and reset
       setShowCreateDialog(false);
       setNewProject({ title: "", prompt: "", template: "blank" });
       setValidationErrors({});
       
-      // Navigate with initial prompt
+      // Small delay for smooth transition
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Navigate with initial prompt to trigger auto-generation
       navigate(`/project/${data.id}?generate=true`);
     } catch (error: any) {
       console.error("Error creating project:", error);
+      toast.dismiss(loadingToast);
       
       // Provide more specific error messages
       if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_CONNECTION')) {
-        toast.error("Connection error. Please check your internet and try again.");
+        toast.error("Connection error", {
+          description: "Please check your internet connection and try again."
+        });
       } else if (error.message?.includes('row-level security')) {
-        toast.error("Permission denied. Please log in again.");
+        toast.error("Permission denied", {
+          description: "Your session may have expired. Please log in again."
+        });
         navigate("/auth");
       } else {
-        toast.error(error.message || "Failed to create project");
+        toast.error("Failed to create project", {
+          description: error.message || "An unexpected error occurred. Please try again."
+        });
       }
     } finally {
       setCreating(false);
@@ -544,21 +568,29 @@ export default function Dashboard() {
                 {recentProjects.slice(0, 9).map((project) => (
                   <Card
                     key={project.id}
-                    className="hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 cursor-pointer group bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/50"
+                    className="hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 cursor-pointer group bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/50 animate-fade-in"
                     onClick={() => handleProjectClick(project.id)}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
                           <CardTitle className="text-xl line-clamp-2 group-hover:text-primary transition-colors">
                             {project.title}
                           </CardTitle>
-                          {project.description && (
-                            <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                              {project.description}
-                            </p>
+                          {project.status === 'generating' && (
+                            <Badge variant="secondary" className="animate-pulse">
+                              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                              Generating
+                            </Badge>
                           )}
                         </div>
+                        {project.description && (
+                          <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                            {project.description}
+                          </p>
+                        )}
+                      </div>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -776,22 +808,26 @@ export default function Dashboard() {
 
       {/* Create Project Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl flex items-center gap-2">
               <Sparkles className="w-6 h-6 text-primary" />
               Create New Project
             </DialogTitle>
-            <DialogDescription>
-              Describe your project and let AI generate it for you. The more detailed your prompt, the better the result.
+            <DialogDescription className="text-base">
+              Describe your vision and our AI will bring it to life. Be specific for best results.
             </DialogDescription>
           </DialogHeader>
+          
           <div className="space-y-6 py-4">
+            {/* Project Name */}
             <div className="space-y-2">
-              <Label htmlFor="title">Project Name *</Label>
+              <Label htmlFor="title" className="text-sm font-medium">
+                Project Name <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="title"
-                placeholder="e.g., Portfolio Website, Task Manager, Tic Tac Toe"
+                placeholder="e.g., Portfolio Website, Task Manager, Tic Tac Toe Game"
                 value={newProject.title}
                 onChange={(e) => {
                   setNewProject((prev) => ({ ...prev, title: e.target.value }));
@@ -799,18 +835,52 @@ export default function Dashboard() {
                     setValidationErrors(prev => ({ ...prev, title: undefined }));
                   }
                 }}
-                className={validationErrors.title ? "border-destructive" : ""}
+                className={validationErrors.title ? "border-destructive focus-visible:ring-destructive" : ""}
+                maxLength={100}
               />
-              {validationErrors.title && (
-                <p className="text-sm text-destructive">{validationErrors.title}</p>
-              )}
+              <div className="flex items-center justify-between">
+                {validationErrors.title ? (
+                  <p className="text-sm text-destructive">{validationErrors.title}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">3-100 characters</p>
+                )}
+                <p className="text-xs text-muted-foreground">{newProject.title.length}/100</p>
+              </div>
             </div>
             
+            {/* Template Selection */}
             <div className="space-y-2">
-              <Label htmlFor="prompt">What do you want to build? *</Label>
+              <Label className="text-sm font-medium">Template (Optional)</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { id: "blank", label: "Blank", icon: "✨" },
+                  { id: "website", label: "Website", icon: "🌐" },
+                  { id: "game", label: "Game", icon: "🎮" },
+                  { id: "app", label: "App", icon: "📱" }
+                ].map((template) => (
+                  <Button
+                    key={template.id}
+                    type="button"
+                    variant={newProject.template === template.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setNewProject(prev => ({ ...prev, template: template.id }))}
+                    className="flex flex-col items-center gap-1 h-auto py-3"
+                  >
+                    <span className="text-xl">{template.icon}</span>
+                    <span className="text-xs">{template.label}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Project Description/Prompt */}
+            <div className="space-y-2">
+              <Label htmlFor="prompt" className="text-sm font-medium">
+                What do you want to build? <span className="text-destructive">*</span>
+              </Label>
               <Textarea
                 id="prompt"
-                placeholder="Example: Create a fully functional tic-tac-toe game with a clean UI, score tracking, and win detection"
+                placeholder="Describe your project in detail. Example: Create a fully functional tic-tac-toe game with a clean, modern UI, score tracking, win/loss/draw detection, and a reset button."
                 value={newProject.prompt}
                 onChange={(e) => {
                   setNewProject((prev) => ({ ...prev, prompt: e.target.value }));
@@ -818,31 +888,62 @@ export default function Dashboard() {
                     setValidationErrors(prev => ({ ...prev, prompt: undefined }));
                   }
                 }}
-                rows={4}
-                className={validationErrors.prompt ? "border-destructive" : ""}
+                rows={5}
+                className={validationErrors.prompt ? "border-destructive focus-visible:ring-destructive" : ""}
+                maxLength={1000}
               />
-              {validationErrors.prompt && (
-                <p className="text-sm text-destructive">{validationErrors.prompt}</p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                {newProject.prompt.length}/1000 characters
-              </p>
+              <div className="flex items-center justify-between">
+                {validationErrors.prompt ? (
+                  <p className="text-sm text-destructive">{validationErrors.prompt}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">10-1000 characters. Be specific!</p>
+                )}
+                <p className="text-xs text-muted-foreground">{newProject.prompt.length}/1000</p>
+              </div>
             </div>
 
-            <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-              <p className="text-sm font-medium">💡 Example Prompts:</p>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <p>• "Build a modern landing page for a SaaS product with hero section, features, pricing, and contact form"</p>
-                <p>• "Create a todo app with add, delete, edit, and mark as complete functionality"</p>
-                <p>• "Generate a professional portfolio website with about, projects, skills, and contact sections"</p>
+            {/* Example Prompts */}
+            <div className="bg-muted/50 p-4 rounded-lg space-y-3 border">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">💡</span>
+                <p className="text-sm font-medium">Professional Example Prompts:</p>
+              </div>
+              <div className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+                <div className="flex gap-2">
+                  <span className="text-primary font-medium">•</span>
+                  <p>"Build a modern landing page for a SaaS product with hero section, feature cards, pricing table, testimonials, and a contact form"</p>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-primary font-medium">•</span>
+                  <p>"Create a todo app with add/delete/edit functionality, mark as complete, filter by status, and local storage persistence"</p>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-primary font-medium">•</span>
+                  <p>"Generate a professional portfolio website with animated hero, project showcase grid, skills section, timeline, and contact form"</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Pro Tips */}
+            <div className="flex items-start gap-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
+              <Sparkles className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Pro Tips for Best Results:</p>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li>• Include specific features and functionality you want</li>
+                  <li>• Mention desired design style (modern, minimal, colorful, etc.)</li>
+                  <li>• List any interactive elements or animations needed</li>
+                </ul>
               </div>
             </div>
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="gap-2">
             <Button
               variant="outline"
               onClick={() => {
                 setShowCreateDialog(false);
+                setNewProject({ title: "", prompt: "", template: "blank" });
                 setValidationErrors({});
               }}
               disabled={creating}
@@ -851,8 +952,8 @@ export default function Dashboard() {
             </Button>
             <Button 
               onClick={handleCreateProject} 
-              disabled={creating}
-              className="gap-2"
+              disabled={creating || !newProject.title.trim() || !newProject.prompt.trim()}
+              className="gap-2 min-w-[140px]"
             >
               {creating ? (
                 <>

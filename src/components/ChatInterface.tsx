@@ -530,22 +530,50 @@ export const ChatInterface = ({
 
           {isLoading && (
             <div className="flex gap-3">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <Bot className="h-5 w-5 text-primary animate-pulse" />
               </div>
-              <Card className="p-4 min-w-[300px]">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Zap className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">Smart Orchestration</span>
+              <Card className="p-4 min-w-[300px] max-w-[80%] bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+                <div className="space-y-4">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-semibold">AI Generation in Progress</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground font-mono">
+                      {progress}%
+                    </div>
                   </div>
+
+                  {/* Current Phase */}
                   {currentPhase && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      <span>{currentPhase}...</span>
+                    <div className="flex items-start gap-2 bg-background/50 p-3 rounded-md">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium">{currentPhase}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {progress < 20 && "Analyzing your requirements and planning the architecture..."}
+                          {progress >= 20 && progress < 40 && "Reviewing existing code and dependencies..."}
+                          {progress >= 40 && progress < 60 && "Generating high-quality code with best practices..."}
+                          {progress >= 60 && progress < 80 && "Optimizing code for performance and readability..."}
+                          {progress >= 80 && "Learning from this generation for future improvements..."}
+                        </p>
+                      </div>
                     </div>
                   )}
-                  <Progress value={progress} className="h-1" />
+
+                  {/* Progress Bar */}
+                  <div className="space-y-2">
+                    <Progress value={progress} className="h-2" />
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>This may take 10-30 seconds</span>
+                      <span className="flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Enterprise-grade quality
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </Card>
             </div>
