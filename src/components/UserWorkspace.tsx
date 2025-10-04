@@ -12,7 +12,9 @@ import {
   History, 
   Play,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  Save,
+  Copy
 } from "lucide-react";
 import { ChatInterface } from "./ChatInterface";
 import { toast } from "sonner";
@@ -145,54 +147,80 @@ export const UserWorkspace = ({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-background">
+      {/* Top Section: Generate Mode with Smart Context */}
+      <div className="border-b bg-card/50">
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-base">AI Code Generator</h2>
+              <p className="text-xs text-muted-foreground">Smart orchestration with multi-phase generation</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Save project
+              toast.success("Project saved");
+            }}
+          >
+            <Save className="w-4 h-4 mr-2" />
+            Save
+          </Button>
+        </div>
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <TabsList className="w-full justify-start border-b rounded-none h-12 px-4">
-          <TabsTrigger value="chat" className="gap-2">
+        <TabsList className="w-full justify-start border-b rounded-none h-11 px-4 bg-muted/30">
+          <TabsTrigger value="chat" className="gap-2 data-[state=active]:bg-background">
             <MessageSquare className="w-4 h-4" />
             Chat
           </TabsTrigger>
-          <TabsTrigger value="code" className="gap-2">
+          <TabsTrigger value="code" className="gap-2 data-[state=active]:bg-background">
             <Code2 className="w-4 h-4" />
             Code
           </TabsTrigger>
-          <TabsTrigger value="preview" className="gap-2">
+          <TabsTrigger value="preview" className="gap-2 data-[state=active]:bg-background">
             <Eye className="w-4 h-4" />
             Preview
           </TabsTrigger>
-          <TabsTrigger value="history" className="gap-2">
+          <TabsTrigger value="history" className="gap-2 data-[state=active]:bg-background">
             <History className="w-4 h-4" />
             History
             {versionHistory.length > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">
+              <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
                 {versionHistory.length}
               </Badge>
             )}
           </TabsTrigger>
         </TabsList>
 
-        {/* Chat Tab */}
-        <TabsContent value="chat" className="flex-1 m-0 p-0">
-          <div className="h-[calc(100vh-280px)]">
-            <ChatInterface
-              conversationId={conversationId}
-              onCodeGenerated={handleCodeGenerated}
-              currentCode={workingCode}
-              onConversationChange={() => {}}
-            />
-          </div>
+        {/* Chat Tab with Smart Orchestration */}
+        <TabsContent value="chat" className="flex-1 m-0 p-0 h-[calc(100vh-240px)]">
+          <ChatInterface
+            conversationId={conversationId}
+            onCodeGenerated={handleCodeGenerated}
+            currentCode={workingCode}
+            onConversationChange={() => {}}
+          />
         </TabsContent>
 
         {/* Code Tab */}
-        <TabsContent value="code" className="flex-1 m-0">
-          <ScrollArea className="h-[calc(100vh-280px)]">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold">Project Code</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {(workingCode.length / 1000).toFixed(1)}KB • {workingCode.split('\n').length} lines
-                  </p>
+        <TabsContent value="code" className="flex-1 m-0 h-[calc(100vh-240px)]">
+          <ScrollArea className="h-full">
+            <div className="p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-base font-semibold">Project Code</h3>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>{(workingCode.length / 1000).toFixed(1)}KB</span>
+                    <span>•</span>
+                    <span>{workingCode.split('\n').length} lines</span>
+                  </div>
                 </div>
                 <Button
                   variant="outline"
@@ -202,50 +230,73 @@ export const UserWorkspace = ({
                     toast.success("Code copied to clipboard");
                   }}
                 >
+                  <Copy className="w-4 h-4 mr-2" />
                   Copy Code
                 </Button>
               </div>
-              <Card className="p-4 bg-muted/50">
-                <pre className="text-xs overflow-auto">
-                  <code>{workingCode || "// No code generated yet"}</code>
-                </pre>
-              </Card>
+              
+              {workingCode ? (
+                <Card className="border bg-card">
+                  <div className="p-4 bg-muted/30 border-b">
+                    <p className="text-xs text-muted-foreground">Full source code</p>
+                  </div>
+                  <ScrollArea className="h-[60vh]">
+                    <pre className="p-4 text-xs font-mono">
+                      <code>{workingCode}</code>
+                    </pre>
+                  </ScrollArea>
+                </Card>
+              ) : (
+                <Card className="p-12 text-center border-dashed">
+                  <Code2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground text-sm">No code generated yet</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Start chatting in the Chat tab to generate code
+                  </p>
+                </Card>
+              )}
             </div>
           </ScrollArea>
         </TabsContent>
 
         {/* Preview Tab */}
-        <TabsContent value="preview" className="flex-1 m-0">
-          <div className="h-[calc(100vh-280px)] p-4">
-            <div className="h-full border rounded-lg overflow-hidden bg-white">
-              {workingCode ? (
+        <TabsContent value="preview" className="flex-1 m-0 h-[calc(100vh-240px)]">
+          <div className="h-full p-4">
+            {workingCode ? (
+              <div className="h-full border rounded-lg overflow-hidden bg-white shadow-sm">
                 <iframe
                   srcDoc={workingCode}
                   className="w-full h-full border-0"
                   title="Preview"
                   sandbox="allow-scripts allow-same-origin"
                 />
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <div className="text-center space-y-2">
-                    <Play className="w-12 h-12 mx-auto opacity-50" />
-                    <p>No preview available</p>
-                    <p className="text-sm">Generate code in the Chat tab to see a preview</p>
+              </div>
+            ) : (
+              <Card className="h-full flex items-center justify-center border-dashed">
+                <div className="text-center space-y-3">
+                  <div className="h-16 w-16 rounded-full bg-muted mx-auto flex items-center justify-center">
+                    <Eye className="w-8 h-8 text-muted-foreground opacity-50" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">No preview available</p>
+                    <p className="text-xs text-muted-foreground">
+                      Generate code in the Chat tab to see a live preview
+                    </p>
                   </div>
                 </div>
-              )}
-            </div>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
         {/* History Tab */}
-        <TabsContent value="history" className="flex-1 m-0">
-          <ScrollArea className="h-[calc(100vh-280px)]">
+        <TabsContent value="history" className="flex-1 m-0 h-[calc(100vh-240px)]">
+          <ScrollArea className="h-full">
             <div className="p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">Version History</h3>
-                  <p className="text-sm text-muted-foreground">
+                <div className="space-y-1">
+                  <h3 className="text-base font-semibold">Version History</h3>
+                  <p className="text-xs text-muted-foreground">
                     Restore any previous version of your project
                   </p>
                 </div>
@@ -255,7 +306,7 @@ export const UserWorkspace = ({
                   onClick={loadVersionHistory}
                   disabled={loadingHistory}
                 >
-                  <RotateCcw className="w-4 h-4 mr-2" />
+                  <RotateCcw className={`w-4 h-4 mr-2 ${loadingHistory ? 'animate-spin' : ''}`} />
                   Refresh
                 </Button>
               </div>
@@ -263,46 +314,56 @@ export const UserWorkspace = ({
               <Separator />
 
               {versionHistory.length === 0 ? (
-                <Card className="p-8 text-center">
-                  <History className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <p className="text-muted-foreground">No version history yet</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                <Card className="p-12 text-center border-dashed">
+                  <div className="h-16 w-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                    <History className="w-8 h-8 text-muted-foreground opacity-50" />
+                  </div>
+                  <p className="text-sm font-medium mb-1">No version history yet</p>
+                  <p className="text-xs text-muted-foreground">
                     Versions are created automatically when you generate code
                   </p>
                 </Card>
               ) : (
-                <div className="space-y-3">
-                  {versionHistory.map((version) => (
-                    <Card key={version.id} className="p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="outline">v{version.version_number}</Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(version.created_at).toLocaleString()}
-                            </span>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {version.changes_summary || "No description"}
-                          </p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>{(version.html_code.length / 1000).toFixed(1)}KB</span>
-                            {version.quality_score && (
-                              <span className="flex items-center gap-1">
-                                <Sparkles className="w-3 h-3" />
-                                Quality: {version.quality_score}
+                <div className="space-y-2">
+                  {versionHistory.map((version, index) => (
+                    <Card key={version.id} className="hover:bg-muted/50 transition-colors">
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="outline" className="text-xs font-mono">
+                                v{version.version_number}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(version.created_at).toLocaleDateString()} {new Date(version.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
-                            )}
+                            </div>
+                            <p className="text-sm mb-2 truncate">
+                              {version.changes_summary || `Update ${version.version_number}`}
+                            </p>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span>{(version.html_code.length / 1000).toFixed(1)}KB</span>
+                              {version.quality_score && (
+                                <>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3" />
+                                    Quality: {version.quality_score}
+                                  </span>
+                                </>
+                              )}
+                            </div>
                           </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRestoreVersion(version)}
+                            className="flex-shrink-0"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                            Restore
+                          </Button>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRestoreVersion(version)}
-                        >
-                          <RotateCcw className="w-4 h-4 mr-2" />
-                          Restore
-                        </Button>
                       </div>
                     </Card>
                   ))}
