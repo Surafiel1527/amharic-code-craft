@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Grid3x3, List, Star, Clock, Sparkles, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { MobileNav } from "@/components/MobileNav";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -40,16 +44,23 @@ interface Project {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { isAdmin } = useUserRole(user?.id);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [newProject, setNewProject] = useState({
     title: "",
     description: "",
   });
   const [creating, setCreating] = useState(false);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
 
   // Redirect if not logged in
   useEffect(() => {
@@ -205,18 +216,37 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b bg-card/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-4xl font-bold flex items-center gap-3">
-                <Sparkles className="w-9 h-9 text-primary" />
-                My Projects
-              </h1>
-              <p className="text-muted-foreground mt-2 text-base">
-                Create and manage your AI-powered projects
-              </p>
+      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+              <h1 className="text-xl sm:text-2xl font-bold">My Projects</h1>
             </div>
+            
+            <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-2">
+                <LanguageToggle />
+                <ThemeToggle />
+              </div>
+              <MobileNav 
+                isAdmin={isAdmin}
+                onShowShortcuts={() => setShowShortcuts(true)}
+                onSignOut={handleSignOut}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        <div className="flex flex-col gap-6">
+          {/* Title and New Project Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Create and manage your AI-powered projects
+            </p>
             <Button 
               onClick={() => setShowCreateDialog(true)} 
               size="lg"
@@ -228,7 +258,7 @@ export default function Dashboard() {
           </div>
 
           {/* Search and View Toggle */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-8">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
@@ -257,36 +287,34 @@ export default function Dashboard() {
               </Button>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Projects List */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Skeleton key={i} className="h-48" />
-            ))}
-          </div>
-        ) : filteredProjects.length === 0 ? (
-          <div className="text-center py-12">
-            <Sparkles className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">
-              {searchQuery ? "No projects found" : "No projects yet"}
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              {searchQuery
-                ? "Try adjusting your search"
-                : "Create your first project to get started"}
-            </p>
-            {!searchQuery && (
-              <Button onClick={() => setShowCreateDialog(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Project
-              </Button>
-            )}
-          </div>
-        ) : (
+          {/* Projects List */}
+          <div>
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <Skeleton key={i} className="h-48" />
+                ))}
+              </div>
+            ) : filteredProjects.length === 0 ? (
+              <div className="text-center py-12">
+                <Sparkles className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">
+                  {searchQuery ? "No projects found" : "No projects yet"}
+                </h3>
+                <p className="text-muted-foreground mb-6">
+                  {searchQuery
+                    ? "Try adjusting your search"
+                    : "Create your first project to get started"}
+                </p>
+                {!searchQuery && (
+                  <Button onClick={() => setShowCreateDialog(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Project
+                  </Button>
+                )}
+              </div>
+            ) : (
           <Tabs defaultValue="all" className="space-y-8">
             <TabsList className="bg-card/50 backdrop-blur-sm border border-border/50">
               <TabsTrigger value="all" className="data-[state=active]:bg-background">
@@ -493,6 +521,8 @@ export default function Dashboard() {
           </Tabs>
         )}
       </div>
+    </div>
+  </div>
 
       {/* Additional Feature Sections */}
       <div className="container mx-auto px-4 py-8 space-y-12">
