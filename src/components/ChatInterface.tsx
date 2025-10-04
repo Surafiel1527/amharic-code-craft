@@ -71,6 +71,22 @@ export const ChatInterface = ({
   const loadConversation = async (convId: string) => {
     console.log('💬 Chat: Loading conversation:', convId);
     try {
+      // Load conversation with current_code
+      const { data: convData, error: convError } = await supabase
+        .from("conversations")
+        .select("current_code")
+        .eq("id", convId)
+        .single();
+
+      if (convError) {
+        console.error('❌ Chat: Error loading conversation:', convError);
+      } else if (convData?.current_code) {
+        console.log('✅ Chat: Loaded project code from conversation');
+        setActiveProjectCode(convData.current_code);
+        onCodeGenerated(convData.current_code);
+      }
+
+      // Load messages
       const { data, error } = await supabase
         .from("messages")
         .select("*")
@@ -308,10 +324,13 @@ export const ChatInterface = ({
         }
       }
 
-      // Update conversation timestamp
+      // Save project code to conversation for persistence
       await supabase
         .from("conversations")
-        .update({ updated_at: new Date().toISOString() })
+        .update({ 
+          updated_at: new Date().toISOString(),
+          current_code: generatedCode || activeProjectCode
+        })
         .eq("id", activeConvId);
 
     } catch (error) {
@@ -331,9 +350,18 @@ export const ChatInterface = ({
     }
   };
 
-  const handleStartFresh = () => {
+  const handleStartFresh = async () => {
     setActiveProjectCode("");
     setMessages([]);
+    
+    // Clear current_code from conversation
+    if (conversationId) {
+      await supabase
+        .from("conversations")
+        .update({ current_code: null })
+        .eq("id", conversationId);
+    }
+    
     toast.info("Starting fresh project");
   };
 
