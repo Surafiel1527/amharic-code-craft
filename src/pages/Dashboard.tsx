@@ -65,9 +65,11 @@ export default function Dashboard() {
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const [newProject, setNewProject] = useState({
     title: "",
-    description: "",
+    prompt: "",
+    template: "blank",
   });
   const [creating, setCreating] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{title?: string; prompt?: string}>({});
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -127,9 +129,36 @@ export default function Dashboard() {
     };
   }, [user]);
 
+  const validateProject = () => {
+    const errors: {title?: string; prompt?: string} = {};
+    
+    if (!newProject.title.trim()) {
+      errors.title = "Project name is required";
+    } else if (newProject.title.trim().length < 3) {
+      errors.title = "Project name must be at least 3 characters";
+    } else if (newProject.title.trim().length > 100) {
+      errors.title = "Project name must be less than 100 characters";
+    }
+    
+    if (!newProject.prompt.trim()) {
+      errors.prompt = "Initial prompt is required to generate your project";
+    } else if (newProject.prompt.trim().length < 10) {
+      errors.prompt = "Please provide a more detailed prompt (at least 10 characters)";
+    } else if (newProject.prompt.trim().length > 1000) {
+      errors.prompt = "Prompt must be less than 1000 characters";
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleCreateProject = async () => {
-    if (!user || !newProject.title.trim()) {
-      toast.error("Please enter a project title");
+    if (!user) {
+      toast.error("Please log in to create a project");
+      return;
+    }
+
+    if (!validateProject()) {
       return;
     }
 
@@ -140,10 +169,10 @@ export default function Dashboard() {
         .insert({
           user_id: user.id,
           title: newProject.title.trim(),
-          prompt: newProject.description.trim() || "New project",
-          description: newProject.description.trim() || null,
-          html_code: "<!-- Start building your project -->",
-          status: "active",
+          prompt: newProject.prompt.trim(),
+          description: newProject.prompt.trim(),
+          html_code: "<!-- Generating your project... -->",
+          status: "generating",
           is_public: false,
           tags: [],
         })
@@ -152,10 +181,13 @@ export default function Dashboard() {
 
       if (error) throw error;
 
-      toast.success("Project created successfully");
+      toast.success("🚀 Starting project generation...");
       setShowCreateDialog(false);
-      setNewProject({ title: "", description: "" });
-      navigate(`/project/${data.id}`);
+      setNewProject({ title: "", prompt: "", template: "blank" });
+      setValidationErrors({});
+      
+      // Navigate with initial prompt
+      navigate(`/project/${data.id}?generate=true`);
     } catch (error: any) {
       console.error("Error creating project:", error);
       toast.error(error.message || "Failed to create project");
@@ -712,51 +744,95 @@ export default function Dashboard() {
 
       {/* Create Project Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create New Project</DialogTitle>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-primary" />
+              Create New Project
+            </DialogTitle>
             <DialogDescription>
-              Start a new AI-powered project. Give it a name and description.
+              Describe your project and let AI generate it for you. The more detailed your prompt, the better the result.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-6 py-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Project Title *</Label>
+              <Label htmlFor="title">Project Name *</Label>
               <Input
                 id="title"
-                placeholder="My Awesome Project"
+                placeholder="e.g., Portfolio Website, Task Manager, Tic Tac Toe"
                 value={newProject.title}
-                onChange={(e) =>
-                  setNewProject((prev) => ({ ...prev, title: e.target.value }))
-                }
+                onChange={(e) => {
+                  setNewProject((prev) => ({ ...prev, title: e.target.value }));
+                  if (validationErrors.title) {
+                    setValidationErrors(prev => ({ ...prev, title: undefined }));
+                  }
+                }}
+                className={validationErrors.title ? "border-destructive" : ""}
               />
+              {validationErrors.title && (
+                <p className="text-sm text-destructive">{validationErrors.title}</p>
+              )}
             </div>
+            
             <div className="space-y-2">
-              <Label htmlFor="description">Description (Optional)</Label>
+              <Label htmlFor="prompt">What do you want to build? *</Label>
               <Textarea
-                id="description"
-                placeholder="What will you build?"
-                value={newProject.description}
-                onChange={(e) =>
-                  setNewProject((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-                rows={3}
+                id="prompt"
+                placeholder="Example: Create a fully functional tic-tac-toe game with a clean UI, score tracking, and win detection"
+                value={newProject.prompt}
+                onChange={(e) => {
+                  setNewProject((prev) => ({ ...prev, prompt: e.target.value }));
+                  if (validationErrors.prompt) {
+                    setValidationErrors(prev => ({ ...prev, prompt: undefined }));
+                  }
+                }}
+                rows={4}
+                className={validationErrors.prompt ? "border-destructive" : ""}
               />
+              {validationErrors.prompt && (
+                <p className="text-sm text-destructive">{validationErrors.prompt}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {newProject.prompt.length}/1000 characters
+              </p>
+            </div>
+
+            <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+              <p className="text-sm font-medium">💡 Example Prompts:</p>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p>• "Build a modern landing page for a SaaS product with hero section, features, pricing, and contact form"</p>
+                <p>• "Create a todo app with add, delete, edit, and mark as complete functionality"</p>
+                <p>• "Generate a professional portfolio website with about, projects, skills, and contact sections"</p>
+              </div>
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowCreateDialog(false)}
+              onClick={() => {
+                setShowCreateDialog(false);
+                setValidationErrors({});
+              }}
               disabled={creating}
             >
               Cancel
             </Button>
-            <Button onClick={handleCreateProject} disabled={creating}>
-              {creating ? "Creating..." : "Create Project"}
+            <Button 
+              onClick={handleCreateProject} 
+              disabled={creating}
+              className="gap-2"
+            >
+              {creating ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Generate Project
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -28,13 +28,17 @@ interface ChatInterfaceProps {
   onCodeGenerated: (code: string, shouldSaveVersion?: boolean) => void;
   currentCode: string;
   onConversationChange: (id: string) => void;
+  autoSendPrompt?: string;
+  onAutoSendComplete?: () => void;
 }
 
 export const ChatInterface = ({ 
   conversationId, 
   onCodeGenerated, 
   currentCode,
-  onConversationChange 
+  onConversationChange,
+  autoSendPrompt,
+  onAutoSendComplete
 }: ChatInterfaceProps) => {
   const { t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -44,6 +48,20 @@ export const ChatInterface = ({
   const [progress, setProgress] = useState(0);
   const [activeProjectCode, setActiveProjectCode] = useState(currentCode || "");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-send initial prompt if provided
+  useEffect(() => {
+    if (autoSendPrompt && conversationId && !isLoading) {
+      setInput(autoSendPrompt);
+      // Small delay to ensure UI is ready
+      setTimeout(() => {
+        handleSend();
+        if (onAutoSendComplete) {
+          onAutoSendComplete();
+        }
+      }, 500);
+    }
+  }, [autoSendPrompt, conversationId]);
 
   useEffect(() => {
     if (conversationId) {

@@ -32,6 +32,7 @@ export default function ProjectWorkspace() {
   const [loading, setLoading] = useState(true);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("generate");
+  const [autoGeneratePrompt, setAutoGeneratePrompt] = useState<string | null>(null);
 
   // Update active tab when role is loaded
   useEffect(() => {
@@ -70,6 +71,10 @@ export default function ProjectWorkspace() {
 
         setProject(projectData);
 
+        // Check if we should auto-generate
+        const urlParams = new URLSearchParams(window.location.search);
+        const shouldGenerate = urlParams.get('generate') === 'true';
+
         // Load or create conversation for this project
         const { data: conversations, error: convError } = await supabase
           .from("conversations")
@@ -98,6 +103,13 @@ export default function ProjectWorkspace() {
 
           if (createError) throw createError;
           setConversationId(newConv.id);
+        }
+
+        // Trigger auto-generation if this is a new project
+        if (shouldGenerate && projectData.prompt) {
+          setAutoGeneratePrompt(projectData.prompt);
+          // Clear the URL parameter
+          window.history.replaceState({}, '', `/project/${projectId}`);
         }
       } catch (error: any) {
         console.error("Error loading project:", error);
@@ -228,6 +240,7 @@ export default function ProjectWorkspace() {
                 conversationId={conversationId}
                 initialCode={project.html_code}
                 onCodeUpdate={handleCodeUpdate}
+                autoGeneratePrompt={autoGeneratePrompt}
               />
             </TabsContent>
           )}
