@@ -81,6 +81,15 @@ verify_jwt = false
 [functions.generate-tests]
 verify_jwt = true
 
+[functions.learn-from-conversation]
+verify_jwt = true
+
+[functions.meta-improve]
+verify_jwt = true
+
+[functions.manage-preferences]
+verify_jwt = true
+
 [functions.suggest-refactoring]
 verify_jwt = true
 

@@ -43,6 +43,44 @@ serve(async (req) => {
     const phases: any[] = [];
     let currentResult: any = {};
 
+    // PHASE 0: Load user preferences and professional knowledge
+    console.log('Phase 0: Loading User Context & Professional Knowledge');
+    const contextStart = Date.now();
+    
+    const { data: userPrefs } = await supabaseClient
+      .from('user_preferences')
+      .select('*')
+      .eq('user_id', user.id);
+
+    const { data: professionalKnowledge } = await supabaseClient
+      .from('professional_knowledge')
+      .select('*')
+      .order('usage_count', { ascending: false })
+      .limit(10);
+
+    const { data: recentLearnings } = await supabaseClient
+      .from('conversation_learnings')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('last_reinforced_at', { ascending: false })
+      .limit(5);
+
+    phases.push({
+      name: 'context_loading',
+      duration: Date.now() - contextStart,
+      result: {
+        preferencesLoaded: userPrefs?.length || 0,
+        knowledgeLoaded: professionalKnowledge?.length || 0,
+        learningsLoaded: recentLearnings?.length || 0
+      }
+    });
+
+    currentResult.userContext = {
+      preferences: userPrefs,
+      professionalKnowledge,
+      recentLearnings
+    };
+
     // Create orchestration run record
     const { data: runRecord } = await supabaseClient
       .from('orchestration_runs')
@@ -57,14 +95,15 @@ serve(async (req) => {
 
     console.log('Starting smart orchestration for:', userRequest);
 
-    // PHASE 1: Architecture Planning
+    // PHASE 1: Architecture Planning (with user context)
     console.log('Phase 1: Architecture Planning');
     const planResponse = await supabaseClient.functions.invoke('generate-with-plan', {
       body: {
         phase: 'plan',
         userRequest,
         conversationId,
-        currentCode
+        currentCode,
+        userContext: currentResult.userContext // Include preferences
       }
     });
 
@@ -172,11 +211,12 @@ serve(async (req) => {
       }
     }
 
-    // PHASE 6: Learning (if enabled)
+    // PHASE 6: Learning (if enabled) - Enhanced with conversation learning
     if (autoLearn && currentResult.refinedCode) {
-      console.log('Phase 6: Pattern Learning');
+      console.log('Phase 6: Pattern Learning & User Preference Learning');
       const learnStart = Date.now();
       
+      // Pattern learning
       const learnResponse = await supabaseClient.functions.invoke('multi-project-learn', {
         body: {
           action: 'learn',
@@ -187,11 +227,24 @@ serve(async (req) => {
         }
       });
 
-      if (!learnResponse.error) {
+      // Conversation learning (learns user preferences)
+      const conversationLearnResponse = await supabaseClient.functions.invoke('learn-from-conversation', {
+        body: {
+          conversationId,
+          messages: [],
+          userRequest,
+          generatedResponse: currentResult.refinedCode
+        }
+      });
+
+      if (!learnResponse.error || !conversationLearnResponse.error) {
         phases.push({ 
           name: 'learning', 
           duration: Date.now() - learnStart,
-          result: learnResponse.data 
+          result: {
+            patternLearning: learnResponse.data,
+            conversationLearning: conversationLearnResponse.data
+          }
         });
       }
     }

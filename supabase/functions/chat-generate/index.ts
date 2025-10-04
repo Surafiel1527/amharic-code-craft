@@ -30,7 +30,7 @@ serve(async (req) => {
         }
       );
     }
-    const { message, conversationHistory, currentCode } = await req.json();
+    const { message, conversationHistory, currentCode, userId } = await req.json();
     console.log('Chat request:', { message, hasHistory: !!conversationHistory, hasCode: !!currentCode });
 
     if (!message) {
@@ -42,19 +42,69 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
+    // Load user preferences and professional knowledge
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    let userContext: any = {};
+
+    if (userId && supabaseUrl && supabaseServiceKey) {
+      try {
+        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.7.1');
+        const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+
+        const { data: prefs } = await supabaseClient
+          .from('user_preferences')
+          .select('*')
+          .eq('user_id', userId);
+
+        const { data: knowledge } = await supabaseClient
+          .from('professional_knowledge')
+          .select('*')
+          .order('usage_count', { ascending: false })
+          .limit(5);
+
+        userContext = { preferences: prefs, professionalKnowledge: knowledge };
+      } catch (e) {
+        console.error('Failed to load user context:', e);
+      }
+    }
+
     // Build conversation context
     const messages = [];
     
+    // Build personalized system prompt with user context
+    let preferencesContext = '';
+    if (userContext.preferences?.length > 0) {
+      const langPref = userContext.preferences.find((p: any) => p.preference_type === 'language');
+      const stylePref = userContext.preferences.find((p: any) => p.preference_type === 'style');
+      const complexityPref = userContext.preferences.find((p: any) => p.preference_type === 'complexity');
+
+      preferencesContext = `\n\nUSER PREFERENCES (adapt to these):
+${langPref ? `- Preferred Language: ${langPref.preference_value.preferred}` : ''}
+${stylePref ? `- Coding Style: ${JSON.stringify(stylePref.preference_value.styles)}` : ''}
+${complexityPref ? `- Complexity Level: ${complexityPref.preference_value.level}` : ''}`;
+    }
+
+    let knowledgeContext = '';
+    if (userContext.professionalKnowledge?.length > 0) {
+      knowledgeContext = `\n\nPROFESSIONAL KNOWLEDGE (apply these enterprise standards):
+${userContext.professionalKnowledge.map((k: any) => 
+  `- ${k.title}: ${k.content.substring(0, 150)}...`
+).join('\n')}`;
+    }
+    
     // System prompt for intelligent website building AND conversation
-    const systemPrompt = `You are a friendly, expert AI assistant for a website builder platform. You're fluent in both Amharic and English.
+    const systemPrompt = `You are an enterprise-level AI assistant for a professional website builder platform. You're fluent in both Amharic and English.
 
 CONVERSATIONAL INTELLIGENCE:
 - **CRITICAL**: Read and understand the conversation history to maintain context
 - Recognize casual conversation (greetings, thanks, questions, discussions) vs. code requests
-- When users say "thank you", "thanks", etc., respond warmly: "You're welcome! 😊 Is there anything else I can help you with?"
+- When users say "thank you", "thanks", etc., respond warmly and professionally
 - For casual questions or discussions, have a natural conversation without mentioning code
-- Reference previous conversations - if they say "let's discuss that proposal" or "help with the project", understand what they mean from context
-- Be helpful with brainstorming, guidance, and project planning discussions
+- Reference previous conversations intelligently
+- Be helpful with brainstorming, guidance, and project planning discussions at an enterprise level
+${preferencesContext}
+${knowledgeContext}
 
 WEBSITE BUILDING CAPABILITIES:
 1. Generate complete HTML/CSS websites from descriptions

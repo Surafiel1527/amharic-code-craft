@@ -642,6 +642,45 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_learnings: {
+        Row: {
+          confidence: number | null
+          context: Json | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          last_reinforced_at: string
+          learned_pattern: string
+          pattern_category: string
+          times_reinforced: number | null
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          context?: Json | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          last_reinforced_at?: string
+          learned_pattern: string
+          pattern_category: string
+          times_reinforced?: number | null
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          context?: Json | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          last_reinforced_at?: string
+          learned_pattern?: string
+          pattern_category?: string
+          times_reinforced?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
@@ -1394,6 +1433,45 @@ export type Database = {
         }
         Relationships: []
       }
+      professional_knowledge: {
+        Row: {
+          applicability_score: number | null
+          code_examples: Json | null
+          content: string
+          created_at: string
+          domain: string
+          id: string
+          knowledge_type: string
+          title: string
+          updated_at: string
+          usage_count: number | null
+        }
+        Insert: {
+          applicability_score?: number | null
+          code_examples?: Json | null
+          content: string
+          created_at?: string
+          domain: string
+          id?: string
+          knowledge_type: string
+          title: string
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Update: {
+          applicability_score?: number | null
+          code_examples?: Json | null
+          content?: string
+          created_at?: string
+          domain?: string
+          id?: string
+          knowledge_type?: string
+          title?: string
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1854,6 +1932,45 @@ export type Database = {
         }
         Relationships: []
       }
+      system_improvements: {
+        Row: {
+          after_state: string
+          applied_at: string | null
+          before_state: string
+          created_at: string
+          created_by: string | null
+          id: string
+          improvement_type: string
+          reason: string
+          status: string | null
+          success_metric: number | null
+        }
+        Insert: {
+          after_state: string
+          applied_at?: string | null
+          before_state: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          improvement_type: string
+          reason: string
+          status?: string | null
+          success_metric?: number | null
+        }
+        Update: {
+          after_state?: string
+          applied_at?: string | null
+          before_state?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          improvement_type?: string
+          reason?: string
+          status?: string | null
+          success_metric?: number | null
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           id: string
@@ -2112,6 +2229,39 @@ export type Database = {
           follower_id?: string
           following_id?: string
           id?: string
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          id: string
+          learned_from_interactions: number | null
+          preference_type: string
+          preference_value: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          learned_from_interactions?: number | null
+          preference_type: string
+          preference_value?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          learned_from_interactions?: number | null
+          preference_type?: string
+          preference_value?: Json
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

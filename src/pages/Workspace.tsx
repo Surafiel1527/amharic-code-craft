@@ -354,7 +354,8 @@ export default function Workspace() {
           body: {
             message: userInput,
             conversationHistory,
-            currentCode: null // Don't include code for casual chat
+            currentCode: null, // Don't include code for casual chat
+            userId: user?.id // Include user ID for personalization
           },
           headers: {
             Authorization: `Bearer ${session.access_token}`
@@ -447,6 +448,21 @@ export default function Workspace() {
         content: assistantMessage.content,
         generated_code: finalCode
       });
+
+      // Automatically learn from this successful interaction
+      if (finalCode && user) {
+        await supabase.functions.invoke('learn-from-conversation', {
+          body: {
+            conversationId,
+            messages: messages.slice(-5),
+            userRequest: userInput,
+            generatedResponse: finalCode
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        }).catch(err => console.error('Learning failed (non-blocking):', err));
+      }
 
       // Auto-save project and create version
       const { data: versions } = await supabase
