@@ -144,36 +144,61 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
     setIsLoading(true);
 
     try {
-      console.log('🚀 Using Smart Orchestrator:', { 
-        action: userMessage.action,
-        hasCode: !!workingCode,
-        messageLength: input.length 
-      });
-
-      // Simulate phase progress
-      const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
-      let currentPhaseIdx = 0;
+      // Detect if this is a simple modification
+      const isSimpleChange = workingCode && input.toLowerCase().match(/\b(change|update|modify|fix|adjust|set|make)\b.*\b(color|style|text|size|font|background)\b/i);
       
-      const progressInterval = setInterval(() => {
-        if (currentPhaseIdx < phases.length) {
-          setCurrentPhase(phases[currentPhaseIdx]);
-          setProgress((currentPhaseIdx + 1) * 20);
-          currentPhaseIdx++;
-        }
-      }, 800);
+      let data, error;
+      
+      if (isSimpleChange) {
+        // Fast path: Use smart-diff-update
+        console.log('🚀 Using fast smart-diff-update');
+        setCurrentPhase('Analyzing changes');
+        setProgress(50);
+        
+        const response = await supabase.functions.invoke('smart-diff-update', {
+          body: {
+            userRequest: input,
+            currentCode: workingCode,
+          }
+        });
+        
+        data = response.data;
+        error = response.error;
+        setProgress(100);
+      } else {
+        // Full orchestration
+        console.log('🚀 Using full Smart Orchestrator:', { 
+          action: userMessage.action,
+          hasCode: !!workingCode,
+          messageLength: input.length 
+        });
 
-      const { data, error } = await supabase.functions.invoke('smart-orchestrator', {
-        body: {
-          userRequest: input,
-          conversationId,
-          currentCode: workingCode,
-          autoRefine: true,
-          autoLearn: true
-        }
-      });
+        const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
+        let currentPhaseIdx = 0;
+        
+        const progressInterval = setInterval(() => {
+          if (currentPhaseIdx < phases.length) {
+            setCurrentPhase(phases[currentPhaseIdx]);
+            setProgress((currentPhaseIdx + 1) * 20);
+            currentPhaseIdx++;
+          }
+        }, 800);
 
-      clearInterval(progressInterval);
-      setProgress(100);
+        const response = await supabase.functions.invoke('smart-orchestrator', {
+          body: {
+            userRequest: input,
+            conversationId,
+            currentCode: workingCode,
+            autoRefine: true,
+            autoLearn: true
+          }
+        });
+
+        clearInterval(progressInterval);
+        data = response.data;
+        error = response.error;
+        setProgress(100);
+      }
 
       if (error) {
         console.error('❌ Error from orchestrator:', error);
@@ -187,18 +212,28 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
         throw error;
       }
 
-      console.log('✅ Orchestration complete:', { 
+      console.log('✅ Complete:', { 
+        isSimpleChange,
         success: data.success, 
         phases: data.phases?.length,
-        hasCode: !!data.finalCode
+        hasCode: !!(data.finalCode || data.updatedCode)
       });
+
+      const generatedCode = isSimpleChange ? data.updatedCode : data.finalCode;
+      const content = isSimpleChange 
+        ? (data.explanation || "Updated the code with your changes.")
+        : (data.plan?.architecture_overview || "Generated code with smart optimization!");
 
       const assistantMessage: Message = {
         role: 'assistant',
-        content: data.plan?.architecture_overview || "Generated code with smart optimization!",
-        code: data.finalCode,
+        content,
+        code: generatedCode,
         action: userMessage.action,
-        orchestration: {
+        orchestration: isSimpleChange ? {
+          phases: ['smart-diff'],
+          duration: data.processingTime || 1000,
+          qualityScore: undefined
+        } : {
           phases: data.phases?.map((p: any) => p.name) || [],
           duration: data.totalDuration || 0,
           qualityScore: data.qualityMetrics?.finalScore
@@ -208,15 +243,19 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
       setMessages(prev => [...prev, assistantMessage]);
 
       // Update working code if new code was generated
-      if (data.finalCode) {
-        setWorkingCode(data.finalCode);
+      if (generatedCode) {
+        setWorkingCode(generatedCode);
         if (onCodeGenerated) {
-          onCodeGenerated(data.finalCode);
+          onCodeGenerated(generatedCode);
         }
         
-        const phasesCount = data.phases?.length || 0;
-        const duration = ((data.totalDuration || 0) / 1000).toFixed(1);
-        toast.success(`✨ Generated with ${phasesCount} phases in ${duration}s!`);
+        if (isSimpleChange) {
+          toast.success(`⚡ Updated instantly with smart-diff!`);
+        } else {
+          const phasesCount = data.phases?.length || 0;
+          const duration = ((data.totalDuration || 0) / 1000).toFixed(1);
+          toast.success(`✨ Generated with ${phasesCount} phases in ${duration}s!`);
+        }
       }
 
     } catch (error: any) {

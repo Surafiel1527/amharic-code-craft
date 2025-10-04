@@ -183,38 +183,64 @@ export const ChatInterface = ({
         content: userMessage,
       });
 
-      // Simulate phase progress
-      const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
-      let currentPhaseIdx = 0;
+      // Detect if this is a simple modification (use fast path)
+      const isSimpleChange = currentCode && userMessage.toLowerCase().match(/\b(change|update|modify|fix|adjust|set|make)\b.*\b(color|style|text|size|font|background)\b/i);
       
-      const progressInterval = setInterval(() => {
-        if (currentPhaseIdx < phases.length) {
-          setCurrentPhase(phases[currentPhaseIdx]);
-          setProgress((currentPhaseIdx + 1) * 20);
-          currentPhaseIdx++;
-        }
-      }, 800);
+      let data, error;
+      
+      if (isSimpleChange) {
+        // Fast path: Use smart-diff-update for simple style changes
+        console.log('🚀 Using fast smart-diff-update');
+        setCurrentPhase('Analyzing changes');
+        setProgress(50);
+        
+        const response = await supabase.functions.invoke("smart-diff-update", {
+          body: {
+            userRequest: userMessage,
+            currentCode,
+          },
+        });
+        
+        data = response.data;
+        error = response.error;
+        setProgress(100);
+      } else {
+        // Full orchestration for complex changes or new projects
+        console.log('🚀 Using full smart orchestration');
+        const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
+        let currentPhaseIdx = 0;
+        
+        const progressInterval = setInterval(() => {
+          if (currentPhaseIdx < phases.length) {
+            setCurrentPhase(phases[currentPhaseIdx]);
+            setProgress((currentPhaseIdx + 1) * 20);
+            currentPhaseIdx++;
+          }
+        }, 800);
 
-      // Call Smart Orchestrator
-      const { data, error } = await supabase.functions.invoke("smart-orchestrator", {
-        body: {
-          userRequest: userMessage,
-          conversationId: activeConvId,
-          currentCode,
-          autoRefine: true,
-          autoLearn: true,
-        },
-      });
+        const response = await supabase.functions.invoke("smart-orchestrator", {
+          body: {
+            userRequest: userMessage,
+            conversationId: activeConvId,
+            currentCode,
+            autoRefine: true,
+            autoLearn: true,
+          },
+        });
 
-      clearInterval(progressInterval);
-      setProgress(100);
+        clearInterval(progressInterval);
+        data = response.data;
+        error = response.error;
+        setProgress(100);
+      }
 
       if (error) throw error;
 
-      // Extract results
-      const assistantContent = data.plan?.architecture_overview || 
-        "I've generated the code based on your request with smart optimization.";
-      const generatedCode = data.finalCode;
+      // Extract results based on path taken
+      const assistantContent = isSimpleChange 
+        ? (data.explanation || "Updated the code with your changes.")
+        : (data.plan?.architecture_overview || "I've generated the code based on your request with smart optimization.");
+      const generatedCode = isSimpleChange ? data.updatedCode : data.finalCode;
       
       // Add assistant message with orchestration info
       const assistantMsg: Message = {
@@ -223,7 +249,11 @@ export const ChatInterface = ({
         content: assistantContent,
         generated_code: generatedCode,
         created_at: new Date().toISOString(),
-        orchestration: {
+        orchestration: isSimpleChange ? {
+          phases: ['smart-diff'],
+          duration: data.processingTime || 1000,
+          qualityScore: undefined
+        } : {
           phases: data.phases?.map((p: any) => p.name) || [],
           duration: data.totalDuration || 0,
           qualityScore: data.qualityMetrics?.finalScore
