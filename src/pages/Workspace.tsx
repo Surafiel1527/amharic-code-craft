@@ -318,6 +318,7 @@ export default function Workspace() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const userInput = input;
     setInput("");
     setIsLoading(true);
 
@@ -329,7 +330,59 @@ export default function Workspace() {
     });
 
     try {
-      // Get current session to ensure we have a valid token
+      // Detect if this is conversational (not a code request)
+      const conversationalPatterns = /^(thank you|thanks|thx|ok|okay|great|awesome|nice|cool|got it|understood|yes|no|hi|hello|hey|bye|help|what|how|when|why|can you|could you|please|let's|discuss|proposal|question|tell me|explain|show me)[\s\?\!\.]*$/i;
+      const isConversational = conversationalPatterns.test(userInput.trim()) || 
+                               (userInput.trim().length < 50 && !userInput.match(/\b(create|build|add|make|generate|update|change|modify|fix|remove|delete)\b/i));
+
+      if (isConversational) {
+        // Handle conversational messages with simple AI chat
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          throw new Error('No active session. Please log in again.');
+        }
+
+        // Get recent conversation context (last 10 messages)
+        const conversationHistory = messages.slice(-10).map(m => ({
+          role: m.role,
+          content: m.content
+        }));
+
+        // Use a simple chat endpoint for conversation
+        const { data, error } = await supabase.functions.invoke('chat-generate', {
+          body: {
+            message: userInput,
+            conversationHistory,
+            currentCode: null // Don't include code for casual chat
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+
+        if (error) throw error;
+
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: data.message || "I'm here to help! What would you like to work on?",
+          timestamp: new Date().toISOString()
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+
+        // Save assistant message to database
+        await supabase.from('messages').insert({
+          conversation_id: conversationId,
+          role: assistantMessage.role,
+          content: assistantMessage.content
+        });
+
+        setIsLoading(false);
+        return;
+      }
+
+      // For code requests, use the full orchestrator
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -339,12 +392,19 @@ export default function Workspace() {
       // Initialize orchestration tracking
       setCurrentOrchestration({ phases: [] });
 
+      // Get conversation context for better understanding
+      const conversationHistory = messages.slice(-5).map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+
       // Use smart orchestrator for enhancement
       const { data, error } = await supabase.functions.invoke('smart-orchestrator', {
         body: {
-          userRequest: input,
+          userRequest: userInput,
           conversationId,
           currentCode: project.html_code,
+          conversationHistory, // Pass context
           autoRefine: true,
           autoLearn: true
         },
@@ -408,7 +468,7 @@ export default function Workspace() {
           project_id: project.id,
           version_number: nextVersion,
           html_code: finalCode,
-          changes_summary: input.substring(0, 200)
+          changes_summary: userInput.substring(0, 200)
         })
       ]);
 
