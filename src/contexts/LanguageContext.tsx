@@ -40,7 +40,7 @@ const translations = {
     "examples.portfolioPrompt": "Create a portfolio website for an artist or photographer. Include work showcase section, about me, and contact form. Artistic and beautiful design.",
     
     // Tabs
-    "tabs.quick": "Quick Create",
+    "tabs.quick": "Generate",
     "tabs.quickHistory": "Recent Generations",
     "tabs.templates": "Templates",
     "tabs.images": "Images",
@@ -49,7 +49,7 @@ const translations = {
     "tabs.chatMode": "Chat Mode",
     "tabs.loadGeneration": "Load",
     "tabs.noHistory": "No previous generations yet",
-    "tabs.noHistoryDesc": "Your Quick Create history will appear here",
+    "tabs.noHistoryDesc": "Your generated projects will appear here",
     "tabs.generatedAgo": "Generated",
     
     // Editor
@@ -600,7 +600,7 @@ const translations = {
     "examples.portfolioPrompt": "ለአርቲስት ወይም ፎቶግራፈር የፖርትፎሊዮ ድህረ ገፅ ፍጠር። የስራ ማሳያ ክፍል፣ ስለኔ፣ እና የመገናኛ ቅጽ። ጥበባዊ እና ውበት ያለው ዲዛይን።",
     
     // Tabs
-    "tabs.quick": "ፈጣን ፈጠራ",
+    "tabs.quick": "ፍጠር",
     "tabs.quickHistory": "የቅርብ ጊዜ ማመንጨቶች",
     "tabs.templates": "አብነቶች",
     "tabs.images": "ምስሎች",
@@ -609,7 +609,7 @@ const translations = {
     "tabs.chatMode": "የውይይት ሁነታ",
     "tabs.loadGeneration": "ጫን",
     "tabs.noHistory": "እስካሁን ቀደም ያሉ ማመንጨቶች የሉም",
-    "tabs.noHistoryDesc": "የእርስዎ የፈጣን ፈጠራ ታሪክ እዚህ ይታያል",
+    "tabs.noHistoryDesc": "የተፈጠሩ ፕሮጀክቶችዎ እዚህ ይታያሉ",
     "tabs.generatedAgo": "የተፈጠረ",
     
     // Editor
