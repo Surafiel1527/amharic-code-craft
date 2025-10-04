@@ -48,7 +48,10 @@ const Auth = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session && event !== 'PASSWORD_RECOVERY') {
         console.log('✅ Auth page: User logged in, redirecting to dashboard');
-        navigate("/", { replace: true });
+        // Add a small delay before redirect to ensure session is fully established
+        setTimeout(() => {
+          navigate("/", { replace: true });
+        }, 300);
       }
     });
 

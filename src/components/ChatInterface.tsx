@@ -69,13 +69,14 @@ export const ChatInterface = ({
       console.log('🚀 Auto-sending initial prompt:', autoSendPrompt);
       hasAutoSent.current = true;
       
-      // Send directly with the prompt text (don't rely on state)
+      // Add a longer delay to ensure auth session is fully established
       setTimeout(() => {
+        console.log('📤 Executing auto-send now...');
         handleSend(autoSendPrompt);
         if (onAutoSendComplete) {
           onAutoSendComplete();
         }
-      }, 500);
+      }, 1500); // Increased delay to 1.5 seconds
     }
   }, [autoSendPrompt, conversationId, conversationLoaded, isLoading]);
 
@@ -217,12 +218,22 @@ export const ChatInterface = ({
     
     if (!messageText || isLoading) return;
 
-    // Check authentication first
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    // Check authentication and ensure session is valid
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      console.error('❌ No valid session:', sessionError);
       toast.error("Please log in to use AI generation");
       return;
     }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error('❌ User not authenticated:', authError);
+      toast.error("Please log in to use AI generation");
+      return;
+    }
+    
+    console.log('✅ User authenticated:', user.id);
 
     const userMessage = messageText;
     const hasActiveProject = !!activeProjectCode;

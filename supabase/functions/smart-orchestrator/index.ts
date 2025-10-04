@@ -15,15 +15,29 @@ serve(async (req) => {
   try {
     const { userRequest, conversationId, currentCode, autoRefine = true, autoLearn = true } = await req.json();
     
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No Authorization header provided');
+      throw new Error('Missing authorization header');
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error('Unauthorized');
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError) {
+      console.error('Authentication error:', authError);
+      throw new Error(`Authentication failed: ${authError.message}`);
+    }
+    if (!user) {
+      console.error('No user found in session');
+      throw new Error('Unauthorized: No valid user session');
+    }
+    
+    console.log('Authenticated user:', user.id);
 
     const startTime = Date.now();
     const phases: any[] = [];
