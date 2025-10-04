@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code } from "lucide-react";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code, Maximize2, Minimize2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -114,6 +114,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<"quick" | "templates" | "images">("quick");
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [showAIFeatures, setShowAIFeatures] = useState(false);
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [quickHistory, setQuickHistory] = useState<Project[]>([]);
@@ -566,9 +567,9 @@ const Index = () => {
 
       {/* Main Content */}
       <section className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
-        <div className={`grid ${showAIFeatures ? 'lg:grid-cols-[1fr_2fr_350px]' : 'lg:grid-cols-[300px_1fr_2fr]'} gap-4 max-w-full mx-auto`}>
+        <div className={`grid ${isPreviewExpanded ? 'lg:grid-cols-1' : showAIFeatures ? 'lg:grid-cols-[1fr_2fr_350px]' : 'lg:grid-cols-[300px_1fr_2fr]'} gap-4 max-w-full mx-auto`}>
           {/* Sidebar - Conversations List - Hidden on Mobile */}
-          {mode === "chat" && (
+          {mode === "chat" && !isPreviewExpanded && (
             <Card className="hidden lg:block p-4 space-y-4 h-[calc(100vh-350px)] flex-col">
               <h3 className="font-semibold text-sm">{t("chat.conversations")}</h3>
               <ConversationSidebar
@@ -582,6 +583,7 @@ const Index = () => {
           )}
 
           {/* Editor Panel */}
+          {!isPreviewExpanded && (
           <Card className={`p-6 space-y-4 bg-card border-border shadow-lg ${mode === "chat" ? "" : "lg:col-span-2"}`}>
             {mode === "quick" ? (
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "quick" | "templates" | "images")}>
@@ -756,15 +758,30 @@ const Index = () => {
               </Tabs>
             )}
           </Card>
+          )}
 
           {/* Preview Panel */}
-          <Card className="p-6 space-y-4 bg-card border-border shadow-lg">
+          <Card className={`p-6 space-y-4 bg-card border-border shadow-lg ${isPreviewExpanded ? 'col-span-full' : ''}`}>
             <div className="flex items-center justify-between">
               <label className="text-sm font-semibold flex items-center gap-2">
                 🎨 {t("chat.preview")}
               </label>
               {generatedCode && (
                 <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsPreviewExpanded(!isPreviewExpanded)}
+                    className="gap-2"
+                    title={isPreviewExpanded ? "Exit full screen" : "Full screen"}
+                  >
+                    {isPreviewExpanded ? (
+                      <Minimize2 className="h-3 w-3" />
+                    ) : (
+                      <Maximize2 className="h-3 w-3" />
+                    )}
+                  </Button>
+                  {!isPreviewExpanded && (
                   <Button
                     variant={showAIFeatures ? "default" : "outline"}
                     size="sm"
@@ -774,6 +791,7 @@ const Index = () => {
                     <Sparkles className="h-3 w-3" />
                     AI
                   </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={copyCode} className="gap-2">
                     {copied ? (
                       <>
@@ -799,7 +817,7 @@ const Index = () => {
           </Card>
 
           {/* AI Features Panel */}
-          {showAIFeatures && generatedCode && (
+          {showAIFeatures && generatedCode && !isPreviewExpanded && (
             <div className="space-y-4">
               <Tabs defaultValue="analysis" className="w-full">
                 <TabsList className="grid w-full grid-cols-6 lg:grid-cols-15">

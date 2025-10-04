@@ -40,7 +40,7 @@ export function DevicePreview({ generatedCode }: DevicePreviewProps) {
         })}
       </div>
 
-      <div className="relative rounded-lg border border-border bg-background/50 overflow-hidden h-[calc(100vh-450px)] flex items-start justify-center">
+      <div className="relative rounded-lg border border-border bg-background/50 overflow-hidden h-[calc(100vh-250px)] flex items-start justify-center">
         {generatedCode ? (
           <div
             className={cn(
