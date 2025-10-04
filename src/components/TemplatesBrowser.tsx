@@ -26,12 +26,41 @@ interface TemplatesBrowserProps {
   onSelectTemplate: (template: Template) => void;
 }
 
+// Template content translations
+const templateTranslations: Record<string, Record<string, string>> = {
+  // Titles
+  "የቡና ቤት ድህረ ገፅ": { en: "Coffee Shop Website", am: "የቡና ቤት ድህረ ገፅ" },
+  "የግል ብሎግ": { en: "Personal Blog", am: "የግል ብሎግ" },
+  "የፖርትፎሊዮ ድህረ ገፅ": { en: "Portfolio Website", am: "የፖርትፎሊዮ ድህረ ገፅ" },
+  
+  // Descriptions
+  "ለቡና ቤት ሙሉ ተግባራዊ ድህረ ገፅ": { en: "Full functional website for coffee shop", am: "ለቡና ቤት ሙሉ ተግባራዊ ድህረ ገፅ" },
+  "ለግል ብሎግ ዘመናዊ ድህረ ገፅ": { en: "Modern website for personal blog", am: "ለግል ብሎግ ዘመናዊ ድህረ ገፅ" },
+  "ለአርቲስቶች እና ፎቶግራፈሮች": { en: "For artists and photographers", am: "ለአርቲስቶች እና ፎቶግራፈሮች" },
+  
+  // Categories & Tags
+  "ቡና": { en: "Coffee", am: "ቡና" },
+  "ንግድ": { en: "Business", am: "ንግድ" },
+  "ምግብ": { en: "Food", am: "ምግብ" },
+  "ብሎግ": { en: "Blog", am: "ብሎግ" },
+  "የግል": { en: "Personal", am: "የግል" },
+  "ፖርትፎሊዮ": { en: "Portfolio", am: "ፖርትፎሊዮ" },
+  "ስነ-ጥበብ": { en: "Art", am: "ስነ-ጥበብ" },
+};
+
 export const TemplatesBrowser = ({ onSelectTemplate }: TemplatesBrowserProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+
+  const translateText = (text: string): string => {
+    if (templateTranslations[text]) {
+      return templateTranslations[text][language] || text;
+    }
+    return text;
+  };
 
   useEffect(() => {
     fetchTemplates();
@@ -71,13 +100,17 @@ export const TemplatesBrowser = ({ onSelectTemplate }: TemplatesBrowserProps) =>
     }
   };
 
-  const categories = ['all', ...new Set(templates.map(t => t.category))];
+  const categories = ['all', ...new Set(templates.map(t => translateText(t.category)))];
 
   const filteredTemplates = templates.filter(template => {
-    const matchesSearch = template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         template.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory = selectedCategory === 'all' || template.category === selectedCategory;
+    const translatedTitle = translateText(template.title);
+    const translatedDesc = translateText(template.description);
+    const translatedTags = template.tags.map(translateText);
+    
+    const matchesSearch = translatedTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         translatedDesc.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         translatedTags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory = selectedCategory === 'all' || translateText(template.category) === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -129,13 +162,13 @@ export const TemplatesBrowser = ({ onSelectTemplate }: TemplatesBrowserProps) =>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      {template.title}
+                      {translateText(template.title)}
                       {template.is_featured && (
                         <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
                       )}
                     </CardTitle>
                     <CardDescription className="mt-2">
-                      {template.description}
+                      {translateText(template.description)}
                     </CardDescription>
                   </div>
                 </div>
@@ -144,7 +177,7 @@ export const TemplatesBrowser = ({ onSelectTemplate }: TemplatesBrowserProps) =>
                 <div className="flex flex-wrap gap-2">
                   {template.tags.slice(0, 3).map((tag, index) => (
                     <Badge key={index} variant="secondary" className="text-xs">
-                      {tag}
+                      {translateText(tag)}
                     </Badge>
                   ))}
                 </div>
