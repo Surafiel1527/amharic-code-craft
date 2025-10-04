@@ -57,7 +57,28 @@ export const ChatInterface = ({
     }
   }, [conversationId]);
 
-  // Auto-send removed - generation now happens on Dashboard before navigation
+  // Auto-send initial prompt after conversation is loaded
+  useEffect(() => {
+    if (
+      autoSendPrompt && 
+      conversationId && 
+      conversationLoaded && 
+      !isLoading && 
+      !hasAutoSent.current
+    ) {
+      console.log('🚀 Auto-sending initial prompt:', autoSendPrompt);
+      hasAutoSent.current = true;
+      
+      // Longer delay to ensure auth session is fully established
+      setTimeout(() => {
+        console.log('📤 Executing auto-send now...');
+        handleSend(autoSendPrompt);
+        if (onAutoSendComplete) {
+          onAutoSendComplete();
+        }
+      }, 2000); // 2 second delay for stable auth
+    }
+  }, [autoSendPrompt, conversationId, conversationLoaded, isLoading]);
 
   useEffect(() => {
     scrollToBottom();
