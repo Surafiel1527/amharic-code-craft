@@ -283,7 +283,7 @@ function AdminContent() {
               className="gap-2"
             >
               <Code className="h-4 w-4" />
-              AI Builder
+              {t("adminPage.aiBuilder")}
             </Button>
             <DynamicComponent name="Button-EditPage">
               <Button
@@ -295,12 +295,12 @@ function AdminContent() {
                 {isEditMode ? (
                   <>
                     <Check className="h-4 w-4" />
-                    Exit Edit Mode
+                    {t("adminPage.exitEditMode")}
                   </>
                 ) : (
                   <>
                     <Edit3 className="h-4 w-4" />
-                    Edit Page
+                    {t("adminPage.editPage")}
                   </>
                 )}
               </Button>
@@ -338,7 +338,7 @@ function AdminContent() {
                   className="gap-2 w-full"
                 >
                   <Code className="h-4 w-4" />
-                  AI Builder
+                  {t("adminPage.aiBuilder")}
                 </Button>
                 <Button
                   variant={isEditMode ? "default" : "outline"}
@@ -349,12 +349,12 @@ function AdminContent() {
                   {isEditMode ? (
                     <>
                       <Check className="h-4 w-4" />
-                      Exit Edit Mode
+                      {t("adminPage.exitEditMode")}
                     </>
                   ) : (
                     <>
                       <Edit3 className="h-4 w-4" />
-                      Edit Page
+                      {t("adminPage.editPage")}
                     </>
                   )}
                 </Button>
@@ -442,23 +442,23 @@ function AdminContent() {
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto gap-2">
             <TabsTrigger value="users" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
               <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Users & Stats</span>
-              <span className="sm:hidden">Users</span>
+              <span className="hidden sm:inline">{t("adminPage.usersAndStats")}</span>
+              <span className="sm:hidden">{t("adminPage.users")}</span>
             </TabsTrigger>
             <TabsTrigger value="ai" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
               <Brain className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">AI System</span>
-              <span className="sm:hidden">AI</span>
+              <span className="hidden sm:inline">{t("adminPage.aiSystem")}</span>
+              <span className="sm:hidden">{t("adminPage.ai")}</span>
             </TabsTrigger>
             <TabsTrigger value="healing" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
               <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Self-Healing</span>
-              <span className="sm:hidden">Healing</span>
+              <span className="hidden sm:inline">{t("adminPage.selfHealing")}</span>
+              <span className="sm:hidden">{t("adminPage.healing")}</span>
             </TabsTrigger>
             <TabsTrigger value="customize" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
               <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Self-Modify</span>
-              <span className="sm:hidden">Modify</span>
+              <span className="hidden sm:inline">{t("adminPage.selfModify")}</span>
+              <span className="sm:hidden">{t("adminPage.modify")}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -522,10 +522,10 @@ function AdminContent() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Shield className="w-5 h-5" />
-                    Self-Healing System Monitor
+                    {t("adminPage.selfHealingTitle")}
                   </CardTitle>
                   <CardDescription>
-                    Real-time error detection, auto-fix generation, and system health monitoring
+                    {t("adminPage.selfHealingDesc")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

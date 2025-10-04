@@ -9,8 +9,10 @@ import { useToast } from "@/hooks/use-toast";
 import { AIMetricsChart } from "@/components/AIMetricsChart";
 import { AISystemDocs } from "@/components/AISystemDocs";
 import { PromptVersionManager } from "@/components/PromptVersionManager";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const AIAnalytics = () => {
+  const { t } = useLanguage();
   const [analytics, setAnalytics] = useState<any[]>([]);
   const [improvements, setImprovements] = useState<any[]>([]);
   const [patterns, setPatterns] = useState<any[]>([]);
@@ -109,19 +111,19 @@ export const AIAnalytics = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold">AI Self-Improvement System</h2>
-          <p className="text-muted-foreground">Track and improve AI performance automatically</p>
+          <h2 className="text-3xl font-bold">{t("aiAnalytics.title")}</h2>
+          <p className="text-muted-foreground">{t("aiAnalytics.subtitle")}</p>
         </div>
         <Button onClick={triggerMetaImprovement} disabled={improving}>
           {improving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Analyzing...
+              {t("aiAnalytics.analyzing")}
             </>
           ) : (
             <>
               <Brain className="mr-2 h-4 w-4" />
-              Trigger Improvement
+              {t("aiAnalytics.triggerImprovement")}
             </>
           )}
         </Button>
@@ -129,18 +131,18 @@ export const AIAnalytics = () => {
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview">{t("aiAnalytics.overview")}</TabsTrigger>
           <TabsTrigger value="charts">
             <BarChart3 className="h-4 w-4 mr-2" />
-            Charts
+            {t("aiAnalytics.charts")}
           </TabsTrigger>
-          <TabsTrigger value="ab-testing">A/B Testing</TabsTrigger>
-          <TabsTrigger value="improvements">AI Improvements</TabsTrigger>
-          <TabsTrigger value="patterns">Error Patterns</TabsTrigger>
-          <TabsTrigger value="analytics">Recent Generations</TabsTrigger>
+          <TabsTrigger value="ab-testing">{t("aiAnalytics.abTesting")}</TabsTrigger>
+          <TabsTrigger value="improvements">{t("aiAnalytics.improvements")}</TabsTrigger>
+          <TabsTrigger value="patterns">{t("aiAnalytics.errorPatterns")}</TabsTrigger>
+          <TabsTrigger value="analytics">{t("aiAnalytics.recentGenerations")}</TabsTrigger>
           <TabsTrigger value="docs">
             <BookOpen className="h-4 w-4 mr-2" />
-            Documentation
+            {t("aiAnalytics.documentation")}
           </TabsTrigger>
         </TabsList>
 
@@ -149,36 +151,36 @@ export const AIAnalytics = () => {
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("aiAnalytics.successRate")}</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{metrics.successRate}%</div>
                 <p className="text-xs text-muted-foreground">
-                  {analytics.filter(a => a.status === 'success').length} of {metrics.totalGenerations}
+                  {analytics.filter(a => a.status === 'success').length} {t("aiAnalytics.of")} {metrics.totalGenerations}
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">User Satisfaction</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("aiAnalytics.userSatisfaction")}</CardTitle>
                 <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{metrics.avgSatisfaction}/5</div>
-                <p className="text-xs text-muted-foreground">Average rating</p>
+                <p className="text-xs text-muted-foreground">{t("aiAnalytics.averageRating")}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Generations</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("aiAnalytics.totalGenerations")}</CardTitle>
                 <Brain className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{metrics.totalGenerations}</div>
-                <p className="text-xs text-muted-foreground">All time</p>
+                <p className="text-xs text-muted-foreground">{t("aiAnalytics.allTime")}</p>
               </CardContent>
             </Card>
           </div>
