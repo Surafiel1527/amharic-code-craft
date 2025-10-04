@@ -301,12 +301,12 @@ const Index = () => {
 
       setGeneratedCode(data.html);
       
-      // Auto-save Quick generation to history
+      // Auto-save Quick generation and open in workspace
       const title = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt;
       const { data: project, error: saveError } = await supabase
         .from("projects")
         .insert({
-          title: `Quick: ${title}`,
+          title: title,
           prompt: prompt,
           html_code: data.html,
           user_id: user.id,
@@ -315,11 +315,12 @@ const Index = () => {
         .single();
 
       if (!saveError && project) {
-        setCurrentProjectId(project.id);
-        fetchQuickHistory();
+        toast.success("Project created! Opening workspace...");
+        // Redirect to workspace
+        navigate(`/workspace/${project.id}`);
+      } else {
+        toast.success(t("toast.generated"));
       }
-
-      toast.success(t("toast.generated"));
     } catch (error) {
       console.error("Error generating website:", error);
     } finally {

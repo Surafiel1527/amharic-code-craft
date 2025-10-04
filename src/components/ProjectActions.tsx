@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Share2, Link2, Heart, Eye, Code, Check, Copy } from "lucide-react";
+import { Share2, Link2, Heart, Eye, Code, Check, Copy, FolderOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -36,8 +37,14 @@ interface ProjectActionsProps {
 
 export const ProjectActions = ({ project, onUpdate }: ProjectActionsProps) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const openInWorkspace = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/workspace/${project.id}`);
+  };
 
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -98,58 +105,72 @@ export const ProjectActions = ({ project, onUpdate }: ProjectActionsProps) => {
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-col gap-2">
+      {/* Primary Action - Open in Workspace */}
       <Button
-        variant="ghost"
+        variant="default"
         size="sm"
-        onClick={toggleFavorite}
-        className="flex-1"
+        onClick={openInWorkspace}
+        className="w-full"
       >
-        <Heart className={`h-4 w-4 mr-1 ${project.is_favorite ? 'fill-current text-red-500' : ''}`} />
-        <span className="text-xs">{project.is_favorite ? t("projectActions.unfavorite") : t("projectActions.favorite")}</span>
+        <FolderOpen className="h-4 w-4 mr-2" />
+        Open in Workspace
       </Button>
 
-      {project.is_public ? (
-        <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-          <DialogTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="sm" className="flex-1">
-              <Share2 className="h-4 w-4 mr-1" />
-              <span className="text-xs">{t("projectActions.share")}</span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent onClick={(e) => e.stopPropagation()}>
-            <DialogHeader>
-              <DialogTitle>{t("projectActions.shareTitle")}</DialogTitle>
-              <DialogDescription>
-                {t("projectActions.shareDesc")}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex gap-2">
-              <Input
-                value={project.share_token ? `${window.location.origin}/shared/${project.share_token}` : ''}
-                readOnly
-              />
-              <Button onClick={copyShareLink} size="icon">
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      ) : (
+      {/* Secondary Actions */}
+      <div className="flex gap-2">
         <Button
           variant="ghost"
           size="sm"
-          onClick={togglePublic}
+          onClick={toggleFavorite}
           className="flex-1"
         >
-          <Link2 className="h-4 w-4 mr-1" />
-          <span className="text-xs">ይፋ አድርግ</span>
+          <Heart className={`h-4 w-4 mr-1 ${project.is_favorite ? 'fill-current text-red-500' : ''}`} />
+          <span className="text-xs">{project.is_favorite ? t("projectActions.unfavorite") : t("projectActions.favorite")}</span>
         </Button>
-      )}
 
-      <div className="flex items-center gap-1 px-2 text-xs text-muted-foreground">
-        <Eye className="h-3 w-3" />
-        {project.views_count || 0}
+        {project.is_public ? (
+          <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+            <DialogTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="sm" className="flex-1">
+                <Share2 className="h-4 w-4 mr-1" />
+                <span className="text-xs">{t("projectActions.share")}</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent onClick={(e) => e.stopPropagation()}>
+              <DialogHeader>
+                <DialogTitle>{t("projectActions.shareTitle")}</DialogTitle>
+                <DialogDescription>
+                  {t("projectActions.shareDesc")}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex gap-2">
+                <Input
+                  value={project.share_token ? `${window.location.origin}/shared/${project.share_token}` : ''}
+                  readOnly
+                />
+                <Button onClick={copyShareLink} size="icon">
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={togglePublic}
+            className="flex-1"
+          >
+            <Link2 className="h-4 w-4 mr-1" />
+            <span className="text-xs">ይፋ አድርግ</span>
+          </Button>
+        )}
+
+        <div className="flex items-center gap-1 px-2 text-xs text-muted-foreground">
+          <Eye className="h-3 w-3" />
+          {project.views_count || 0}
+        </div>
       </div>
     </div>
   );
