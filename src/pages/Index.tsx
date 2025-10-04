@@ -116,6 +116,7 @@ const Index = () => {
   const [showAIFeatures, setShowAIFeatures] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [quickHistory, setQuickHistory] = useState<Project[]>([]);
 
   // PWA install prompt
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -213,6 +214,7 @@ const Index = () => {
     if (user) {
       fetchRecentProjects();
       fetchConversations();
+      fetchQuickHistory();
     }
   }, [user]);
 
@@ -248,6 +250,21 @@ const Index = () => {
     }
   };
 
+  const fetchQuickHistory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setQuickHistory(data || []);
+    } catch (error) {
+      console.error("Error fetching quick history:", error);
+    }
+  };
+
   const handleQuickGenerate = async () => {
     if (!prompt.trim()) {
       toast.error(t("toast.promptRequired"));
@@ -256,6 +273,11 @@ const Index = () => {
 
     if (!isOnline) {
       toast.error(t("toast.offline"));
+      return;
+    }
+
+    if (!user) {
+      toast.error(t("toast.loginRequired"));
       return;
     }
 
@@ -277,6 +299,25 @@ const Index = () => {
       }
 
       setGeneratedCode(data.html);
+      
+      // Auto-save Quick generation to history
+      const title = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt;
+      const { data: project, error: saveError } = await supabase
+        .from("projects")
+        .insert({
+          title: `Quick: ${title}`,
+          prompt: prompt,
+          html_code: data.html,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (!saveError && project) {
+        setCurrentProjectId(project.id);
+        fetchQuickHistory();
+      }
+
       toast.success(t("toast.generated"));
     } catch (error) {
       console.error("Error generating website:", error);
@@ -560,69 +601,114 @@ const Index = () => {
                 </TabsList>
 
                 <TabsContent value="quick" className="space-y-4 mt-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold">{t("editor.placeholder")}</label>
-                  </div>
-                  
-                  <Textarea
-                    placeholder={t("editor.placeholder")}
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    className="min-h-[200px] resize-none"
-                    dir="auto"
-                  />
-                  
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleQuickGenerate}
-                      disabled={isGenerating || !prompt.trim()}
-                      className="flex-1"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {t("chat.generating")}
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="mr-2 h-4 w-4" />
-                          {t("chat.createWebsite")}
-                        </>
-                      )}
-                    </Button>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {/* Main generation area */}
+                    <div className="lg:col-span-2 space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">{t("editor.placeholder")}</label>
+                      </div>
+                      
+                      <Textarea
+                        placeholder={t("editor.placeholder")}
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        className="min-h-[200px] resize-none"
+                        dir="auto"
+                      />
+                      
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleQuickGenerate}
+                          disabled={isGenerating || !prompt.trim()}
+                          className="flex-1"
+                        >
+                          {isGenerating ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              {t("chat.generating")}
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="mr-2 h-4 w-4" />
+                              {t("chat.createWebsite")}
+                            </>
+                          )}
+                        </Button>
 
-                    {generatedCode && (
-                      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="icon">
-                            <Save className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>{t("chat.saveProject")}</DialogTitle>
-                            <DialogDescription>{t("chat.enterProjectName")}</DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4 pt-4">
-                            <Input
-                              placeholder={t("chat.projectName")}
-                              value={projectTitle}
-                              onChange={(e) => setProjectTitle(e.target.value)}
-                            />
-                            <Button onClick={handleSaveProject} disabled={isSaving} className="w-full">
-                              {isSaving ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  {t("chat.saving")}
-                                </>
-                              ) : (
-                                t("chat.save")
-                              )}
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    )}
+                        {generatedCode && (
+                          <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="icon">
+                                <Save className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>{t("chat.saveProject")}</DialogTitle>
+                                <DialogDescription>{t("chat.enterProjectName")}</DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 pt-4">
+                                <Input
+                                  placeholder={t("chat.projectName")}
+                                  value={projectTitle}
+                                  onChange={(e) => setProjectTitle(e.target.value)}
+                                />
+                                <Button onClick={handleSaveProject} disabled={isSaving} className="w-full">
+                                  {isSaving ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      {t("chat.saving")}
+                                    </>
+                                  ) : (
+                                    t("chat.save")
+                                  )}
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quick History Panel */}
+                    <div className="lg:col-span-1">
+                      <Card className="p-4 h-full">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <h3 className="font-semibold text-sm">{t("tabs.quickHistory")}</h3>
+                        </div>
+                        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                          {quickHistory.length === 0 ? (
+                            <div className="text-center py-8">
+                              <Clock className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
+                              <p className="text-sm font-medium text-muted-foreground">{t("tabs.noHistory")}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{t("tabs.noHistoryDesc")}</p>
+                            </div>
+                          ) : (
+                            quickHistory.map((item) => (
+                              <Card key={item.id} className="p-3 hover:bg-accent/50 transition-colors">
+                                <div className="flex flex-col gap-2">
+                                  <p className="text-sm font-medium line-clamp-2">{item.title.replace('Quick: ', '')}</p>
+                                  <div className="flex items-center text-xs text-muted-foreground">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    <span>{t("tabs.generatedAgo")} {new Date(item.created_at).toLocaleDateString()}</span>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full mt-1"
+                                    onClick={() => loadProject(item)}
+                                  >
+                                    <Code className="h-3 w-3 mr-1" />
+                                    {t("tabs.loadGeneration")}
+                                  </Button>
+                                </div>
+                              </Card>
+                            ))
+                          )}
+                        </div>
+                      </Card>
+                    </div>
                   </div>
                 </TabsContent>
 
