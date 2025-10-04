@@ -862,27 +862,61 @@ export default function Dashboard() {
             
             {/* Template Selection */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Template (Optional)</Label>
+              <Label className="text-sm font-medium">Quick Start Templates</Label>
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { id: "blank", label: "Blank", icon: "✨" },
-                  { id: "website", label: "Website", icon: "🌐" },
-                  { id: "game", label: "Game", icon: "🎮" },
-                  { id: "app", label: "App", icon: "📱" }
+                  { 
+                    id: "blank", 
+                    label: "Blank", 
+                    icon: "✨",
+                    projectName: "My Project",
+                    description: "Describe what you want to build..."
+                  },
+                  { 
+                    id: "website", 
+                    label: "Website", 
+                    icon: "🌐",
+                    projectName: "Business Website",
+                    description: "Create a modern, responsive business website with a hero section, services showcase, testimonials, and contact form. Include smooth scrolling navigation and mobile-friendly design."
+                  },
+                  { 
+                    id: "game", 
+                    label: "Game", 
+                    icon: "🎮",
+                    projectName: "Interactive Game",
+                    description: "Build a fun browser-based game with score tracking, multiple levels, sound effects, and smooth animations. Include a start screen, game over screen, and high score persistence."
+                  },
+                  { 
+                    id: "app", 
+                    label: "App", 
+                    icon: "📱",
+                    projectName: "Web Application",
+                    description: "Create a full-featured web application with user authentication, data management, real-time updates, and a clean, intuitive interface. Include dashboard, settings, and responsive design."
+                  }
                 ].map((template) => (
                   <Button
                     key={template.id}
                     type="button"
                     variant={newProject.template === template.id ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setNewProject(prev => ({ ...prev, template: template.id }))}
-                    className="flex flex-col items-center gap-1 h-auto py-3"
+                    onClick={() => {
+                      setNewProject(prev => ({ 
+                        ...prev, 
+                        template: template.id,
+                        title: template.projectName,
+                        prompt: template.description
+                      }));
+                      // Clear any validation errors
+                      setValidationErrors({});
+                    }}
+                    className="flex flex-col items-center gap-1 h-auto py-3 transition-all hover:scale-105"
                   >
                     <span className="text-xl">{template.icon}</span>
                     <span className="text-xs">{template.label}</span>
                   </Button>
                 ))}
               </div>
+              <p className="text-xs text-muted-foreground">Click a template to auto-fill project details</p>
             </div>
 
             {/* Project Description/Prompt */}
