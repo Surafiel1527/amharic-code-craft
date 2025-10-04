@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Project {
   id: string;
@@ -34,6 +35,7 @@ interface ProjectActionsProps {
 }
 
 export const ProjectActions = ({ project, onUpdate }: ProjectActionsProps) => {
+  const { t } = useLanguage();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -77,11 +79,11 @@ export const ProjectActions = ({ project, onUpdate }: ProjectActionsProps) => {
         .eq("id", project.id);
 
       if (error) throw error;
-      toast.success(project.is_public ? "ፕሮጀክት የግል ሆነ" : "ፕሮጀክት ይፋ ሆነ");
+      toast.success(project.is_public ? t("privacy.madePrivate") : t("privacy.madePublic"));
       onUpdate();
     } catch (error) {
       console.error("Error toggling public:", error);
-      toast.error("ስህተት ተከስቷል");
+      toast.error(t("privacy.error"));
     }
   };
 
@@ -90,7 +92,7 @@ export const ProjectActions = ({ project, onUpdate }: ProjectActionsProps) => {
       const shareUrl = `${window.location.origin}/shared/${project.share_token}`;
       navigator.clipboard.writeText(shareUrl);
       setCopied(true);
-      toast.success("አገናኝ ተቀድቷል!");
+      toast.success(t("privacy.linkCopied"));
       setTimeout(() => setCopied(false), 2000);
     }
   };
@@ -104,7 +106,7 @@ export const ProjectActions = ({ project, onUpdate }: ProjectActionsProps) => {
         className="flex-1"
       >
         <Heart className={`h-4 w-4 mr-1 ${project.is_favorite ? 'fill-current text-red-500' : ''}`} />
-        <span className="text-xs">{project.is_favorite ? 'ተወዳጅ' : 'አስተወድድ'}</span>
+        <span className="text-xs">{project.is_favorite ? t("projectActions.unfavorite") : t("projectActions.favorite")}</span>
       </Button>
 
       {project.is_public ? (
@@ -112,14 +114,14 @@ export const ProjectActions = ({ project, onUpdate }: ProjectActionsProps) => {
           <DialogTrigger asChild onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="sm" className="flex-1">
               <Share2 className="h-4 w-4 mr-1" />
-              <span className="text-xs">አጋራ</span>
+              <span className="text-xs">{t("projectActions.share")}</span>
             </Button>
           </DialogTrigger>
           <DialogContent onClick={(e) => e.stopPropagation()}>
             <DialogHeader>
-              <DialogTitle>ፕሮጀክት አጋራ</DialogTitle>
+              <DialogTitle>{t("projectActions.shareTitle")}</DialogTitle>
               <DialogDescription>
-                ፕሮጀክቱን ለሌሎች ለማጋራት ይህንን አገናኝ ይጠቀሙ
+                {t("projectActions.shareDesc")}
               </DialogDescription>
             </DialogHeader>
             <div className="flex gap-2">

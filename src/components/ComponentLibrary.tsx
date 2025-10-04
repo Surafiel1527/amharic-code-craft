@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Layers, Copy, Check, Search } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Component {
   id: string;
@@ -157,6 +158,7 @@ const COMPONENT_LIBRARY: Component[] = [
 ];
 
 export const ComponentLibrary = () => {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -182,10 +184,10 @@ export const ComponentLibrary = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Layers className="w-5 h-5" />
-          የአካላት ቤተ-መዛግብት
+          {t("componentLibrary.title")}
         </CardTitle>
         <CardDescription>
-          ወደ ፕሮጀክትዎ የተዘጋጁ አካላትን ያስገቡ
+          {t("componentLibrary.subtitle")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -193,7 +195,7 @@ export const ComponentLibrary = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
-              placeholder="አካላትን ይፈልጉ..."
+              placeholder={t("componentLibrary.search")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Lock, Eye, EyeOff, Share2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface PrivacySettingsProps {
   projectId: string;
@@ -13,6 +14,7 @@ interface PrivacySettingsProps {
 }
 
 export const PrivacySettings = ({ projectId, onUpdate }: PrivacySettingsProps) => {
+  const { t } = useLanguage();
   const [isPublic, setIsPublic] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,11 +70,11 @@ export const PrivacySettings = ({ projectId, onUpdate }: PrivacySettingsProps) =
 
       setIsPublic(!isPublic);
       setShareToken(newShareToken);
-      toast.success(!isPublic ? "ፕሮጀክት ይፋ ሆነ" : "ፕሮጀክት የግል ሆነ");
+      toast.success(!isPublic ? t("privacy.madePublic") : t("privacy.madePrivate"));
       onUpdate();
     } catch (error) {
       console.error("Error updating privacy:", error);
-      toast.error("ስህተት ተከስቷል");
+      toast.error(t("privacy.error"));
     } finally {
       setSaving(false);
     }
@@ -82,7 +84,7 @@ export const PrivacySettings = ({ projectId, onUpdate }: PrivacySettingsProps) =
     if (shareToken) {
       const shareUrl = `${window.location.origin}/shared/${shareToken}`;
       navigator.clipboard.writeText(shareUrl);
-      toast.success("አገናኝ ተቀድቷል!");
+      toast.success(t("privacy.linkCopied"));
     }
   };
 
@@ -90,7 +92,7 @@ export const PrivacySettings = ({ projectId, onUpdate }: PrivacySettingsProps) =
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <div className="animate-pulse">መረጃ እየተጫነ ነው...</div>
+          <div className="animate-pulse">{t("insights.loading")}</div>
         </CardContent>
       </Card>
     );
@@ -101,10 +103,10 @@ export const PrivacySettings = ({ projectId, onUpdate }: PrivacySettingsProps) =
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Lock className="w-5 h-5" />
-          የግላዊነት እና የማጋራት ቅንብሮች
+          {t("privacy.title")}
         </CardTitle>
         <CardDescription>
-          ፕሮጀክትዎን ማን ማየት እና መድረስ እንደሚችል ይቆጣጠሩ
+          {t("privacy.subtitle")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -113,12 +115,12 @@ export const PrivacySettings = ({ projectId, onUpdate }: PrivacySettingsProps) =
           <div className="space-y-0.5">
             <Label className="text-base font-semibold flex items-center gap-2">
               {isPublic ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              {isPublic ? "ይፋ ፕሮጀክት" : "የግል ፕሮጀክት"}
+              {isPublic ? t("privacy.public") : t("privacy.private")}
             </Label>
             <p className="text-sm text-muted-foreground">
               {isPublic 
-                ? "ማንኛውም ሰው ይህንን ፕሮጀክት ማየት ይችላል"
-                : "እርስዎ ብቻ ይህንን ፕሮጀክት ማየት ይችላሉ"
+                ? t("privacy.publicDesc")
+                : t("privacy.privateDesc")
               }
             </p>
           </div>

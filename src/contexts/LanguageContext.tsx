@@ -216,6 +216,44 @@ const translations = {
     "insights.loading": "Loading data...",
     "insights.times": "times",
     "insights.projects": "projects",
+    
+    // AI Assistant
+    "aiAssistant.title": "AI Smart Assistant",
+    "aiAssistant.subtitle": "Ask about your project, get help, and receive tips",
+    "aiAssistant.placeholder": "Ask a question or get help",
+    "aiAssistant.send": "Send",
+    "aiAssistant.sending": "Sending...",
+    
+    // Component Library
+    "componentLibrary.title": "Component Library",
+    "componentLibrary.subtitle": "Insert ready-made components into your project",
+    "componentLibrary.search": "Search components...",
+    "componentLibrary.category": "Category",
+    "componentLibrary.all": "All",
+    "componentLibrary.insert": "Insert",
+    "componentLibrary.preview": "Preview",
+    
+    // Featured Gallery
+    "featuredGallery.noProjects": "No featured projects yet",
+    
+    // Privacy Settings
+    "privacy.title": "Privacy and Sharing Settings",
+    "privacy.subtitle": "Control who can view and access your project",
+    "privacy.public": "Public Project",
+    "privacy.private": "Private Project",
+    "privacy.publicDesc": "Anyone can view this project",
+    "privacy.privateDesc": "Only you can view this project",
+    "privacy.madePublic": "Project made public",
+    "privacy.madePrivate": "Project made private",
+    "privacy.linkCopied": "Link copied!",
+    "privacy.error": "An error occurred",
+    
+    // Project Actions
+    "projectActions.favorite": "Favorite",
+    "projectActions.unfavorite": "Unfavorite",
+    "projectActions.share": "Share",
+    "projectActions.shareTitle": "Share Project",
+    "projectActions.shareDesc": "Use this link to share the project with others",
   },
   am: {
     // Meta
@@ -421,6 +459,44 @@ const translations = {
     "insights.loading": "መረጃ እየተጫነ ነው...",
     "insights.times": "ጊዜ",
     "insights.projects": "ፕሮጀክቶች",
+    
+    // AI Assistant
+    "aiAssistant.title": "AI አስተዋይ ረዳት",
+    "aiAssistant.subtitle": "ስለ ፕሮጀክትዎ ይጠይቁ፣ እገዛ ያግኙ፣ እና ምክሮችን ይቀበሉ",
+    "aiAssistant.placeholder": "ጥያቄ ይጠይቁ ወይም እገዛ ያግኙ",
+    "aiAssistant.send": "ላክ",
+    "aiAssistant.sending": "በመላክ ላይ...",
+    
+    // Component Library
+    "componentLibrary.title": "የአካላት ቤተ-መዛግብት",
+    "componentLibrary.subtitle": "ወደ ፕሮጀክትዎ የተዘጋጁ አካላትን ያስገቡ",
+    "componentLibrary.search": "አካላትን ይፈልጉ...",
+    "componentLibrary.category": "ምድብ",
+    "componentLibrary.all": "ሁሉም",
+    "componentLibrary.insert": "አስገባ",
+    "componentLibrary.preview": "ቅድመ እይታ",
+    
+    // Featured Gallery
+    "featuredGallery.noProjects": "ገና ምንም የተለይ ፕሮጀክት የለም",
+    
+    // Privacy Settings
+    "privacy.title": "የግላዊነት እና የማጋራት ቅንብሮች",
+    "privacy.subtitle": "ፕሮጀክትዎን ማን ማየት እና መድረስ እንደሚችል ይቆጣጠሩ",
+    "privacy.public": "ይፋ ፕሮጀክት",
+    "privacy.private": "የግል ፕሮጀክት",
+    "privacy.publicDesc": "ማንኛውም ሰው ይህንን ፕሮጀክት ማየት ይችላል",
+    "privacy.privateDesc": "እርስዎ ብቻ ይህንን ፕሮጀክት ማየት ይችላሉ",
+    "privacy.madePublic": "ፕሮጀክት ይፋ ሆነ",
+    "privacy.madePrivate": "ፕሮጀክት የግል ሆነ",
+    "privacy.linkCopied": "አገናኝ ተቀድቷል!",
+    "privacy.error": "ስህተት ተከስቷል",
+    
+    // Project Actions
+    "projectActions.favorite": "አስተወድድ",
+    "projectActions.unfavorite": "ተወዳጅ",
+    "projectActions.share": "አጋራ",
+    "projectActions.shareTitle": "ፕሮጀክት አጋራ",
+    "projectActions.shareDesc": "ፕሮጀክቱን ለሌሎች ለማጋራት ይህንን አገናኝ ይጠቀሙ",
   },
 };
 

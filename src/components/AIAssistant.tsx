@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Send, Bot, User } from "lucide-react";
 import { toast } from "sonner";
 import { AICapabilitiesGuide } from "./AICapabilitiesGuide";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -31,6 +32,7 @@ interface AIAssistantProps {
 }
 
 export const AIAssistant = ({ projectContext }: AIAssistantProps) => {
+  const { t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -114,10 +116,10 @@ export const AIAssistant = ({ projectContext }: AIAssistantProps) => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
-            AI አስተዋይ ረዳት
+            {t("aiAssistant.title")}
           </CardTitle>
           <CardDescription>
-            ስለ ፕሮጀክትዎ ይጠይቁ፣ እገዛ ያግኙ፣ እና ምክሮችን ይቀበሉ
+            {t("aiAssistant.subtitle")}
           </CardDescription>
         </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-4 p-4">
@@ -126,7 +128,7 @@ export const AIAssistant = ({ projectContext }: AIAssistantProps) => {
             {messages.length === 0 && (
               <div className="text-center text-muted-foreground py-8">
                 <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>ጥያቄ ይጠይቁ ወይም እገዛ ያግኙ</p>
+                <p>{t("aiAssistant.placeholder")}</p>
               </div>
             )}
 

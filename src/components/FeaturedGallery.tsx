@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Star, Eye, Heart, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface FeaturedProject {
   id: string;
@@ -27,6 +28,7 @@ interface FeaturedProject {
 }
 
 export const FeaturedGallery = () => {
+  const { t } = useLanguage();
   const [featuredProjects, setFeaturedProjects] = useState<FeaturedProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
@@ -105,7 +107,7 @@ export const FeaturedGallery = () => {
       <Card>
         <CardContent className="pt-6 text-center py-12">
           <Star className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <p className="text-muted-foreground">ገና ምንም የተለይ ፕሮጀክት የለም</p>
+          <p className="text-muted-foreground">{t("featuredGallery.noProjects")}</p>
         </CardContent>
       </Card>
     );
