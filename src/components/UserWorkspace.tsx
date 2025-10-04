@@ -59,8 +59,10 @@ export const UserWorkspace = ({
 
   // Sync workingCode with initialCode when it changes (after DB updates)
   useEffect(() => {
-    if (initialCode && initialCode !== "<!-- Initializing workspace... -->") {
+    console.log('📝 UserWorkspace: initialCode changed, length:', initialCode?.length || 0);
+    if (initialCode) {
       setWorkingCode(initialCode);
+      console.log('✅ UserWorkspace: workingCode updated from initialCode');
     }
   }, [initialCode]);
 
@@ -113,6 +115,7 @@ export const UserWorkspace = ({
   };
 
   const handleCodeGenerated = (code: string, shouldSaveVersion: boolean = true) => {
+    console.log('🎨 UserWorkspace: Code generated, length:', code?.length || 0, 'shouldSaveVersion:', shouldSaveVersion);
     setWorkingCode(code);
     onCodeUpdate(code);
     
@@ -120,6 +123,7 @@ export const UserWorkspace = ({
     if (shouldSaveVersion && code !== initialCode) {
       saveVersion(code);
     }
+    console.log('✅ UserWorkspace: workingCode updated to generated code');
   };
 
   const saveVersion = async (code: string) => {

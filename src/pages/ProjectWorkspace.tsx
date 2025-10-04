@@ -137,9 +137,12 @@ export default function ProjectWorkspace() {
     if (!projectId || !conversationId) return;
 
     try {
+      console.log('💾 ProjectWorkspace: Updating code, length:', newCode?.length || 0);
+      
       // Update local state immediately for instant UI feedback
       setConversationCode(newCode);
       setProject((prev) => prev ? { ...prev, html_code: newCode } : null);
+      console.log('✅ ProjectWorkspace: Local state updated');
 
       // Update project code in background
       const { error: projectError } = await supabase
