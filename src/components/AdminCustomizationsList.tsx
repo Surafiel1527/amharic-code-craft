@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PagePreviewDialog } from './PagePreviewDialog';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Customization {
   id: string;
@@ -37,6 +38,7 @@ export default function AdminCustomizationsList() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewPage, setPreviewPage] = useState({ path: '/', title: 'Home' });
   const { toast } = useToast();
+  const { t } = useLanguage();
   
   const getPageName = (path: string) => {
     const pageNames: Record<string, string> = {
@@ -249,7 +251,7 @@ export default function AdminCustomizationsList() {
         <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold flex items-center gap-2">
           <Clock className="h-5 w-5" />
-          Recent Customizations
+          {t('recentCustomizations.title')}
         </h3>
         {customizations.length > 1 && (
           <Button
@@ -258,7 +260,7 @@ export default function AdminCustomizationsList() {
             onClick={clearOldDuplicates}
             className="text-xs"
           >
-            🧹 Clear Old
+            🧹 {t('recentCustomizations.clearOld')}
           </Button>
         )}
       </div>
@@ -290,10 +292,10 @@ export default function AdminCustomizationsList() {
                             variant="outline" 
                             className={statusColors[customization.status as keyof typeof statusColors]}
                           >
-                            {customization.status}
+                            {t(`recentCustomizations.${customization.status}`)}
                           </Badge>
                           <Badge variant="secondary" className="text-xs">
-                            {customization.customization_type}
+                            {t(`recentCustomizations.${customization.customization_type}`)}
                           </Badge>
                           {customization.applied_changes?.page && (
                             <Badge variant="outline" className="text-xs">
@@ -307,58 +309,58 @@ export default function AdminCustomizationsList() {
                       </div>
                     </div>
 
-                    {customization.status === 'pending' && (
-                      <div className="flex flex-row sm:flex-row gap-1.5 flex-shrink-0 w-full sm:w-auto">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            const pagePath = customization.applied_changes?.page || '/';
-                            setPreviewPage({
-                              path: pagePath,
-                              title: getPageName(pagePath)
-                            });
-                            setPreviewOpen(true);
-                          }}
-                          className="gap-1 h-8 px-2 text-xs flex-1 sm:flex-initial"
-                        >
-                          <Eye className="h-3 w-3" />
-                          <span>View</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="default"
-                          onClick={() => approveCustomization(customization.id)}
-                          className="gap-1 h-8 px-2 text-xs flex-1 sm:flex-initial"
-                        >
-                          <CheckCircle className="h-3 w-3" />
-                          <span>Approve</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => rejectCustomization(customization.id)}
-                          className="gap-1 h-8 px-2 text-xs flex-1 sm:flex-initial"
-                        >
-                          <XCircle className="h-3 w-3" />
-                          <span>Reject</span>
-                        </Button>
-                      </div>
-                    )}
+                     {customization.status === 'pending' && (
+                       <div className="flex flex-row sm:flex-row gap-1.5 flex-shrink-0 w-full sm:w-auto">
+                         <Button
+                           size="sm"
+                           variant="outline"
+                           onClick={() => {
+                             const pagePath = customization.applied_changes?.page || '/';
+                             setPreviewPage({
+                               path: pagePath,
+                               title: getPageName(pagePath)
+                             });
+                             setPreviewOpen(true);
+                           }}
+                           className="gap-1 h-8 px-2 text-xs flex-1 sm:flex-initial"
+                         >
+                           <Eye className="h-3 w-3" />
+                           <span>{t('recentCustomizations.view')}</span>
+                         </Button>
+                         <Button
+                           size="sm"
+                           variant="default"
+                           onClick={() => approveCustomization(customization.id)}
+                           className="gap-1 h-8 px-2 text-xs flex-1 sm:flex-initial"
+                         >
+                           <CheckCircle className="h-3 w-3" />
+                           <span>{t('recentCustomizations.approve')}</span>
+                         </Button>
+                         <Button
+                           size="sm"
+                           variant="destructive"
+                           onClick={() => rejectCustomization(customization.id)}
+                           className="gap-1 h-8 px-2 text-xs flex-1 sm:flex-initial"
+                         >
+                           <XCircle className="h-3 w-3" />
+                           <span>{t('recentCustomizations.reject')}</span>
+                         </Button>
+                       </div>
+                     )}
 
-                    {customization.status === 'applied' && (
-                      <div className="flex gap-2 flex-shrink-0">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => reapplyCustomization(customization.prompt)}
-                          className="gap-1"
-                        >
-                          📋 Reuse
-                        </Button>
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                      </div>
-                    )}
+                     {customization.status === 'applied' && (
+                       <div className="flex gap-2 flex-shrink-0">
+                         <Button
+                           size="sm"
+                           variant="outline"
+                           onClick={() => reapplyCustomization(customization.prompt)}
+                           className="gap-1"
+                         >
+                           📋 {t('recentCustomizations.reuse')}
+                         </Button>
+                         <CheckCircle className="h-5 w-5 text-green-500" />
+                       </div>
+                     )}
 
                     {customization.status === 'failed' && (
                       <XCircle className="h-5 w-5 text-red-500 flex-shrink-0" />

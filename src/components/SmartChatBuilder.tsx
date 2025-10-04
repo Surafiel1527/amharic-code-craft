@@ -16,6 +16,7 @@ import { CollaborationIndicator } from "./CollaborationIndicator";
 import { ProjectHistory } from "./ProjectHistory";
 import { useErrorMonitor } from "@/hooks/useErrorMonitor";
 import { useProactiveMonitoring } from "@/hooks/useProactiveMonitoring";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Sheet,
   SheetContent,
@@ -42,6 +43,7 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
   // Error monitoring
   useErrorMonitor();
   const { healthStatus, issuesCount, isHealthy } = useProactiveMonitoring(60);
+  const { t } = useLanguage();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -240,10 +242,10 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
           <div className="flex-1">
             <CardTitle className="flex items-center gap-2">
               <Lightbulb className="h-5 w-5 text-primary" />
-              Enterprise Code Builder
+              {t('aiCodeBuilder.enterpriseTitle')}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              AI with self-healing, version control, real-time collaboration & advanced diff
+              {t('aiCodeBuilder.enterpriseSubtitle')}
             </p>
             <div className="mt-2">
               <CollaborationIndicator />
@@ -343,13 +345,13 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
           <Alert variant="destructive" className="mt-4">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              System health: {healthStatus} - {issuesCount} issue(s) detected. 
+              System health: {healthStatus} - {issuesCount} issue(s) detected.
               <Button 
                 variant="link" 
                 className="h-auto p-0 ml-2"
                 onClick={() => setMonitorOpen(true)}
               >
-                View details
+                {t('aiCodeBuilder.viewDetails')}
               </Button>
             </AlertDescription>
           </Alert>
@@ -364,17 +366,17 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
                 <Lightbulb className="h-4 w-4" />
                 <AlertDescription className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <strong>🚀 Advanced AI Builder - Build Anything!</strong>
+                    <strong>🚀 {t('aiCodeBuilder.advancedTitle')}</strong>
                     <AICapabilitiesGuide />
                   </div>
                   <ul className="mt-2 space-y-1 text-sm">
-                    <li>✨ <strong>Create:</strong> "Build a social media platform with posts, likes, and comments"</li>
-                    <li>🗂️ <strong>Multi-File:</strong> "Generate auth system with login, signup, hooks, and types"</li>
-                    <li>🔧 <strong>Modify:</strong> "Add user profiles and follow system"</li>
-                    <li>🔨 <strong>Auto-Fix:</strong> Errors are detected and fixed automatically</li>
+                    <li>✨ <strong>{t('aiCodeBuilder.createLabel')}</strong> {t('aiCodeBuilder.createExample')}</li>
+                    <li>🗂️ <strong>{t('aiCodeBuilder.multiFileLabel')}</strong> {t('aiCodeBuilder.multiFileExample')}</li>
+                    <li>🔧 <strong>{t('aiCodeBuilder.modifyLabel')}</strong> {t('aiCodeBuilder.modifyExample')}</li>
+                    <li>🔨 <strong>{t('aiCodeBuilder.autoFixLabel')}</strong> {t('aiCodeBuilder.autoFixDescription')}</li>
                   </ul>
                   <div className="mt-3 p-2 bg-primary/5 rounded text-xs">
-                    <strong>🧠 Smart Memory:</strong> Handles 40+ functions | 🛡️ Self-Healing | 📦 Version Control
+                    <strong>🧠 {t('aiCodeBuilder.smartMemory')}</strong> {t('aiCodeBuilder.smartMemoryDescription')} | 🛡️ {t('aiCodeBuilder.selfHealing')} | 📦 {t('aiCodeBuilder.versionControl')}
                   </div>
                 </AlertDescription>
               </Alert>
@@ -442,7 +444,7 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 </div>
                 <div className="bg-muted rounded-lg p-3">
-                  <p className="text-sm">Building your code...</p>
+                  <p className="text-sm">{t('aiCodeBuilder.building')}</p>
                 </div>
               </div>
             )}

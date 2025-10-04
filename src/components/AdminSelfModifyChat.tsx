@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Message {
   id: string;
@@ -27,6 +28,7 @@ export default function AdminSelfModifyChat({ onCustomizationApplied }: AdminSel
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   // Load chat history
   useEffect(() => {
@@ -163,9 +165,9 @@ export default function AdminSelfModifyChat({ onCustomizationApplied }: AdminSel
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
           <div>
-            <h3 className="font-semibold">Admin Self-Modify Chat</h3>
+            <h3 className="font-semibold">{t('selfModifyChat.title')}</h3>
             <p className="text-sm text-muted-foreground">
-              Tell me what you'd like to change in your admin page
+              {t('selfModifyChat.subtitle')}
             </p>
           </div>
         </div>
@@ -223,7 +225,7 @@ export default function AdminSelfModifyChat({ onCustomizationApplied }: AdminSel
               <div className="flex justify-start">
                 <div className="bg-muted rounded-lg p-3 flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Analyzing your request...</span>
+                  <span className="text-sm">{t('selfModifyChat.analyzing')}</span>
                 </div>
               </div>
             )}
@@ -238,7 +240,7 @@ export default function AdminSelfModifyChat({ onCustomizationApplied }: AdminSel
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Describe what you'd like to change..."
+            placeholder={t('selfModifyChat.placeholder')}
             className="min-h-[60px] resize-none"
             disabled={isLoading}
           />
@@ -256,7 +258,7 @@ export default function AdminSelfModifyChat({ onCustomizationApplied }: AdminSel
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          Press Enter to send, Shift+Enter for new line
+          {t('selfModifyChat.sendHelp')}
         </p>
       </div>
     </Card>
