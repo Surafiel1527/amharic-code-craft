@@ -134,7 +134,10 @@ export default function ProjectWorkspace() {
     if (!projectId || !conversationId) return;
 
     try {
-      // Update project code
+      // Update local state immediately for instant UI feedback
+      setProject((prev) => prev ? { ...prev, html_code: newCode } : null);
+
+      // Update project code in background
       const { error: projectError } = await supabase
         .from("projects")
         .update({ html_code: newCode, updated_at: new Date().toISOString() })
@@ -150,11 +153,10 @@ export default function ProjectWorkspace() {
 
       if (convError) throw convError;
 
-      setProject((prev) => prev ? { ...prev, html_code: newCode } : null);
-      toast.success("Project updated successfully");
+      console.log("✅ Project code saved to database");
     } catch (error: any) {
       console.error("Error updating project:", error);
-      toast.error(error.message || "Failed to update project");
+      toast.error(error.message || "Failed to save project");
     }
   };
 

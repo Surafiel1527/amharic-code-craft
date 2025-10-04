@@ -55,6 +55,13 @@ export const UserWorkspace = ({
     return localStorage.getItem(autoGenKey) === 'true';
   });
 
+  // Sync workingCode with initialCode when it changes (after DB updates)
+  useEffect(() => {
+    if (initialCode && initialCode !== "<!-- Initializing workspace... -->") {
+      setWorkingCode(initialCode);
+    }
+  }, [initialCode]);
+
   // Load conversation messages and version history
   useEffect(() => {
     loadConversationHistory();
