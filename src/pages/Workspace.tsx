@@ -251,57 +251,64 @@ export default function Workspace() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
-        <div className={`grid h-full ${isPreviewExpanded ? 'grid-cols-1' : 'lg:grid-cols-[1fr_2fr]'} transition-all`}>
-          {/* Chat Panel */}
-          {!isPreviewExpanded && (
-            <div className="flex flex-col border-r bg-card/30">
-              <div className="p-4 border-b">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <MessageSquare className="w-4 h-4" />
-                  AI Assistant
-                  <Badge variant="secondary" className="ml-auto">
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    Smart Mode
-                  </Badge>
-                </div>
-              </div>
-
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
-                  {messages.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[80%] rounded-lg p-3 ${
-                          msg.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        }`}
-                      >
-                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                      </div>
+        <div className={`flex h-full ${isPreviewExpanded ? '' : 'lg:flex-row flex-col'} transition-all`}>
+          {/* Chat Panel - Collapsible at bottom when preview expanded */}
+          <div className={`flex flex-col border-r bg-card/30 transition-all ${
+            isPreviewExpanded 
+              ? 'fixed bottom-0 left-0 right-0 h-16 border-t border-r-0 z-50' 
+              : 'lg:w-[400px] w-full'
+          }`}>
+              {!isPreviewExpanded && (
+                <>
+                  <div className="p-4 border-b">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <MessageSquare className="w-4 h-4" />
+                      AI Assistant
+                      <Badge variant="secondary" className="ml-auto">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        Smart Mode
+                      </Badge>
                     </div>
-                  ))}
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-muted rounded-lg p-3">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
+                  </div>
 
-              <div className="p-4 border-t bg-background">
+                  <ScrollArea className="flex-1 p-4">
+                    <div className="space-y-4">
+                      {messages.map((msg, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-[80%] rounded-lg p-3 ${
+                              msg.role === 'user'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted'
+                            }`}
+                          >
+                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {isLoading && (
+                        <div className="flex justify-start">
+                          <div className="bg-muted rounded-lg p-3">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </>
+              )}
+
+              <div className={`p-4 border-t bg-background ${isPreviewExpanded ? 'p-2' : ''}`}>
                 <div className="flex gap-2">
                   <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Describe what you want to add or improve..."
+                    placeholder={isPreviewExpanded ? "Type to chat..." : "Describe what you want to add or improve..."}
                     className="resize-none"
-                    rows={2}
+                    rows={isPreviewExpanded ? 1 : 2}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -318,22 +325,25 @@ export default function Workspace() {
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Press Enter to send, Shift+Enter for new line
-                </p>
+                {!isPreviewExpanded && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Press Enter to send, Shift+Enter for new line
+                  </p>
+                )}
               </div>
             </div>
-          )}
 
           {/* Preview Panel */}
-          <div className="flex flex-col bg-background">
-            <div className="p-4 border-b flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Eye className="w-4 h-4" />
-                Live Preview
+          <div className={`flex flex-col bg-background ${isPreviewExpanded ? 'w-full' : 'flex-1'}`}>
+            {!isPreviewExpanded && (
+              <div className="p-4 border-b flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Eye className="w-4 h-4" />
+                  Live Preview
+                </div>
               </div>
-            </div>
-            <div className="flex-1 overflow-hidden p-4">
+            )}
+            <div className={`flex-1 overflow-hidden ${isPreviewExpanded ? 'p-0' : 'p-4'}`}>
               <DevicePreview generatedCode={project.html_code} />
             </div>
           </div>

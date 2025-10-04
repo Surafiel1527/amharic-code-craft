@@ -14,6 +14,13 @@ export function DevicePreview({ generatedCode }: DevicePreviewProps) {
   const { t } = useLanguage();
   const [deviceSize, setDeviceSize] = useState<DeviceSize>("desktop");
   
+  // Clean code by removing markdown code fences
+  const cleanCode = generatedCode
+    ?.replace(/^```html\s*/i, '')
+    ?.replace(/^```\s*/i, '')
+    ?.replace(/```\s*$/i, '')
+    ?.trim() || '';
+  
   const deviceSizes = {
     mobile: { width: "375px", icon: Smartphone, label: t("preview.mobile") },
     tablet: { width: "768px", icon: Tablet, label: t("preview.tablet") },
@@ -41,7 +48,7 @@ export function DevicePreview({ generatedCode }: DevicePreviewProps) {
       </div>
 
       <div className="relative rounded-lg border border-border bg-background/50 overflow-hidden h-[calc(100vh-250px)] flex items-start justify-center">
-        {generatedCode ? (
+        {cleanCode ? (
           <div
             className={cn(
               "h-full transition-all duration-300 ease-in-out",
@@ -54,7 +61,7 @@ export function DevicePreview({ generatedCode }: DevicePreviewProps) {
             }}
           >
             <iframe
-              srcDoc={generatedCode}
+              srcDoc={cleanCode}
               className="w-full h-full border-0"
               title="Preview"
               sandbox="allow-scripts"
