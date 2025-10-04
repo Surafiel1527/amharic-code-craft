@@ -21,18 +21,17 @@ serve(async (req) => {
       throw new Error('Unauthorized: No authorization header');
     }
     
-    // Use service role key to validate the JWT
+    // Extract JWT token from Authorization header
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Create service role client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { 
-        global: { 
-          headers: { Authorization: authHeader } 
-        } 
-      }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // Validate the JWT token
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !user) {
       console.error('Failed to get user:', userError);
       throw new Error('Unauthorized: Invalid token');
