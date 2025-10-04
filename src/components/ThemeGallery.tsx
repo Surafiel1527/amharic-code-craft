@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Eye, Download, Trash2, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +37,7 @@ export function ThemeGallery({ onPreview, onApply }: ThemeGalleryProps) {
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [applyId, setApplyId] = useState<string | null>(null);
+  const { t } = useLanguage();
 
   const fetchThemes = async () => {
     try {
@@ -48,7 +50,7 @@ export function ThemeGallery({ onPreview, onApply }: ThemeGalleryProps) {
       setThemes(data || []);
     } catch (error) {
       console.error('Error fetching themes:', error);
-      toast.error('Failed to load themes');
+      toast.error(t('themeGallery.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -67,12 +69,12 @@ export function ThemeGallery({ onPreview, onApply }: ThemeGalleryProps) {
 
       if (error) throw error;
 
-      toast.success('Theme deleted successfully');
+      toast.success(t('themeGallery.themeDeleted'));
       setDeleteId(null);
       fetchThemes();
     } catch (error) {
       console.error('Error deleting theme:', error);
-      toast.error('Failed to delete theme');
+      toast.error(t('themeGallery.deleteFailed'));
     }
   };
 
@@ -84,7 +86,7 @@ export function ThemeGallery({ onPreview, onApply }: ThemeGalleryProps) {
 
       if (error) throw error;
 
-      toast.success('Theme applied successfully! Page will reload.');
+      toast.success(t('themeGallery.themeApplied'));
       setApplyId(null);
       
       // Reload after short delay to show the success message
@@ -93,7 +95,7 @@ export function ThemeGallery({ onPreview, onApply }: ThemeGalleryProps) {
       }, 1500);
     } catch (error) {
       console.error('Error applying theme:', error);
-      toast.error('Failed to apply theme');
+      toast.error(t('themeGallery.applyFailed'));
     }
   };
 
@@ -118,9 +120,9 @@ export function ThemeGallery({ onPreview, onApply }: ThemeGalleryProps) {
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
           <Palette className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-lg font-medium mb-2">No Themes Yet</p>
+          <p className="text-lg font-medium mb-2">{t('themeGallery.noThemes')}</p>
           <p className="text-sm text-muted-foreground text-center max-w-md">
-            Save your current dashboard configuration as a theme to quickly switch between different layouts and styles.
+            {t('themeGallery.noThemesDesc')}
           </p>
         </CardContent>
       </Card>
@@ -143,7 +145,7 @@ export function ThemeGallery({ onPreview, onApply }: ThemeGalleryProps) {
                 <Palette className="h-16 w-16 text-muted-foreground/50" />
               )}
               <Badge className="absolute top-2 right-2">
-                {Array.isArray(theme.customizations) ? theme.customizations.length : 0} changes
+                {Array.isArray(theme.customizations) ? theme.customizations.length : 0} {t('themeGallery.changes')}
               </Badge>
             </div>
             
@@ -156,7 +158,7 @@ export function ThemeGallery({ onPreview, onApply }: ThemeGalleryProps) {
                 <CardDescription>{theme.description}</CardDescription>
               )}
               <p className="text-xs text-muted-foreground">
-                Created {format(new Date(theme.created_at), 'PPp')}
+                {t('themeGallery.created')} {format(new Date(theme.created_at), 'PPp')}
               </p>
             </CardHeader>
 
@@ -168,7 +170,7 @@ export function ThemeGallery({ onPreview, onApply }: ThemeGalleryProps) {
                 className="flex-1"
               >
                 <Eye className="h-4 w-4 mr-1" />
-                Preview
+                {t('themeGallery.preview')}
               </Button>
               <Button
                 variant="default"
@@ -177,7 +179,7 @@ export function ThemeGallery({ onPreview, onApply }: ThemeGalleryProps) {
                 className="flex-1"
               >
                 <Download className="h-4 w-4 mr-1" />
-                Apply
+                {t('themeGallery.apply')}
               </Button>
               <Button
                 variant="ghost"
@@ -194,15 +196,15 @@ export function ThemeGallery({ onPreview, onApply }: ThemeGalleryProps) {
       <AlertDialog open={!!applyId} onOpenChange={(open) => !open && setApplyId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Apply This Theme?</AlertDialogTitle>
+            <AlertDialogTitle>{t('themeGallery.applyTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will replace your current dashboard configuration with this theme. Your current state will be lost unless you save it as a theme first.
+              {t('themeGallery.applyDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('themeGallery.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={() => applyId && handleApply(applyId)}>
-              Apply Theme
+              {t('themeGallery.apply')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -211,18 +213,18 @@ export function ThemeGallery({ onPreview, onApply }: ThemeGalleryProps) {
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete This Theme?</AlertDialogTitle>
+            <AlertDialogTitle>{t('themeGallery.deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this saved theme. This action cannot be undone.
+              {t('themeGallery.deleteDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('themeGallery.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteId && handleDelete(deleteId)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {t('themeGallery.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

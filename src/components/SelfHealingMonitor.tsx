@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface DetectedError {
   id: string;
@@ -50,6 +51,7 @@ export const SelfHealingMonitor = () => {
   const [fixes, setFixes] = useState<AutoFix[]>([]);
   const [loading, setLoading] = useState(true);
   const [systemHealth, setSystemHealth] = useState<any>(null);
+  const { t } = useLanguage();
 
   useEffect(() => {
     fetchData();
@@ -165,9 +167,9 @@ export const SelfHealingMonitor = () => {
         <div>
           <h2 className="text-3xl font-bold flex items-center gap-2">
             <Shield className="h-8 w-8" />
-            Self-Healing System
+            {t('selfHealing.title')}
           </h2>
-          <p className="text-muted-foreground">Autonomous error detection and fixing</p>
+          <p className="text-muted-foreground">{t('selfHealing.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -185,7 +187,7 @@ export const SelfHealingMonitor = () => {
             disabled={loading}
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
-            Run Auto-Fix
+            {t('selfHealing.runAutoFix')}
           </Button>
           <Button onClick={fetchData} variant="outline" size="icon" disabled={loading}>
             <RefreshCw className="h-4 w-4" />
@@ -197,42 +199,42 @@ export const SelfHealingMonitor = () => {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Error Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('selfHealing.errorRate')}</CardTitle>
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{systemHealth?.errorRate?.toFixed(2)}%</div>
-            <p className="text-xs text-muted-foreground">Last hour</p>
+            <p className="text-xs text-muted-foreground">{t('selfHealing.lastHour')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Errors</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('selfHealing.activeErrors')}</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{systemHealth?.activeErrors || 0}</div>
-            <p className="text-xs text-muted-foreground">Being analyzed/fixed</p>
+            <p className="text-xs text-muted-foreground">{t('selfHealing.beingAnalyzed')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fixed Today</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('selfHealing.fixedToday')}</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{systemHealth?.fixedToday || 0}</div>
-            <p className="text-xs text-muted-foreground">Automatically resolved</p>
+            <p className="text-xs text-muted-foreground">{t('selfHealing.autoResolved')}</p>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="errors" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="errors">Detected Errors</TabsTrigger>
-          <TabsTrigger value="fixes">Applied Fixes</TabsTrigger>
+          <TabsTrigger value="errors">{t('selfHealing.detectedErrors')}</TabsTrigger>
+          <TabsTrigger value="fixes">{t('selfHealing.appliedFixes')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="errors">
@@ -241,7 +243,7 @@ export const SelfHealingMonitor = () => {
               {errors.length === 0 ? (
                 <Card>
                   <CardContent className="p-6 text-center text-muted-foreground">
-                    No errors detected. System is healthy! 🎉
+                    {t('selfHealing.noErrors')}
                   </CardContent>
                 </Card>
               ) : (
@@ -270,10 +272,10 @@ export const SelfHealingMonitor = () => {
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-4">
                           <span className="text-muted-foreground">
-                            Source: {error.source}
+                            {t('selfHealing.source')} {error.source}
                           </span>
                           <span className="text-muted-foreground">
-                            Attempts: {error.fix_attempts}
+                            {t('selfHealing.attempts')} {error.fix_attempts}
                           </span>
                         </div>
                         <div className="flex items-center gap-1 text-muted-foreground">
@@ -295,7 +297,7 @@ export const SelfHealingMonitor = () => {
               {fixes.length === 0 ? (
                 <Card>
                   <CardContent className="p-6 text-center text-muted-foreground">
-                    No fixes applied yet
+                    {t('selfHealing.noFixes')}
                   </CardContent>
                 </Card>
               ) : (
@@ -321,7 +323,7 @@ export const SelfHealingMonitor = () => {
                             {fix.status}
                           </Badge>
                           <Badge variant="outline">
-                            {(fix.ai_confidence * 100).toFixed(0)}% confident
+                            {(fix.ai_confidence * 100).toFixed(0)}% {t('selfHealing.confident')}
                           </Badge>
                         </div>
                       </div>
@@ -329,7 +331,7 @@ export const SelfHealingMonitor = () => {
                     <CardContent>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">
-                          Type: {fix.fix_type}
+                          {t('selfHealing.type')} {fix.fix_type}
                         </span>
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <Clock className="h-3 w-3" />
