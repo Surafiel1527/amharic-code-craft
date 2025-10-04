@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { VersionHistory } from "@/components/VersionHistory";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { PatternLearner } from "@/components/PatternLearner";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -291,6 +292,7 @@ export default function Workspace() {
 
   return (
     <div className="h-screen bg-background flex flex-col">
+      <PatternLearner />
       {/* Header */}
       <div className="border-b bg-card/50 backdrop-blur-sm">
         <div className="flex items-center justify-between p-4">
