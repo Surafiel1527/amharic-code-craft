@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Key, Plus, Copy, Trash2, Activity, Code, BookOpen } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface APIKey {
   id: string;
@@ -23,6 +24,7 @@ interface APIKey {
 }
 
 export default function APIAccessManager() {
+  const { t } = useLanguage();
   const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
@@ -123,15 +125,15 @@ export default function APIAccessManager() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold">API Access</h2>
-          <p className="text-muted-foreground">Programmatic project generation for businesses</p>
+          <h2 className="text-3xl font-bold">{t("api.title")}</h2>
+          <p className="text-muted-foreground">{t("api.subtitle")}</p>
         </div>
         
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Create API Key
+              {t("api.createAPIKey")}
             </Button>
           </DialogTrigger>
           <DialogContent>

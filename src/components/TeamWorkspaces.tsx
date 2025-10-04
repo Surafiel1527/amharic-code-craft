@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Plus, Mail, Trash2, Crown, Shield, User as UserIcon, Loader2 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Workspace {
   id: string;
@@ -30,6 +31,7 @@ interface Member {
 }
 
 export default function TeamWorkspaces() {
+  const { t } = useLanguage();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -268,15 +270,15 @@ export default function TeamWorkspaces() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold">Team Workspaces</h2>
-          <p className="text-muted-foreground">Collaborate with your team members</p>
+          <h2 className="text-3xl font-bold">{t("workspaces.title")}</h2>
+          <p className="text-muted-foreground">{t("workspaces.subtitle")}</p>
         </div>
         
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Create Workspace
+              {t("workspaces.createWorkspace")}
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -319,7 +321,7 @@ export default function TeamWorkspaces() {
       <div className="grid md:grid-cols-3 gap-6">
         <Card className="md:col-span-1">
           <CardHeader>
-            <CardTitle>Workspaces</CardTitle>
+            <CardTitle>{t("workspaces.workspaces")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {loading ? (
@@ -328,7 +330,7 @@ export default function TeamWorkspaces() {
               </div>
             ) : workspaces.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">
-                No workspaces yet. Create one to get started!
+                {t("workspaces.noWorkspaces")}
               </div>
             ) : (
               workspaces.map((workspace) => (
@@ -486,7 +488,7 @@ export default function TeamWorkspaces() {
             </>
           ) : (
             <CardContent className="flex items-center justify-center h-64">
-              <p className="text-muted-foreground">Select a workspace to view details</p>
+              <p className="text-muted-foreground">{t("workspaces.selectWorkspace")}</p>
             </CardContent>
           )}
         </Card>

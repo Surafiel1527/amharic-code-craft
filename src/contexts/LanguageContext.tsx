@@ -337,6 +337,32 @@ const translations = {
     "imageGen.success": "Image generated successfully!",
     "imageGen.downloaded": "Image downloaded!",
     "imageGen.dataCopied": "Image data copied!",
+    
+    // Premium Templates
+    "premium.title": "Premium Templates Marketplace",
+    "premium.subtitle": "High-quality templates for your projects",
+    "premium.createTemplate": "Create Template",
+    "premium.marketplace": "Marketplace",
+    "premium.myPurchases": "My Purchases",
+    "premium.myTemplates": "My Templates",
+    "premium.searchPlaceholder": "Search templates...",
+    "premium.purchaseTemplate": "Purchase Template",
+    "premium.download": "Download",
+    "premium.edit": "Edit",
+    "premium.delete": "Delete",
+    
+    // Team Workspaces
+    "workspaces.title": "Team Workspaces",
+    "workspaces.subtitle": "Collaborate with your team members",
+    "workspaces.createWorkspace": "Create Workspace",
+    "workspaces.workspaces": "Workspaces",
+    "workspaces.noWorkspaces": "No workspaces yet. Create one to get started!",
+    "workspaces.selectWorkspace": "Select a workspace to view details",
+    
+    // API Access
+    "api.title": "API Access",
+    "api.subtitle": "Programmatic project generation for businesses",
+    "api.createAPIKey": "Create API Key",
   },
   am: {
     // Meta
@@ -663,6 +689,32 @@ const translations = {
     "imageGen.success": "ምስል በተሳካ ሁኔታ ተፈጥሯል!",
     "imageGen.downloaded": "ምስል ወረደ!",
     "imageGen.dataCopied": "የምስል ውሂብ ተቀድቷል!",
+    
+    // Premium Templates
+    "premium.title": "የላቀ አብነቶች ገበያ",
+    "premium.subtitle": "ለፕሮጀክቶችዎ ከፍተኛ ጥራት ያላቸው አብነቶች",
+    "premium.createTemplate": "አብነት ፍጠር",
+    "premium.marketplace": "ገበያ",
+    "premium.myPurchases": "ግዢዎቼ",
+    "premium.myTemplates": "አብነቶቼ",
+    "premium.searchPlaceholder": "አብነቶችን ፈልግ...",
+    "premium.purchaseTemplate": "አብነት ግዛ",
+    "premium.download": "አውርድ",
+    "premium.edit": "አርትዕ",
+    "premium.delete": "ሰርዝ",
+    
+    // Team Workspaces
+    "workspaces.title": "የቡድን ስራ ቦታዎች",
+    "workspaces.subtitle": "ከቡድን አባላትዎ ጋር ይተባበሩ",
+    "workspaces.createWorkspace": "ስራ ቦታ ፍጠር",
+    "workspaces.workspaces": "ስራ ቦታዎች",
+    "workspaces.noWorkspaces": "እስካሁን ምንም ስራ ቦታ የለም። ለመጀመር አንድ ይፍጠሩ!",
+    "workspaces.selectWorkspace": "ዝርዝሮችን ለማየት ስራ ቦታ ይምረጡ",
+    
+    // API Access
+    "api.title": "API መዳረሻ",
+    "api.subtitle": "ለንግዶች ፕሮግራማዊ ፕሮጀክት ማመንጨት",
+    "api.createAPIKey": "API ቁልፍ ፍጠር",
   },
 };
 

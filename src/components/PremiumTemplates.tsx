@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Plus, DollarSign, Star, Download, Upload } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Template {
   id: string;
@@ -25,6 +26,7 @@ interface Template {
 }
 
 export default function PremiumTemplates() {
+  const { t } = useLanguage();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [myTemplates, setMyTemplates] = useState<Template[]>([]);
   const [purchasedTemplates, setPurchasedTemplates] = useState<Template[]>([]);
@@ -155,15 +157,15 @@ export default function PremiumTemplates() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold">Premium Templates Marketplace</h2>
-          <p className="text-muted-foreground">High-quality templates for your projects</p>
+          <h2 className="text-3xl font-bold">{t("premium.title")}</h2>
+          <p className="text-muted-foreground">{t("premium.subtitle")}</p>
         </div>
         
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Create Template
+              {t("premium.createTemplate")}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
@@ -221,9 +223,9 @@ export default function PremiumTemplates() {
 
       <Tabs defaultValue="marketplace" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
-          <TabsTrigger value="purchased">My Purchases</TabsTrigger>
-          <TabsTrigger value="mytemplates">My Templates</TabsTrigger>
+          <TabsTrigger value="marketplace">{t("premium.marketplace")}</TabsTrigger>
+          <TabsTrigger value="purchased">{t("premium.myPurchases")}</TabsTrigger>
+          <TabsTrigger value="mytemplates">{t("premium.myTemplates")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="marketplace" className="space-y-4">
@@ -231,7 +233,7 @@ export default function PremiumTemplates() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search templates..."
+                placeholder={t("premium.searchPlaceholder")}
                 className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -280,7 +282,7 @@ export default function PremiumTemplates() {
                     className="w-full" 
                     onClick={() => handlePurchase(template)}
                   >
-                    Purchase Template
+                    {t("premium.purchaseTemplate")}
                   </Button>
                 </CardFooter>
               </Card>
@@ -299,7 +301,7 @@ export default function PremiumTemplates() {
                 <CardFooter>
                   <Button className="w-full">
                     <Download className="h-4 w-4 mr-2" />
-                    Download
+                    {t("premium.download")}
                   </Button>
                 </CardFooter>
               </Card>
@@ -318,8 +320,8 @@ export default function PremiumTemplates() {
                   </CardDescription>
                 </CardHeader>
                 <CardFooter className="flex gap-2">
-                  <Button variant="outline" className="flex-1">Edit</Button>
-                  <Button variant="destructive" className="flex-1">Delete</Button>
+                  <Button variant="outline" className="flex-1">{t("premium.edit")}</Button>
+                  <Button variant="destructive" className="flex-1">{t("premium.delete")}</Button>
                 </CardFooter>
               </Card>
             ))}
