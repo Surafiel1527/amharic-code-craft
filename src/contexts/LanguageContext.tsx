@@ -22,10 +22,10 @@ const translations = {
     "header.admin": "Admin",
     "header.settings": "Settings",
     "header.logout": "Logout",
-    "header.badge": "Amharic AI Technology - Modern & Smart",
+    "header.badge": "AI Technology - Modern & Smart",
     
     // Hero
-    "hero.title": "Create Websites in Amharic",
+    "hero.title": "Create Websites in English",
     "hero.subtitle": "Build your website by chatting with AI or with simple descriptions. Like Lovable and Replit!",
     
     // Examples
@@ -348,7 +348,7 @@ const translations = {
     "header.admin": "አስተዳዳሪ",
     "header.settings": "ማስተካከያ",
     "header.logout": "ውጣ",
-    "header.badge": "የአማርኛ AI ቴክኖሎጂ - ዘመናዊ እና ብልህ",
+    "header.badge": "AI Technology - Modern & Smart",
     
     // Templates Browser - Amharic
     "templates.fetchError": "አብነቶችን መጫን አልተቻለም",
