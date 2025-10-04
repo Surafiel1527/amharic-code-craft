@@ -156,15 +156,15 @@ export default function Workspace() {
       if (error) throw error;
 
       const finalCode = data.finalCode;
-      const explanation = data.explanation || 'Code updated successfully';
       
       // Update project with new code
       setProject(prev => prev ? { ...prev, html_code: finalCode } : null);
 
-      // Add assistant message
+      // Add assistant message with details
+      const phaseNames = data.phases?.map((p: any) => p.name).join(', ') || 'code generation';
       const assistantMessage: Message = {
         role: 'assistant',
-        content: explanation,
+        content: `✨ Enhanced with Smart Orchestrator!\n\nPhases: ${phaseNames}\n\n${data.plan?.architecture_overview || 'Improvements applied successfully'}`,
         timestamp: new Date().toISOString()
       };
 
