@@ -31,6 +31,7 @@ export default function ProjectWorkspace() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationCode, setConversationCode] = useState<string>("<!-- Initializing workspace... -->");
   const [activeTab, setActiveTab] = useState<string>("generate");
   const [autoGeneratePrompt, setAutoGeneratePrompt] = useState<string | null>(null);
 
@@ -88,6 +89,7 @@ export default function ProjectWorkspace() {
 
         if (conversations && conversations.length > 0) {
           setConversationId(conversations[0].id);
+          setConversationCode(conversations[0].current_code || projectData.html_code);
         } else {
           // Create new conversation for this project
           const { data: newConv, error: createError } = await supabase
@@ -103,6 +105,7 @@ export default function ProjectWorkspace() {
 
           if (createError) throw createError;
           setConversationId(newConv.id);
+          setConversationCode(newConv.current_code || projectData.html_code);
         }
 
         // Check for auto-generation parameters (new approach)
@@ -135,6 +138,7 @@ export default function ProjectWorkspace() {
 
     try {
       // Update local state immediately for instant UI feedback
+      setConversationCode(newCode);
       setProject((prev) => prev ? { ...prev, html_code: newCode } : null);
 
       // Update project code in background
@@ -248,7 +252,7 @@ export default function ProjectWorkspace() {
               <UserWorkspace
                 projectId={projectId!}
                 conversationId={conversationId}
-                initialCode={project.html_code}
+                initialCode={conversationCode}
                 onCodeUpdate={handleCodeUpdate}
                 autoGeneratePrompt={autoGeneratePrompt}
               />
@@ -261,7 +265,7 @@ export default function ProjectWorkspace() {
               <div className="bg-card rounded-lg border p-6">
                 <SmartChatBuilder
                   onCodeGenerated={handleCodeUpdate}
-                  currentCode={project.html_code}
+                  currentCode={conversationCode}
                 />
               </div>
             </TabsContent>
@@ -278,7 +282,7 @@ export default function ProjectWorkspace() {
               </div>
               <div className="bg-muted rounded-md p-4">
                 <pre className="text-sm overflow-auto max-h-[600px]">
-                  <code>{project.html_code}</code>
+                  <code>{conversationCode}</code>
                 </pre>
               </div>
             </div>
