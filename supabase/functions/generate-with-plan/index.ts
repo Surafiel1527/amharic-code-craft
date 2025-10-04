@@ -195,18 +195,17 @@ Your task: Create a comprehensive plan BEFORE any code generation. Respond in JS
         .eq('conversation_id', conversationId)
         .single();
 
-      const generationPrompt = `You are an expert web developer creating a complete, standalone website.
+      const generationPrompt = `You are an expert web developer creating a complete, standalone website FOR PREVIEW IN A BROWSER.
 
-🚨 CRITICAL - OUTPUT FORMAT REQUIREMENTS:
-You MUST generate a SINGLE, COMPLETE HTML FILE that includes:
-1. Complete HTML structure (<!DOCTYPE html>, <html>, <head>, <body>)
-2. ALL CSS embedded in a <style> tag in the <head>
-3. ALL JavaScript embedded in a <script> tag before closing </body>
-4. NO external file references (no src="file.js" or href="style.css")
-5. NO build tools, no npm, no React imports
-6. A fully functional, ready-to-preview website
+🚨 CRITICAL RULES - READ CAREFULLY:
+1. You MUST output ONLY HTML code - nothing else
+2. The ENTIRE output must be ONE single HTML file
+3. DO NOT create tailwind.config.js, package.json, or ANY config/setup files
+4. DO NOT explain how to set up the project
+5. DO NOT provide multiple files
+6. IGNORE any suggestions in the plan about creating separate files
 
-APPROVED ARCHITECTURE PLAN:
+APPROVED ARCHITECTURE PLAN (FOR REFERENCE ONLY - DO NOT CREATE SEPARATE FILES):
 ${JSON.stringify(plan, null, 2)}
 
 ${memory ? `
@@ -227,60 +226,51 @@ Preserve all existing functionality.
 
 USER REQUEST: "${userRequest}"
 
-YOUR TASK:
-Generate a SINGLE, COMPLETE HTML FILE that:
-1. Starts with <!DOCTYPE html>
-2. Includes ALL CSS in a <style> tag in the <head>
-3. Includes ALL JavaScript in a <script> tag before </body>
-4. Has NO external dependencies or file references
-5. Works immediately when opened in a browser
-6. Follows the architecture plan from above
-7. ${currentCode ? 'Enhances the existing HTML structure' : 'Creates a beautiful, modern, responsive design'}
+YOUR ONLY TASK: Output a single, complete HTML file.
 
-EXAMPLE FORMAT:
+MANDATORY OUTPUT FORMAT - Your response must start with:
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Title Here</title>
+    <title>${userRequest.substring(0, 50)}</title>
     <style>
-        /* ALL your CSS here - responsive design, animations, etc. */
+        /* Put ALL your CSS here - make it beautiful! */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Arial', sans-serif; }
-        /* ... more CSS ... */
+        body { font-family: system-ui, sans-serif; line-height: 1.6; }
+        /* Add responsive design, colors, animations, etc. */
     </style>
 </head>
 <body>
-    <!-- ALL your HTML content here -->
-    <nav>...</nav>
-    <section>...</section>
-    <!-- ... more HTML ... -->
+    <!-- Put ALL your HTML content here -->
+    <!-- Include: navigation, hero section, features, testimonials, forms, etc. -->
     
     <script>
-        // ALL your JavaScript here
-        document.addEventListener('DOMContentLoaded', function() {
-            // Your interactive code
+        // Put ALL your JavaScript here for interactivity
+        document.addEventListener('DOMContentLoaded', () => {
+            // Your code for smooth scrolling, form handling, animations, etc.
         });
     </script>
 </body>
 </html>
 
-✅ DO GENERATE:
-- Complete HTML document structure
-- Embedded CSS with modern styles, responsive design, animations
-- Embedded JavaScript for interactivity
-- Beautiful, production-ready design
-- All content requested by user
+🎯 WHAT TO CREATE:
+- Modern, responsive website matching user request: "${userRequest}"
+- Beautiful CSS with colors, gradients, hover effects, animations
+- Interactive JavaScript for smooth scrolling, form validation, etc.
+- Mobile-first responsive design
+- Professional, production-ready appearance
 
-❌ DO NOT GENERATE:
-- tailwind.config.js, package.json, or ANY config files
+❌ NEVER CREATE:
+- tailwind.config.js or any .js config files
+- package.json
 - Multiple separate files
-- Import statements or external references
-- npm commands or setup instructions
-- React/Vue/framework code that needs compilation
+- npm/setup instructions
+- Import/export statements
+- External dependencies
 
-Wrap the COMPLETE HTML FILE in <code></code> tags. Keep explanation brief.`;
+Wrap your COMPLETE HTML FILE in <code></code> tags. Keep any explanation BEFORE the code block brief.`;
 
       const genResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -345,35 +335,41 @@ Wrap the COMPLETE HTML FILE in <code></code> tags. Keep explanation brief.`;
       }
       
       // Validate extracted code
-      if (!code || code.length < 10) {
+      if (!code || code.length < 50) {
         console.error('❌ Failed to extract valid code from AI response');
         console.error('   Code length:', code?.length || 0);
         console.error('   Response preview:', aiResponse.substring(0, 1000));
         throw new Error('AI did not generate valid code. Please try again with a clearer request.');
       }
       
-      // Basic validation: check for valid code structure
+      // CRITICAL: Reject if AI generated config files instead of HTML
+      if (code.includes('tailwind.config') || code.includes('module.exports') || code.includes('package.json')) {
+        console.error('❌ AI generated config files instead of HTML!');
+        console.error('   Code preview:', code.substring(0, 500));
+        throw new Error('Invalid response: Please generate a complete HTML file, not configuration files.');
+      }
+      
+      // CRITICAL: Must start with HTML doctype or html tag
+      if (!code.trim().startsWith('<!DOCTYPE') && !code.trim().startsWith('<html')) {
+        console.error('❌ Code does not start with HTML structure!');
+        console.error('   Code starts with:', code.substring(0, 200));
+        throw new Error('Invalid response: Must be a complete HTML file starting with <!DOCTYPE html>');
+      }
+      
+      // Basic validation: check for valid HTML structure
       const hasValidStructure = (
-        // HTML structure
-        (code.includes('<!DOCTYPE') || code.includes('<html')) ||
-        // JavaScript/TypeScript structure
-        code.includes('function') || code.includes('const') || code.includes('class') ||
-        // React/JSX structure
-        code.includes('export') || code.includes('import') ||
-        // CSS structure
-        code.includes('{') && code.includes('}') ||
-        // JSON structure
-        (code.startsWith('{') && code.endsWith('}'))
-      );
+        code.includes('<!DOCTYPE') || code.includes('<html')
+      ) && code.includes('</html>') && code.includes('<body');
       
       if (!hasValidStructure) {
-        console.warn('⚠️ Generated code may not have valid file structure');
-        console.warn('   Code preview:', code.substring(0, 300));
-        // Don't throw - let it through but log warning
+        console.error('❌ Code does not have valid HTML structure');
+        console.error('   Code preview:', code.substring(0, 500));
+        throw new Error('Invalid response: Must be a complete HTML file with proper structure.');
       }
       
       console.log('✅ Code validation passed');
       console.log('   - Final code length:', code.length);
+      console.log('   - Starts with:', code.substring(0, 50));
       console.log('   - Has valid structure:', hasValidStructure);
 
       // Update project memory with architectural decisions
