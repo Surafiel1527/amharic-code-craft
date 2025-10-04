@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SmartChatBuilder } from "@/components/SmartChatBuilder";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EnterpriseProjectDashboard } from "@/components/EnterpriseProjectDashboard";
-import { AdvancedGenerationPanel } from "@/components/AdvancedGenerationPanel";
+import { UserWorkspace } from "@/components/UserWorkspace";
 
 interface Project {
   id: string;
@@ -223,13 +223,12 @@ export default function ProjectWorkspace() {
           {/* Generate Tab - For Regular Users */}
           {!isAdmin && (
             <TabsContent value="generate" className="space-y-4">
-              <div className="bg-card rounded-lg border p-6">
-                <AdvancedGenerationPanel
-                  conversationId={conversationId || ""}
-                  currentCode={project.html_code}
-                  onCodeGenerated={handleCodeUpdate}
-                />
-              </div>
+              <UserWorkspace
+                projectId={projectId!}
+                conversationId={conversationId}
+                initialCode={project.html_code}
+                onCodeUpdate={handleCodeUpdate}
+              />
             </TabsContent>
           )}
 
