@@ -164,9 +164,9 @@ export default function APIAccessManager() {
 
       <Tabs defaultValue="keys" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="keys">API Keys</TabsTrigger>
-          <TabsTrigger value="usage">Usage</TabsTrigger>
-          <TabsTrigger value="docs">Documentation</TabsTrigger>
+          <TabsTrigger value="keys">{t("api.tabKeys")}</TabsTrigger>
+          <TabsTrigger value="usage">{t("api.tabUsage")}</TabsTrigger>
+          <TabsTrigger value="docs">{t("api.tabDocs")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="keys">
@@ -241,8 +241,8 @@ export default function APIAccessManager() {
         <TabsContent value="usage">
           <Card>
             <CardHeader>
-              <CardTitle>API Usage Statistics</CardTitle>
-              <CardDescription>Monitor your API consumption</CardDescription>
+              <CardTitle>{t("api.usageTitle")}</CardTitle>
+              <CardDescription>{t("api.usageSubtitle")}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-3 gap-4">
@@ -250,7 +250,7 @@ export default function APIAccessManager() {
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Total Requests</p>
+                        <p className="text-sm text-muted-foreground">{t("api.totalRequests")}</p>
                         <p className="text-2xl font-bold">
                           {apiKeys.reduce((sum, key) => sum + key.usage_count, 0)}
                         </p>
@@ -263,7 +263,7 @@ export default function APIAccessManager() {
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Active Keys</p>
+                        <p className="text-sm text-muted-foreground">{t("api.activeKeys")}</p>
                         <p className="text-2xl font-bold">
                           {apiKeys.filter(k => k.is_active).length}
                         </p>
@@ -276,7 +276,7 @@ export default function APIAccessManager() {
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Rate Limit</p>
+                        <p className="text-sm text-muted-foreground">{t("api.rateLimit")}</p>
                         <p className="text-2xl font-bold">
                           {Math.max(...apiKeys.map(k => k.rate_limit), 0)}/min
                         </p>

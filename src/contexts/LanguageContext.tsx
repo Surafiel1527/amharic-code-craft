@@ -363,6 +363,14 @@ const translations = {
     "api.title": "API Access",
     "api.subtitle": "Programmatic project generation for businesses",
     "api.createAPIKey": "Create API Key",
+    "api.tabKeys": "API Keys",
+    "api.tabUsage": "Usage",
+    "api.tabDocs": "Documentation",
+    "api.usageTitle": "API Usage Statistics",
+    "api.usageSubtitle": "Monitor your API consumption",
+    "api.totalRequests": "Total Requests",
+    "api.activeKeys": "Active Keys",
+    "api.rateLimit": "Rate Limit",
   },
   am: {
     // Meta
@@ -715,6 +723,14 @@ const translations = {
     "api.title": "API መዳረሻ",
     "api.subtitle": "ለንግዶች ፕሮግራማዊ ፕሮጀክት ማመንጨት",
     "api.createAPIKey": "API ቁልፍ ፍጠር",
+    "api.tabKeys": "API ቁልፎች",
+    "api.tabUsage": "አጠቃቀም",
+    "api.tabDocs": "ሰነድ",
+    "api.usageTitle": "የAPI አጠቃቀም ስታቲስቲክስ",
+    "api.usageSubtitle": "የAPI ፍጆታዎን ይቆጣጠሩ",
+    "api.totalRequests": "ጠቅላላ ጥያቄዎች",
+    "api.activeKeys": "ንቁ ቁልፎች",
+    "api.rateLimit": "መጠን ገደብ",
   },
 };
 
