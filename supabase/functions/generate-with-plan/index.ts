@@ -92,13 +92,31 @@ Your task: Create a comprehensive plan BEFORE any code generation. Respond in JS
       const planData = await planResponse.json();
       let planContent = planData.choices[0].message.content;
       
-      // Extract JSON from response
-      const jsonMatch = planContent.match(/\{[\s\S]*\}/);
+      console.log('📄 Raw AI response length:', planContent.length);
+      
+      // Extract JSON from response - try to find valid JSON block
+      let jsonMatch = planContent.match(/```json\s*([\s\S]*?)```/);
       if (!jsonMatch) {
-        throw new Error('Failed to parse plan');
+        jsonMatch = planContent.match(/\{[\s\S]*\}/);
       }
       
-      const plan = JSON.parse(jsonMatch[0]);
+      if (!jsonMatch) {
+        console.error('❌ No JSON found in response:', planContent.substring(0, 500));
+        throw new Error('Failed to extract JSON from plan response');
+      }
+      
+      const jsonString = jsonMatch[1] || jsonMatch[0];
+      console.log('📋 Extracted JSON length:', jsonString.length);
+      
+      let plan;
+      try {
+        plan = JSON.parse(jsonString);
+        console.log('✅ Successfully parsed plan JSON');
+      } catch (parseError: any) {
+        console.error('❌ JSON parse error:', parseError.message);
+        console.error('❌ Failed JSON string:', jsonString.substring(0, 1000));
+        throw new Error(`Invalid JSON in plan response: ${parseError.message}`);
+      }
       
       // Save plan to database
       const { data: savedPlan, error: planError } = await supabase
