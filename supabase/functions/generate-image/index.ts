@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { checkRateLimit, getRateLimitHeaders } from "../_shared/rateLimit.ts";
+
+// ============= BACKWARD COMPATIBILITY WRAPPER =============
+// This function now routes requests to the intelligent-conversation master
+// Original image generation functionality is preserved through the master
+// =========================================================
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,66 +38,38 @@ serve(async (req) => {
     }
 
     const { prompt } = await req.json();
-    console.log('Generating image for prompt:', prompt);
+    console.log('🔄 generate-image wrapper - routing to intelligent-conversation');
 
     if (!prompt) {
       throw new Error('Prompt is required');
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
-    }
+    // Route to intelligent-conversation master
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
 
-    // Use the Nano banana model for image generation
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
+    const { data: masterResponse, error: masterError } = await supabase.functions.invoke('intelligent-conversation', {
+      body: {
+        message: `Generate image: ${prompt}`
       },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
-        messages: [
-          {
-            role: 'user',
-            content: `Generate a high-quality, professional image: ${prompt}`
-          }
-        ],
-        modalities: ['image', 'text']
-      }),
+      headers: {
+        Authorization: req.headers.get('Authorization') || ''
+      }
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI API error:', response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to your workspace.' }),
-          { status: 402, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error(`AI API error: ${response.status}`);
-    }
+    if (masterError) throw masterError;
 
-    const data = await response.json();
-    console.log('Image generation response received');
+    // Extract image URL from master response
+    const responseData = masterResponse?.data || masterResponse;
+    const imageUrl = responseData?.imageUrl || responseData?.response?.imageUrl;
 
-    // Extract the base64 image from the response
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    
     if (!imageUrl) {
       throw new Error('No image generated');
     }
+
+    console.log('✅ generate-image wrapper - image received from master');
 
     return new Response(
       JSON.stringify({ imageUrl }),

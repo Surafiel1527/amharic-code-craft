@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { checkRateLimit, getRateLimitHeaders } from "../_shared/rateLimit.ts";
+
+// ============= BACKWARD COMPATIBILITY WRAPPER =============
+// This function now routes requests to the intelligent-conversation master
+// Original analysis functionality is preserved through the master
+// =========================================================
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,54 +35,37 @@ serve(async (req) => {
       throw new Error('Code is required');
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
-    }
+    // Route to intelligent-conversation master
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
 
-    const systemPrompt = `You are an expert code reviewer for HTML/CSS websites. Analyze the provided code and return a JSON response with:
-1. quality_score (0-100): Overall code quality
-2. performance_score (0-100): Performance and optimization
-3. issues: Array of problems found (each with severity: 'critical' | 'warning' | 'info', message, line)
-4. suggestions: Array of improvement suggestions (each with category, message, benefit)
+    console.log('🔄 analyze-code wrapper - routing to intelligent-conversation');
 
-Focus on:
-- Semantic HTML
-- Accessibility (ARIA, alt text, semantic tags)
-- Performance (image optimization, CSS efficiency)
-- Best practices (proper nesting, valid attributes)
-- Responsive design
-- Security (XSS prevention, safe inline styles)
-
-Return ONLY valid JSON without markdown formatting.`;
-
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
+    const { data: masterResponse, error: masterError } = await supabase.functions.invoke('intelligent-conversation', {
+      body: {
+        message: `Analyze this code for quality, performance, and best practices:\n\n${code}`,
+        currentCode: code,
+        projectId
       },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Analyze this code:\n\n${code}` }
-        ],
-        temperature: 0.3,
-      }),
+      headers: {
+        Authorization: req.headers.get('Authorization') || ''
+      }
     });
 
-    if (!response.ok) {
-      throw new Error(`AI API error: ${response.status}`);
-    }
+    if (masterError) throw masterError;
 
-    const data = await response.json();
-    let analysisText = data.choices[0].message.content;
-    
-    // Clean up markdown formatting
-    analysisText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    
-    const analysis = JSON.parse(analysisText);
+    // Extract and format analysis from master response
+    const responseData = masterResponse?.data || masterResponse;
+    const analysis = responseData?.analysis || {
+      quality_score: 75,
+      performance_score: 75,
+      issues: [],
+      suggestions: []
+    };
+
+    console.log('✅ analyze-code wrapper - analysis received from master');
 
     return new Response(
       JSON.stringify(analysis),

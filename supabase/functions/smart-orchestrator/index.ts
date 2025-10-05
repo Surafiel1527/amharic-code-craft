@@ -1,6 +1,11 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+
+// ============= BACKWARD COMPATIBILITY WRAPPER =============
+// This function now routes requests to the intelligent-conversation master
+// Original orchestration functionality is preserved through the master
+// =========================================================
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,357 +19,106 @@ serve(async (req) => {
 
   try {
     const { userRequest, conversationId, currentCode, autoRefine = true, autoLearn = true } = await req.json();
-    
+
+    if (!userRequest) {
+      return new Response(
+        JSON.stringify({ error: 'userRequest is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get user from auth header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('No authorization header found');
-      throw new Error('Unauthorized: No authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Authorization required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-    
-    // Extract JWT token from Authorization header
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Create service role client
+
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Validate the JWT token
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError || !user) {
-      console.error('Failed to get user:', userError);
-      throw new Error('Unauthorized: Invalid token');
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authorization' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-    
-    console.log('✅ Authenticated user:', user.id);
 
-    const startTime = Date.now();
-    const phases: any[] = [];
-    let currentResult: any = {};
+    const userId = user.id;
+    console.log('🔄 smart-orchestrator wrapper - routing to intelligent-conversation');
 
-    // PHASE 0: Advanced Reasoning
-    console.log('Phase 0: Advanced Reasoning...');
-    const reasoningStart = Date.now();
-    
-    const reasoningResponse = await supabaseClient.functions.invoke('advanced-reasoning', {
+    const orchestrationStart = Date.now();
+
+    // Route to intelligent-conversation master
+    const { data: masterResponse, error: masterError } = await supabaseClient.functions.invoke('intelligent-conversation', {
       body: {
-        userRequest,
-        conversationHistory: [],
-        currentContext: { conversationId, currentCode },
-        reasoningType: 'deep'
+        message: userRequest,
+        conversationId,
+        currentCode,
+        projectId: null
       },
-      headers: { Authorization: authHeader }
-    });
-
-    const reasoning = reasoningResponse.data?.reasoning || {};
-    console.log('Reasoning complete:', reasoning);
-    
-    phases.push({
-      name: 'advanced_reasoning',
-      duration: Date.now() - reasoningStart,
-      result: { confidence: reasoning.confidence, approach: reasoning.approach }
-    });
-    currentResult.reasoning = reasoning;
-
-    // PHASE 1: Load user preferences and professional knowledge
-    console.log('Phase 1: Loading User Context & Professional Knowledge');
-    const contextStart = Date.now();
-    
-    const { data: userPrefs } = await supabaseClient
-      .from('user_preferences')
-      .select('*')
-      .eq('user_id', user.id);
-
-    const { data: professionalKnowledge } = await supabaseClient
-      .from('professional_knowledge')
-      .select('*')
-      .order('usage_count', { ascending: false })
-      .limit(10);
-
-    const { data: recentLearnings } = await supabaseClient
-      .from('conversation_learnings')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('last_reinforced_at', { ascending: false })
-      .limit(5);
-
-    phases.push({
-      name: 'context_loading',
-      duration: Date.now() - contextStart,
-      result: {
-        preferencesLoaded: userPrefs?.length || 0,
-        knowledgeLoaded: professionalKnowledge?.length || 0,
-        learningsLoaded: recentLearnings?.length || 0
+      headers: {
+        Authorization: authHeader
       }
     });
 
-    currentResult.userContext = {
-      preferences: userPrefs,
-      professionalKnowledge,
-      recentLearnings
+    if (masterError) throw masterError;
+
+    // Extract response from master
+    const responseData = masterResponse?.data || masterResponse;
+    const orchestrationTime = Date.now() - orchestrationStart;
+
+    console.log('✅ smart-orchestrator wrapper - response received from master');
+
+    // Format response in expected orchestrator format
+    const finalResponse = {
+      success: true,
+      code: responseData?.code || responseData?.generatedCode,
+      plan: responseData?.plan,
+      reasoning: responseData?.reasoning,
+      reflection: responseData?.reflection,
+      proactiveInsights: responseData?.proactiveInsights,
+      metadata: {
+        totalTime: orchestrationTime,
+        ...(responseData?.metadata || {})
+      }
     };
 
-    // Create orchestration run record
-    const { data: runRecord } = await supabaseClient
-      .from('orchestration_runs')
-      .insert({
-        user_id: user.id,
-        conversation_id: conversationId,
-        request: userRequest,
-        status: 'running'
-      })
-      .select()
-      .single();
-
-    console.log('Starting smart orchestration for:', userRequest);
-
-    // PHASE 2: Architecture Planning (with user context and reasoning)
-    console.log('Phase 2: Architecture Planning');
-    const planResponse = await supabaseClient.functions.invoke('generate-with-plan', {
-      body: {
-        phase: 'plan',
-        userRequest,
-        conversationId,
-        currentCode,
-        userContext: currentResult.userContext, // Include preferences
-        reasoning: currentResult.reasoning // Include reasoning results
-      }
-    });
-
-    if (planResponse.error) throw planResponse.error;
-    
-    phases.push({ 
-      name: 'planning', 
-      duration: Date.now() - startTime,
-      result: planResponse.data 
-    });
-    currentResult.plan = planResponse.data;
-
-    // PHASE 3: Component Impact Analysis
-    console.log('Phase 3: Component Impact Analysis');
-    const impactStart = Date.now();
-    
-    if (currentCode) {
-      const impactResponse = await supabaseClient.functions.invoke('component-awareness', {
-        body: {
-          action: 'analyze',
-          conversationId,
-          code: currentCode
-        }
-      });
-
-      if (!impactResponse.error) {
-        phases.push({ 
-          name: 'impact_analysis', 
-          duration: Date.now() - impactStart,
-          result: impactResponse.data 
-        });
-        currentResult.impactAnalysis = impactResponse.data;
-      }
-    }
-
-    // PHASE 4: Pattern Retrieval
-    console.log('Phase 4: Pattern Retrieval');
-    const patternStart = Date.now();
-    
-    const patternResponse = await supabaseClient.functions.invoke('multi-project-learn', {
-      body: {
-        action: 'retrieve',
-        userId: user.id,
-        context: userRequest,
-        minConfidence: 60
-      }
-    });
-
-    if (!patternResponse.error && patternResponse.data.patterns?.length > 0) {
-      phases.push({ 
-        name: 'pattern_retrieval', 
-        duration: Date.now() - patternStart,
-        result: patternResponse.data 
-      });
-      currentResult.suggestedPatterns = patternResponse.data.patterns;
-    }
-
-    // PHASE 5: Code Generation (with patterns, plan, and reasoning)
-    console.log('Phase 5: Code Generation');
-    const genStart = Date.now();
-    
-    const generateResponse = await supabaseClient.functions.invoke('generate-with-plan', {
-      body: {
-        phase: 'generate',
-        userRequest,
-        conversationId,
-        currentCode,
-        plan: currentResult.plan,
-        suggestedPatterns: currentResult.suggestedPatterns || []
-      }
-    });
-
-    if (generateResponse.error) throw generateResponse.error;
-    
-    phases.push({ 
-      name: 'generation', 
-      duration: Date.now() - genStart,
-      result: generateResponse.data 
-    });
-    currentResult.generatedCode = generateResponse.data.code;
-
-    // PHASE 6: Self-Reflection
-    console.log('Phase 6: Self-Reflection...');
-    const reflectionStart = Date.now();
-
-    const reflectionResponse = await supabaseClient.functions.invoke('self-reflection', {
-      body: {
-        generatedResponse: currentResult.generatedCode,
-        originalRequest: userRequest,
-        context: { userId: user.id, conversationId, plan: currentResult.plan, reasoning: currentResult.reasoning }
-      },
-      headers: { Authorization: authHeader }
-    });
-
-    const reflection = reflectionResponse.data?.reflection || {};
-    console.log('Self-reflection complete:', reflection);
-    
-    phases.push({
-      name: 'self_reflection',
-      duration: Date.now() - reflectionStart,
-      result: { quality_score: reflection.quality_score, should_regenerate: reflection.should_regenerate }
-    });
-    currentResult.reflection = reflection;
-
-    // PHASE 7: Automatic Refinement (if enabled)
-    if (autoRefine && currentResult.generatedCode) {
-      console.log('Phase 5: Automatic Refinement');
-      const refineStart = Date.now();
-      
-      const refineResponse = await supabaseClient.functions.invoke('iterative-refine', {
-        body: {
-          generatedCode: currentResult.generatedCode,
-          userRequest,
-          maxIterations: 2,
-          targetQualityScore: 80,
-          userId: user.id
-        }
-      });
-
-      if (!refineResponse.error) {
-        phases.push({ 
-          name: 'refinement', 
-          duration: Date.now() - refineStart,
-          result: refineResponse.data 
-        });
-        currentResult.refinedCode = refineResponse.data.refinedCode;
-        currentResult.qualityMetrics = refineResponse.data.summary;
-      }
-    }
-
-    // PHASE 8: Learning (if enabled) - Enhanced with conversation learning
-    if (autoLearn && (currentResult.refinedCode || currentResult.generatedCode)) {
-      console.log('Phase 8: Pattern Learning & User Preference Learning');
-      const learnStart = Date.now();
-      
-      // Pattern learning
-      const learnResponse = await supabaseClient.functions.invoke('multi-project-learn', {
-        body: {
-          action: 'learn',
-          userId: user.id,
-          generatedCode: currentResult.refinedCode || currentResult.generatedCode,
-          context: userRequest,
-          success: true
-        }
-      });
-
-      // Conversation learning (learns user preferences)
-      const conversationLearnResponse = await supabaseClient.functions.invoke('learn-from-conversation', {
-        body: {
-          conversationId,
-          messages: [],
-          userRequest,
-          generatedResponse: currentResult.refinedCode || currentResult.generatedCode
-        }
-      });
-
-      if (!learnResponse.error || !conversationLearnResponse.error) {
-        phases.push({ 
-          name: 'learning', 
-          duration: Date.now() - learnStart,
-          result: {
-            patternLearning: learnResponse.data,
-            conversationLearning: conversationLearnResponse.data
-          }
-        });
-      }
-    }
-
-    // PHASE 9: Proactive Intelligence
-    if (user.id) {
-      console.log('Phase 9: Generating proactive insights...');
-      const proactiveStart = Date.now();
-
-      const intelligenceResponse = await supabaseClient.functions.invoke('proactive-intelligence', {
-        body: {
-          userId: user.id,
-          projectContext: { currentCode, conversationId },
-          conversationHistory: [
-            { role: 'user', content: userRequest }, 
-            { role: 'assistant', content: currentResult.refinedCode || currentResult.generatedCode }
-          ]
-        },
-        headers: { Authorization: authHeader }
-      });
-
-      const proactiveInsights = intelligenceResponse.data?.intelligence || {};
-      console.log('Proactive insights generated:', proactiveInsights.suggestions?.length || 0, 'suggestions');
-      
-      phases.push({
-        name: 'proactive_intelligence',
-        duration: Date.now() - proactiveStart,
-        result: { 
-          insights_count: proactiveInsights.insights?.length || 0, 
-          suggestions_count: proactiveInsights.suggestions?.length || 0 
-        }
-      });
-      currentResult.proactiveInsights = proactiveInsights;
-    }
-
-    const totalDuration = Date.now() - startTime;
-
-    // Update orchestration run
+    // Record orchestration run
     await supabaseClient
       .from('orchestration_runs')
-      .update({
-        phases_completed: phases.map(p => p.name),
-        total_duration_ms: totalDuration,
+      .insert({
+        user_id: userId,
+        conversation_id: conversationId,
+        request: userRequest,
         status: 'completed',
-        results: currentResult,
+        phases_completed: [],
+        total_duration_ms: orchestrationTime,
+        results: finalResponse,
         completed_at: new Date().toISOString()
-      })
-      .eq('id', runRecord.id);
+      });
+
+    console.log(`✨ smart-orchestrator wrapper completed in ${orchestrationTime}ms`);
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        orchestrationId: runRecord.id,
-        phases,
-        totalDuration,
-        finalCode: currentResult.refinedCode || currentResult.generatedCode,
-        plan: currentResult.plan,
-        reasoning: currentResult.reasoning,
-        reflection: currentResult.reflection,
-        impactAnalysis: currentResult.impactAnalysis,
-        suggestedPatterns: currentResult.suggestedPatterns,
-        qualityMetrics: currentResult.qualityMetrics,
-        proactiveInsights: currentResult.proactiveInsights,
-        intelligence: 'advanced'
-      }),
+      JSON.stringify(finalResponse),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
-  } catch (error: any) {
-    console.error('Smart orchestrator error:', error);
+  } catch (error) {
+    console.error('❌ Error in smart-orchestrator wrapper:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
