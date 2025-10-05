@@ -4,7 +4,7 @@ project_id = "xuncvfnvatgqshlivuep"
 verify_jwt = true
 
 [functions.real-test-execution]
-verify_jwt = true
+verify_jwt = false
 
 [functions.ci-cd-webhook]
 verify_jwt = true
@@ -22,7 +22,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.automated-test-generator]
-verify_jwt = true
+verify_jwt = false
 
 [functions.auto-fix-engine]
 verify_jwt = true

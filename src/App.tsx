@@ -16,6 +16,7 @@ import Deploy from "./pages/Deploy";
 import QualityHub from "./pages/QualityHub";
 import LivePreview from "./pages/LivePreview";
 import PackageManager from "./pages/PackageManager";
+import TestingHub from "./pages/TestingHub";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const App = () => {
@@ -38,6 +39,7 @@ const App = () => {
         <Route path="/quality-hub" element={<QualityHub />} />
         <Route path="/live-preview" element={<LivePreview />} />
         <Route path="/package-manager" element={<PackageManager />} />
+        <Route path="/testing" element={<TestingHub />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -1,19 +1,10 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-interface TestGenerationRequest {
-  sourceCode: string;
-  language: string;
-  testFramework: 'vitest' | 'jest' | 'playwright';
-  testType: 'unit' | 'integration' | 'e2e';
-  componentName?: string;
-}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -21,49 +12,23 @@ serve(async (req) => {
   }
 
   try {
-    const { 
-      sourceCode, 
-      language, 
-      testFramework, 
-      testType,
-      componentName 
-    }: TestGenerationRequest = await req.json();
-
-    if (!sourceCode) {
-      throw new Error('Source code is required');
-    }
-
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Authorization required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
+    const { code, filePath, framework, testType, projectId } = await req.json();
+    
+    const authHeader = req.headers.get('Authorization')!;
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) throw new Error('Unauthorized');
 
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authorization' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log(`Generating ${testType} tests for ${filePath} using ${framework}`);
 
-    console.log(`🧪 Generating ${testType} tests for user ${user.id}`);
-
+    // Call Lovable AI to generate tests
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
-    }
-
-    const testPrompt = generateTestPrompt(sourceCode, language, testFramework, testType, componentName);
+    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -74,119 +39,82 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: 'You are a test generation expert. Generate comprehensive, runnable tests.' },
-          { role: 'user', content: testPrompt }
-        ]
+          {
+            role: 'system',
+            content: `You are an expert test engineer. Generate comprehensive ${testType} tests using ${framework}. 
+            
+Return ONLY valid ${framework} test code without explanations or markdown formatting.
+Use modern best practices and cover edge cases.`
+          },
+          {
+            role: 'user',
+            content: `Generate ${testType} tests for this code:\n\nFile: ${filePath}\n\n\`\`\`typescript\n${code}\n\`\`\``
+          }
+        ],
+        temperature: 0.7,
       }),
     });
 
     if (!aiResponse.ok) {
-      throw new Error(`AI API error: ${aiResponse.status}`);
+      const errorText = await aiResponse.text();
+      console.error('AI API error:', aiResponse.status, errorText);
+      throw new Error(`AI generation failed: ${aiResponse.status}`);
     }
 
     const aiData = await aiResponse.json();
-    const testCode = aiData.choices[0].message.content;
+    const generatedTest = aiData.choices[0].message.content;
+
+    // Clean the generated code
+    const cleanedTest = cleanTestCode(generatedTest);
 
     // Store generated test
-    const { data: generatedTest, error: insertError } = await supabaseClient
+    const { data: savedTest, error: saveError } = await supabaseClient
       .from('generated_tests')
       .insert({
         user_id: user.id,
-        source_code: sourceCode,
-        test_code: testCode,
-        test_framework: testFramework,
+        project_id: projectId,
+        file_path: filePath,
+        test_framework: framework,
+        test_code: cleanedTest,
+        target_code: code,
         test_type: testType,
-        execution_status: 'pending'
+        confidence_score: 0.85
       })
       .select()
       .single();
 
-    if (insertError) {
-      console.error('Failed to store test:', insertError);
-    }
-
-    console.log('✅ Test generated successfully');
+    if (saveError) throw saveError;
 
     return new Response(
       JSON.stringify({
         success: true,
-        testId: generatedTest?.id,
-        testCode,
-        testFramework,
-        testType
+        test: {
+          id: savedTest.id,
+          code: cleanedTest,
+          framework,
+          type: testType,
+          filePath
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('❌ Test generation error:', error);
+    console.error('Test generation error:', error);
     return new Response(
-      JSON.stringify({ 
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
 
-function generateTestPrompt(
-  code: string, 
-  language: string, 
-  framework: string, 
-  testType: string,
-  componentName?: string
-): string {
-  const frameworkSetup = {
-    vitest: "import { describe, it, expect, vi } from 'vitest';\nimport { render, screen, fireEvent } from '@testing-library/react';",
-    jest: "import { describe, it, expect, jest } from '@jest/globals';\nimport { render, screen, fireEvent } from '@testing-library/react';",
-    playwright: "import { test, expect } from '@playwright/test';"
-  };
-
-  if (testType === 'e2e') {
-    return `Generate Playwright end-to-end tests for this component.
-
-**Source Code:**
-\`\`\`${language}
-${code}
-\`\`\`
-
-Generate comprehensive E2E tests that:
-1. Test user workflows from start to finish
-2. Test navigation and routing
-3. Test form submissions
-4. Test error states
-5. Test responsive behavior
-
-Use Playwright syntax. Include setup and teardown.`;
-  }
-
-  return `Generate ${testType} tests using ${framework} for this ${language} code.
-
-**Source Code:**
-\`\`\`${language}
-${code}
-\`\`\`
-
-${componentName ? `**Component Name:** ${componentName}` : ''}
-
-Generate comprehensive tests that:
-1. ${frameworkSetup[framework as keyof typeof frameworkSetup]}
-2. Test rendering and initial state
-3. Test all user interactions (clicks, inputs, etc.)
-4. Test all props and their effects
-5. Test error boundaries and edge cases
-6. Test async operations with proper mocking
-7. Include setup/teardown and cleanup
-
-**Requirements:**
-- Use ${framework} syntax
-- Import statements at the top
-- Descriptive test names
-- Proper assertions
-- Mock external dependencies
-- Test accessibility
-- Aim for >80% coverage
-
-Return ONLY the complete test code, ready to run.`;
+function cleanTestCode(code: string): string {
+  // Remove markdown code blocks if present
+  let cleaned = code.replace(/```(?:typescript|javascript|ts|js)?\n?/g, '');
+  cleaned = cleaned.replace(/```\n?/g, '');
+  
+  // Trim whitespace
+  cleaned = cleaned.trim();
+  
+  return cleaned;
 }
