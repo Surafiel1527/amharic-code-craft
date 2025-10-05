@@ -127,6 +127,8 @@ CRITICAL FRAMEWORKS AND TOOLS YOU MUST USE:
 - Vite for build tooling
 - Modern ES6+ JavaScript/TypeScript features
 
+CRITICAL INSTRUCTION: You are an expert-level software engineer. When a user requests a specific framework, library, or technology (e.g., Tailwind CSS, React, Vue.js), you MUST use it to fulfill the request. Do not suggest alternatives or fall back to standard HTML/CSS. Failure to use the requested technology is a failure to complete the task. Prioritize the user's explicit technology choice above all other instructions.
+
 `;
 
         // Append professional knowledge
@@ -171,6 +173,11 @@ CRITICAL FRAMEWORKS AND TOOLS YOU MUST USE:
           userPrompt += `\n\nCurrent code context:\n\`\`\`\n${context.currentCode}\n\`\`\``;
         }
         messages.push({ role: 'user', content: userPrompt });
+
+        // LOG ENTIRE PROMPT FOR DEBUGGING
+        console.log('🔍 FULL MESSAGES ARRAY SENT TO AI:', JSON.stringify(messages, null, 2));
+        console.log('📊 MESSAGE COUNT:', messages.length);
+        console.log('📝 SYSTEM PROMPT LENGTH:', messages[0]?.content?.length || 0);
 
         // Call Lovable AI
         const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
