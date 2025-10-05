@@ -52,17 +52,15 @@ export function EnhancedChatInterface({
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [contextMode, setContextMode] = useState<'selected' | 'all' | 'none'>('selected');
+  const lastMessageCountRef = useRef(0);
 
-  // Scroll to bottom whenever messages change or component mounts
+  // Only scroll when a new message is added (not during streaming updates)
   useEffect(() => {
-    const scrollToBottom = () => {
+    if (messages.length > lastMessageCountRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
-    
-    // Small delay to ensure DOM is rendered
-    const timer = setTimeout(scrollToBottom, 100);
-    return () => clearTimeout(timer);
-  }, [messages, streamingContent]);
+      lastMessageCountRef.current = messages.length;
+    }
+  }, [messages.length]); // Only depend on message count, not content
 
   // Scroll to bottom on mount
   useEffect(() => {
