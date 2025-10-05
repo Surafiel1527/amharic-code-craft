@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { SensitiveDataDetector } from "@/components/SensitiveDataDetector";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css";
 import "prismjs/components/prism-typescript";
@@ -320,6 +321,9 @@ export function EnhancedChatInterface({
           ))}
         </div>
       </ScrollArea>
+
+      {/* Sensitive Data Warning */}
+      <SensitiveDataDetector text={input} />
 
       {/* Input */}
       <div className="flex gap-2">

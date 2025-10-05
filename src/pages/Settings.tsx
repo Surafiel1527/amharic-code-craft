@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ProfilePrivacySettings } from "@/components/ProfilePrivacySettings";
+import { DatabaseCredentialsManager } from "@/components/DatabaseCredentialsManager";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -175,6 +176,10 @@ const Settings = () => {
 
         <div className="mt-6">
           <ProfilePrivacySettings />
+        </div>
+
+        <div className="mt-6">
+          <DatabaseCredentialsManager />
         </div>
       </div>
     </div>

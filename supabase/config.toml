@@ -167,3 +167,10 @@ verify_jwt = true
 
 [functions.generate-tests]
 verify_jwt = false
+
+[functions.save-database-credentials]
+verify_jwt = true
+
+[functions.test-database-connection]
+verify_jwt = true
+
