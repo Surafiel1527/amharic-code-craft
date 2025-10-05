@@ -187,7 +187,7 @@ CRITICAL INSTRUCTION: You are an expert-level software engineer. When a user req
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'google/gemini-2.5-pro', // Using most powerful model for framework compliance
             messages: messages,
             temperature: 0.7
           })
@@ -249,7 +249,7 @@ Provide specific, actionable feedback.`;
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'google/gemini-2.5-pro', // Using most powerful model for analysis quality
             messages: messages
           })
         });
@@ -304,7 +304,7 @@ Be concise, helpful, and technical when appropriate.`;
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'google/gemini-2.5-pro', // Using most powerful model for conversational quality
             messages: messages
           })
         });
