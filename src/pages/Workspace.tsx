@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Loader2, Send, Save, ArrowLeft, Maximize2, Minimize2, 
-  History, Code2, Eye, MessageSquare, Sparkles, RotateCcw, Target, Download, Code, FileCode2
+  History, Code2, Eye, MessageSquare, Sparkles, RotateCcw, Target, Download, Code, FileCode2, Rocket
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -954,6 +954,21 @@ export default function Workspace() {
 
                   <TabsContent value="deploy" className="h-[calc(100vh-200px)] overflow-auto">
                     <div className="space-y-4">
+                      <Card className="p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h3 className="font-semibold">Vercel Deployment</h3>
+                            <p className="text-sm text-muted-foreground">Deploy your project to production</p>
+                          </div>
+                          <Button
+                            onClick={() => navigate(`/deploy/${projectId}`)}
+                            className="gap-2"
+                          >
+                            <Rocket className="h-4 w-4" />
+                            Open Deployment Manager
+                          </Button>
+                        </div>
+                      </Card>
                       <CICDPipelineBuilder />
                       <DeploymentManager />
                     </div>

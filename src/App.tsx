@@ -29,7 +29,7 @@ const App = () => {
         <Route path="/shared/:shareToken" element={<SharedProject />} />
         <Route path="/ai-test" element={<AISystemTest />} />
         <Route path="/database-manager" element={<DatabaseManager />} />
-        <Route path="/deploy" element={<Deploy />} />
+        <Route path="/deploy/:projectId" element={<Deploy />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
