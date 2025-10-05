@@ -4,20 +4,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Clock, RotateCcw, Eye, GitCompare, Tag, Download } from "lucide-react";
+import { Clock, RotateCcw, Eye, GitCompare, Tag, Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CodeDiffViewer } from "./CodeDiffViewer";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { VersionPreviewDialog } from "./VersionPreviewDialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -48,6 +52,8 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
   const [compareMode, setCompareMode] = useState(false);
   const [compareVersions, setCompareVersions] = useState<{ v1: string; v2: string }>({ v1: '', v2: '' });
   const [exportFormat, setExportFormat] = useState<'json' | 'html'>('json');
+  const [previewVersion, setPreviewVersion] = useState<Version | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const { t } = useLanguage();
 
   useEffect(() => {
@@ -96,6 +102,29 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
     const v1 = versions.find(v => v.id === compareVersions.v1);
     const v2 = versions.find(v => v.id === compareVersions.v2);
     return { v1, v2 };
+  };
+
+  const handleDeleteVersion = async (versionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const { error } = await supabase
+        .from('project_versions')
+        .delete()
+        .eq('id', versionId);
+
+      if (error) throw error;
+      
+      setVersions(versions.filter(v => v.id !== versionId));
+      toast.success("Version deleted successfully");
+    } catch (error) {
+      console.error('Error deleting version:', error);
+      toast.error("Failed to delete version");
+    }
+  };
+
+  const handlePreview = (version: Version) => {
+    setPreviewVersion(version);
+    setPreviewOpen(true);
   };
 
   if (loading) {
@@ -228,30 +257,13 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedVersion(version)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[80vh]">
-                          <DialogHeader>
-                            <DialogTitle>{t('versions.version')} {version.version_number} {t('versions.preview')}</DialogTitle>
-                            <DialogDescription>
-                              {t('versions.codePreview')}
-                            </DialogDescription>
-                          </DialogHeader>
-                          <ScrollArea className="h-[500px]">
-                            <pre className="text-xs bg-muted p-4 rounded-lg">
-                              {version.html_code}
-                            </pre>
-                          </ScrollArea>
-                        </DialogContent>
-                      </Dialog>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePreview(version)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
 
                       <Button
                         variant="outline"
@@ -269,6 +281,34 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
                         <RotateCcw className="h-4 w-4 mr-1" />
                         {t('versions.restore')}
                       </Button>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Version</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete version {version.version_number}? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={(e) => handleDeleteVersion(version.id, e)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 </div>
@@ -277,6 +317,15 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
           </ScrollArea>
         )}
       </CardContent>
+
+      {previewVersion && (
+        <VersionPreviewDialog
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          htmlCode={previewVersion.html_code}
+          versionNumber={previewVersion.version_number}
+        />
+      )}
     </Card>
   );
 };
