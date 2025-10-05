@@ -16,6 +16,20 @@ interface IntentResult {
 function recognizeIntent(userMessage: string, context: any): IntentResult {
   const msg = userMessage.toLowerCase();
   
+  // Python project generation - HIGH PRIORITY (before other code gen)
+  if (
+    (msg.includes('python') || msg.includes('flask') || msg.includes('django') || 
+     msg.includes('fastapi') || msg.includes('pygame')) &&
+    (msg.includes('create') || msg.includes('build') || msg.includes('generate') ||
+     msg.includes('make') || msg.includes('app') || msg.includes('project'))
+  ) {
+    return {
+      primaryIntent: 'python-generation',
+      subIntent: 'full-project',
+      confidence: 0.98
+    };
+  }
+  
   // Advice/consultation patterns - HIGH PRIORITY
   if (
     msg.includes('advice') || msg.includes('suggest') || msg.includes('recommend') ||
@@ -221,6 +235,99 @@ async function routeToModule(
           };
         }
         break;
+      }
+
+      case 'python-generation': {
+        // Route to Python Project Generator
+        console.log('🐍 PYTHON GENERATOR: Creating complete Python project...');
+        
+        const pythonPrompt = `You are an expert Python developer. Generate a complete, production-ready Python project.
+
+USER REQUEST: ${userMessage}
+
+Create a COMPLETE project structure with:
+1. Main application files (.py)
+2. requirements.txt with ALL dependencies
+3. README.md with setup instructions
+4. Project structure explanation
+5. Configuration files (if needed)
+
+Respond with a JSON object containing:
+{
+  "projectName": "project_name",
+  "description": "Brief description",
+  "framework": "Flask/Django/FastAPI/Pygame/Pure Python",
+  "files": [
+    {
+      "path": "main.py",
+      "content": "# Complete working code here"
+    },
+    {
+      "path": "requirements.txt",
+      "content": "flask==2.3.0\\nrequests==2.31.0"
+    },
+    {
+      "path": "README.md",
+      "content": "# Project Setup\\n\\n## Installation\\n..."
+    }
+  ],
+  "setupInstructions": [
+    "python -m venv venv",
+    "source venv/bin/activate  # On Windows: venv\\\\Scripts\\\\activate",
+    "pip install -r requirements.txt",
+    "python main.py"
+  ]
+}
+
+CRITICAL RULES:
+1. Include ALL necessary files for a working project
+2. Add proper error handling and logging
+3. Include environment variable examples if needed
+4. Make code production-ready with best practices
+5. Add comments explaining key sections
+6. Include .gitignore file if appropriate`;
+
+        const pythonResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-pro',
+            messages: [{ role: 'user', content: pythonPrompt }],
+            temperature: 0.2
+          })
+        });
+
+        if (!pythonResponse.ok) {
+          throw new Error(`Python generation failed: ${pythonResponse.status}`);
+        }
+
+        const pythonData = await pythonResponse.json();
+        let pythonContent = pythonData.choices[0].message.content;
+        
+        const jsonMatch = pythonContent.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (jsonMatch) {
+          pythonContent = jsonMatch[1];
+        }
+        
+        const projectData = JSON.parse(pythonContent);
+        console.log('✅ PYTHON PROJECT GENERATED:', projectData.projectName);
+
+        return {
+          intent: 'python-generation',
+          subIntent: 'full-project',
+          module: 'python-project-generator',
+          response: {
+            success: true,
+            projectType: 'python',
+            projectData: projectData,
+            downloadable: true,
+            message: `Created complete ${projectData.framework} project: "${projectData.projectName}". Ready to download and run locally!`,
+            instructions: projectData.setupInstructions
+          }
+        };
       }
 
       case 'consultation': {

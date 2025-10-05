@@ -49,6 +49,8 @@ import { CodeReviewPanel } from "@/components/CodeReviewPanel";
 import { TemplatesGallery } from "@/components/TemplatesGallery";
 import { UsageAnalyticsDashboard } from "@/components/UsageAnalyticsDashboard";
 import { PerformanceMonitor } from "@/components/PerformanceMonitor";
+import { PythonProjectViewer } from "@/components/PythonProjectViewer";
+import { LanguageCapabilities } from "@/components/LanguageCapabilities";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -59,6 +61,13 @@ interface Message {
     plan?: any;
     qualityMetrics?: any;
     totalDuration?: number;
+  };
+  pythonProject?: {
+    projectName: string;
+    description: string;
+    framework: string;
+    files: Array<{ path: string; content: string }>;
+    setupInstructions: string[];
   };
 }
 
@@ -188,7 +197,7 @@ export default function Workspace() {
           // Add initial context message only if no messages exist
           const initialMsg = {
             role: 'assistant' as const,
-            content: `Welcome to your workspace! I can help you enhance "${data.title}". What would you like to add or improve?`,
+            content: `Welcome to your workspace! I can help you enhance "${data.title}".\n\n✨ I can now work with:\n• React/TypeScript (live preview)\n• Python projects (download & run)\n• Mobile apps (Capacitor)\n\nWhat would you like to create or improve?`,
             timestamp: new Date().toISOString()
           };
           setMessages([initialMsg]);
@@ -505,7 +514,36 @@ export default function Workspace() {
 
       if (error) throw error;
 
-      setThinkingMessage('✨ Finalizing changes...');
+      setThinkingMessage('✨ Finalizing...');
+      
+      // Check if this is a Python project response
+      const isPythonProject = data.projectType === 'python' || data.projectData;
+      
+      if (isPythonProject) {
+        // Handle Python project generation
+        const pythonMessage: Message = {
+          role: 'assistant',
+          content: data.message || `Python project "${data.projectData.projectName}" generated successfully! Download it below.`,
+          timestamp: new Date().toISOString(),
+          pythonProject: data.projectData
+        };
+
+        setMessages(prev => [...prev, pythonMessage]);
+        setThinkingMessage('');
+        
+        // Save assistant message to database
+        await supabase.from('messages').insert({
+          conversation_id: conversationId,
+          role: pythonMessage.role,
+          content: pythonMessage.content
+        });
+
+        toast.success(`🐍 Python project ready: ${data.projectData.projectName}`);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Handle regular React/web code generation
       const finalCode = data.finalCode;
       
       // Update project with new code
@@ -818,6 +856,7 @@ export default function Workspace() {
                     <TabsTrigger value="testing">Testing</TabsTrigger>
                     <TabsTrigger value="deploy">Deploy</TabsTrigger>
                     <TabsTrigger value="ai">AI</TabsTrigger>
+                    <TabsTrigger value="languages">Languages</TabsTrigger>
                     <TabsTrigger value="collab">Collab</TabsTrigger>
                     <TabsTrigger value="review">Review</TabsTrigger>
                     <TabsTrigger value="gallery">Gallery</TabsTrigger>
@@ -934,6 +973,10 @@ export default function Workspace() {
                     </div>
                   </TabsContent>
 
+                  <TabsContent value="languages" className="h-[calc(100vh-200px)] overflow-auto">
+                    <LanguageCapabilities />
+                  </TabsContent>
+
                   <TabsContent value="collab" className="h-[calc(100vh-200px)] overflow-auto">
                     <CollaborativeCodeEditor
                       projectId={projectId}
@@ -990,15 +1033,26 @@ export default function Workspace() {
                           key={idx}
                           className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
-                          <div
-                            className={`max-w-[80%] rounded-lg p-3 ${
-                              msg.role === 'user'
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted'
-                            }`}
-                          >
-                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                          </div>
+                          {msg.role === 'assistant' && msg.pythonProject ? (
+                            // Python project response
+                            <div className="w-full max-w-full">
+                              <PythonProjectViewer 
+                                projectData={msg.pythonProject}
+                                message={msg.content}
+                              />
+                            </div>
+                          ) : (
+                            // Regular text message
+                            <div
+                              className={`max-w-[80%] rounded-lg p-3 ${
+                                msg.role === 'user'
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-muted'
+                              }`}
+                            >
+                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            </div>
+                          )}
                         </div>
                       ))}
                       {isLoading && thinkingMessage && (

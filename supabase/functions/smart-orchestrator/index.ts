@@ -76,11 +76,18 @@ serve(async (req) => {
     const orchestrationTime = Date.now() - orchestrationStart;
 
     console.log('✅ smart-orchestrator wrapper - response received from master');
+    
+    // Check if this is a Python project
+    const isPythonProject = responseData?.projectType === 'python' || responseData?.projectData;
 
     // Format response in expected orchestrator format
     const finalResponse = {
       success: true,
-      finalCode: responseData?.finalCode || responseData?.code || responseData?.generatedCode,
+      projectType: responseData?.projectType,
+      projectData: responseData?.projectData,
+      message: responseData?.message,
+      instructions: responseData?.instructions,
+      finalCode: isPythonProject ? null : (responseData?.finalCode || responseData?.code || responseData?.generatedCode),
       code: responseData?.code || responseData?.generatedCode,
       plan: responseData?.plan || responseData?.analysis,
       reasoning: responseData?.reasoning,
@@ -93,6 +100,7 @@ serve(async (req) => {
       metadata: {
         totalTime: orchestrationTime,
         module: masterResponse?.module || responseData?.module,
+        isPythonProject: isPythonProject,
         ...(responseData?.metadata || masterResponse?.metadata || {})
       }
     };
