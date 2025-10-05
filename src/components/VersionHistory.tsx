@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CodeDiffViewer } from "./CodeDiffViewer";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +48,7 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
   const [compareMode, setCompareMode] = useState(false);
   const [compareVersions, setCompareVersions] = useState<{ v1: string; v2: string }>({ v1: '', v2: '' });
   const [exportFormat, setExportFormat] = useState<'json' | 'html'>('json');
+  const { t } = useLanguage();
 
   useEffect(() => {
     fetchVersions();
@@ -64,7 +66,7 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
       setVersions(data || []);
     } catch (error) {
       console.error('Error fetching versions:', error);
-      toast.error("ስሪቶችን ማምጣት አልተቻለም");
+      toast.error(t('versions.fetchError'));
     } finally {
       setLoading(false);
     }
@@ -72,7 +74,7 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
 
   const handleRestore = (version: Version) => {
     onRestore(version.html_code);
-    toast.success(`ወደ ስሪት ${version.version_number} ተመልሷል`);
+    toast.success(`${t('versions.restored')} ${version.version_number}`);
   };
 
   const handleExport = (version: Version) => {
@@ -118,10 +120,10 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
           <div>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Version History
+              {t('versions.title')}
             </CardTitle>
             <CardDescription>
-              Enterprise-grade version control with diff comparison
+              {t('versions.subtitle')}
             </CardDescription>
           </div>
           <div className="flex gap-2">
@@ -131,7 +133,7 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
               onClick={() => setCompareMode(!compareMode)}
             >
               <GitCompare className="h-4 w-4 mr-2" />
-              Compare
+              {t('versions.compare')}
             </Button>
             <Select value={exportFormat} onValueChange={(v: 'json' | 'html') => setExportFormat(v)}>
               <SelectTrigger className="w-24">
@@ -151,8 +153,8 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
             <CodeDiffViewer
               oldCode={getComparedVersions().v1?.html_code || ''}
               newCode={getComparedVersions().v2?.html_code || ''}
-              oldVersion={`Version ${getComparedVersions().v1?.version_number}`}
-              newVersion={`Version ${getComparedVersions().v2?.version_number}`}
+              oldVersion={`${t('versions.version')} ${getComparedVersions().v1?.version_number}`}
+              newVersion={`${t('versions.version')} ${getComparedVersions().v2?.version_number}`}
             />
           </div>
         )}
@@ -160,30 +162,30 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
         {compareMode && (
           <div className="grid grid-cols-2 gap-2 mb-4 p-3 bg-muted rounded-lg">
             <div>
-              <label className="text-xs font-medium mb-1 block">Compare From:</label>
+              <label className="text-xs font-medium mb-1 block">{t('versions.compareFrom')}</label>
               <Select value={compareVersions.v1} onValueChange={(v) => setCompareVersions(prev => ({ ...prev, v1: v }))}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select version" />
+                  <SelectValue placeholder={t('versions.selectVersion')} />
                 </SelectTrigger>
                 <SelectContent>
                   {versions.map(v => (
                     <SelectItem key={v.id} value={v.id}>
-                      Version {v.version_number}
+                      {t('versions.version')} {v.version_number}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium mb-1 block">Compare To:</label>
+              <label className="text-xs font-medium mb-1 block">{t('versions.compareTo')}</label>
               <Select value={compareVersions.v2} onValueChange={(v) => setCompareVersions(prev => ({ ...prev, v2: v }))}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select version" />
+                  <SelectValue placeholder={t('versions.selectVersion')} />
                 </SelectTrigger>
                 <SelectContent>
                   {versions.map(v => (
                     <SelectItem key={v.id} value={v.id}>
-                      Version {v.version_number}
+                      {t('versions.version')} {v.version_number}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -195,7 +197,7 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
         {versions.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
             <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No version history yet</p>
+            <p>{t('versions.noHistory')}</p>
           </div>
         ) : (
           <ScrollArea className="h-[400px] pr-4">
@@ -209,19 +211,19 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <Badge variant="outline">
-                          ስሪት {version.version_number}
+                          {t('versions.version')} {version.version_number}
                         </Badge>
                         {version.quality_score && (
                           <Badge variant="secondary" className="text-xs">
-                            ጥራት: {version.quality_score}/100
+                            {t('versions.quality')}: {version.quality_score}/100
                           </Badge>
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {version.changes_summary || 'ምንም ማጠቃለያ የለም'}
+                        {version.changes_summary || t('versions.noSummary')}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(version.created_at).toLocaleString('am-ET')}
+                        {new Date(version.created_at).toLocaleString()}
                       </p>
                     </div>
 
@@ -238,9 +240,9 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl max-h-[80vh]">
                           <DialogHeader>
-                            <DialogTitle>Version {version.version_number} Preview</DialogTitle>
+                            <DialogTitle>{t('versions.version')} {version.version_number} {t('versions.preview')}</DialogTitle>
                             <DialogDescription>
-                              Code Preview & Details
+                              {t('versions.codePreview')}
                             </DialogDescription>
                           </DialogHeader>
                           <ScrollArea className="h-[500px]">
@@ -265,7 +267,7 @@ export const VersionHistory = ({ projectId, onRestore }: VersionHistoryProps) =>
                         onClick={() => handleRestore(version)}
                       >
                         <RotateCcw className="h-4 w-4 mr-1" />
-                        Restore
+                        {t('versions.restore')}
                       </Button>
                     </div>
                   </div>
