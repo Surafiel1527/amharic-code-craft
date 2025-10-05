@@ -262,22 +262,26 @@ export default function Workspace() {
   const handleCreateFile = async (path: string, type: 'file' | 'folder') => {
     if (!projectId || !user) return;
     
+    // Normalize path for root-level config files (like vercel.json)
+    const normalizedPath = path.startsWith('/') ? path.substring(1) : path;
+    
     const { error } = await supabase
       .from('project_files')
       .insert({
         project_id: projectId,
-        file_path: path,
-        file_content: type === 'file' ? '// New file\n' : '',
-        file_type: path.split('.').pop() || 'txt',
+        file_path: normalizedPath,
+        file_content: type === 'file' ? '' : '', // Empty for new files
+        file_type: normalizedPath.split('.').pop() || 'txt',
         created_by: user.id
       });
 
     if (error) {
+      console.error('Create file error:', error);
       toast.error('Failed to create file');
       return;
     }
 
-    toast.success('File created');
+    toast.success(`Created ${normalizedPath}`);
     // Reload files
     const { data } = await supabase
       .from('project_files')
@@ -331,23 +335,56 @@ export default function Workspace() {
     if (!projectId || selectedFiles.length === 0) return;
     
     const filePath = selectedFiles[0];
-    const { error } = await supabase
-      .from('project_files')
-      .update({ 
-        file_content: content,
-        updated_at: new Date().toISOString()
-      })
-      .eq('project_id', projectId)
-      .eq('file_path', filePath);
+    
+    // Check if file exists
+    const existingFile = projectFiles.find(f => f.file_path === filePath);
+    
+    if (existingFile) {
+      // Update existing file
+      const { error } = await supabase
+        .from('project_files')
+        .update({ 
+          file_content: content,
+          updated_at: new Date().toISOString()
+        })
+        .eq('project_id', projectId)
+        .eq('file_path', filePath);
 
-    if (error) {
-      toast.error('Failed to save file');
-      return;
+      if (error) {
+        console.error('Save error:', error);
+        toast.error('Failed to save file');
+        return;
+      }
+
+      setProjectFiles(prev =>
+        prev.map(f => f.file_path === filePath ? { ...f, file_content: content } : f)
+      );
+    } else {
+      // Create new file if it doesn't exist
+      const { error } = await supabase
+        .from('project_files')
+        .insert({
+          project_id: projectId,
+          file_path: filePath,
+          file_content: content,
+          file_type: filePath.split('.').pop() || 'txt',
+          created_by: user?.id
+        });
+
+      if (error) {
+        console.error('Create error:', error);
+        toast.error('Failed to create file');
+        return;
+      }
+
+      // Reload files to include the new one
+      const { data } = await supabase
+        .from('project_files')
+        .select('*')
+        .eq('project_id', projectId);
+      
+      if (data) setProjectFiles(data);
     }
-
-    setProjectFiles(prev =>
-      prev.map(f => f.file_path === filePath ? { ...f, file_content: content } : f)
-    );
     
     if (!autoSaveEnabled) {
       toast.success('File saved');
@@ -689,15 +726,39 @@ export default function Workspace() {
               projectId={projectId}
               selectedFiles={selectedFiles}
               projectFiles={projectFiles}
-              onCodeApply={(code, filePath) => {
-                const fileExists = projectFiles.some(f => f.file_path === filePath);
-                if (fileExists) {
-                  setSelectedFiles([filePath]);
-                  handleSaveFile(code);
-                  toast.success(`Applied changes to ${filePath}`);
-                } else {
-                  handleCreateFile(filePath, 'file');
-                  toast.success(`Created ${filePath} with new code`);
+              onCodeApply={async (code, filePath) => {
+                try {
+                  const fileExists = projectFiles.some(f => f.file_path === filePath);
+                  
+                  if (!fileExists) {
+                    // Create new file with content directly
+                    const { error } = await supabase
+                      .from('project_files')
+                      .insert({
+                        project_id: projectId,
+                        file_path: filePath,
+                        file_content: code,
+                        file_type: filePath.split('.').pop() || 'json',
+                        created_by: user?.id
+                      });
+
+                    if (error) throw error;
+                    
+                    // Reload files
+                    const { data } = await supabase
+                      .from('project_files')
+                      .select('*')
+                      .eq('project_id', projectId);
+                    
+                    if (data) setProjectFiles(data);
+                  } else {
+                    // Update existing file
+                    setSelectedFiles([filePath]);
+                    await handleSaveFile(code);
+                  }
+                } catch (error) {
+                  console.error('Apply code error:', error);
+                  throw error; // Re-throw to be caught by the chat component
                 }
               }}
             />

@@ -220,6 +220,21 @@ export function EnhancedChatInterface({
       } else if (data?.message) {
         // Got an explanation or instructions
         fullContent = data.message;
+        
+        // Try to detect if message contains configuration files (like vercel.json)
+        const jsonConfigMatch = fullContent.match(/```json\s*\n?([\s\S]*?)\n?```/);
+        if (jsonConfigMatch) {
+          const configContent = jsonConfigMatch[1].trim();
+          
+          // Check if it's a vercel.json or other deployment config
+          if (fullContent.toLowerCase().includes('vercel.json') || 
+              configContent.includes('"buildCommand"') || 
+              configContent.includes('"outputDirectory"')) {
+            codeToApply = configContent;
+            filePathToApply = 'vercel.json';
+            fullContent = `📝 **Creating Deployment Configuration**\n\n${fullContent}`;
+          }
+        }
       } else if (data?.explanation) {
         fullContent = data.explanation;
       } else {
@@ -231,6 +246,21 @@ export function EnhancedChatInterface({
       if (codeBlock && !codeToApply) {
         codeToApply = codeBlock.code;
         filePathToApply = codeBlock.filePath;
+      }
+
+      // Auto-apply code fixes if we have valid code and file path
+      if (codeToApply && filePathToApply && onCodeApply && codeToApply.length > 10) {
+        try {
+          await onCodeApply(codeToApply, filePathToApply);
+          fullContent = `✅ **Fix Complete!**\n\nCreated/Updated: \`${filePathToApply}\`\n\n${fullContent}\n\n---\n\n💡 **Next Steps:**\n• Check if the file was created correctly\n• Commit and push to trigger a new deployment\n• Verify the deployment succeeds`;
+          toast.success(`✅ Created ${filePathToApply}`);
+        } catch (applyError) {
+          console.error('Failed to auto-apply code:', applyError);
+          fullContent = `⚠️ **Fix Generated But Not Applied**\n\n${fullContent}\n\nPlease manually create the file or check permissions.`;
+          toast.error('Generated fix but failed to apply. Please check the file.');
+        }
+      } else if (codeToApply && !filePathToApply) {
+        fullContent = `📝 **Fix Generated**\n\n${fullContent}\n\n⚠️ No target file specified. Please select a file to apply changes.`;
       }
 
       // Auto-apply code fixes if we have valid code and file path
