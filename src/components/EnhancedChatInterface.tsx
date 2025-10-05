@@ -151,7 +151,7 @@ export function EnhancedChatInterface({
       
       if (isDeploymentError) {
         // First, let AI learn from this deployment error
-        const { data: teachingResult } = await supabase.functions.invoke('deployment-fix-teacher', {
+        const { data: teachingResult, error: teachError } = await supabase.functions.invoke('deployment-fix-teacher', {
           body: {
             errorMessage: input,
             projectContext: {
@@ -163,8 +163,55 @@ export function EnhancedChatInterface({
           }
         });
 
-        if (teachingResult?.solution) {
-          toast.success('🎓 AI learned how to fix this deployment error!');
+        if (teachingResult?.solution && !teachError) {
+          toast.success('🎓 AI learned the fix - applying now!');
+          
+          // Extract the first file from the solution and apply it
+          const solution = teachingResult.solution;
+          if (solution.files && solution.files.length > 0) {
+            const fileToCreate = solution.files[0];
+            const fileCode = fileToCreate.content;
+            const filePath = fileToCreate.path;
+            
+            // Auto-apply the fix immediately
+            if (onCodeApply && fileCode && filePath) {
+              try {
+                await onCodeApply(fileCode, filePath);
+                
+                // Build success message
+                const successMsg = `✅ **Fix Applied Successfully!**\n\n` +
+                  `**Diagnosis:** ${teachingResult.diagnosis || 'Deployment configuration issue'}\n\n` +
+                  `**What I did:**\n` +
+                  solution.files.map((f: any, i: number) => 
+                    `${i + 1}. ${f.action === 'create' ? 'Created' : 'Modified'} \`${f.path}\`\n   ${f.explanation}`
+                  ).join('\n') +
+                  `\n\n**Next Steps:**\n` +
+                  solution.steps.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n') +
+                  `\n\n**Verification:** ${solution.verification}` +
+                  (solution.preventionTips ? `\n\n**Prevention Tips:**\n${solution.preventionTips.map((t: string) => `• ${t}`).join('\n')}` : '');
+                
+                const successMessage: Message = {
+                  id: crypto.randomUUID(),
+                  role: 'assistant',
+                  content: successMsg,
+                  timestamp: new Date().toISOString(),
+                  codeBlock: {
+                    language: filePath.endsWith('.json') ? 'json' : 'typescript',
+                    code: fileCode,
+                    filePath: filePath
+                  }
+                };
+                
+                setMessages(prev => [...prev, successMessage]);
+                setLoading(false);
+                toast.success(`✅ Created ${filePath}`);
+                return; // Exit early - we've handled the deployment error
+              } catch (applyError) {
+                console.error('Failed to auto-apply fix:', applyError);
+                toast.error('Generated fix but failed to apply');
+              }
+            }
+          }
         }
       }
 
