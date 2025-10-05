@@ -44,6 +44,11 @@ import { AdvancedTestGenerator } from "@/components/AdvancedTestGenerator";
 import { CICDPipelineBuilder } from "@/components/CICDPipelineBuilder";
 import { APITestingSuite } from "@/components/APITestingSuite";
 import { DeploymentManager } from "@/components/DeploymentManager";
+import { CollaborativeCodeEditor } from "@/components/CollaborativeCodeEditor";
+import { CodeReviewPanel } from "@/components/CodeReviewPanel";
+import { TemplatesGallery } from "@/components/TemplatesGallery";
+import { UsageAnalyticsDashboard } from "@/components/UsageAnalyticsDashboard";
+import { PerformanceMonitor } from "@/components/PerformanceMonitor";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -790,7 +795,7 @@ export default function Workspace() {
               {/* Right Sidebar - Enhanced with Phase 2 Features */}
               <div className="w-96">
                 <Tabs defaultValue="templates">
-                  <TabsList className="w-full grid grid-cols-3 lg:grid-cols-11">
+                  <TabsList className="w-full grid grid-cols-3 lg:grid-cols-16">
                     <TabsTrigger value="templates">Templates</TabsTrigger>
                     <TabsTrigger value="metrics">Metrics</TabsTrigger>
                     <TabsTrigger value="deps">Deps</TabsTrigger>
@@ -802,6 +807,11 @@ export default function Workspace() {
                     <TabsTrigger value="testing">Testing</TabsTrigger>
                     <TabsTrigger value="deploy">Deploy</TabsTrigger>
                     <TabsTrigger value="ai">AI</TabsTrigger>
+                    <TabsTrigger value="collab">Collab</TabsTrigger>
+                    <TabsTrigger value="review">Review</TabsTrigger>
+                    <TabsTrigger value="gallery">Gallery</TabsTrigger>
+                    <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                    <TabsTrigger value="perf">Performance</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="templates" className="h-[calc(100vh-200px)]">
@@ -910,10 +920,31 @@ export default function Workspace() {
                       {user && (
                         <PatternIntelligenceDashboard userId={user.id} />
                       )}
-                      {conversationId && (
-                        <AIImageGenerator conversationId={conversationId} />
-                      )}
                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="collab" className="h-[calc(100vh-200px)] overflow-auto">
+                    <CollaborativeCodeEditor
+                      projectId={projectId}
+                      initialCode={selectedFiles[0] && projectFiles.find(f => f.file_path === selectedFiles[0])?.file_content || ''}
+                      onCodeChange={handleSaveFile}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="review" className="h-[calc(100vh-200px)] overflow-auto">
+                    <CodeReviewPanel projectId={projectId} />
+                  </TabsContent>
+
+                  <TabsContent value="gallery" className="h-[calc(100vh-200px)] overflow-auto">
+                    <TemplatesGallery />
+                  </TabsContent>
+
+                  <TabsContent value="analytics" className="h-[calc(100vh-200px)] overflow-auto">
+                    <UsageAnalyticsDashboard />
+                  </TabsContent>
+
+                  <TabsContent value="perf" className="h-[calc(100vh-200px)] overflow-auto">
+                    <PerformanceMonitor projectId={projectId} />
                   </TabsContent>
                 </Tabs>
               </div>
