@@ -2151,6 +2151,45 @@ export type Database = {
         }
         Relationships: []
       }
+      learned_patterns: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          id: string
+          last_used_at: string | null
+          pattern_data: Json
+          pattern_name: string
+          pattern_type: string
+          success_rate: number | null
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          pattern_data?: Json
+          pattern_name: string
+          pattern_type: string
+          success_rate?: number | null
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          pattern_data?: Json
+          pattern_name?: string
+          pattern_type?: string
+          success_rate?: number | null
+          usage_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       mega_mind_orchestrations: {
         Row: {
           analysis_phase: Json | null
@@ -2661,6 +2700,39 @@ export type Database = {
           tags?: string[] | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      proactive_insights: {
+        Row: {
+          acted_upon: boolean | null
+          based_on: Json | null
+          created_at: string | null
+          id: string
+          insight_type: string
+          priority: string | null
+          suggestions: Json
+          user_id: string
+        }
+        Insert: {
+          acted_upon?: boolean | null
+          based_on?: Json | null
+          created_at?: string | null
+          id?: string
+          insight_type: string
+          priority?: string | null
+          suggestions?: Json
+          user_id: string
+        }
+        Update: {
+          acted_upon?: boolean | null
+          based_on?: Json | null
+          created_at?: string | null
+          id?: string
+          insight_type?: string
+          priority?: string | null
+          suggestions?: Json
+          user_id?: string
         }
         Relationships: []
       }

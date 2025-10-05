@@ -12,6 +12,7 @@ import InstantPackageInstaller from "./InstantPackageInstaller";
 import BeyondMegaMindDashboard from "./BeyondMegaMindDashboard";
 import PythonDevelopmentHub from "./PythonDevelopmentHub";
 import SuperMegaMindHub from "./SuperMegaMindHub";
+import { EnterpriseProjectDashboard } from "./EnterpriseProjectDashboard";
 
 export const MegaMindDashboard = () => {
   const [request, setRequest] = useState("");
@@ -77,11 +78,15 @@ export const MegaMindDashboard = () => {
       </div>
 
       <Tabs defaultValue="orchestrator" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="orchestrator">Orchestrator</TabsTrigger>
           <TabsTrigger value="super">
             <Star className="w-4 h-4 mr-2" />
             Super
+          </TabsTrigger>
+          <TabsTrigger value="enterprise">
+            <Brain className="w-4 h-4 mr-2" />
+            Enterprise
           </TabsTrigger>
           <TabsTrigger value="python">
             <Code2 className="w-4 h-4 mr-2" />
@@ -274,6 +279,10 @@ export const MegaMindDashboard = () => {
 
         <TabsContent value="super" className="space-y-4">
           <SuperMegaMindHub />
+        </TabsContent>
+
+        <TabsContent value="enterprise" className="space-y-4">
+          <EnterpriseProjectDashboard />
         </TabsContent>
 
         <TabsContent value="python" className="space-y-4">

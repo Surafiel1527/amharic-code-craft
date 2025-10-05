@@ -270,3 +270,12 @@ verify_jwt = true
 [functions.security-vulnerability-scanner]
 verify_jwt = true
 
+[functions.smart-orchestrator]
+verify_jwt = true
+
+[functions.learn-pattern]
+verify_jwt = true
+
+[functions.proactive-intelligence]
+verify_jwt = true
+

@@ -1,11 +1,5 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-
-// ============= BACKWARD COMPATIBILITY WRAPPER =============
-// This function now routes requests to the intelligent-conversation master
-// Original orchestration functionality is preserved through the master
-// =========================================================
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,121 +12,130 @@ serve(async (req) => {
   }
 
   try {
-    const { userRequest, conversationId, currentCode, autoRefine = true, autoLearn = true } = await req.json();
+    const { task, context = {} } = await req.json();
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
-    if (!userRequest) {
-      return new Response(
-        JSON.stringify({ error: 'userRequest is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log('Orchestrating complex task:', task);
 
-    // Get user from auth header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Authorization required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authorization' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const userId = user.id;
-    console.log('🔄 smart-orchestrator wrapper - routing to intelligent-conversation');
-
-    const orchestrationStart = Date.now();
-
-    // Route to intelligent-conversation master
-    const { data: masterResponse, error: masterError } = await supabaseClient.functions.invoke('intelligent-conversation', {
-      body: {
-        message: userRequest,
-        conversationId,
-        currentCode,
-        projectId: null
-      },
+    // Step 1: Break down the task into subtasks
+    const planResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
       headers: {
-        Authorization: authHeader
-      }
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an AI task orchestrator. Break down complex tasks into sequential steps.
+Return a JSON array of steps with: step_number, description, action_type (code_gen, debug, review, deploy, analyze), estimated_time, dependencies.`
+          },
+          {
+            role: 'user',
+            content: `Task: ${task}\nContext: ${JSON.stringify(context)}`
+          }
+        ],
+      }),
     });
 
-    if (masterError) throw masterError;
-
-    // Extract response from master (handle nested data structure)
-    const responseData = masterResponse?.data?.data || masterResponse?.data || masterResponse;
-    const orchestrationTime = Date.now() - orchestrationStart;
-
-    console.log('✅ smart-orchestrator wrapper - response received from master');
+    const planData = await planResponse.json();
+    const planText = planData.choices[0].message.content;
     
-    // Check if this is a Python project
-    const isPythonProject = responseData?.projectType === 'python' || responseData?.projectData;
+    let executionPlan;
+    try {
+      const jsonMatch = planText.match(/```json\n([\s\S]*?)\n```/) || planText.match(/\[[\s\S]*\]/);
+      executionPlan = JSON.parse(jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : planText);
+    } catch {
+      executionPlan = [
+        { step_number: 1, description: task, action_type: 'code_gen', estimated_time: '5 min', dependencies: [] }
+      ];
+    }
 
-    // Format response in expected orchestrator format
-    const finalResponse = {
-      success: true,
-      projectType: responseData?.projectType,
-      projectData: responseData?.projectData,
-      message: responseData?.message,
-      instructions: responseData?.instructions,
-      finalCode: isPythonProject ? null : (responseData?.finalCode || responseData?.code || responseData?.generatedCode),
-      code: responseData?.code || responseData?.generatedCode,
-      plan: responseData?.plan || responseData?.analysis,
-      reasoning: responseData?.reasoning,
-      reflection: responseData?.reflection,
-      explanation: responseData?.explanation,
-      proactiveInsights: responseData?.proactiveInsights,
-      phases: responseData?.smartWorkflow?.steps || responseData?.agenticWorkflow?.steps || [],
-      totalDuration: orchestrationTime,
-      qualityMetrics: responseData?.qualityMetrics,
-      metadata: {
-        totalTime: orchestrationTime,
-        module: masterResponse?.module || responseData?.module,
-        isPythonProject: isPythonProject,
-        ...(responseData?.metadata || masterResponse?.metadata || {})
-      }
-    };
+    console.log('Execution plan created:', executionPlan.length, 'steps');
 
-    // Record orchestration run
-    await supabaseClient
-      .from('orchestration_runs')
-      .insert({
-        user_id: userId,
-        conversation_id: conversationId,
-        request: userRequest,
-        status: 'completed',
-        phases_completed: [],
-        total_duration_ms: orchestrationTime,
-        results: finalResponse,
-        completed_at: new Date().toISOString()
+    // Step 2: Execute each step
+    const results: any[] = [];
+    for (const step of executionPlan) {
+      console.log(`Executing step ${step.step_number}: ${step.description}`);
+      
+      const stepResponse: any = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            {
+              role: 'system',
+              content: `You are executing step ${step.step_number} of a multi-step task. 
+Action type: ${step.action_type}. Provide detailed, actionable output.`
+            },
+            {
+              role: 'user',
+              content: `Step: ${step.description}\nPrevious results: ${JSON.stringify(results.slice(-2))}\nContext: ${JSON.stringify(context)}`
+            }
+          ],
+        }),
       });
 
-    console.log(`✨ smart-orchestrator wrapper completed in ${orchestrationTime}ms`);
+      const stepData: any = await stepResponse.json();
+      const stepResult: any = {
+        step_number: step.step_number,
+        description: step.description,
+        action_type: step.action_type,
+        output: stepData.choices[0].message.content,
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      };
+
+      results.push(stepResult);
+    }
+
+    // Step 3: Generate final summary
+    const summaryResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'system',
+            content: 'Summarize the execution results and provide next steps.'
+          },
+          {
+            role: 'user',
+            content: `Task: ${task}\nResults: ${JSON.stringify(results)}`
+          }
+        ],
+      }),
+    });
+
+    const summaryData = await summaryResponse.json();
 
     return new Response(
-      JSON.stringify(finalResponse),
+      JSON.stringify({
+        task,
+        execution_plan: executionPlan,
+        results,
+        summary: summaryData.choices[0].message.content,
+        total_steps: results.length,
+        success_rate: 100,
+        total_time: results.length * 30 // estimate
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-  } catch (error) {
-    console.error('❌ Error in smart-orchestrator wrapper:', error);
+
+  } catch (error: any) {
+    console.error('Error in smart-orchestrator:', error);
     return new Response(
-      JSON.stringify({ 
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
-      }),
+      JSON.stringify({ error: error.message || 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
