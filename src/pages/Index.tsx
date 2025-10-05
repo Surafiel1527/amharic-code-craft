@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code, Maximize2, Minimize2 } from "lucide-react";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code, Maximize2, Minimize2, Rocket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -487,6 +487,10 @@ const Index = () => {
               {/* Desktop Navigation - Absolutely Hidden on Mobile */}
               <div className="hidden md:flex items-center gap-2 animate-fade-in flex-shrink-0" style={{ animationDelay: "100ms" }}>
                 <LanguageToggle />
+                <Button variant="outline" size="sm" onClick={() => navigate("/deploy")} className="gap-2 hover-scale">
+                  <Rocket className="h-4 w-4" />
+                  <span className="hidden lg:inline">Deploy</span>
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => navigate("/explore")} className="gap-2 hover-scale">
                   <TrendingUp className="h-4 w-4" />
                   <span className="hidden lg:inline">{t("header.explore")}</span>
