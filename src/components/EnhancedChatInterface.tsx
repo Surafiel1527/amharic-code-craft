@@ -50,13 +50,24 @@ export function EnhancedChatInterface({
   const [loading, setLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [contextMode, setContextMode] = useState<'selected' | 'all' | 'none'>('selected');
 
+  // Scroll to bottom whenever messages change or component mounts
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    const scrollToBottom = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+    
+    // Small delay to ensure DOM is rendered
+    const timer = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timer);
   }, [messages, streamingContent]);
+
+  // Scroll to bottom on mount
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+  }, []);
 
   useEffect(() => {
     // Syntax highlight all code blocks
@@ -343,6 +354,8 @@ export function EnhancedChatInterface({
               </Card>
             </div>
           ))}
+          {/* Invisible div to scroll to */}
+          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
