@@ -323,7 +323,7 @@ CRITICAL RULES:
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-pro',
+            model: 'google/gemini-2.5-flash', // Use faster model for generation
             messages: [{ role: 'user', content: pythonPrompt }],
             temperature: 0.2
           })
@@ -418,7 +418,7 @@ Be conversational, friendly, and thorough. Make sure you ANSWER the question, do
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-pro',
+            model: 'google/gemini-2.5-flash', // Use faster model for consultations
             messages: [{ role: 'user', content: consultationPrompt }],
             temperature: 0.7
           })
@@ -494,7 +494,7 @@ Return a JSON object with:
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-pro',
+            model: 'google/gemini-2.5-flash', // Use faster model for analysis
             messages: [{ role: 'user', content: analysisPrompt }],
             temperature: 0.1
           })
@@ -552,7 +552,7 @@ Return ONLY the complete updated code, ready to use.`;
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-pro',
+            model: 'google/gemini-2.5-flash', // Use faster model for modifications
             messages: [{ role: 'user', content: modificationPrompt }],
             temperature: 0.1
           })
@@ -631,7 +631,7 @@ Provide specific, actionable feedback.`;
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-pro', // Using most powerful model for analysis quality
+            model: 'google/gemini-2.5-flash', // Use faster model for analysis
             messages: messages
           })
         });
@@ -735,7 +735,7 @@ You are THE expert on this project. Users trust you to know the state of their s
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-pro', // Using most powerful model for conversational quality
+            model: 'google/gemini-2.5-flash', // Use faster model for chat
             messages: messages
           })
         });

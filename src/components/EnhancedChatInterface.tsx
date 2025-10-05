@@ -127,7 +127,12 @@ export function EnhancedChatInterface({
       };
       setMessages(prev => [...prev, assistantMessage]);
 
-      const { data, error } = await supabase.functions.invoke('intelligent-conversation', {
+      // Add timeout to prevent indefinite waiting
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout - please try again')), 30000) // 30 second timeout
+      );
+
+      const invokePromise = supabase.functions.invoke('intelligent-conversation', {
         body: {
           message: input,
           projectId,
@@ -137,6 +142,8 @@ export function EnhancedChatInterface({
           }
         }
       });
+
+      const { data, error } = await Promise.race([invokePromise, timeoutPromise]) as any;
 
       if (error) throw error;
 
