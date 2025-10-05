@@ -36,6 +36,7 @@ import { AIImageGenerator } from "@/components/AIImageGenerator";
 import { IntelligentRefactoring } from "@/components/IntelligentRefactoring";
 import { ProactiveAIAssistant } from "@/components/ProactiveAIAssistant";
 import { PatternIntelligenceDashboard } from "@/components/PatternIntelligenceDashboard";
+import { EnhancedChatInterface } from "@/components/EnhancedChatInterface";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -782,11 +783,13 @@ export default function Workspace() {
               {/* Right Sidebar - Enhanced with Phase 2 Features */}
               <div className="w-96">
                 <Tabs defaultValue="templates">
-                  <TabsList className="w-full grid grid-cols-3 lg:grid-cols-5">
+                  <TabsList className="w-full grid grid-cols-3 lg:grid-cols-7">
                     <TabsTrigger value="templates">Templates</TabsTrigger>
                     <TabsTrigger value="metrics">Metrics</TabsTrigger>
                     <TabsTrigger value="deps">Deps</TabsTrigger>
                     <TabsTrigger value="refactor">Refactor</TabsTrigger>
+                    <TabsTrigger value="proactive">Proactive</TabsTrigger>
+                    <TabsTrigger value="chat">Chat</TabsTrigger>
                     <TabsTrigger value="ai">AI</TabsTrigger>
                   </TabsList>
                   
@@ -827,6 +830,33 @@ export default function Workspace() {
                     )}
                   </TabsContent>
 
+                  <TabsContent value="proactive" className="h-[calc(100vh-200px)]">
+                    {selectedFiles[0] && projectFiles.find(f => f.file_path === selectedFiles[0]) && (
+                      <ProactiveAIAssistant
+                        projectId={projectId}
+                        currentFile={selectedFiles[0]}
+                        currentCode={projectFiles.find(f => f.file_path === selectedFiles[0])!.file_content}
+                      />
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="chat" className="h-[calc(100vh-200px)]">
+                    <EnhancedChatInterface
+                      projectId={projectId}
+                      selectedFiles={selectedFiles}
+                      projectFiles={projectFiles}
+                      onCodeApply={(code, filePath) => {
+                        const fileExists = projectFiles.some(f => f.file_path === filePath);
+                        if (fileExists) {
+                          setSelectedFiles([filePath]);
+                          handleSaveFile(code);
+                        } else {
+                          toast.error('File not found');
+                        }
+                      }}
+                    />
+                  </TabsContent>
+
                   <TabsContent value="ai" className="h-[calc(100vh-200px)] overflow-auto">
                     <div className="space-y-4">
                       {conversationId && user && (
@@ -834,6 +864,9 @@ export default function Workspace() {
                           conversationId={conversationId}
                           userId={user.id}
                         />
+                      )}
+                      {user && (
+                        <PatternIntelligenceDashboard userId={user.id} />
                       )}
                       {conversationId && (
                         <AIImageGenerator conversationId={conversationId} />
