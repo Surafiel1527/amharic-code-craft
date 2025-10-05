@@ -34,6 +34,8 @@ import { useAutoSave } from "@/hooks/useAutoSave";
 import { ConversationMemory } from "@/components/ConversationMemory";
 import { AIImageGenerator } from "@/components/AIImageGenerator";
 import { IntelligentRefactoring } from "@/components/IntelligentRefactoring";
+import { ProactiveAIAssistant } from "@/components/ProactiveAIAssistant";
+import { PatternIntelligenceDashboard } from "@/components/PatternIntelligenceDashboard";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -833,11 +835,9 @@ export default function Workspace() {
                           userId={user.id}
                         />
                       )}
-                      <AIImageGenerator
-                        onImageGenerated={(url) => {
-                          toast.success('Image generated! You can now use it in your project');
-                        }}
-                      />
+                      {conversationId && (
+                        <AIImageGenerator conversationId={conversationId} />
+                      )}
                     </div>
                   </TabsContent>
                 </Tabs>

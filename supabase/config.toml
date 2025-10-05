@@ -158,3 +158,6 @@ verify_jwt = true
 
 [functions.intelligent-refactor]
 verify_jwt = true
+
+[functions.proactive-intelligence]
+verify_jwt = true

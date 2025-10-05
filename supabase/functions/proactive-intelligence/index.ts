@@ -1,6 +1,4 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,150 +11,167 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, projectContext, conversationHistory } = await req.json();
-    
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    const { code, filePath, projectId } = await req.json();
+
+    if (!code) {
+      throw new Error('Code is required');
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Analyze code for various issues
+    const suggestions = [];
 
-    // Load user patterns and learnings
-    const { data: patterns } = await supabase
-      .from('cross_project_patterns')
-      .select('*')
-      .eq('user_id', userId)
-      .order('last_used_at', { ascending: false })
-      .limit(10);
-
-    const { data: learnings } = await supabase
-      .from('conversation_learnings')
-      .select('*')
-      .eq('user_id', userId)
-      .order('last_reinforced_at', { ascending: false })
-      .limit(10);
-
-    const { data: preferences } = await supabase
-      .from('user_preferences')
-      .select('*')
-      .eq('user_id', userId);
-
-    // Construct proactive analysis prompt
-    const proactivePrompt = `You are a proactive AI intelligence system. Analyze the user's patterns and suggest improvements:
-
-USER PATTERNS:
-${patterns?.map(p => `- ${p.pattern_name}: Used ${p.usage_count} times, ${p.success_rate}% success`).join('\n') || 'No patterns yet'}
-
-RECENT LEARNINGS:
-${learnings?.map(l => `- ${l.pattern_category}: ${l.learned_pattern} (${l.confidence}% confidence)`).join('\n') || 'No learnings yet'}
-
-USER PREFERENCES:
-${preferences?.map(p => `- ${p.preference_type}: ${JSON.stringify(p.preference_value)}`).join('\n') || 'No preferences yet'}
-
-CURRENT PROJECT CONTEXT:
-${JSON.stringify(projectContext || {}, null, 2)}
-
-RECENT CONVERSATION:
-${conversationHistory?.slice(-5).map((m: any) => `${m.role}: ${m.content.substring(0, 100)}`).join('\n') || 'No history'}
-
-Based on this analysis, provide proactive suggestions:
-{
-  "insights": ["Key insight 1", "Key insight 2"],
-  "suggestions": [
-    {
-      "type": "optimization|feature|best-practice|learning",
-      "title": "Suggestion title",
-      "description": "Detailed description",
-      "priority": "high|medium|low",
-      "reasoning": "Why this matters"
-    }
-  ],
-  "potential_issues": ["Potential issue to watch for"],
-  "learning_opportunities": ["What the AI should learn"],
-  "confidence": 0.0-1.0
-}`;
-
-    // Call Lovable AI for proactive analysis
-    const proactiveResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are a proactive intelligence system that identifies patterns and suggests improvements before being asked. Always respond with valid JSON.'
-          },
-          { role: 'user', content: proactivePrompt }
-        ],
-        temperature: 0.6,
-      }),
-    });
-
-    if (!proactiveResponse.ok) {
-      const errorText = await proactiveResponse.text();
-      console.error('Lovable AI proactive error:', proactiveResponse.status, errorText);
-      throw new Error(`Lovable AI proactive analysis failed: ${proactiveResponse.status}`);
+    // Security checks
+    if (code.includes('eval(') || code.includes('Function(')) {
+      suggestions.push({
+        id: crypto.randomUUID(),
+        type: 'security',
+        severity: 'critical',
+        title: 'Dangerous eval() usage detected',
+        description: 'Using eval() or Function() constructor can lead to code injection vulnerabilities',
+        code: code.match(/eval\(.*?\)/)?.[0] || 'eval(...)',
+        fix: 'Use safer alternatives like JSON.parse() or specific parsing functions',
+        impact: 'High security risk',
+        automated: true
+      });
     }
 
-    const proactiveData = await proactiveResponse.json();
-    const proactiveContent = proactiveData.choices[0].message.content;
-
-    // Parse proactive intelligence
-    let intelligence;
-    try {
-      intelligence = JSON.parse(proactiveContent);
-    } catch {
-      intelligence = {
-        insights: ['Analysis completed'],
-        suggestions: [],
-        raw_analysis: proactiveContent,
-        confidence: 0.6
-      };
+    if (code.includes('innerHTML') && !code.includes('DOMPurify')) {
+      suggestions.push({
+        id: crypto.randomUUID(),
+        type: 'security',
+        severity: 'high',
+        title: 'XSS vulnerability with innerHTML',
+        description: 'Using innerHTML without sanitization can lead to XSS attacks',
+        impact: 'Security vulnerability',
+        automated: false
+      });
     }
 
-    // Store proactive insights for learning
-    if (intelligence.learning_opportunities?.length > 0) {
-      for (const opportunity of intelligence.learning_opportunities) {
-        await supabase
-          .from('conversation_learnings')
-          .insert({
-            user_id: userId,
-            pattern_category: 'proactive_learning',
-            learned_pattern: opportunity,
-            confidence: intelligence.confidence * 100 || 60,
-            context: { source: 'proactive_intelligence', suggestions: intelligence.suggestions }
-          });
+    // Performance checks
+    if (code.match(/for\s*\(.*\)\s*{[\s\S]*?for\s*\(/)) {
+      suggestions.push({
+        id: crypto.randomUUID(),
+        type: 'performance',
+        severity: 'medium',
+        title: 'Nested loops detected',
+        description: 'Nested loops can lead to O(n²) or worse time complexity',
+        impact: 'Performance degradation with large datasets',
+        automated: false
+      });
+    }
+
+    if (code.includes('document.querySelector') && code.split('document.querySelector').length > 3) {
+      suggestions.push({
+        id: crypto.randomUUID(),
+        type: 'performance',
+        severity: 'low',
+        title: 'Multiple DOM queries',
+        description: 'Repeated DOM queries in same scope can be cached',
+        impact: 'Minor performance improvement',
+        automated: false
+      });
+    }
+
+    // Best practices
+    if (code.includes('var ')) {
+      suggestions.push({
+        id: crypto.randomUUID(),
+        type: 'best-practice',
+        severity: 'low',
+        title: 'Use const/let instead of var',
+        description: 'var has function scope and can lead to unexpected behavior',
+        impact: 'Code clarity and safety',
+        automated: true,
+        fix: code.replace(/var /g, 'const ')
+      });
+    }
+
+    if (code.includes('console.log') && !code.includes('// TODO')) {
+      suggestions.push({
+        id: crypto.randomUUID(),
+        type: 'best-practice',
+        severity: 'low',
+        title: 'Remove console.log statements',
+        description: 'Console logs should be removed or replaced with proper logging in production',
+        impact: 'Code cleanliness',
+        automated: true
+      });
+    }
+
+    // React-specific checks
+    if (code.includes('useState') && code.includes('useEffect')) {
+      const useEffectCount = (code.match(/useEffect/g) || []).length;
+      if (useEffectCount > 3) {
+        suggestions.push({
+          id: crypto.randomUUID(),
+          type: 'optimization',
+          severity: 'medium',
+          title: 'Multiple useEffect hooks',
+          description: `Found ${useEffectCount} useEffect hooks. Consider consolidating related effects`,
+          impact: 'Component organization and performance',
+          automated: false
+        });
       }
     }
+
+    if (code.includes('map((') && !code.includes('key=')) {
+      suggestions.push({
+        id: crypto.randomUUID(),
+        type: 'best-practice',
+        severity: 'high',
+        title: 'Missing key prop in list',
+        description: 'React requires unique key props for list items',
+        impact: 'React warnings and potential rendering issues',
+        automated: false
+      });
+    }
+
+    // TypeScript checks
+    if (filePath?.endsWith('.ts') || filePath?.endsWith('.tsx')) {
+      if (code.includes('any')) {
+        suggestions.push({
+          id: crypto.randomUUID(),
+          type: 'best-practice',
+          severity: 'medium',
+          title: 'Avoid using "any" type',
+          description: 'Using "any" defeats the purpose of TypeScript type checking',
+          impact: 'Type safety',
+          automated: false
+        });
+      }
+    }
+
+    console.log(`Proactive analysis complete: ${suggestions.length} suggestions found`);
 
     return new Response(
       JSON.stringify({ 
-        intelligence,
-        timestamp: new Date().toISOString(),
-        patterns_analyzed: patterns?.length || 0,
-        learnings_analyzed: learnings?.length || 0
+        suggestions,
+        summary: {
+          total: suggestions.length,
+          critical: suggestions.filter(s => s.severity === 'critical').length,
+          automated: suggestions.filter(s => s.automated).length
+        }
       }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
       }
     );
-
-  } catch (error: any) {
-    console.error('Error in proactive-intelligence:', error);
+  } catch (error) {
+    console.error('Proactive intelligence error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Analysis failed',
+        suggestions: []
+      }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+        status: 500, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
       }
     );
   }
