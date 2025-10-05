@@ -214,6 +214,15 @@ export const SavedCredentialsList = () => {
                       >
                         <RefreshCw className={`w-4 h-4 ${testingId === credential.id ? 'animate-spin' : ''}`} />
                       </Button>
+                      
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => window.location.href = `/database-manager/${credential.id}/monitor`}
+                        title="View Monitoring Dashboard"
+                      >
+                        <Activity className="w-4 h-4" />
+                      </Button>
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

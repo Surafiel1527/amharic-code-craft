@@ -836,6 +836,91 @@ export type Database = {
         }
         Relationships: []
       }
+      database_alert_config: {
+        Row: {
+          alert_type: string
+          created_at: string | null
+          credential_id: string | null
+          enabled: boolean | null
+          id: string
+          notification_channels: Json | null
+          threshold: Json
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string | null
+          credential_id?: string | null
+          enabled?: boolean | null
+          id?: string
+          notification_channels?: Json | null
+          threshold: Json
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string | null
+          credential_id?: string | null
+          enabled?: boolean | null
+          id?: string
+          notification_channels?: Json | null
+          threshold?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "database_alert_config_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "database_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      database_audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          credential_id: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          status: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          credential_id?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          status: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          credential_id?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          status?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "database_audit_log_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "database_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       database_connection_errors: {
         Row: {
           ai_analysis: Json | null
@@ -889,6 +974,47 @@ export type Database = {
           },
         ]
       }
+      database_connection_health: {
+        Row: {
+          alerts_sent: boolean | null
+          check_timestamp: string | null
+          credential_id: string | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          response_time_ms: number | null
+          status: string
+        }
+        Insert: {
+          alerts_sent?: boolean | null
+          check_timestamp?: string | null
+          credential_id?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          response_time_ms?: number | null
+          status: string
+        }
+        Update: {
+          alerts_sent?: boolean | null
+          check_timestamp?: string | null
+          credential_id?: string | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          response_time_ms?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "database_connection_health_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "database_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       database_connection_patterns: {
         Row: {
           common_environment: string | null
@@ -921,6 +1047,47 @@ export type Database = {
           success_count?: number | null
         }
         Relationships: []
+      }
+      database_connection_retries: {
+        Row: {
+          attempt_number: number
+          attempted_at: string | null
+          backoff_delay_ms: number | null
+          credential_id: string | null
+          error_message: string | null
+          id: string
+          retry_strategy: Json | null
+          success: boolean
+        }
+        Insert: {
+          attempt_number: number
+          attempted_at?: string | null
+          backoff_delay_ms?: number | null
+          credential_id?: string | null
+          error_message?: string | null
+          id?: string
+          retry_strategy?: Json | null
+          success: boolean
+        }
+        Update: {
+          attempt_number?: number
+          attempted_at?: string | null
+          backoff_delay_ms?: number | null
+          credential_id?: string | null
+          error_message?: string | null
+          id?: string
+          retry_strategy?: Json | null
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "database_connection_retries_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "database_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       database_credentials: {
         Row: {
@@ -960,6 +1127,118 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      database_knowledge_base: {
+        Row: {
+          category: string
+          code_examples: Json | null
+          confidence_score: number | null
+          created_at: string | null
+          description: string
+          id: string
+          last_used_at: string | null
+          learned_from_error_id: string | null
+          provider: string
+          solution: string
+          success_rate: number | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          category: string
+          code_examples?: Json | null
+          confidence_score?: number | null
+          created_at?: string | null
+          description: string
+          id?: string
+          last_used_at?: string | null
+          learned_from_error_id?: string | null
+          provider: string
+          solution: string
+          success_rate?: number | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          category?: string
+          code_examples?: Json | null
+          confidence_score?: number | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          last_used_at?: string | null
+          learned_from_error_id?: string | null
+          provider?: string
+          solution?: string
+          success_rate?: number | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "database_knowledge_base_learned_from_error_id_fkey"
+            columns: ["learned_from_error_id"]
+            isOneToOne: false
+            referencedRelation: "database_connection_errors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      database_performance_metrics: {
+        Row: {
+          avg_response_time_ms: number | null
+          created_at: string | null
+          credential_id: string | null
+          failed_requests: number | null
+          id: string
+          max_response_time_ms: number | null
+          metric_date: string | null
+          min_response_time_ms: number | null
+          successful_requests: number | null
+          total_requests: number | null
+          uptime_percentage: number | null
+        }
+        Insert: {
+          avg_response_time_ms?: number | null
+          created_at?: string | null
+          credential_id?: string | null
+          failed_requests?: number | null
+          id?: string
+          max_response_time_ms?: number | null
+          metric_date?: string | null
+          min_response_time_ms?: number | null
+          successful_requests?: number | null
+          total_requests?: number | null
+          uptime_percentage?: number | null
+        }
+        Update: {
+          avg_response_time_ms?: number | null
+          created_at?: string | null
+          credential_id?: string | null
+          failed_requests?: number | null
+          id?: string
+          max_response_time_ms?: number | null
+          metric_date?: string | null
+          min_response_time_ms?: number | null
+          successful_requests?: number | null
+          total_requests?: number | null
+          uptime_percentage?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "database_performance_metrics_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "database_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       database_provider_docs: {
         Row: {
@@ -2563,6 +2842,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_uptime_percentage: {
+        Args: { p_credential_id: string; p_hours?: number }
+        Returns: number
+      }
       cleanup_expired_sessions: {
         Args: Record<PropertyKey, never>
         Returns: undefined

@@ -198,3 +198,12 @@ verify_jwt = true
 [functions.fetch-provider-docs]
 verify_jwt = false
 
+[functions.proactive-health-monitor]
+verify_jwt = false
+
+[functions.learn-connection-knowledge]
+verify_jwt = false
+
+[functions.intelligent-retry-connection]
+verify_jwt = true
+
