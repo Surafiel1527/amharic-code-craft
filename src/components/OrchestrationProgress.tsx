@@ -1,10 +1,23 @@
 import { useState, useEffect } from "react";
-import { CheckCircle2, Loader2, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle2, Loader2, Clock, ChevronDown, ChevronUp, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface Phase {
   name: string;
@@ -16,6 +29,8 @@ interface OrchestrationProgressProps {
   phases: Phase[];
   isLoading: boolean;
   totalDuration?: number;
+  jobId?: string;
+  onCancel?: () => void;
 }
 
 const phaseLabels: Record<string, string> = {
@@ -27,13 +42,14 @@ const phaseLabels: Record<string, string> = {
   learning: "🧠 Learning Patterns"
 };
 
-export function OrchestrationProgress({ phases, isLoading, totalDuration }: OrchestrationProgressProps) {
+export function OrchestrationProgress({ phases, isLoading, totalDuration, jobId, onCancel }: OrchestrationProgressProps) {
   const expectedPhases = ['planning', 'impact_analysis', 'pattern_retrieval', 'generation', 'refinement', 'learning'];
   const progress = (phases.length / expectedPhases.length) * 100;
   const isComplete = !isLoading && progress === 100;
   
   // Auto-collapse 2 seconds after completion
   const [isOpen, setIsOpen] = useState(true);
+  const [isCancelling, setIsCancelling] = useState(false);
   
   useEffect(() => {
     if (isComplete) {
@@ -43,6 +59,39 @@ export function OrchestrationProgress({ phases, isLoading, totalDuration }: Orch
       setIsOpen(true);
     }
   }, [isComplete]);
+
+  const handleCancel = async () => {
+    if (!jobId) return;
+    
+    setIsCancelling(true);
+    try {
+      const { error } = await supabase
+        .from('ai_generation_jobs')
+        .update({ 
+          status: 'cancelled',
+          error_message: 'Cancelled by user'
+        })
+        .eq('id', jobId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Orchestration Cancelled",
+        description: "The task generation has been stopped.",
+      });
+      
+      onCancel?.();
+    } catch (error) {
+      console.error('Error cancelling job:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel the orchestration. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -65,12 +114,46 @@ export function OrchestrationProgress({ phases, isLoading, totalDuration }: Orch
               </h3>
             </Button>
           </CollapsibleTrigger>
-          {totalDuration && (
-            <Badge variant="outline" className="text-xs h-5">
-              <Clock className="w-3 h-3 mr-1" />
-              {(totalDuration / 1000).toFixed(2)}s
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {isLoading && jobId && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    disabled={isCancelling}
+                    className="h-5 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <XCircle className="w-3 h-3 mr-1" />
+                    Cancel
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure you want to cancel?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will stop the orchestration process. All progress will be lost and you'll need to start over.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>No, continue</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleCancel}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Yes, cancel it
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            {totalDuration && (
+              <Badge variant="outline" className="text-xs h-5">
+                <Clock className="w-3 h-3 mr-1" />
+                {(totalDuration / 1000).toFixed(2)}s
+              </Badge>
+            )}
+          </div>
         </div>
 
         <CollapsibleContent className="space-y-2">
