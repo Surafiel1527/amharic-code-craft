@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { VersionHistory } from "@/components/VersionHistory";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { PatternLearner } from "@/components/PatternLearner";
 import { OrchestrationProgress } from "@/components/OrchestrationProgress";
 import { ArchitecturePlanViewer } from "@/components/ArchitecturePlanViewer";
@@ -110,6 +111,7 @@ export default function Workspace() {
   const [editorMode, setEditorMode] = useState<'single' | 'split'>('single');
   const [showMetrics, setShowMetrics] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [showMobileChat, setShowMobileChat] = useState(false);
 
   const handleRestoreVersion = async (htmlCode: string) => {
     if (!project) return;
@@ -645,19 +647,40 @@ export default function Workspace() {
 
   return (
     <div className="h-screen bg-background flex flex-col">
-      {/* Floating Chat Button - Mobile Only */}
-      <Button
-        onClick={() => {
-          const chatTab = document.querySelector('[value="chat"]') as HTMLButtonElement;
-          if (chatTab) {
-            chatTab.click();
-          }
-        }}
-        className="fixed bottom-6 right-6 z-50 md:hidden rounded-full h-14 w-14 shadow-lg"
-        size="icon"
-      >
-        <MessageSquare className="h-6 w-6" />
-      </Button>
+      {/* Floating Chat Button & Mobile Chat Sheet */}
+      <Sheet open={showMobileChat} onOpenChange={setShowMobileChat}>
+        <SheetTrigger asChild>
+          <Button
+            className="fixed bottom-6 right-6 z-50 md:hidden rounded-full h-14 w-14 shadow-lg"
+            size="icon"
+          >
+            <MessageSquare className="h-6 w-6" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="bottom" className="h-[90vh] p-0">
+          <SheetHeader className="p-4 border-b">
+            <SheetTitle>Chat Assistant</SheetTitle>
+          </SheetHeader>
+          <div className="h-[calc(90vh-60px)]">
+            <EnhancedChatInterface
+              projectId={projectId}
+              selectedFiles={selectedFiles}
+              projectFiles={projectFiles}
+              onCodeApply={(code, filePath) => {
+                const fileExists = projectFiles.some(f => f.file_path === filePath);
+                if (fileExists) {
+                  setSelectedFiles([filePath]);
+                  handleSaveFile(code);
+                  toast.success(`Applied changes to ${filePath}`);
+                } else {
+                  handleCreateFile(filePath, 'file');
+                  toast.success(`Created ${filePath} with new code`);
+                }
+              }}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
       
       <PatternLearner />
       {/* Header */}
