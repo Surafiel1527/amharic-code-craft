@@ -8,6 +8,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Package, Search, Zap, Download, CheckCircle, AlertTriangle, Trash2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAutoInstall } from "@/hooks/useAutoInstall";
+import { AutoInstallBanner } from "@/components/AutoInstallBanner";
 
 interface PackageInfo {
   name: string;
@@ -21,6 +23,13 @@ interface PackageInfo {
 export default function PackageManager() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [sampleCode, setSampleCode] = useState(`import React from 'react';
+import axios from 'axios';
+import lodash from 'lodash';
+import moment from 'moment';
+
+// Sample code to trigger auto-detection
+`);
   const [packages, setPackages] = useState<PackageInfo[]>([
     {
       name: "react",
@@ -48,6 +57,15 @@ export default function PackageManager() {
     }
   ]);
   const { toast } = useToast();
+
+  // Auto-install hook
+  const {
+    missingPackages,
+    isScanning,
+    isInstalling,
+    autoInstallAll,
+    installPackage: autoInstallPackage
+  } = useAutoInstall(sampleCode, true);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -139,7 +157,37 @@ export default function PackageManager() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-4">
-        <Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Auto-Detection Demo</CardTitle>
+          <CardDescription>
+            Paste code with imports to auto-detect missing packages
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <textarea
+            className="w-full h-32 p-3 rounded-md border bg-background font-mono text-sm"
+            value={sampleCode}
+            onChange={(e) => setSampleCode(e.target.value)}
+            placeholder="Paste code with imports here..."
+          />
+          {isScanning && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Scanning for missing packages...
+            </div>
+          )}
+          <AutoInstallBanner
+            missingPackages={missingPackages}
+            isInstalling={isInstalling}
+            onInstallAll={autoInstallAll}
+            onInstallOne={autoInstallPackage}
+            onDismiss={() => {}}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Installed</CardTitle>
           </CardHeader>

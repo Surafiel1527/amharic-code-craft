@@ -9,6 +9,9 @@ verify_jwt = true
 [functions.ci-cd-webhook]
 verify_jwt = true
 
+[functions.smart-dependency-detector]
+verify_jwt = true
+
 [functions.sophisticated-code-analysis]
 verify_jwt = true
 

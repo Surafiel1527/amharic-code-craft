@@ -1,10 +1,30 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Common built-in Node.js modules that don't need installation
+const BUILTIN_MODULES = new Set([
+  'fs', 'path', 'http', 'https', 'url', 'crypto', 'stream', 'util', 'events',
+  'buffer', 'querystring', 'net', 'os', 'child_process', 'zlib', 'assert',
+  'cluster', 'dgram', 'dns', 'domain', 'readline', 'repl', 'tls', 'tty',
+  'vm', 'worker_threads'
+]);
+
+// Packages that are commonly installed in standard projects
+const STANDARD_PACKAGES = new Set([
+  'react', 'react-dom', 'typescript', 'vite', 'tailwindcss',
+  '@types/react', '@types/react-dom', '@types/node'
+]);
+
+interface DetectRequest {
+  imports: string[];
+  code?: string;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,24 +32,74 @@ serve(async (req) => {
   }
 
   try {
-    const { code, language = 'typescript', appType = 'general' } = await req.json();
+    const { imports, code }: DetectRequest = await req.json();
 
-    console.log('🔍 Smart Dependency Detector - Analyzing code...');
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    const dependencies = detectDependenciesFromCode(code, language, appType);
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authorization' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`🔍 Detecting dependencies for user ${user.id}, imports: ${imports.join(', ')}`);
+
+    // Filter out built-in modules and standard packages
+    const externalPackages = imports.filter(pkg => 
+      !BUILTIN_MODULES.has(pkg) && !STANDARD_PACKAGES.has(pkg)
+    );
+
+    if (externalPackages.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          missing: [],
+          message: 'All packages are built-in or already installed'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check which packages are actually missing
+    // In a real implementation, this would check package.json or node_modules
+    // For now, we'll assume all external packages are missing (demo mode)
+    const missing = externalPackages.map(pkg => ({
+      name: pkg,
+      detectedIn: 'import statement',
+      suggested: true,
+      version: 'latest'
+    }));
+
+    console.log(`✅ Found ${missing.length} missing packages: ${missing.map(p => p.name).join(', ')}`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        dependencies,
-        count: dependencies.length,
-        message: `Detected ${dependencies.length} dependencies from code`
+        missing,
+        total: imports.length,
+        external: externalPackages.length,
+        builtin: imports.length - externalPackages.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('❌ Error in smart-dependency-detector:', error);
+    console.error('❌ Dependency detection error:', error);
     return new Response(
       JSON.stringify({ 
         success: false,
@@ -39,123 +109,3 @@ serve(async (req) => {
     );
   }
 });
-
-function detectDependenciesFromCode(code: string, language: string, appType: string): any[] {
-  const dependencies: any[] = [];
-  const detectedPackages = new Set<string>();
-
-  // Common patterns for different package types
-  const patterns = {
-    // Game engines
-    gameEngines: {
-      'phaser': /phaser|Phaser\.Game|arcade physics/i,
-      'three': /THREE\.|three\.js|WebGLRenderer|PerspectiveCamera/i,
-      'babylonjs': /BABYLON\.|babylon\.js|Engine|Scene/i,
-      'pixi.js': /PIXI\.|pixi\.js|Application|Sprite/i,
-      '@react-three/fiber': /Canvas|useFrame|useThree/i,
-      '@react-three/drei': /OrbitControls|Environment|Sky/i,
-    },
-    
-    // UI libraries
-    uiLibraries: {
-      '@radix-ui/react-dialog': /Dialog\.Root|Dialog\.Trigger|Dialog\.Content/,
-      '@radix-ui/react-dropdown-menu': /DropdownMenu\.Root|DropdownMenu\.Trigger/,
-      'framer-motion': /motion\.|AnimatePresence|useAnimation/,
-      'react-spring': /useSpring|animated\./,
-      'recharts': /LineChart|BarChart|PieChart|ResponsiveContainer/,
-      'react-chartjs-2': /Chart\.register|Line|Bar|Pie/,
-    },
-    
-    // State management
-    stateManagement: {
-      'zustand': /create\(.*set.*get.*\)/,
-      'redux': /@reduxjs|createSlice|configureStore/,
-      'jotai': /atom\(|useAtom/,
-      'recoil': /atom\(|selector\(|useRecoilState/,
-    },
-    
-    // Data fetching
-    dataFetching: {
-      'axios': /axios\.|axios\.get|axios\.post/,
-      'swr': /useSWR/,
-      'react-query': /@tanstack\/react-query|useQuery|useMutation/,
-    },
-    
-    // Utilities
-    utilities: {
-      'lodash': /lodash|_\./,
-      'date-fns': /format\(.*Date|parseISO|addDays/,
-      'uuid': /uuid\.|v4\(\)/,
-      'classnames': /classnames|clsx/,
-    },
-    
-    // Form handling
-    forms: {
-      'react-hook-form': /useForm|register|handleSubmit|Controller/,
-      'formik': /useFormik|Formik|Field|Form/,
-      'yup': /yup\.|object\(\)\.shape/,
-      'zod': /z\.|ZodType|zodResolver/,
-    },
-    
-    // Routing
-    routing: {
-      'react-router-dom': /BrowserRouter|Route|Link|useNavigate|useParams/,
-    },
-    
-    // Animation
-    animation: {
-      'gsap': /gsap\.|TweenMax|TimelineMax/,
-      'lottie-react': /Lottie|<Lottie/,
-    },
-    
-    // Testing
-    testing: {
-      '@testing-library/react': /render\(|screen\.|fireEvent/,
-      'vitest': /describe\(|it\(|expect\(/,
-      'jest': /jest\.|mock\(/,
-    }
-  };
-
-  // Scan code for each pattern
-  for (const [category, packages] of Object.entries(patterns)) {
-    for (const [packageName, pattern] of Object.entries(packages)) {
-      if (pattern.test(code) && !detectedPackages.has(packageName)) {
-        detectedPackages.add(packageName);
-        
-        // Determine if it's a dev dependency
-        const isDevDep = category === 'testing';
-        
-        dependencies.push({
-          name: packageName,
-          version: 'latest',
-          detectedFrom: 'code-analysis',
-          category,
-          shouldInstall: true,
-          location: isDevDep ? 'devDependencies' : 'dependencies',
-          context: { pattern: pattern.source },
-          installCommand: `npm install ${isDevDep ? '--save-dev ' : ''}${packageName}`,
-          confidence: 0.9
-        });
-      }
-    }
-  }
-
-  // App-type specific dependencies
-  if (appType === 'game') {
-    if (!detectedPackages.has('phaser') && !detectedPackages.has('three') && !detectedPackages.has('babylonjs')) {
-      dependencies.push({
-        name: 'phaser',
-        version: 'latest',
-        detectedFrom: 'app-type-suggestion',
-        category: 'gameEngines',
-        shouldInstall: true,
-        location: 'dependencies',
-        context: { reason: 'Game app detected, suggesting Phaser as default game engine' },
-        installCommand: 'npm install phaser',
-        confidence: 0.7
-      });
-    }
-  }
-
-  return dependencies;
-}
