@@ -6,6 +6,9 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { IntelligentPackageManager } from "@/components/IntelligentPackageManager";
+import { SandboxExecutionEnvironment } from "@/components/SandboxExecutionEnvironment";
+import { RealTimeValidationDashboard } from "@/components/RealTimeValidationDashboard";
 import { 
   Shield, 
   TrendingUp, 
@@ -120,6 +123,59 @@ export default function QualityHub() {
   useEffect(() => {
     loadMetrics();
   }, []);
+
+  const demoCode = `import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+
+function TodoApp() {
+  const [todos, setTodos] = useState([]);
+  const [input, setInput] = useState('');
+
+  const addTodo = () => {
+    if (input.trim()) {
+      setTodos([...todos, { id: Date.now(), text: input, completed: false }]);
+      setInput('');
+    }
+  };
+
+  const toggleTodo = (id) => {
+    setTodos(todos.map(todo => 
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    ));
+  };
+
+  return (
+    <Card className="p-6 max-w-md mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Todo App</h1>
+      <div className="flex gap-2 mb-4">
+        <input 
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && addTodo()}
+          className="flex-1 border rounded px-3 py-2"
+          placeholder="Add a new todo..."
+        />
+        <Button onClick={addTodo}>Add</Button>
+      </div>
+      <ul className="space-y-2">
+        {todos.map(todo => (
+          <li 
+            key={todo.id}
+            onClick={() => toggleTodo(todo.id)}
+            className={\`cursor-pointer p-2 rounded hover:bg-accent \${
+              todo.completed ? 'line-through text-muted-foreground' : ''
+            }\`}
+          >
+            {todo.text}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+export default TodoApp;`;
 
   const demoScenarios = [
     {
@@ -338,40 +394,85 @@ export default function QualityHub() {
 
         {/* Interactive Demos Tab */}
         <TabsContent value="demos" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Try It Yourself</CardTitle>
-              <CardDescription>Run these scenarios to see the platform in action</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {demoScenarios.map((demo) => (
-                  <Card key={demo.title} className="hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <demo.icon className={`h-8 w-8 ${demo.color}`} />
-                          <div>
-                            <CardTitle className="text-lg">{demo.title}</CardTitle>
-                            <CardDescription className="mt-1">{demo.description}</CardDescription>
+          <div className="grid gap-6">
+            {/* Phase 5A: Live Validation & Testing */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  Phase 5A: Real Execution & Validation
+                </CardTitle>
+                <CardDescription>
+                  Auto-detect packages, validate code in real-time, and execute in sandbox
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {/* Left Column: Package & Validation */}
+                  <div className="space-y-6">
+                    <IntelligentPackageManager 
+                      code={demoCode}
+                      projectType="react"
+                      autoInstall={true}
+                      onPackagesInstalled={(packages) => {
+                        console.log('Installed packages:', packages);
+                      }}
+                    />
+                    
+                    <RealTimeValidationDashboard 
+                      code={demoCode}
+                      language="typescript"
+                    />
+                  </div>
+                  
+                  {/* Right Column: Sandbox Execution */}
+                  <SandboxExecutionEnvironment 
+                    code={demoCode}
+                    language="javascript"
+                    onExecutionComplete={(result) => {
+                      console.log('Execution result:', result);
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Demo Scenarios */}
+            <Card>
+              <CardHeader>
+                <CardTitle>More Scenarios</CardTitle>
+                <CardDescription>Additional demo scenarios to explore</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {demoScenarios.map((demo) => (
+                    <Card key={demo.title} className="hover:shadow-lg transition-shadow cursor-pointer">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <demo.icon className={`h-8 w-8 ${demo.color}`} />
+                            <div>
+                              <CardTitle className="text-lg">{demo.title}</CardTitle>
+                              <CardDescription className="mt-1">{demo.description}</CardDescription>
+                            </div>
                           </div>
+                          <Badge variant="outline" className="text-green-500">
+                            {demo.status}
+                          </Badge>
                         </div>
-                        <Badge variant="outline" className="text-green-500">
-                          {demo.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <Button className="w-full">
-                        <PlayCircle className="h-4 w-4 mr-2" />
-                        Run Demo
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                      </CardHeader>
+                      <CardContent>
+                        <Button className="w-full">
+                          <PlayCircle className="h-4 w-4 mr-2" />
+                          Run Demo
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Quality Scores Tab */}
