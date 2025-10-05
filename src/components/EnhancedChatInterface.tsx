@@ -181,38 +181,45 @@ export function EnhancedChatInterface({
 
       if (error) throw error;
 
-      // Extract code from various response formats
-      let fullContent = data?.message || data?.explanation || "I'm here to help!";
+      // Extract code and explanation from orchestrator response
+      let fullContent = '';
       let codeToApply = null;
       let filePathToApply = null;
 
-      // Check if smart orchestrator returned raw code in finalCode
-      if (data?.finalCode) {
+      // Handle different response formats from smart orchestrator
+      if (data?.finalCode && typeof data.finalCode === 'string' && data.finalCode.length > 50) {
+        // Got actual code to apply
         codeToApply = data.finalCode;
-        // Try to determine file path from context or selected files
         filePathToApply = selectedFiles.length === 1 ? selectedFiles[0] : null;
-        fullContent = `I've fixed the issue. Here's the updated code:\n\n\`\`\`typescript\n${data.finalCode}\n\`\`\`\n\n${data?.explanation || ''}`;
+        
+        // Build user-friendly message
+        const explanation = data?.explanation || data?.message || 'Applied the fix';
+        fullContent = `${explanation}\n\n${filePathToApply ? `Updated: ${filePathToApply}` : ''}`;
+      } else if (data?.message) {
+        // Got an explanation or instructions
+        fullContent = data.message;
+      } else if (data?.explanation) {
+        fullContent = data.explanation;
+      } else {
+        fullContent = "I've analyzed your request. Please provide more details about the deployment error.";
       }
 
+      // Try to extract code blocks from the message
       const codeBlock = extractCodeBlocks(fullContent);
-
-      // Prefer codeBlock if it has a file path, otherwise use raw finalCode
-      if (codeBlock && codeBlock.filePath) {
+      if (codeBlock && !codeToApply) {
         codeToApply = codeBlock.code;
         filePathToApply = codeBlock.filePath;
       }
 
-      // Auto-apply code fixes if we have code and file path
-      if (codeToApply && filePathToApply && onCodeApply) {
+      // Auto-apply code fixes if we have valid code and file path
+      if (codeToApply && filePathToApply && onCodeApply && codeToApply.length > 50) {
         try {
           await onCodeApply(codeToApply, filePathToApply);
-          toast.success(`✅ Auto-applied fix to ${filePathToApply}`);
+          fullContent = `✅ Fixed and applied to ${filePathToApply}\n\n${fullContent}`;
         } catch (applyError) {
           console.error('Failed to auto-apply code:', applyError);
-          toast.error('Code generated but failed to auto-apply. Use the Apply button.');
+          toast.error('Generated fix but failed to apply. Please check the file.');
         }
-      } else if (codeToApply && !filePathToApply) {
-        toast.info('💡 Code fix generated. Please select a file or use the Apply button.');
       }
 
       // Update the assistant message with complete response
@@ -221,7 +228,11 @@ export function EnhancedChatInterface({
           ? { 
               ...m, 
               content: fullContent, 
-              codeBlock,
+              codeBlock: codeToApply && filePathToApply ? { 
+                language: 'typescript', 
+                code: codeToApply, 
+                filePath: filePathToApply 
+              } : undefined,
               streaming: false 
             }
           : m
