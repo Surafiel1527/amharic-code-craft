@@ -1,144 +1,15 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-
-// AI Model Configuration: Primary and Backup
-const PRIMARY_MODEL = "google/gemini-2.5-pro";
-const BACKUP_MODEL = "google/gemini-2.5-flash"; // Falls back if primary fails
+import { callAIWithFallback, PRIMARY_MODEL, BACKUP_MODEL } from '../_shared/aiWithFallback.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function to call AI with automatic fallback (Lovable Gateway → Direct Gemini)
-async function callAIWithFallback(
-  LOVABLE_API_KEY: string,
-  messages: any[],
-  preferredModel?: string,
-  temperature = 0.7
-) {
-  const models = preferredModel 
-    ? [preferredModel, preferredModel === PRIMARY_MODEL ? BACKUP_MODEL : PRIMARY_MODEL]
-    : [PRIMARY_MODEL, BACKUP_MODEL];
-  
-  let lastError: Error | null = null;
-
-  // Phase 1 & 2: Try Lovable AI Gateway with primary and backup models
-  for (let i = 0; i < models.length; i++) {
-    const model = models[i];
-    const isBackup = i > 0;
-    
-    try {
-      console.log(`${isBackup ? '🔄 Backup' : '🚀 Primary'} attempt with Lovable Gateway: ${model}`);
-      
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Lovable Gateway error (${response.status}): ${errorText}`);
-        throw new Error(`Lovable Gateway error (${response.status}): ${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log(`✅ Success with Lovable Gateway ${isBackup ? 'backup' : 'primary'}: ${model}`);
-      
-      return {
-        success: true,
-        data,
-        modelUsed: model,
-        wasBackup: isBackup,
-        gateway: 'lovable'
-      };
-    } catch (error: any) {
-      console.error(`❌ Lovable Gateway ${isBackup ? 'backup' : 'primary'} ${model} failed:`, error.message);
-      lastError = error;
-      
-      if (i < models.length - 1) {
-        console.log(`⏳ Falling back to backup model in 1 second...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        continue;
-      }
-    }
-  }
-
-  // Phase 3: Emergency fallback to Direct Gemini API
-  console.log('🆘 All Lovable Gateway attempts failed. Trying direct Gemini API as emergency fallback...');
-  
-  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-  if (!GEMINI_API_KEY) {
-    console.error('❌ GEMINI_API_KEY not configured. Cannot use emergency fallback.');
-    throw new Error(`All AI providers failed. Last error: ${lastError?.message}. Set GEMINI_API_KEY for emergency fallback.`);
-  }
-
-  try {
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Brief delay before emergency fallback
-    
-    // Convert messages to Gemini format
-    const geminiMessages = messages.map(msg => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }]
-    }));
-
-    console.log('🔧 Calling direct Gemini API (gemini-2.0-flash-exp)...');
-    
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: geminiMessages,
-          generationConfig: {
-            temperature: temperature,
-            maxOutputTokens: 8000,
-          }
-        })
-      }
-    );
-
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      console.error(`Direct Gemini API error (${geminiResponse.status}): ${errorText}`);
-      throw new Error(`Direct Gemini API error (${geminiResponse.status}): ${errorText}`);
-    }
-
-    const geminiData = await geminiResponse.json();
-    console.log('✅ SUCCESS with direct Gemini API emergency fallback!');
-    
-    // Convert Gemini response format to OpenAI-compatible format
-    const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    
-    return {
-      success: true,
-      data: {
-        choices: [{
-          message: {
-            role: 'assistant',
-            content: content
-          }
-        }]
-      },
-      modelUsed: 'gemini-2.0-flash-exp',
-      wasBackup: true,
-      gateway: 'direct-gemini-emergency'
-    };
-  } catch (error: any) {
-    console.error('❌ Emergency Gemini fallback also failed:', error.message);
-    throw new Error(`ALL AI providers failed including emergency fallback. Lovable Gateway error: ${lastError?.message}. Gemini error: ${error.message}`);
-  }
-}
+// The callAIWithFallback function is now imported from _shared/aiWithFallback.ts
+// This provides robust 3-layer fallback with exponential backoff and rate limiting
 
 // Helper: Load project memory and context
 async function loadProjectContext(supabaseClient: any, userId: string, conversationId?: string, projectId?: string) {
@@ -256,7 +127,7 @@ Return ONLY valid SQL (no explanations). Include:
       { role: 'system', content: 'You are a PostgreSQL expert. Generate production-ready SQL migrations.' },
       { role: 'user', content: prompt }
     ],
-    PRIMARY_MODEL
+    { preferredModel: PRIMARY_MODEL }
   );
   
   let sql = aiResponse.data.choices[0].message.content;
@@ -594,8 +465,7 @@ Project Context:
 Create a comprehensive execution plan that can handle any project complexity and duration.`
         }
       ],
-      PRIMARY_MODEL,
-      0.7
+      { temperature: 0.7 }
     );
 
     const planText = planResponse.data.choices[0].message.content;
@@ -674,7 +544,7 @@ Context:
 Generate complete, production-ready implementation.`
           }
         ],
-        preferredModel
+        { preferredModel }
       );
 
       const stepResult: any = {
@@ -780,8 +650,7 @@ Results: ${JSON.stringify(results.slice(-10))}
 Generate a comprehensive summary.`
         }
       ],
-      PRIMARY_MODEL,
-      0.7
+      { preferredModel: PRIMARY_MODEL, temperature: 0.7 }
     );
 
     const summary = summaryResponse.data.choices[0].message.content;
