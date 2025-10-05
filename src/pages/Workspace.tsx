@@ -119,7 +119,15 @@ export default function Workspace() {
     setProject(prev => prev ? { ...prev, html_code: htmlCode } : null);
     await handleSave();
     setShowVersionHistory(false);
-    toast.success("Version restored successfully");
+    toast.success("✅ Version restored! Chat context updated with restored code.");
+    
+    // Notify user that chat is now using restored code
+    const restoreNotification: Message = {
+      role: 'assistant',
+      content: '🔄 **Code restored!** I\'m now using the restored version as context for any further fixes you need.',
+      timestamp: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, restoreNotification]);
   };
 
   // Redirect to auth if not logged in
@@ -234,7 +242,7 @@ export default function Workspace() {
     };
 
     loadProjectFiles();
-  }, [projectId]);
+  }, [projectId, project?.html_code]); // Reload when project code changes (e.g., after restore)
 
   const handleCreateFile = async (path: string, type: 'file' | 'folder') => {
     if (!projectId || !user) return;
