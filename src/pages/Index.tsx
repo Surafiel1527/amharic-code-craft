@@ -852,10 +852,11 @@ const Index = () => {
 
                 <TabsContent value="assistant" className="mt-4">
                   <AIAssistant
-                    projectContext={currentProjectId ? {
-                      title: projectTitle || 'Untitled',
+                    projectContext={generatedCode ? {
+                      title: projectTitle || 'Current Project',
                       prompt: prompt,
-                      codeLength: generatedCode.length
+                      codeLength: generatedCode.length,
+                      codeSnippet: generatedCode.substring(0, 1000) // First 1000 chars for context
                     } : undefined}
                   />
                 </TabsContent>

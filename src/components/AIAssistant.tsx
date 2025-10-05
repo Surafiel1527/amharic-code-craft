@@ -28,6 +28,7 @@ interface AIAssistantProps {
     title: string;
     prompt: string;
     codeLength: number;
+    codeSnippet?: string; // First 1000 chars of code for context
   };
 }
 

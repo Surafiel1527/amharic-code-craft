@@ -547,6 +547,11 @@ serve(async (req) => {
     const startRoute = Date.now();
     const moduleResponse = await routeToModule(intentResult, message, universalContext, supabase, userId);
     const routeTime = Date.now() - startRoute;
+    
+    if (!moduleResponse) {
+      throw new Error('Module routing failed to produce a response');
+    }
+    
     console.log(`📡 Routed to ${moduleResponse.module} in ${routeTime}ms`);
 
     // Phase 4: Format Response
