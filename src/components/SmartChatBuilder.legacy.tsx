@@ -323,11 +323,7 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
                 </Button>
               </SheetTrigger>
               <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
-                <EnterpriseProjectDashboard 
-                  onCodeUpdate={(code) => {
-                    setWorkingCode(code);
-                    if (onCodeGenerated) onCodeGenerated(code);
-                  }}
+                <EnterpriseProjectDashboard
                 />
               </SheetContent>
             </Sheet>

@@ -132,7 +132,7 @@ export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuil
                 </Button>
               </SheetTrigger>
               <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
-                <EnterpriseProjectDashboard onCodeUpdate={(code) => handleCodeUpdate(code, 'current-project')} />
+                <EnterpriseProjectDashboard />
               </SheetContent>
             </Sheet>
 
