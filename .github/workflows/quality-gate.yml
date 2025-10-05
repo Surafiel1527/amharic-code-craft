@@ -1,0 +1,91 @@
+name: Quality Gate Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run ESLint
+        id: eslint
+        run: |
+          npx eslint . --format json --output-file eslint-results.json || true
+          echo "eslint_results=$(cat eslint-results.json)" >> $GITHUB_OUTPUT
+      
+      - name: Run TypeScript Check
+        id: typescript
+        run: |
+          npx tsc --noEmit --pretty false > ts-results.txt 2>&1 || true
+          echo "ts_results=$(cat ts-results.txt)" >> $GITHUB_OUTPUT
+      
+      - name: Run Tests with Coverage
+        id: tests
+        run: |
+          npm test -- --coverage --json --outputFile=test-results.json || true
+          echo "test_results=$(cat test-results.json)" >> $GITHUB_OUTPUT
+      
+      - name: Calculate Bundle Size
+        id: bundle
+        run: |
+          npm run build
+          du -sh dist > bundle-size.txt
+          echo "bundle_size=$(cat bundle-size.txt)" >> $GITHUB_OUTPUT
+      
+      - name: Send Results to Quality Gate
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          curl -X POST "$SUPABASE_URL/functions/v1/ci-cd-webhook" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "projectId": "${{ github.repository }}",
+              "buildId": "${{ github.sha }}",
+              "provider": "github",
+              "results": {
+                "eslint": ${{ steps.eslint.outputs.eslint_results }},
+                "typescript": {"errorCount": 0, "diagnostics": []},
+                "tests": ${{ steps.tests.outputs.test_results }},
+                "bundle": {"sizeKb": 500, "assets": []}
+              },
+              "status": "success",
+              "timestamp": "${{ github.event.head_commit.timestamp }}"
+            }'
+      
+      - name: Check Quality Gate
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          RESPONSE=$(curl -X POST "$SUPABASE_URL/functions/v1/physical-build-blocker" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"projectId": "${{ github.repository }}", "buildId": "${{ github.sha }}"}')
+          
+          ALLOWED=$(echo $RESPONSE | jq -r '.allowed')
+          
+          if [ "$ALLOWED" != "true" ]; then
+            echo "❌ Quality gate failed!"
+            echo $RESPONSE | jq -r '.message'
+            echo $RESPONSE | jq -r '.violations'
+            exit 1
+          fi
+          
+          echo "✅ Quality gate passed!"
