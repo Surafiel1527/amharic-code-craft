@@ -315,3 +315,9 @@ verify_jwt = true
 [functions.terminal-executor]
 verify_jwt = false
 
+[functions.train-ai-model]
+verify_jwt = true
+
+[functions.marketplace-publish]
+verify_jwt = true
+

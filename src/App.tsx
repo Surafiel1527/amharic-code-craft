@@ -17,6 +17,8 @@ import QualityHub from "./pages/QualityHub";
 import LivePreview from "./pages/LivePreview";
 import PackageManager from "./pages/PackageManager";
 import TestingHub from "./pages/TestingHub";
+import AITrainingDashboard from "./pages/AITrainingDashboard";
+import Marketplace from "./pages/Marketplace";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const App = () => {
@@ -40,6 +42,8 @@ const App = () => {
         <Route path="/live-preview" element={<LivePreview />} />
         <Route path="/package-manager" element={<PackageManager />} />
         <Route path="/testing" element={<TestingHub />} />
+        <Route path="/ai-training" element={<AITrainingDashboard />} />
+        <Route path="/marketplace" element={<Marketplace />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
