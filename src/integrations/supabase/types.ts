@@ -614,6 +614,33 @@ export type Database = {
           },
         ]
       }
+      auto_snapshot_config: {
+        Row: {
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          interval_minutes: number | null
+          max_snapshots: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          interval_minutes?: number | null
+          max_snapshots?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          interval_minutes?: number | null
+          max_snapshots?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       build_quality_gates: {
         Row: {
           block_on_fail: boolean | null
@@ -824,6 +851,36 @@ export type Database = {
           overall_score?: number
           performance_score?: number
           security_score?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      code_sync: {
+        Row: {
+          code_content: string
+          collaboration_session_id: string
+          cursor_position: number | null
+          file_path: string
+          id: string
+          synced_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code_content: string
+          collaboration_session_id: string
+          cursor_position?: number | null
+          file_path?: string
+          id?: string
+          synced_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code_content?: string
+          collaboration_session_id?: string
+          cursor_position?: number | null
+          file_path?: string
+          id?: string
+          synced_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -4032,34 +4089,37 @@ export type Database = {
       }
       terminal_sessions: {
         Row: {
-          created_at: string | null
-          environment_vars: Json | null
+          collaboration_session_id: string
+          command: string
+          completed_at: string | null
+          executed_at: string | null
+          exit_code: number | null
           id: string
-          is_active: boolean | null
-          last_command_at: string | null
-          session_name: string
+          output: string | null
+          status: string
           user_id: string
-          working_directory: string | null
         }
         Insert: {
-          created_at?: string | null
-          environment_vars?: Json | null
+          collaboration_session_id: string
+          command: string
+          completed_at?: string | null
+          executed_at?: string | null
+          exit_code?: number | null
           id?: string
-          is_active?: boolean | null
-          last_command_at?: string | null
-          session_name: string
+          output?: string | null
+          status?: string
           user_id: string
-          working_directory?: string | null
         }
         Update: {
-          created_at?: string | null
-          environment_vars?: Json | null
+          collaboration_session_id?: string
+          command?: string
+          completed_at?: string | null
+          executed_at?: string | null
+          exit_code?: number | null
           id?: string
-          is_active?: boolean | null
-          last_command_at?: string | null
-          session_name?: string
+          output?: string | null
+          status?: string
           user_id?: string
-          working_directory?: string | null
         }
         Relationships: []
       }

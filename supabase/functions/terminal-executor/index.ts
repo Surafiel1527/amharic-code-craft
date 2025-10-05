@@ -1,6 +1,5 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,98 +12,94 @@ serve(async (req) => {
   }
 
   try {
-    const { command, workingDirectory = '/tmp' } = await req.json();
+    const { sessionId, command } = await req.json();
     
     const authHeader = req.headers.get('Authorization')!;
-    const supabase = createClient(
+    const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error('Unauthorized');
 
-    console.log('Executing command:', command);
+    console.log(`Executing command for session ${sessionId}: ${command}`);
 
-    // Security: Whitelist of allowed commands
-    const allowedCommands = [
-      'ls', 'pwd', 'echo', 'cat', 'mkdir', 'rm', 'cp', 'mv', 'touch',
-      'npm', 'node', 'python', 'python3', 'pip', 'pip3',
-      'git', 'curl', 'wget', 'grep', 'find', 'wc', 'head', 'tail',
-      'deno', 'bun'
-    ];
-
-    const commandParts = command.trim().split(/\s+/);
-    const baseCommand = commandParts[0];
-
-    if (!allowedCommands.includes(baseCommand)) {
-      return new Response(
-        JSON.stringify({ 
-          error: `Command '${baseCommand}' is not allowed for security reasons`,
-          allowedCommands 
-        }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Execute command
+    // Execute command with Deno
     let output = '';
     let exitCode = 0;
-    let executionTime = 0;
+    let status: 'completed' | 'failed' = 'completed';
 
     try {
-      const startTime = Date.now();
+      // Parse command and arguments
+      const [cmd, ...args] = command.split(' ');
       
-      const process = new Deno.Command(baseCommand, {
-        args: commandParts.slice(1),
-        cwd: workingDirectory,
-        stdout: "piped",
-        stderr: "piped",
+      // Security: Only allow safe commands
+      const allowedCommands = [
+        'npm', 'node', 'git', 'ls', 'pwd', 'echo', 'cat', 
+        'grep', 'find', 'test', 'vitest', 'yarn', 'pnpm'
+      ];
+      
+      if (!allowedCommands.includes(cmd)) {
+        throw new Error(`Command '${cmd}' is not allowed. Allowed: ${allowedCommands.join(', ')}`);
+      }
+
+      // Execute command
+      const process = new Deno.Command(cmd, {
+        args,
+        stdout: 'piped',
+        stderr: 'piped',
       });
 
       const { code, stdout, stderr } = await process.output();
-      
       exitCode = code;
-      executionTime = Date.now() - startTime;
 
       const decoder = new TextDecoder();
-      const stdoutText = decoder.decode(stdout);
-      const stderrText = decoder.decode(stderr);
+      output = decoder.decode(stdout);
+      
+      if (stderr.length > 0) {
+        const errorOutput = decoder.decode(stderr);
+        output += '\n' + errorOutput;
+      }
 
-      output = stdoutText || stderrText || `Command executed successfully (exit code: ${code})`;
-
-    } catch (error: any) {
-      output = `Error executing command: ${error.message}`;
+      if (code !== 0) {
+        status = 'failed';
+      }
+    } catch (error) {
+      console.error('Command execution error:', error);
+      output = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
       exitCode = 1;
+      status = 'failed';
     }
 
-    // Log command execution
-    await supabase
-      .from('terminal_history')
-      .insert({
-        user_id: user.id,
-        command,
+    // Update terminal session with results
+    const { error: updateError } = await supabaseClient
+      .from('terminal_sessions')
+      .update({
         output,
         exit_code: exitCode,
-        working_directory: workingDirectory,
-        execution_time_ms: executionTime
-      });
+        status,
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', sessionId);
+
+    if (updateError) throw updateError;
 
     return new Response(
       JSON.stringify({
+        success: true,
         output,
         exitCode,
-        executionTime,
-        timestamp: new Date().toISOString()
+        status
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error: any) {
-    console.error('Error in terminal-executor:', error);
+  } catch (error) {
+    console.error('Terminal executor error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Unknown error' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

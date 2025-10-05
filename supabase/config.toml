@@ -313,5 +313,5 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.terminal-executor]
-verify_jwt = true
+verify_jwt = false
 

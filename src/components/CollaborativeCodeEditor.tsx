@@ -90,14 +90,58 @@ export const CollaborativeCodeEditor = ({
     });
   }, [projectId, cursorPosition]);
 
-  const handleCodeChange = useCallback((newCode: string) => {
+  const handleCodeChange = useCallback(async (newCode: string) => {
     setCode(newCode);
     onCodeChange?.(newCode);
-  }, [onCodeChange]);
+
+    // Sync code to other collaborators in real-time
+    if (projectId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await supabase.from('code_sync').insert({
+        collaboration_session_id: projectId,
+        user_id: user.id,
+        file_path: 'main.tsx',
+        code_content: newCode,
+        cursor_position: cursorPosition
+      });
+    }
+  }, [onCodeChange, projectId, cursorPosition]);
 
   const handleCursorChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setCursorPosition(e.target.selectionStart);
   }, []);
+
+  // Subscribe to code changes from other users
+  useEffect(() => {
+    if (!projectId) return;
+
+    const channel = supabase
+      .channel(`code-sync:${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'code_sync',
+          filter: `collaboration_session_id=eq.${projectId}`
+        },
+        async (payload) => {
+          const { data: { user } } = await supabase.auth.getUser();
+          // Only update if the change is from another user
+          if (payload.new.user_id !== user?.id) {
+            setCode(payload.new.code_content);
+            onCodeChange?.(payload.new.code_content);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [projectId, onCodeChange]);
 
   return (
     <Card>
