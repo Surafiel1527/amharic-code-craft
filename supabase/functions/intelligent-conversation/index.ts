@@ -16,6 +16,36 @@ interface IntentResult {
 function recognizeIntent(userMessage: string, context: any): IntentResult {
   const msg = userMessage.toLowerCase();
   
+  // CRITICAL: Detect QUESTIONS first (highest priority)
+  // Questions indicate the user wants explanation/advice, not implementation
+  const questionPatterns = [
+    'how can',
+    'how do',
+    'how would',
+    'how should',
+    'what credential',
+    'what do i need',
+    'what should i',
+    'can you explain',
+    'can you tell',
+    'could you explain',
+    'which is better',
+    'help me understand',
+    '?'  // Any question mark indicates a question
+  ];
+  
+  const hasQuestionPattern = questionPatterns.some(pattern => msg.includes(pattern));
+  const hasQuestionMark = userMessage.includes('?');
+  
+  // If it's clearly a question, route to consultation
+  if (hasQuestionPattern || hasQuestionMark) {
+    return {
+      primaryIntent: 'consultation',
+      subIntent: 'question',
+      confidence: 0.95
+    };
+  }
+  
   // Python project generation - HIGH PRIORITY (before other code gen)
   if (
     (msg.includes('python') || msg.includes('flask') || msg.includes('django') || 
@@ -30,12 +60,11 @@ function recognizeIntent(userMessage: string, context: any): IntentResult {
     };
   }
   
-  // Advice/consultation patterns - HIGH PRIORITY
+  // Advice/consultation patterns
   if (
     msg.includes('advice') || msg.includes('suggest') || msg.includes('recommend') ||
     msg.includes('what should') || msg.includes('how to') || msg.includes('best way') ||
     msg.includes('help me decide') || msg.includes('which is better') ||
-    (msg.includes('what') && (msg.includes('do') || msg.includes('add'))) ||
     msg.includes('ideas for') || msg.includes('tips for')
   ) {
     return {
@@ -334,24 +363,53 @@ CRITICAL RULES:
         // Route to Consultation Agent - provides advice and recommendations
         console.log('💭 CONSULTATION: Providing expert advice...');
         
-        const consultationPrompt = `You are an expert software architect and consultant. The user is asking for advice about their project.
+        const consultationPrompt = `You are an expert software architect and technical consultant. The user is asking you a question about their project.
 
-CURRENT PROJECT:
+PLATFORM CONTEXT:
+This is a Lovable Cloud project with:
+- Frontend: React, TypeScript, Tailwind CSS, Vite
+- Backend: Lovable Cloud (Supabase-powered: database, auth, storage, edge functions)
+- Current Stack: Full-stack web application with real-time database
+
+CURRENT PROJECT STATE:
 ${context.currentCode ? `\`\`\`\n${context.currentCode.substring(0, 2000)}\n\`\`\`` : 'No existing code yet'}
 
-USER REQUEST: ${userMessage}
+USER QUESTION: ${userMessage}
 
 CONVERSATION HISTORY:
 ${context.conversationHistory?.slice(-3).map((m: any) => `${m.role}: ${m.content}`).join('\n') || 'No previous context'}
 
-Provide expert advice that is:
-1. Specific and actionable
-2. Takes into account their existing project
-3. Considers best practices and modern patterns
-4. Offers 2-3 concrete recommendations
-5. Explains the reasoning behind your suggestions
+INSTRUCTIONS:
+1. **Answer the question directly and completely**
+   - If they ask "how can you implement X?", explain the exact steps
+   - If they ask "what credentials do you need?", list specific credentials required
+   - If they ask about switching technologies (e.g., Firebase), explain:
+     * Whether it's possible/recommended with this platform
+     * What would be involved
+     * What credentials/setup is needed
+     * Alternatives available in Lovable Cloud
 
-Be conversational, friendly, and helpful. Format your response clearly with bullet points or numbered lists.`;
+2. **Be specific about Lovable Cloud capabilities**
+   - The platform uses Lovable Cloud (Supabase backend)
+   - Explain if the request conflicts with platform architecture
+   - Suggest platform-native solutions when appropriate
+
+3. **Provide actionable guidance**
+   - Give step-by-step explanation when asked "how"
+   - List specific requirements when asked "what"
+   - Compare options when asked "which"
+
+4. **Be honest about limitations**
+   - If something requires external services, say so
+   - If something conflicts with platform design, explain alternatives
+
+Format your response clearly with:
+- Direct answer to the question first
+- Detailed explanation with bullet points or steps
+- Any credentials/requirements clearly listed
+- Recommendations if applicable
+
+Be conversational, friendly, and thorough. Make sure you ANSWER the question, don't just acknowledge it.`;
 
         const consultationResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
