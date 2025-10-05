@@ -104,17 +104,17 @@ Return JSON:
     }
 
     // Store security scan results
+    const vulnerabilities = analysis.vulnerabilities as Array<{ severity: string; [key: string]: any }>;
     const { data: scanResult } = await supabase
       .from('plugin_security_scans')
       .insert({
         plugin_id: pluginId,
-        scan_type: 'code_analysis',
-        scan_status: 'completed',
-        severity_level: analysis.vulnerabilities.length > 0 ? analysis.vulnerabilities[0].severity : 'info',
-        vulnerabilities_found: analysis.vulnerabilities,
-        security_score: analysis.security_score,
-        recommendations: analysis.recommendations,
-        scanned_at: new Date().toISOString()
+        scan_type: 'automated',
+        status: vulnerabilities.length > 0 ? 'failed' : 'passed',
+        vulnerabilities_found: vulnerabilities.length,
+        severity_level: vulnerabilities.length > 0 ? vulnerabilities[0].severity : 'info',
+        scan_results: analysis,
+        scanned_by: null
       })
       .select()
       .single();

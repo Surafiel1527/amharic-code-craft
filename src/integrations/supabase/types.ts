@@ -426,6 +426,45 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_rules: {
+        Row: {
+          condition: string
+          created_at: string | null
+          created_by: string
+          id: string
+          is_active: boolean | null
+          metric_type: string
+          notification_channels: Json | null
+          rule_name: string
+          threshold: number
+          updated_at: string | null
+        }
+        Insert: {
+          condition: string
+          created_at?: string | null
+          created_by: string
+          id?: string
+          is_active?: boolean | null
+          metric_type: string
+          notification_channels?: Json | null
+          rule_name: string
+          threshold: number
+          updated_at?: string | null
+        }
+        Update: {
+          condition?: string
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          is_active?: boolean | null
+          metric_type?: string
+          notification_channels?: Json | null
+          rule_name?: string
+          threshold?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           api_key: string
@@ -2875,6 +2914,42 @@ export type Database = {
         }
         Relationships: []
       }
+      optimization_suggestions: {
+        Row: {
+          applied_at: string | null
+          auto_applied: boolean | null
+          created_at: string | null
+          description: string
+          id: string
+          metadata: Json | null
+          severity: string
+          suggested_fix: string
+          suggestion_type: string
+        }
+        Insert: {
+          applied_at?: string | null
+          auto_applied?: boolean | null
+          created_at?: string | null
+          description: string
+          id?: string
+          metadata?: Json | null
+          severity: string
+          suggested_fix: string
+          suggestion_type: string
+        }
+        Update: {
+          applied_at?: string | null
+          auto_applied?: boolean | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          metadata?: Json | null
+          severity?: string
+          suggested_fix?: string
+          suggestion_type?: string
+        }
+        Relationships: []
+      }
       orchestration_runs: {
         Row: {
           completed_at: string | null
@@ -3148,6 +3223,39 @@ export type Database = {
           },
         ]
       }
+      performance_cache: {
+        Row: {
+          cache_key: string
+          cache_value: Json
+          created_at: string | null
+          expires_at: string
+          hit_count: number | null
+          id: string
+          last_accessed_at: string | null
+          ttl_seconds: number
+        }
+        Insert: {
+          cache_key: string
+          cache_value: Json
+          created_at?: string | null
+          expires_at: string
+          hit_count?: number | null
+          id?: string
+          last_accessed_at?: string | null
+          ttl_seconds?: number
+        }
+        Update: {
+          cache_key?: string
+          cache_value?: Json
+          created_at?: string | null
+          expires_at?: string
+          hit_count?: number | null
+          id?: string
+          last_accessed_at?: string | null
+          ttl_seconds?: number
+        }
+        Relationships: []
+      }
       pipeline_optimizations: {
         Row: {
           after_performance: Json
@@ -3352,6 +3460,36 @@ export type Database = {
           priority?: string | null
           suggestions?: Json
           user_id?: string
+        }
+        Relationships: []
+      }
+      production_metrics: {
+        Row: {
+          endpoint: string | null
+          id: string
+          metadata: Json | null
+          metric_type: string
+          metric_value: number
+          recorded_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          endpoint?: string | null
+          id?: string
+          metadata?: Json | null
+          metric_type: string
+          metric_value: number
+          recorded_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          endpoint?: string | null
+          id?: string
+          metadata?: Json | null
+          metric_type?: string
+          metric_value?: number
+          recorded_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -4018,6 +4156,48 @@ export type Database = {
         }
         Relationships: []
       }
+      security_vulnerabilities: {
+        Row: {
+          affected_component: string
+          cve_id: string | null
+          description: string
+          detected_at: string | null
+          id: string
+          metadata: Json | null
+          remediation: string | null
+          resolved_at: string | null
+          severity: string
+          status: string | null
+          vulnerability_type: string
+        }
+        Insert: {
+          affected_component: string
+          cve_id?: string | null
+          description: string
+          detected_at?: string | null
+          id?: string
+          metadata?: Json | null
+          remediation?: string | null
+          resolved_at?: string | null
+          severity: string
+          status?: string | null
+          vulnerability_type: string
+        }
+        Update: {
+          affected_component?: string
+          cve_id?: string | null
+          description?: string
+          detected_at?: string | null
+          id?: string
+          metadata?: Json | null
+          remediation?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string | null
+          vulnerability_type?: string
+        }
+        Relationships: []
+      }
       smart_dependency_tracking: {
         Row: {
           alternative_packages: Json | null
@@ -4079,6 +4259,50 @@ export type Database = {
             columns: ["orchestration_id"]
             isOneToOne: false
             referencedRelation: "mega_mind_orchestrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_alerts: {
+        Row: {
+          alert_rule_id: string | null
+          created_at: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+        }
+        Insert: {
+          alert_rule_id?: string | null
+          created_at?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: string
+        }
+        Update: {
+          alert_rule_id?: string | null
+          created_at?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_alerts_alert_rule_id_fkey"
+            columns: ["alert_rule_id"]
+            isOneToOne: false
+            referencedRelation: "alert_rules"
             referencedColumns: ["id"]
           },
         ]
@@ -4429,6 +4653,45 @@ export type Database = {
           output?: string | null
           status?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      test_results: {
+        Row: {
+          commit_hash: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          ran_at: string | null
+          stack_trace: string | null
+          status: string
+          test_name: string
+          test_suite: string
+        }
+        Insert: {
+          commit_hash?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          ran_at?: string | null
+          stack_trace?: string | null
+          status: string
+          test_name: string
+          test_suite: string
+        }
+        Update: {
+          commit_hash?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          ran_at?: string | null
+          stack_trace?: string | null
+          status?: string
+          test_name?: string
+          test_suite?: string
         }
         Relationships: []
       }
@@ -4965,6 +5228,10 @@ export type Database = {
       calculate_uptime_percentage: {
         Args: { p_credential_id: string; p_hours?: number }
         Returns: number
+      }
+      cleanup_expired_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       cleanup_expired_sessions: {
         Args: Record<PropertyKey, never>
