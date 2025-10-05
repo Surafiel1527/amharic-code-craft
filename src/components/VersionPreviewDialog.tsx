@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Code2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -19,6 +19,21 @@ export function VersionPreviewDialog({
   versionNumber 
 }: VersionPreviewDialogProps) {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (open && htmlCode) {
+      // Create a blob URL for the HTML content
+      const blob = new Blob([htmlCode], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+
+      // Cleanup function to revoke the URL when component unmounts or dialog closes
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    }
+  }, [open, htmlCode]);
 
   const handleOpenInNewTab = () => {
     const newWindow = window.open('', '_blank');
@@ -69,12 +84,18 @@ export function VersionPreviewDialog({
         
         <div className="flex-1 overflow-hidden">
           <TabsContent value="preview" className="h-full m-0 p-0" forceMount hidden={activeTab !== 'preview'}>
-            <iframe
-              srcDoc={htmlCode}
-              className="w-full h-full border-0"
-              title={`Version ${versionNumber} Preview`}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-            />
+            {previewUrl ? (
+              <iframe
+                src={previewUrl}
+                className="w-full h-full border-0"
+                title={`Version ${versionNumber} Preview`}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                Loading preview...
+              </div>
+            )}
           </TabsContent>
           
           <TabsContent value="code" className="h-full m-0 p-0" forceMount hidden={activeTab !== 'code'}>
