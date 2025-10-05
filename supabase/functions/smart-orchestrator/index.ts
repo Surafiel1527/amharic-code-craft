@@ -142,6 +142,129 @@ Return ONLY valid SQL (no explanations). Include:
   return sql.trim();
 }
 
+// Helper: Generate friendly, human messages for progress updates
+function generateFriendlyMessage(step: any, currentIndex: number, totalSteps: number): string {
+  const stepNum = step.step_number;
+  const total = totalSteps;
+  const description = step.description.toLowerCase();
+  const actionType = step.action_type;
+  
+  // Detect major feature types
+  const isAuth = description.match(/auth|login|signup|register|password|session/);
+  const isProfile = description.match(/profile|user.*info|avatar|bio/);
+  const isDashboard = description.match(/dashboard|home.*page|main.*interface/);
+  const isDatabase = description.match(/database|table|schema|migration/);
+  const isAPI = description.match(/api|endpoint|function|backend/);
+  const isUI = description.match(/ui|interface|component|page|layout/);
+  const isStorage = description.match(/storage|upload|file|image/);
+  const isNotification = description.match(/notif|alert|email|message/);
+  const isPayment = description.match(/payment|stripe|checkout|billing/);
+  const isAdmin = description.match(/admin|manage|settings|config/);
+  
+  // Starting messages
+  if (currentIndex === 0) {
+    if (isAuth) return `🔐 Starting with authentication system...`;
+    if (isDatabase) return `🗄️ Setting up database foundation...`;
+    if (isUI) return `🎨 Creating beautiful user interface...`;
+    return `🚀 Starting: ${step.description}`;
+  }
+  
+  // Completion celebrations (when moving to next step)
+  let message = '';
+  
+  // Previous step completion
+  if (currentIndex > 0) {
+    const prevStep = description; // We're looking at current, but message is about progress
+    
+    if (isAuth && actionType === 'auth_setup') {
+      message = `✅ Authentication complete! Users can now sign up & log in securely.\n🔨 Working on: ${step.description}`;
+    } else if (isProfile && actionType === 'code_gen') {
+      message = `🎉 User profiles ready! Users can customize their experience.\n🔨 Building: ${step.description}`;
+    } else if (isDashboard && actionType === 'code_gen') {
+      message = `📊 Dashboard complete! Beautiful interface is live.\n⚡ Adding: ${step.description}`;
+    } else if (isDatabase && actionType === 'database_migration') {
+      message = `✅ Database configured! All tables & security in place.\n🔨 Next up: ${step.description}`;
+    } else if (isAPI && actionType === 'edge_function') {
+      message = `🌐 API endpoints deployed! Backend is fully functional.\n⚡ Implementing: ${step.description}`;
+    } else if (isStorage && actionType === 'storage_setup') {
+      message = `📁 File storage ready! Users can upload images & files.\n🔨 Working on: ${step.description}`;
+    } else if (isNotification && actionType === 'code_gen') {
+      message = `📬 Notifications working! Users stay informed in real-time.\n⚡ Adding: ${step.description}`;
+    } else if (isPayment && actionType === 'edge_function') {
+      message = `💳 Payments integrated! Ready to accept transactions.\n🔨 Building: ${step.description}`;
+    } else if (isAdmin && actionType === 'code_gen') {
+      message = `⚙️ Admin panel complete! Full control at your fingertips.\n⚡ Finalizing: ${step.description}`;
+    } else {
+      // Generic progress
+      const percentage = Math.round((currentIndex / totalSteps) * 100);
+      message = `✨ ${percentage}% complete - Working on: ${step.description}`;
+    }
+  } else {
+    message = `🔨 Building: ${step.description}`;
+  }
+  
+  // Add step counter
+  return `[${stepNum}/${total}] ${message}`;
+}
+
+// Helper: Generate celebration messages when major features complete
+function generateCelebrationMessage(step: any, completedCount: number, totalSteps: number): string | null {
+  const description = step.description.toLowerCase();
+  const actionType = step.action_type;
+  
+  // Only celebrate actual completions, not planning steps
+  if (actionType === 'analyze' || actionType === 'debug' || actionType === 'review') {
+    return null;
+  }
+  
+  // Celebrate major feature completions
+  if (description.match(/auth|login|signup/) && actionType === 'auth_setup') {
+    return `🎉 Congratulations! Authentication is complete & secure. Users can now register and log in!`;
+  }
+  
+  if (description.match(/profile|user.*page/) && actionType === 'code_gen') {
+    return `🌟 Amazing! User profiles are ready. Users can personalize their experience!`;
+  }
+  
+  if (description.match(/dashboard|main.*interface/) && actionType === 'code_gen') {
+    return `🚀 Fantastic! The dashboard is live with a beautiful interface!`;
+  }
+  
+  if (description.match(/database|migration/) && actionType === 'database_migration') {
+    return `💎 Excellent! Database is configured with all security policies in place!`;
+  }
+  
+  if (description.match(/payment|stripe|checkout/) && actionType === 'edge_function') {
+    return `💰 Awesome! Payment system is integrated and ready to process transactions!`;
+  }
+  
+  if (description.match(/storage|upload/) && actionType === 'storage_setup') {
+    return `📦 Great job! File storage is set up. Users can upload images and files!`;
+  }
+  
+  if (description.match(/notification|alert/) && actionType === 'code_gen') {
+    return `🔔 Perfect! Notifications are working. Users will stay informed!`;
+  }
+  
+  if (description.match(/admin|management/) && actionType === 'code_gen') {
+    return `⚡ Brilliant! Admin controls are ready. Full management capabilities enabled!`;
+  }
+  
+  // Milestone celebrations
+  const percentage = (completedCount / totalSteps) * 100;
+  if (percentage >= 25 && percentage < 30) {
+    return `🎯 Quarter way there! ${completedCount}/${totalSteps} features complete!`;
+  }
+  if (percentage >= 50 && percentage < 55) {
+    return `🔥 Halfway done! Looking great! ${completedCount}/${totalSteps} features complete!`;
+  }
+  if (percentage >= 75 && percentage < 80) {
+    return `⭐ Three quarters done! Almost there! ${completedCount}/${totalSteps} features complete!`;
+  }
+  
+  return null; // No celebration for this step
+}
+
 // Helper: Prepare database migration (for user review/approval)
 async function prepareDatabaseMigration(supabaseClient: any, sql: string, jobId: string) {
   try {
@@ -385,7 +508,10 @@ Create a comprehensive execution plan that can handle any project complexity and
       const progress = 25 + ((i / executionPlan.length) * 65);
       
       console.log(`⚡ Step ${step.step_number}/${executionPlan.length}: ${step.description} [${step.action_type}]`);
-      await broadcastStatus('editing', `Step ${step.step_number}/${executionPlan.length}: ${step.description}`, progress);
+      
+      // Generate friendly progress message
+      const friendlyMessage = generateFriendlyMessage(step, i, executionPlan.length);
+      await broadcastStatus('editing', friendlyMessage, progress);
       
       // Choose the right model based on action complexity
       const model = step.action_type === 'database_migration' || step.action_type === 'edge_function' 
@@ -450,6 +576,13 @@ Generate complete, production-ready implementation.`
 
       results.push(stepResult);
       completedSteps.push(stepResult);
+      
+      // Celebrate major completions
+      const celebrationMessage = generateCelebrationMessage(step, i + 1, executionPlan.length);
+      if (celebrationMessage) {
+        await broadcastStatus('idle', celebrationMessage, progress);
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Brief pause to let user see celebration
+      }
       
       // Checkpoint: Save progress for long-running tasks
       if (step.checkpoint || i % 5 === 0) {
@@ -545,7 +678,10 @@ Generate a comprehensive summary.`
     const summaryData = await summaryResponse.json();
     const summary = summaryData.choices[0].message.content;
 
-    await broadcastStatus('idle', '✨ Super Mastermind execution complete! All systems operational.', 100);
+    // Final celebration
+    const finalCelebration = `🎊 CONGRATULATIONS! All ${executionPlan.length} features complete!\n\n✅ Your production-ready application is live and fully functional!\n\n🚀 Everything is working:\n${executionPlan.slice(0, 5).map((s: any) => `  ✓ ${s.description}`).join('\n')}${executionPlan.length > 5 ? `\n  ... and ${executionPlan.length - 5} more features!` : ''}`;
+    
+    await broadcastStatus('idle', finalCelebration, 100);
     console.log('🎉 Orchestration completed successfully!');
 
     // Mark job as completed with full details
