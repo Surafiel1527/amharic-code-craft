@@ -645,6 +645,20 @@ export default function Workspace() {
 
   return (
     <div className="h-screen bg-background flex flex-col">
+      {/* Floating Chat Button - Mobile Only */}
+      <Button
+        onClick={() => {
+          const chatTab = document.querySelector('[value="chat"]') as HTMLButtonElement;
+          if (chatTab) {
+            chatTab.click();
+          }
+        }}
+        className="fixed bottom-6 right-6 z-50 md:hidden rounded-full h-14 w-14 shadow-lg"
+        size="icon"
+      >
+        <MessageSquare className="h-6 w-6" />
+      </Button>
+      
       <PatternLearner />
       {/* Header */}
       <div className="border-b bg-card/50 backdrop-blur-sm">
