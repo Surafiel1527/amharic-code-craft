@@ -217,10 +217,12 @@ export type Database = {
         Row: {
           api_key: string
           created_at: string
+          encrypted: boolean | null
           expires_at: string | null
           id: string
           is_active: boolean | null
           key_name: string
+          last_rotated_at: string | null
           last_used_at: string | null
           rate_limit: number | null
           usage_count: number | null
@@ -229,10 +231,12 @@ export type Database = {
         Insert: {
           api_key: string
           created_at?: string
+          encrypted?: boolean | null
           expires_at?: string | null
           id?: string
           is_active?: boolean | null
           key_name: string
+          last_rotated_at?: string | null
           last_used_at?: string | null
           rate_limit?: number | null
           usage_count?: number | null
@@ -241,10 +245,12 @@ export type Database = {
         Update: {
           api_key?: string
           created_at?: string
+          encrypted?: boolean | null
           expires_at?: string | null
           id?: string
           is_active?: boolean | null
           key_name?: string
+          last_rotated_at?: string | null
           last_used_at?: string | null
           rate_limit?: number | null
           usage_count?: number | null
@@ -375,6 +381,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          resource_id: string | null
+          resource_type: string
+          severity: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type: string
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type?: string
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       auto_fixes: {
         Row: {
@@ -1908,6 +1953,45 @@ export type Database = {
           },
         ]
       }
+      security_events: {
+        Row: {
+          created_at: string
+          details: Json | null
+          event_type: string
+          id: string
+          ip_address: string
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          event_type: string
+          id?: string
+          ip_address: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       system_health: {
         Row: {
           created_at: string
@@ -2289,11 +2373,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          last_activity_at: string
+          session_token: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          last_activity_at?: string
+          session_token: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          last_activity_at?: string
+          session_token?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_share_token: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -2325,6 +2446,19 @@ export type Database = {
       is_workspace_owner: {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
+      }
+      log_audit_event: {
+        Args: {
+          p_action: string
+          p_ip_address?: string
+          p_metadata?: Json
+          p_resource_id?: string
+          p_resource_type: string
+          p_severity?: string
+          p_user_agent?: string
+          p_user_id: string
+        }
+        Returns: string
       }
       notify_admins: {
         Args: {

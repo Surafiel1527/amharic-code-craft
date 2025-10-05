@@ -11,13 +11,16 @@ import { DynamicContainer } from "@/components/DynamicContainer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain, Sparkles, LogOut, Menu, Edit3, Check, Info, Eye, Code } from "lucide-react";
+import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain, Sparkles, LogOut, Menu, Edit3, Check, Info, Eye, Code, Lock, Key, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { AIAnalytics } from "@/components/AIAnalytics";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { SelfHealingMonitor } from "@/components/SelfHealingMonitor";
 import AdminSelfModifyChat from "@/components/AdminSelfModifyChat";
 import AdminCustomizationsList from "@/components/AdminCustomizationsList";
+import { AdminSecurityDashboard } from "@/components/AdminSecurityDashboard";
+import { SecureAPIKeyManager } from "@/components/SecureAPIKeyManager";
+import { SessionManager } from "@/components/SessionManager";
 import { PreviewModeToggle } from "@/components/PreviewModeToggle";
 import { PreviewBanner } from "@/components/PreviewBanner";
 import { ModificationHistory } from "@/components/ModificationHistory";
@@ -439,11 +442,26 @@ function AdminContent() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="users" className="space-y-4 sm:space-y-6">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto gap-2">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-7 h-auto gap-2">
             <TabsTrigger value="users" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
               <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">{t("adminPage.usersAndStats")}</span>
               <span className="sm:hidden">{t("adminPage.users")}</span>
+            </TabsTrigger>
+            <TabsTrigger value="security" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
+              <Lock className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Security</span>
+              <span className="sm:hidden">Security</span>
+            </TabsTrigger>
+            <TabsTrigger value="api-keys" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
+              <Key className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">API Keys</span>
+              <span className="sm:hidden">Keys</span>
+            </TabsTrigger>
+            <TabsTrigger value="sessions" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
+              <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Sessions</span>
+              <span className="sm:hidden">Sessions</span>
             </TabsTrigger>
             <TabsTrigger value="ai" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
               <Brain className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -510,6 +528,18 @@ function AdminContent() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="security" className="space-y-6">
+            <AdminSecurityDashboard />
+          </TabsContent>
+
+          <TabsContent value="api-keys" className="space-y-6">
+            <SecureAPIKeyManager />
+          </TabsContent>
+
+          <TabsContent value="sessions" className="space-y-6">
+            <SessionManager />
           </TabsContent>
 
           <TabsContent value="ai">
