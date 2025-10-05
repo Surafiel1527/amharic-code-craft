@@ -2,10 +2,79 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
+// AI Model Configuration: Primary and Backup
+const PRIMARY_MODEL = "google/gemini-2.5-pro";
+const BACKUP_MODEL = "google/gemini-2.5-flash"; // Falls back if primary fails
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Helper function to call AI with automatic fallback
+async function callAIWithFallback(
+  LOVABLE_API_KEY: string,
+  messages: any[],
+  preferredModel?: string,
+  temperature = 0.7
+) {
+  const models = preferredModel 
+    ? [preferredModel, preferredModel === PRIMARY_MODEL ? BACKUP_MODEL : PRIMARY_MODEL]
+    : [PRIMARY_MODEL, BACKUP_MODEL];
+  
+  let lastError: Error | null = null;
+
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    const isBackup = i > 0;
+    
+    try {
+      console.log(`${isBackup ? '🔄 Backup' : '🚀 Primary'} attempt with model: ${model}`);
+      
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API error (${response.status}): ${errorText}`);
+        throw new Error(`API error (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ Success with ${isBackup ? 'backup' : 'primary'} model: ${model}`);
+      
+      return {
+        success: true,
+        data,
+        modelUsed: model,
+        wasBackup: isBackup
+      };
+    } catch (error: any) {
+      console.error(`❌ ${isBackup ? 'Backup' : 'Primary'} model ${model} failed:`, error.message);
+      lastError = error;
+      
+      // If this was not the last model, continue to next
+      if (i < models.length - 1) {
+        console.log(`⏳ Falling back to backup model in 1 second...`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Brief delay before retry
+        continue;
+      }
+    }
+  }
+
+  // All models failed
+  throw new Error(`All AI models failed. Last error: ${lastError?.message}`);
+}
 
 // Helper: Load project memory and context
 async function loadProjectContext(supabaseClient: any, userId: string, conversationId?: string, projectId?: string) {
@@ -117,23 +186,16 @@ Return ONLY valid SQL (no explanations). Include:
 4. CREATE POLICY statements
 5. CREATE TRIGGER for updated_at`;
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-pro',
-      messages: [
-        { role: 'system', content: 'You are a PostgreSQL expert. Generate production-ready SQL migrations.' },
-        { role: 'user', content: prompt }
-      ],
-    }),
-  });
+  const aiResponse = await callAIWithFallback(
+    LOVABLE_API_KEY,
+    [
+      { role: 'system', content: 'You are a PostgreSQL expert. Generate production-ready SQL migrations.' },
+      { role: 'user', content: prompt }
+    ],
+    PRIMARY_MODEL
+  );
   
-  const data = await response.json();
-  let sql = data.choices[0].message.content;
+  let sql = aiResponse.data.choices[0].message.content;
   
   // Extract SQL from code blocks if present
   const sqlMatch = sql.match(/```sql\n([\s\S]*?)\n```/);
@@ -428,18 +490,12 @@ serve(async (req) => {
         };
 
     // Step 1: Break down the task with full project intelligence
-    const planResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a Super Mastermind AI Orchestrator capable of handling massive projects of any size and duration.
+    const planResponse = await callAIWithFallback(
+      LOVABLE_API_KEY,
+      [
+        {
+          role: 'system',
+          content: `You are a Super Mastermind AI Orchestrator capable of handling massive projects of any size and duration.
 
 Your capabilities:
 - Handle projects with 100+ functions, multiple databases, complex architectures
@@ -459,10 +515,10 @@ Break down tasks into detailed steps with:
 
 For large projects (>1 hour), include checkpoint steps every 10-15 minutes.
 Return a JSON array of steps.`
-          },
-          {
-            role: 'user',
-            content: `Task: ${task}
+        },
+        {
+          role: 'user',
+          content: `Task: ${task}
 
 Project Context:
 - Size: ${projectContext.projectSize}
@@ -472,13 +528,13 @@ Project Context:
 - Backend requirements: ${JSON.stringify(dbNeeds)}
 
 Create a comprehensive execution plan that can handle any project complexity and duration.`
-          }
-        ],
-      }),
-    });
+        }
+      ],
+      PRIMARY_MODEL,
+      0.7
+    );
 
-    const planData = await planResponse.json();
-    const planText = planData.choices[0].message.content;
+    const planText = planResponse.data.choices[0].message.content;
     
     let executionPlan;
     try {
@@ -514,22 +570,16 @@ Create a comprehensive execution plan that can handle any project complexity and
       await broadcastStatus('editing', friendlyMessage, progress);
       
       // Choose the right model based on action complexity
-      const model = step.action_type === 'database_migration' || step.action_type === 'edge_function' 
-        ? 'google/gemini-2.5-pro' 
-        : 'google/gemini-2.5-flash';
+      const preferredModel = step.action_type === 'database_migration' || step.action_type === 'edge_function' 
+        ? PRIMARY_MODEL
+        : BACKUP_MODEL;
       
-      const stepResponse: any = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: 'system',
-              content: `You are a Super Mastermind AI Developer executing step ${step.step_number} of ${executionPlan.length}.
+      const stepResponse = await callAIWithFallback(
+        LOVABLE_API_KEY,
+        [
+          {
+            role: 'system',
+            content: `You are a Super Mastermind AI Developer executing step ${step.step_number} of ${executionPlan.length}.
 
 Action type: ${step.action_type}
 
@@ -546,10 +596,10 @@ Capabilities by action type:
 Previous completed steps: ${completedSteps.map((s: any) => `${s.step_number}. ${s.description}`).join(', ')}
 
 Provide detailed, production-ready output. Include code comments and error handling.`
-            },
-            {
-              role: 'user',
-              content: `Execute this step: ${step.description}
+          },
+          {
+            role: 'user',
+            content: `Execute this step: ${step.description}
 
 Context:
 - Project size: ${projectContext.projectSize}
@@ -558,20 +608,20 @@ Context:
 - Enhanced context: ${JSON.stringify(enhancedContext)}
 
 Generate complete, production-ready implementation.`
-            }
-          ],
-        }),
-      });
+          }
+        ],
+        preferredModel
+      );
 
-      const stepData: any = await stepResponse.json();
       const stepResult: any = {
         step_number: step.step_number,
         description: step.description,
         action_type: step.action_type,
-        output: stepData.choices[0].message.content,
+        output: stepResponse.data.choices[0].message.content,
         status: 'completed',
         completed_at: new Date().toISOString(),
-        model_used: model
+        model_used: stepResponse.modelUsed,
+        used_backup: stepResponse.wasBackup
       };
 
       results.push(stepResult);
@@ -634,18 +684,12 @@ Generate complete, production-ready implementation.`
 
     // Step 3: Generate comprehensive summary with next steps
     await broadcastStatus('analyzing', 'Generating comprehensive summary and recommendations...', 92);
-    const summaryResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          {
-            role: 'system',
-            content: `You are summarizing a completed Super Mastermind orchestration. Provide:
+    const summaryResponse = await callAIWithFallback(
+      LOVABLE_API_KEY,
+      [
+        {
+          role: 'system',
+          content: `You are summarizing a completed Super Mastermind orchestration. Provide:
 
 1. **What was built**: Clear summary of features and components
 2. **Backend setup**: Database tables, auth, storage, edge functions created
@@ -655,10 +699,10 @@ Generate complete, production-ready implementation.`
 6. **Learning insights**: Patterns that can be reused
 
 Be specific and technical. Include counts of tables, functions, components created.`
-          },
-          {
-            role: 'user',
-            content: `Original task: ${task}
+        },
+        {
+          role: 'user',
+          content: `Original task: ${task}
 
 Execution summary:
 - Total steps: ${executionPlan.length}
@@ -670,13 +714,13 @@ Execution summary:
 Results: ${JSON.stringify(results.slice(-10))}
 
 Generate a comprehensive summary.`
-          }
-        ],
-      }),
-    });
+        }
+      ],
+      PRIMARY_MODEL,
+      0.7
+    );
 
-    const summaryData = await summaryResponse.json();
-    const summary = summaryData.choices[0].message.content;
+    const summary = summaryResponse.data.choices[0].message.content;
 
     // Final celebration
     const finalCelebration = `🎊 CONGRATULATIONS! All ${executionPlan.length} features complete!\n\n✅ Your production-ready application is live and fully functional!\n\n🚀 Everything is working:\n${executionPlan.slice(0, 5).map((s: any) => `  ✓ ${s.description}`).join('\n')}${executionPlan.length > 5 ? `\n  ... and ${executionPlan.length - 5} more features!` : ''}`;
