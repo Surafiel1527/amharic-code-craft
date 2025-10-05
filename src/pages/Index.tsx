@@ -5,17 +5,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code, Maximize2, Minimize2 } from "lucide-react";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code, Maximize2, Minimize2, Brain } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ChatInterface } from "@/components/ChatInterface";
+import { UniversalChatInterface } from "@/components/UniversalChatInterface";
 import { ConversationSidebar } from "@/components/ConversationSidebar";
 import { ProjectsGrid } from "@/components/ProjectsGrid";
 import { TemplatesBrowser } from "@/components/TemplatesBrowser";
 import { ImageGenerator } from "@/components/ImageGenerator";
 import { CodeAnalysis } from "@/components/CodeAnalysis";
-import { AIAssistant } from "@/components/AIAssistant";
 import { VersionHistory } from "@/components/VersionHistory";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DevicePreview } from "@/components/DevicePreview";
@@ -507,6 +506,10 @@ const Index = () => {
                   <Keyboard className="h-4 w-4" />
                 </Button>
                 <ThemeToggle />
+                <Button variant="outline" size="sm" onClick={() => navigate("/ai-system")} className="gap-2 hover-scale">
+                  <Brain className="h-4 w-4" />
+                  <span className="hidden lg:inline">AI System</span>
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => navigate("/settings")} className="gap-2 hover-scale">
                   <Settings className="h-4 w-4" />
                   <span className="hidden lg:inline">{t("header.settings")}</span>
@@ -749,11 +752,17 @@ const Index = () => {
                 </TabsList>
 
                 <TabsContent value="chat" className="mt-4 h-[calc(100vh-400px)]">
-                  <ChatInterface
+                  <UniversalChatInterface
+                    mode="panel"
+                    height="h-full"
                     conversationId={activeConversation}
-                    onCodeGenerated={handleCodeGenerated}
-                    currentCode={generatedCode}
-                    onConversationChange={handleConversationChange}
+                    persistMessages={true}
+                    autoLearn={true}
+                    autoApply={false}
+                    onCodeApply={async (code) => {
+                      handleCodeGenerated(code);
+                    }}
+                    placeholder="Ask me anything about your project..."
                   />
                 </TabsContent>
               </Tabs>
@@ -851,14 +860,22 @@ const Index = () => {
                 </TabsContent>
 
                 <TabsContent value="assistant" className="mt-4">
-                  <AIAssistant
-                    projectContext={generatedCode ? {
-                      title: projectTitle || 'Current Project',
-                      prompt: prompt,
-                      codeLength: generatedCode.length,
-                      codeSnippet: generatedCode.substring(0, 1000), // First 1000 chars for context
-                      fullCode: generatedCode // Full code for viewing and download
-                    } : undefined}
+                  <UniversalChatInterface
+                    mode="panel"
+                    height="h-[500px]"
+                    projectId={currentProjectId}
+                    projectFiles={generatedCode ? [{
+                      file_path: 'current-project.html',
+                      file_content: generatedCode
+                    }] : []}
+                    autoLearn={true}
+                    autoApply={false}
+                    persistMessages={true}
+                    placeholder="Ask me anything about this project..."
+                    onCodeApply={async (optimizedCode) => {
+                      setGeneratedCode(optimizedCode);
+                      toast.success(t("chat.codeOptimized"));
+                    }}
                   />
                 </TabsContent>
 

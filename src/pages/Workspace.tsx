@@ -37,7 +37,7 @@ import { AIImageGenerator } from "@/components/AIImageGenerator";
 import { IntelligentRefactoring } from "@/components/IntelligentRefactoring";
 import { ProactiveAIAssistant } from "@/components/ProactiveAIAssistant";
 import { PatternIntelligenceDashboard } from "@/components/PatternIntelligenceDashboard";
-import { EnhancedChatInterface } from "@/components/EnhancedChatInterface";
+import { UniversalChatInterface } from "@/components/UniversalChatInterface";
 import { ReactComponentGenerator } from "@/components/ReactComponentGenerator";
 import { TailwindUtilitiesBuilder } from "@/components/TailwindUtilitiesBuilder";
 import { StateManagementHelper } from "@/components/StateManagementHelper";
@@ -722,7 +722,9 @@ export default function Workspace() {
             <SheetTitle>Chat Assistant</SheetTitle>
           </SheetHeader>
           <div className="h-[calc(90vh-60px)]">
-            <EnhancedChatInterface
+            <UniversalChatInterface
+              mode="panel"
+              height="h-full"
               projectId={projectId}
               selectedFiles={selectedFiles}
               projectFiles={projectFiles}
@@ -761,6 +763,10 @@ export default function Workspace() {
                   throw error; // Re-throw to be caught by the chat component
                 }
               }}
+              autoLearn={true}
+              autoApply={true}
+              showContext={true}
+              persistMessages={true}
             />
           </div>
         </SheetContent>
@@ -1033,19 +1039,25 @@ export default function Workspace() {
                   </TabsContent>
 
                   <TabsContent value="chat" className="h-[calc(100vh-200px)]">
-                    <EnhancedChatInterface
+                    <UniversalChatInterface
+                      mode="panel"
+                      height="h-full"
                       projectId={projectId}
                       selectedFiles={selectedFiles}
                       projectFiles={projectFiles}
-                      onCodeApply={(code, filePath) => {
+                      onCodeApply={async (code, filePath) => {
                         const fileExists = projectFiles.some(f => f.file_path === filePath);
                         if (fileExists) {
                           setSelectedFiles([filePath]);
-                          handleSaveFile(code);
+                          await handleSaveFile(code);
                         } else {
                           toast.error('File not found');
                         }
                       }}
+                      autoLearn={true}
+                      autoApply={true}
+                      showContext={true}
+                      persistMessages={true}
                     />
                   </TabsContent>
 

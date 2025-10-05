@@ -1,4 +1,4 @@
-import { SmartChatBuilder } from "@/components/SmartChatBuilder";
+import { UniversalChatInterface } from "@/components/UniversalChatInterface";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -118,7 +118,15 @@ export default function Builder() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <SmartChatBuilder />
+                <UniversalChatInterface
+                  mode="panel"
+                  height="h-[600px]"
+                  autoLearn={true}
+                  autoApply={false}
+                  showContext={true}
+                  persistMessages={true}
+                  placeholder="Describe what you want to build (e.g., 'Create a todo app with React and TypeScript')..."
+                />
               </CardContent>
             </Card>
           </TabsContent>
