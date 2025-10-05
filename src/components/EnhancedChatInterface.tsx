@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { SensitiveDataDetector } from "@/components/SensitiveDataDetector";
+import { EnhancedSensitiveDataDetector } from "@/components/EnhancedSensitiveDataDetector";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css";
 import "prismjs/components/prism-typescript";
@@ -322,8 +322,12 @@ export function EnhancedChatInterface({
         </div>
       </ScrollArea>
 
-      {/* Sensitive Data Warning */}
-      <SensitiveDataDetector text={input} />
+      {/* Enhanced Sensitive Data Detection */}
+      <EnhancedSensitiveDataDetector 
+        text={input} 
+        autoMask={true}
+        onMaskedText={(masked) => console.log('Auto-masked:', masked)}
+      />
 
       {/* Input */}
       <div className="flex gap-2">
@@ -345,7 +349,7 @@ export function EnhancedChatInterface({
       </div>
 
       <div className="text-xs text-muted-foreground text-center">
-        Multi-file context • Syntax highlighting • Code preview
+        Multi-file context • Syntax highlighting • Code preview • Smart security detection
       </div>
     </Card>
   );

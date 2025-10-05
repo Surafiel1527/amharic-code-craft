@@ -174,3 +174,18 @@ verify_jwt = true
 [functions.test-database-connection]
 verify_jwt = true
 
+[functions.list-database-credentials]
+verify_jwt = true
+
+[functions.check-database-health]
+verify_jwt = true
+
+[functions.delete-database-credentials]
+verify_jwt = true
+
+[functions.get-security-metrics]
+verify_jwt = true
+
+[functions.get-security-audit-logs]
+verify_jwt = true
+

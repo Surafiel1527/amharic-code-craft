@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SavedCredentialsList } from './SavedCredentialsList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -242,6 +243,11 @@ export const DatabaseCredentialsManager = () => {
               Save Credentials
             </Button>
           </div>
+        </div>
+
+        {/* Saved Credentials List */}
+        <div className="mt-6">
+          <SavedCredentialsList />
         </div>
       </CardContent>
     </Card>

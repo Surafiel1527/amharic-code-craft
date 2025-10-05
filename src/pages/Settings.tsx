@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ProfilePrivacySettings } from "@/components/ProfilePrivacySettings";
 import { DatabaseCredentialsManager } from "@/components/DatabaseCredentialsManager";
+import { SecurityDashboard } from "@/components/SecurityDashboard";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -180,6 +181,10 @@ const Settings = () => {
 
         <div className="mt-6">
           <DatabaseCredentialsManager />
+        </div>
+
+        <div className="mt-6">
+          <SecurityDashboard />
         </div>
       </div>
     </div>
