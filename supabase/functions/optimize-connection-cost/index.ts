@@ -79,7 +79,7 @@ Focus on ${credential.provider}-specific optimizations. Format as JSON with sect
     );
 
     // Calculate current estimated costs
-    const currentCost = estimateCosts(credential.provider, perfMetrics);
+    const currentCost = estimateCosts(credential.provider, perfMetrics || []);
 
     console.log('Cost optimization analysis completed');
 
@@ -97,8 +97,9 @@ Focus on ${credential.provider}-specific optimizations. Format as JSON with sect
 
   } catch (error) {
     console.error('Error in optimize-connection-cost:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
