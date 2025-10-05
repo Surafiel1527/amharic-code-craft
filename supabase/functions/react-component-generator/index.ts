@@ -31,10 +31,14 @@ serve(async (req) => {
     let code = '';
 
     // Imports
-    const imports = ['import { useState', includeEffects && ', useEffect', ' } from "react";'].filter(Boolean).join('');
+    const reactImports = ['useState'];
+    if (includeEffects) reactImports.push('useEffect');
+    if (stateManagement === 'useReducer') reactImports.push('useReducer');
+    
+    code += `import { ${reactImports.join(', ')} } from "react";\n`;
     
     if (stylingMethod === 'tailwind') {
-      code += imports + '\n';
+      code += `import { cn } from "@/lib/utils";\n`;
     }
 
     if (includeTypeScript && includeProps && props.length > 0) {
@@ -87,25 +91,59 @@ serve(async (req) => {
         code += `  }, []);\n\n`;
       }
 
-      // Return JSX
+      // Return JSX with accessibility
       if (stylingMethod === 'tailwind') {
         code += `  return (\n`;
-        code += `    <div className="p-4 rounded-lg border bg-card">\n`;
-        code += `      <h2 className="text-2xl font-bold mb-4">${componentName}</h2>\n`;
+        code += `    <div \n`;
+        code += `      className={cn(\n`;
+        code += `        "p-6 rounded-lg border bg-card shadow-sm transition-all hover:shadow-md",\n`;
+        code += `        "focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2"\n`;
+        code += `      )}\n`;
+        code += `      role="region"\n`;
+        code += `      aria-label="${componentName} component"\n`;
+        code += `    >\n`;
+        code += `      <header className="mb-4">\n`;
+        code += `        <h2 className="text-2xl font-bold text-foreground">\n`;
+        code += `          ${componentName}\n`;
+        code += `        </h2>\n`;
+        code += `      </header>\n`;
+        
         if (props.length > 0) {
-          code += `      <div className="space-y-2">\n`;
+          code += `      <main className="space-y-3">\n`;
           props.forEach((prop: any) => {
-            code += `        <p className="text-sm"><span className="font-medium">${prop.name}:</span> {${prop.name}}</p>\n`;
+            const isRequired = prop.required ? 'required' : 'optional';
+            code += `        <div className="flex items-center gap-2 p-3 rounded bg-muted/50">\n`;
+            code += `          <span className="text-sm font-medium text-foreground">${prop.name}:</span>\n`;
+            code += `          <span className="text-sm text-muted-foreground" aria-label="${prop.name} value">\n`;
+            code += `            {${prop.name} ?? '${prop.defaultValue || 'Not provided'}'}\n`;
+            code += `          </span>\n`;
+            code += `          <span className="ml-auto text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">\n`;
+            code += `            ${isRequired}\n`;
+            code += `          </span>\n`;
+            code += `        </div>\n`;
           });
-          code += `      </div>\n`;
+          code += `      </main>\n`;
         } else {
-          code += `      <p className="text-muted-foreground">Your component content here</p>\n`;
+          code += `      <main>\n`;
+          code += `        <p className="text-muted-foreground">\n`;
+          code += `          Add your component content here. This is a placeholder.\n`;
+          code += `        </p>\n`;
+          code += `      </main>\n`;
         }
+        
+        if (includeState) {
+          code += `      <footer className="mt-6 pt-4 border-t">\n`;
+          code += `        <div className="text-xs text-muted-foreground">\n`;
+          code += `          State: {JSON.stringify(state)}\n`;
+          code += `        </div>\n`;
+          code += `      </footer>\n`;
+        }
+        
         code += `    </div>\n`;
         code += `  );\n`;
       } else {
         code += `  return (\n`;
-        code += `    <div>\n`;
+        code += `    <div role="region" aria-label="${componentName} component">\n`;
         code += `      <h2>${componentName}</h2>\n`;
         code += `      <p>Your component content here</p>\n`;
         code += `    </div>\n`;

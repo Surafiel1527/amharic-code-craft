@@ -57,37 +57,70 @@ export function TailwindUtilitiesBuilder({ onUtilityGenerated }: TailwindUtiliti
   ];
 
   const generateColorConfig = (scheme: typeof colorSchemes[0]) => {
-    return `// Tailwind Config - Colors
-export const colors = {
-  primary: {
-    DEFAULT: '${scheme.primary}',
-    50: '${adjustColor(scheme.primary, 95)}',
-    100: '${adjustColor(scheme.primary, 90)}',
-    200: '${adjustColor(scheme.primary, 80)}',
-    300: '${adjustColor(scheme.primary, 70)}',
-    400: '${adjustColor(scheme.primary, 60)}',
-    500: '${scheme.primary}',
-    600: '${adjustColor(scheme.primary, -10)}',
-    700: '${adjustColor(scheme.primary, -20)}',
-    800: '${adjustColor(scheme.primary, -30)}',
-    900: '${adjustColor(scheme.primary, -40)}',
-  },
-  secondary: {
-    DEFAULT: '${scheme.secondary}',
-    light: '${adjustColor(scheme.secondary, 20)}',
-    dark: '${adjustColor(scheme.secondary, -20)}',
-  },
-  accent: {
-    DEFAULT: '${scheme.accent}',
-    light: '${adjustColor(scheme.accent, 20)}',
-    dark: '${adjustColor(scheme.accent, -20)}',
-  }
-}`;
+    const primaryHSL = hexToHSL(scheme.primary);
+    const secondaryHSL = hexToHSL(scheme.secondary);
+    const accentHSL = hexToHSL(scheme.accent);
+
+    return `// Tailwind Config - Colors (HSL format for CSS variables)
+// Add to index.css as CSS variables:
+:root {
+  --primary: ${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%;
+  --primary-50: ${adjustColor(scheme.primary, 45)};
+  --primary-100: ${adjustColor(scheme.primary, 40)};
+  --primary-200: ${adjustColor(scheme.primary, 30)};
+  --primary-300: ${adjustColor(scheme.primary, 20)};
+  --primary-400: ${adjustColor(scheme.primary, 10)};
+  --primary-500: ${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%;
+  --primary-600: ${adjustColor(scheme.primary, -10)};
+  --primary-700: ${adjustColor(scheme.primary, -20)};
+  --primary-800: ${adjustColor(scheme.primary, -30)};
+  --primary-900: ${adjustColor(scheme.primary, -40)};
+  
+  --secondary: ${secondaryHSL.h} ${secondaryHSL.s}% ${secondaryHSL.l}%;
+  --secondary-light: ${adjustColor(scheme.secondary, 15)};
+  --secondary-dark: ${adjustColor(scheme.secondary, -15)};
+  
+  --accent: ${accentHSL.h} ${accentHSL.s}% ${accentHSL.l}%;
+  --accent-light: ${adjustColor(scheme.accent, 15)};
+  --accent-dark: ${adjustColor(scheme.accent, -15)};
+}
+
+// Usage in components:
+// className="bg-[hsl(var(--primary))]"
+// className="text-[hsl(var(--accent))]"`;
+  };
+
+  const hexToHSL = (hex: string): { h: number; s: number; l: number } => {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+
+    return {
+      h: Math.round(h * 360),
+      s: Math.round(s * 100),
+      l: Math.round(l * 100)
+    };
   };
 
   const adjustColor = (hex: string, percent: number) => {
-    // Simple color adjustment (for demo)
-    return hex;
+    const hsl = hexToHSL(hex);
+    const newL = Math.max(0, Math.min(100, hsl.l + percent));
+    return `${hsl.h} ${hsl.s}% ${newL}%`;
   };
 
   const generateSpacingConfig = (scale: typeof spacingScales[0]) => {
