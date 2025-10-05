@@ -325,13 +325,44 @@ const Index = () => {
         .insert({
           title: title,
           prompt: prompt,
-          html_code: data.html,
+          html_code: generatedHTML,
           user_id: user.id,
         })
         .select()
         .single();
 
       if (!saveError && project) {
+        // Create conversation for this project
+        const { data: conversation, error: convError } = await supabase
+          .from("conversations")
+          .insert({
+            title: `Workspace: ${title}`,
+            user_id: user.id,
+            project_id: project.id
+          })
+          .select()
+          .single();
+
+        if (!convError && conversation) {
+          // Save user prompt as first message
+          await supabase.from("messages").insert({
+            conversation_id: conversation.id,
+            role: "user",
+            content: prompt
+          });
+
+          // Save AI response as second message
+          const aiResponse = data?.result?.explanation || 
+                           data?.explanation || 
+                           `I've created your ${title}. The application includes all the features you requested.`;
+          
+          await supabase.from("messages").insert({
+            conversation_id: conversation.id,
+            role: "assistant",
+            content: aiResponse
+          });
+        }
+
         toast.success("Project created! Opening workspace...");
         // Redirect to workspace
         navigate(`/workspace/${project.id}`);
