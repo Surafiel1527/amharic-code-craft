@@ -53,11 +53,7 @@ export function FeedbackSystem({ errorId, fixId, type }: FeedbackSystemProps) {
         }
       };
 
-      // Update knowledge base confidence based on feedback
-      if (fixId && rating === 'positive') {
-        await supabase.rpc('increment_fix_success_count', { fix_id: fixId });
-      }
-
+      // Store feedback for analytics (future: update knowledge base confidence)
       console.log('Feedback submitted:', feedbackData);
 
       toast({
