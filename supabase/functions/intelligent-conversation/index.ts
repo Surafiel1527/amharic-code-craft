@@ -16,7 +16,62 @@ interface IntentResult {
 function recognizeIntent(userMessage: string, context: any): IntentResult {
   const msg = userMessage.toLowerCase();
   
-  // Dockerfile/Docker patterns - HIGH PRIORITY
+  // Advice/consultation patterns - HIGH PRIORITY
+  if (
+    msg.includes('advice') || msg.includes('suggest') || msg.includes('recommend') ||
+    msg.includes('what should') || msg.includes('how to') || msg.includes('best way') ||
+    msg.includes('help me decide') || msg.includes('which is better') ||
+    (msg.includes('what') && (msg.includes('do') || msg.includes('add'))) ||
+    msg.includes('ideas for') || msg.includes('tips for')
+  ) {
+    return {
+      primaryIntent: 'consultation',
+      subIntent: 'advice',
+      confidence: 0.92
+    };
+  }
+  
+  // Enhancement patterns - modify existing features
+  if (
+    (msg.includes('enhance') || msg.includes('improve') || msg.includes('make better') ||
+     msg.includes('upgrade') || msg.includes('optimize')) &&
+    (msg.includes('existing') || msg.includes('current') || context.currentCode)
+  ) {
+    return {
+      primaryIntent: 'code-generation',
+      subIntent: 'enhancement',
+      confidence: 0.9
+    };
+  }
+  
+  // Simple modification patterns - color, style, text changes
+  if (
+    (msg.includes('change') || msg.includes('update') || msg.includes('modify')) &&
+    (msg.includes('color') || msg.includes('size') || msg.includes('text') || 
+     msg.includes('style') || msg.includes('font') || msg.includes('background'))
+  ) {
+    return {
+      primaryIntent: 'code-generation',
+      subIntent: 'modification',
+      confidence: 0.95
+    };
+  }
+  
+  // New feature patterns - adding something new
+  if (
+    (msg.includes('add') || msg.includes('create') || msg.includes('build') || 
+     msg.includes('implement') || msg.includes('new')) &&
+    (msg.includes('feature') || msg.includes('section') || msg.includes('page') ||
+     msg.includes('component') || msg.includes('function') || msg.includes('button'))
+  ) {
+    return {
+      primaryIntent: 'code-generation',
+      subIntent: 'new-feature',
+      confidence: 0.88
+    };
+  }
+  
+  // Dockerfile/Docker patterns
   if (
     msg.includes('dockerfile') || msg.includes('docker') || 
     msg.includes('containerize') || msg.includes('container')
@@ -25,33 +80,6 @@ function recognizeIntent(userMessage: string, context: any): IntentResult {
       primaryIntent: 'infrastructure-generation',
       subIntent: 'dockerfile',
       confidence: 0.95
-    };
-  }
-  
-  // Component generation patterns
-  if (
-    (msg.includes('component') || msg.includes('card') || msg.includes('button') ||
-     msg.includes('form') || msg.includes('modal') || msg.includes('navbar')) &&
-    (msg.includes('create') || msg.includes('build') || msg.includes('generate'))
-  ) {
-    return {
-      primaryIntent: 'code-generation',
-      subIntent: 'component',
-      confidence: 0.9
-    };
-  }
-  
-  // General code generation patterns
-  if (
-    msg.includes('create') || msg.includes('build') || msg.includes('generate') ||
-    msg.includes('add') || msg.includes('implement') || msg.includes('make') ||
-    msg.includes('function') || msg.includes('feature') ||
-    context.currentCode || context.conversationId
-  ) {
-    return {
-      primaryIntent: 'code-generation',
-      subIntent: 'general',
-      confidence: 0.75
     };
   }
   
@@ -68,12 +96,20 @@ function recognizeIntent(userMessage: string, context: any): IntentResult {
   
   // Analysis patterns
   if (
-    msg.includes('analyze') || msg.includes('review') || msg.includes('check') ||
-    msg.includes('improve') || msg.includes('refactor') || msg.includes('optimize')
+    msg.includes('analyze') || msg.includes('review') || msg.includes('check')
   ) {
     return {
       primaryIntent: 'code-analysis',
       confidence: 0.85
+    };
+  }
+  
+  // Default: if there's code context, assume modification
+  if (context.currentCode) {
+    return {
+      primaryIntent: 'code-generation',
+      subIntent: 'general',
+      confidence: 0.7
     };
   }
   
@@ -187,10 +223,73 @@ async function routeToModule(
         break;
       }
 
+      case 'consultation': {
+        // Route to Consultation Agent - provides advice and recommendations
+        console.log('💭 CONSULTATION: Providing expert advice...');
+        
+        const consultationPrompt = `You are an expert software architect and consultant. The user is asking for advice about their project.
+
+CURRENT PROJECT:
+${context.currentCode ? `\`\`\`\n${context.currentCode.substring(0, 2000)}\n\`\`\`` : 'No existing code yet'}
+
+USER REQUEST: ${userMessage}
+
+CONVERSATION HISTORY:
+${context.conversationHistory?.slice(-3).map((m: any) => `${m.role}: ${m.content}`).join('\n') || 'No previous context'}
+
+Provide expert advice that is:
+1. Specific and actionable
+2. Takes into account their existing project
+3. Considers best practices and modern patterns
+4. Offers 2-3 concrete recommendations
+5. Explains the reasoning behind your suggestions
+
+Be conversational, friendly, and helpful. Format your response clearly with bullet points or numbered lists.`;
+
+        const consultationResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-pro',
+            messages: [{ role: 'user', content: consultationPrompt }],
+            temperature: 0.7
+          })
+        });
+
+        if (!consultationResponse.ok) {
+          throw new Error(`Consultation failed: ${consultationResponse.status}`);
+        }
+
+        const consultationData = await consultationResponse.json();
+        const advice = consultationData.choices[0].message.content;
+
+        console.log('✅ CONSULTATION COMPLETE');
+
+        return {
+          intent: 'consultation',
+          subIntent: 'advice',
+          module: 'consultation-agent',
+          response: {
+            success: true,
+            message: advice,
+            content: advice,
+            type: 'advice'
+          }
+        };
+      }
+
       case 'code-generation': {
-        // Route to Smart Update Agent - understands existing project context
-        if (subIntent === 'component' || subIntent === 'general') {
-        console.log('🧠 SMART UPDATE: Analyzing project and applying intelligent changes...');
+        // Route to Smart Code Agent - handles all code changes intelligently
+        console.log(`🧠 SMART CODE AGENT: Processing ${subIntent} request...`);
+        
+        // Determine the type of code work needed
+        const workType = subIntent === 'modification' ? 'Simple Modification' :
+                        subIntent === 'enhancement' ? 'Feature Enhancement' :
+                        subIntent === 'new-feature' ? 'New Feature' :
+                        'General Code Work';
         
         // Enhanced context: understand what exists
         const projectContext = {
@@ -307,12 +406,12 @@ Return ONLY the complete updated code, ready to use.`;
         }
         
         console.log('✅ MODIFICATION COMPLETE');
-        console.log('🎉 SMART UPDATE: Successfully applied changes');
+        console.log('🎉 SMART CODE AGENT: Successfully completed');
 
         return {
           intent: 'code-generation',
           subIntent: subIntent,
-          module: 'smart-update-agent',
+          module: 'smart-code-agent',
           response: {
             success: true,
             code: modifiedCode,
@@ -321,14 +420,13 @@ Return ONLY the complete updated code, ready to use.`;
             analysis: analysis,
             explanation: `Updated ${analysis.targetElement}: ${analysis.modification}`,
             smartWorkflow: {
+              workType: workType,
               analysis: analysis,
               steps: ['analyze-intent', 'apply-modification'],
               completed: true
             }
           }
         };
-        }
-        break;
       }
 
       case 'image-generation': {

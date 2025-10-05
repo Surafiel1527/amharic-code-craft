@@ -85,6 +85,7 @@ export default function Workspace() {
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [thinkingMessage, setThinkingMessage] = useState<string>('');
   const [currentOrchestration, setCurrentOrchestration] = useState<{
     phases: any[];
     plan?: any;
@@ -403,6 +404,7 @@ export default function Workspace() {
     const userInput = input;
     setInput("");
     setIsLoading(true);
+    setThinkingMessage('🧠 Reading your project...');
 
     // Save user message to database
     await supabase.from('messages').insert({
@@ -418,6 +420,7 @@ export default function Workspace() {
                                (userInput.trim().length < 50 && !userInput.match(/\b(create|build|add|make|generate|update|change|modify|fix|remove|delete)\b/i));
 
       if (isConversational) {
+        setThinkingMessage('💭 Thinking about your message...');
         // Handle conversational messages with simple AI chat
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -462,10 +465,12 @@ export default function Workspace() {
         });
 
         setIsLoading(false);
+        setThinkingMessage('');
         return;
       }
 
       // For code requests, use the full orchestrator
+      setThinkingMessage('🔍 Analyzing your request...');
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -474,6 +479,7 @@ export default function Workspace() {
 
       // Initialize orchestration tracking
       setCurrentOrchestration({ phases: [] });
+      setThinkingMessage('📐 Planning the best approach...');
 
       // Get conversation context for better understanding
       const conversationHistory = messages.slice(-5).map(m => ({
@@ -481,6 +487,7 @@ export default function Workspace() {
         content: m.content
       }));
 
+      setThinkingMessage('🚀 Working on your request...');
       // Use smart orchestrator for enhancement
       const { data, error } = await supabase.functions.invoke('smart-orchestrator', {
         body: {
@@ -498,6 +505,7 @@ export default function Workspace() {
 
       if (error) throw error;
 
+      setThinkingMessage('✨ Finalizing changes...');
       const finalCode = data.finalCode;
       
       // Update project with new code
@@ -514,14 +522,16 @@ export default function Workspace() {
 
       // Add assistant message with orchestration details
       const phaseNames = data.phases?.map((p: any) => p.name).join(', ') || 'code generation';
+      const explanation = data.explanation || data.plan?.architecture_overview || 'Improvements applied successfully';
       const assistantMessage: Message = {
         role: 'assistant',
-        content: `✨ Enhanced with Smart Orchestrator!\n\n**Phases Completed:** ${phaseNames}\n\n**Overview:** ${data.plan?.architecture_overview || 'Improvements applied successfully'}\n\n**Duration:** ${data.totalDuration ? (data.totalDuration / 1000).toFixed(2) + 's' : 'N/A'}`,
+        content: `✨ ${explanation}\n\n${data.phases?.length > 0 ? `**Work Done:** ${phaseNames}\n\n` : ''}**Duration:** ${data.totalDuration ? (data.totalDuration / 1000).toFixed(2) + 's' : 'N/A'}`,
         timestamp: new Date().toISOString(),
         orchestrationData
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      setThinkingMessage('');
 
       // Save assistant message to database
       await supabase.from('messages').insert({
@@ -574,6 +584,7 @@ export default function Workspace() {
     } catch (error: any) {
       console.error('Enhancement error:', error);
       toast.error(error.message || "Failed to enhance project");
+      setThinkingMessage('');
       
       const errorMessage: Message = {
         role: 'assistant',
@@ -990,7 +1001,17 @@ export default function Workspace() {
                           </div>
                         </div>
                       ))}
-                      {isLoading && (
+                      {isLoading && thinkingMessage && (
+                        <div className="flex justify-start">
+                          <div className="bg-muted/70 rounded-lg p-3 flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                            <span className="text-sm italic text-muted-foreground">
+                              {thinkingMessage}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {isLoading && !thinkingMessage && (
                         <div className="flex justify-start">
                           <div className="bg-muted rounded-lg p-3">
                             <Loader2 className="w-4 h-4 animate-spin" />
