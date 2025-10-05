@@ -6,18 +6,53 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Intent Recognition Rules
-function recognizeIntent(userMessage: string, context: any): string {
+// Enhanced Intent Recognition with Sub-Intent Detection
+interface IntentResult {
+  primaryIntent: string;
+  subIntent?: string;
+  confidence: number;
+}
+
+function recognizeIntent(userMessage: string, context: any): IntentResult {
   const msg = userMessage.toLowerCase();
   
-  // Code generation patterns
+  // Dockerfile/Docker patterns - HIGH PRIORITY
+  if (
+    msg.includes('dockerfile') || msg.includes('docker') || 
+    msg.includes('containerize') || msg.includes('container')
+  ) {
+    return {
+      primaryIntent: 'infrastructure-generation',
+      subIntent: 'dockerfile',
+      confidence: 0.95
+    };
+  }
+  
+  // Component generation patterns
+  if (
+    (msg.includes('component') || msg.includes('card') || msg.includes('button') ||
+     msg.includes('form') || msg.includes('modal') || msg.includes('navbar')) &&
+    (msg.includes('create') || msg.includes('build') || msg.includes('generate'))
+  ) {
+    return {
+      primaryIntent: 'code-generation',
+      subIntent: 'component',
+      confidence: 0.9
+    };
+  }
+  
+  // General code generation patterns
   if (
     msg.includes('create') || msg.includes('build') || msg.includes('generate') ||
     msg.includes('add') || msg.includes('implement') || msg.includes('make') ||
-    msg.includes('component') || msg.includes('function') || msg.includes('feature') ||
+    msg.includes('function') || msg.includes('feature') ||
     context.currentCode || context.conversationId
   ) {
-    return 'code-generation';
+    return {
+      primaryIntent: 'code-generation',
+      subIntent: 'general',
+      confidence: 0.75
+    };
   }
   
   // Image generation patterns
@@ -25,7 +60,10 @@ function recognizeIntent(userMessage: string, context: any): string {
     msg.includes('image') || msg.includes('picture') || msg.includes('photo') ||
     msg.includes('generate image') || msg.includes('create image')
   ) {
-    return 'image-generation';
+    return {
+      primaryIntent: 'image-generation',
+      confidence: 0.9
+    };
   }
   
   // Analysis patterns
@@ -33,11 +71,17 @@ function recognizeIntent(userMessage: string, context: any): string {
     msg.includes('analyze') || msg.includes('review') || msg.includes('check') ||
     msg.includes('improve') || msg.includes('refactor') || msg.includes('optimize')
   ) {
-    return 'code-analysis';
+    return {
+      primaryIntent: 'code-analysis',
+      confidence: 0.85
+    };
   }
   
   // Default to conversational chat
-  return 'chat';
+  return {
+    primaryIntent: 'chat',
+    confidence: 0.5
+  };
 }
 
 // Context Loading
@@ -105,19 +149,47 @@ async function loadUniversalContext(supabase: any, userId: string | null, conver
   return context;
 }
 
-// Route to appropriate module
+// INTELLIGENT ORCHESTRATOR: Routes to Specialist Agents
 async function routeToModule(
-  intent: string,
+  intentResult: IntentResult,
   userMessage: string,
   context: any,
   supabase: any,
   userId: string | null
 ) {
+  const { primaryIntent, subIntent } = intentResult;
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
   try {
-    switch (intent) {
+    // ORCHESTRATOR ROUTING LOGIC
+    switch (primaryIntent) {
+      case 'infrastructure-generation': {
+        // Route to Dockerfile Agent
+        if (subIntent === 'dockerfile') {
+          console.log('🎯 ORCHESTRATOR: Routing to Dockerfile Agent');
+          
+          const { data: dockerfileData, error: dockerfileError } = await supabase.functions.invoke('dockerfile-agent', {
+            body: {
+              projectDescription: userMessage,
+              additionalServices: [] // Could be extracted from message in future
+            }
+          });
+
+          if (dockerfileError) throw dockerfileError;
+
+          return {
+            intent: 'infrastructure-generation',
+            subIntent: 'dockerfile',
+            module: 'dockerfile-agent',
+            response: dockerfileData
+          };
+        }
+        break;
+      }
+
       case 'code-generation': {
+        // Route to Component Generation Agent (existing agentic method)
+        if (subIntent === 'component' || subIntent === 'general') {
         console.log('🤖 AGENTIC METHOD: Starting 3-step code generation workflow');
         
         // STEP 1: PLAN GENERATION
@@ -267,6 +339,7 @@ Return ONLY the complete styled React component code with Tailwind classes, noth
 
         return {
           intent: 'code-generation',
+          subIntent: subIntent,
           module: 'agentic-code-generation',
           response: {
             success: true,
@@ -279,6 +352,8 @@ Return ONLY the complete styled React component code with Tailwind classes, noth
             }
           }
         };
+        }
+        break;
       }
 
       case 'image-generation': {
@@ -462,15 +537,15 @@ serve(async (req) => {
     const contextTime = Date.now() - startContext;
     console.log(`✅ Context loaded in ${contextTime}ms`);
 
-    // Phase 2: Recognize Intent
+    // Phase 2: Recognize Intent (with sub-intent detection)
     const startIntent = Date.now();
-    const intent = recognizeIntent(message, universalContext);
+    const intentResult = recognizeIntent(message, universalContext);
     const intentTime = Date.now() - startIntent;
-    console.log(`🎯 Intent recognized: ${intent} (${intentTime}ms)`);
+    console.log(`🎯 Intent recognized: ${intentResult.primaryIntent}${intentResult.subIntent ? ` -> ${intentResult.subIntent}` : ''} (confidence: ${intentResult.confidence}, ${intentTime}ms)`);
 
-    // Phase 3: Route to Module
+    // Phase 3: Route to Specialist Agent
     const startRoute = Date.now();
-    const moduleResponse = await routeToModule(intent, message, universalContext, supabase, userId);
+    const moduleResponse = await routeToModule(intentResult, message, universalContext, supabase, userId);
     const routeTime = Date.now() - startRoute;
     console.log(`📡 Routed to ${moduleResponse.module} in ${routeTime}ms`);
 
@@ -478,6 +553,7 @@ serve(async (req) => {
     const response = {
       success: true,
       intent: moduleResponse.intent,
+      subIntent: moduleResponse.subIntent,
       module: moduleResponse.module,
       data: moduleResponse.response,
       metadata: {
