@@ -23,6 +23,7 @@ import {
 import { AIAnalyticsDashboard } from "@/components/AIAnalyticsDashboard";
 import { ConversationSearchPanel } from "@/components/ConversationSearchPanel";
 import { PhaseCompletionDashboard } from "@/components/PhaseCompletionDashboard";
+import { UniversalErrorLearningDashboard } from "@/components/UniversalErrorLearningDashboard";
 
 export default function AISystemDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -99,7 +100,7 @@ export default function AISystemDashboard() {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Overview
@@ -107,6 +108,10 @@ export default function AISystemDashboard() {
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <LineChart className="h-4 w-4" />
             Analytics
+          </TabsTrigger>
+          <TabsTrigger value="error-learning" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            Error Learning
           </TabsTrigger>
           <TabsTrigger value="search" className="flex items-center gap-2">
             <Search className="h-4 w-4" />
@@ -219,6 +224,10 @@ export default function AISystemDashboard() {
 
         <TabsContent value="analytics">
           <AIAnalyticsDashboard />
+        </TabsContent>
+
+        <TabsContent value="error-learning">
+          <UniversalErrorLearningDashboard />
         </TabsContent>
 
         <TabsContent value="search">
