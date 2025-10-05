@@ -6,11 +6,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Brain, Package, Zap, CheckCircle2, AlertCircle, Code, Cpu, Database, Download, Sparkles, Code2 } from "lucide-react";
+import { Brain, Package, Zap, CheckCircle2, AlertCircle, Code, Cpu, Database, Download, Sparkles, Code2, Star } from "lucide-react";
 import { CompleteProjectPackager } from "./CompleteProjectPackager";
 import InstantPackageInstaller from "./InstantPackageInstaller";
 import BeyondMegaMindDashboard from "./BeyondMegaMindDashboard";
 import PythonDevelopmentHub from "./PythonDevelopmentHub";
+import SuperMegaMindHub from "./SuperMegaMindHub";
 
 export const MegaMindDashboard = () => {
   const [request, setRequest] = useState("");
@@ -76,8 +77,12 @@ export const MegaMindDashboard = () => {
       </div>
 
       <Tabs defaultValue="orchestrator" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="orchestrator">Orchestrator</TabsTrigger>
+          <TabsTrigger value="super">
+            <Star className="w-4 h-4 mr-2" />
+            Super
+          </TabsTrigger>
           <TabsTrigger value="python">
             <Code2 className="w-4 h-4 mr-2" />
             Python
@@ -265,6 +270,10 @@ export const MegaMindDashboard = () => {
               </p>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="super" className="space-y-4">
+          <SuperMegaMindHub />
         </TabsContent>
 
         <TabsContent value="python" className="space-y-4">

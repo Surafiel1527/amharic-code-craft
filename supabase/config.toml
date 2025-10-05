@@ -258,3 +258,15 @@ verify_jwt = true
 [functions.python-executor]
 verify_jwt = true
 
+[functions.ai-code-reviewer]
+verify_jwt = true
+
+[functions.ai-debugger]
+verify_jwt = true
+
+[functions.auto-deployer]
+verify_jwt = true
+
+[functions.security-vulnerability-scanner]
+verify_jwt = true
+

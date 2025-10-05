@@ -646,6 +646,51 @@ export type Database = {
           },
         ]
       }
+      code_reviews: {
+        Row: {
+          code_length: number
+          created_at: string
+          filename: string
+          grade: string
+          id: string
+          improvements_count: number
+          language: string
+          maintainability_score: number
+          overall_score: number
+          performance_score: number
+          security_score: number
+          user_id: string
+        }
+        Insert: {
+          code_length: number
+          created_at?: string
+          filename: string
+          grade: string
+          id?: string
+          improvements_count?: number
+          language: string
+          maintainability_score: number
+          overall_score: number
+          performance_score: number
+          security_score: number
+          user_id: string
+        }
+        Update: {
+          code_length?: number
+          created_at?: string
+          filename?: string
+          grade?: string
+          id?: string
+          improvements_count?: number
+          language?: string
+          maintainability_score?: number
+          overall_score?: number
+          performance_score?: number
+          security_score?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       collaboration_sessions: {
         Row: {
           active_users: Json
@@ -1422,6 +1467,39 @@ export type Database = {
           id?: string
           provider?: string
           version?: string | null
+        }
+        Relationships: []
+      }
+      debug_sessions: {
+        Row: {
+          created_at: string
+          error_message: string
+          error_type: string
+          id: string
+          language: string
+          severity: string
+          solutions_count: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message: string
+          error_type: string
+          id?: string
+          language: string
+          severity: string
+          solutions_count?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string
+          error_type?: string
+          id?: string
+          language?: string
+          severity?: string
+          solutions_count?: number
+          user_id?: string
         }
         Relationships: []
       }
@@ -3207,6 +3285,45 @@ export type Database = {
           resolved_by?: string | null
           user_agent?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      security_scans: {
+        Row: {
+          code_length: number
+          created_at: string
+          dependencies_count: number
+          framework: string
+          id: string
+          language: string
+          overall_risk: string
+          risk_score: number
+          user_id: string
+          vulnerabilities_count: number
+        }
+        Insert: {
+          code_length: number
+          created_at?: string
+          dependencies_count?: number
+          framework: string
+          id?: string
+          language: string
+          overall_risk: string
+          risk_score: number
+          user_id: string
+          vulnerabilities_count?: number
+        }
+        Update: {
+          code_length?: number
+          created_at?: string
+          dependencies_count?: number
+          framework?: string
+          id?: string
+          language?: string
+          overall_risk?: string
+          risk_score?: number
+          user_id?: string
+          vulnerabilities_count?: number
         }
         Relationships: []
       }
