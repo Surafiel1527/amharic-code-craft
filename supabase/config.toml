@@ -1,5 +1,8 @@
 project_id = "xuncvfnvatgqshlivuep"
 
+[functions.intelligent-conversation]
+verify_jwt = false
+
 [functions.ai-code-builder]
 verify_jwt = false
 
