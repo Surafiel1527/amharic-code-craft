@@ -164,3 +164,6 @@ verify_jwt = true
 
 [functions.react-component-generator]
 verify_jwt = true
+
+[functions.generate-tests]
+verify_jwt = false

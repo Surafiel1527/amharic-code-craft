@@ -40,6 +40,10 @@ import { EnhancedChatInterface } from "@/components/EnhancedChatInterface";
 import { ReactComponentGenerator } from "@/components/ReactComponentGenerator";
 import { TailwindUtilitiesBuilder } from "@/components/TailwindUtilitiesBuilder";
 import { StateManagementHelper } from "@/components/StateManagementHelper";
+import { AdvancedTestGenerator } from "@/components/AdvancedTestGenerator";
+import { CICDPipelineBuilder } from "@/components/CICDPipelineBuilder";
+import { APITestingSuite } from "@/components/APITestingSuite";
+import { DeploymentManager } from "@/components/DeploymentManager";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -786,7 +790,7 @@ export default function Workspace() {
               {/* Right Sidebar - Enhanced with Phase 2 Features */}
               <div className="w-96">
                 <Tabs defaultValue="templates">
-                  <TabsList className="w-full grid grid-cols-3 lg:grid-cols-9">
+                  <TabsList className="w-full grid grid-cols-3 lg:grid-cols-11">
                     <TabsTrigger value="templates">Templates</TabsTrigger>
                     <TabsTrigger value="metrics">Metrics</TabsTrigger>
                     <TabsTrigger value="deps">Deps</TabsTrigger>
@@ -795,6 +799,8 @@ export default function Workspace() {
                     <TabsTrigger value="chat">Chat</TabsTrigger>
                     <TabsTrigger value="framework">Framework</TabsTrigger>
                     <TabsTrigger value="state">State</TabsTrigger>
+                    <TabsTrigger value="testing">Testing</TabsTrigger>
+                    <TabsTrigger value="deploy">Deploy</TabsTrigger>
                     <TabsTrigger value="ai">AI</TabsTrigger>
                   </TabsList>
                   
@@ -877,6 +883,20 @@ export default function Workspace() {
 
                   <TabsContent value="state" className="h-[calc(100vh-200px)]">
                     <StateManagementHelper />
+                  </TabsContent>
+
+                  <TabsContent value="testing" className="h-[calc(100vh-200px)] overflow-auto">
+                    <div className="space-y-4">
+                      <AdvancedTestGenerator />
+                      <APITestingSuite />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="deploy" className="h-[calc(100vh-200px)] overflow-auto">
+                    <div className="space-y-4">
+                      <CICDPipelineBuilder />
+                      <DeploymentManager />
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="ai" className="h-[calc(100vh-200px)] overflow-auto">
