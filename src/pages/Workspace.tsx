@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Loader2, Send, Save, ArrowLeft, Maximize2, Minimize2, 
-  History, Code2, Eye, MessageSquare, Sparkles, RotateCcw, Target
+  History, Code2, Eye, MessageSquare, Sparkles, RotateCcw, Target, Download, Code
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -305,6 +305,26 @@ export default function Workspace() {
       toast.error("Failed to save project");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDownloadCode = () => {
+    if (!project) return;
+    
+    try {
+      const blob = new Blob([project.html_code], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Code downloaded successfully!");
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error("Failed to download code");
     }
   };
 
@@ -729,10 +749,14 @@ export default function Workspace() {
             {!isPreviewExpanded && (
               <div className="p-4 border-b">
                 <Tabs defaultValue="preview" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
+                  <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="preview">
                       <Eye className="w-4 h-4 mr-2" />
                       Preview
+                    </TabsTrigger>
+                    <TabsTrigger value="code">
+                      <Code className="w-4 h-4 mr-2" />
+                      Code
                     </TabsTrigger>
                     <TabsTrigger value="plan" disabled={!currentOrchestration?.plan}>
                       <Sparkles className="w-4 h-4 mr-2" />
@@ -745,6 +769,27 @@ export default function Workspace() {
                   </TabsList>
                   <TabsContent value="preview" className="mt-4">
                     <DevicePreview generatedCode={project.html_code} />
+                  </TabsContent>
+                  <TabsContent value="code" className="mt-4">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold">Project Code</h3>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleDownloadCode}
+                          className="gap-2"
+                        >
+                          <Download className="h-4 w-4" />
+                          Download HTML
+                        </Button>
+                      </div>
+                      <ScrollArea className="h-[500px] border rounded-lg">
+                        <pre className="text-xs bg-muted p-4 overflow-x-auto">
+                          <code>{project.html_code}</code>
+                        </pre>
+                      </ScrollArea>
+                    </div>
                   </TabsContent>
                   <TabsContent value="plan" className="mt-4">
                     {currentOrchestration?.plan && (
