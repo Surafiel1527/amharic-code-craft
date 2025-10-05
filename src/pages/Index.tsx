@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code, Maximize2, Minimize2, Brain } from "lucide-react";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code, Maximize2, Minimize2, Brain, Eye, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -572,6 +573,45 @@ const Index = () => {
           </div>
         </section>
       )}
+
+      {/* Phase 5B Features - Live Preview & Package Manager */}
+      <section className="container mx-auto px-4 py-6 border-b border-border">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2 text-muted-foreground">
+            <Zap className="h-4 w-4 text-yellow-500" />
+            Phase 5B Features
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="p-6 hover:border-primary/50 transition-all">
+              <Eye className="h-10 w-10 mb-4 text-primary" />
+              <h3 className="text-xl font-bold mb-2">Live Preview</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Real-time preview with hot reload and responsive device testing
+              </p>
+              <Link to="/live-preview">
+                <Button className="w-full gap-2">
+                  <Eye className="h-4 w-4" />
+                  Open Live Preview
+                </Button>
+              </Link>
+            </Card>
+
+            <Card className="p-6 hover:border-primary/50 transition-all">
+              <Package className="h-10 w-10 mb-4 text-primary" />
+              <h3 className="text-xl font-bold mb-2">Package Manager</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Lightning-fast npm package installation and dependency management
+              </p>
+              <Link to="/package-manager">
+                <Button className="w-full gap-2">
+                  <Package className="h-4 w-4" />
+                  Manage Packages
+                </Button>
+              </Link>
+            </Card>
+          </div>
+        </div>
+      </section>
 
       {/* Main Content */}
       <section className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">

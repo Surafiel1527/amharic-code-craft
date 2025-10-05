@@ -14,6 +14,8 @@ import Workspace from "./pages/Workspace";
 import DatabaseManager from "./pages/DatabaseManager";
 import Deploy from "./pages/Deploy";
 import QualityHub from "./pages/QualityHub";
+import LivePreview from "./pages/LivePreview";
+import PackageManager from "./pages/PackageManager";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const App = () => {
@@ -34,6 +36,8 @@ const App = () => {
         <Route path="/database-manager" element={<DatabaseManager />} />
         <Route path="/deploy/:projectId" element={<Deploy />} />
         <Route path="/quality-hub" element={<QualityHub />} />
+        <Route path="/live-preview" element={<LivePreview />} />
+        <Route path="/package-manager" element={<PackageManager />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
