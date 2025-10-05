@@ -1314,6 +1314,59 @@ export type Database = {
           },
         ]
       }
+      deployments: {
+        Row: {
+          build_duration: number | null
+          created_at: string
+          environment: string
+          error_message: string | null
+          id: string
+          project_id: string | null
+          ready_at: string | null
+          status: string
+          user_id: string
+          vercel_deployment_id: string
+          vercel_project_id: string
+          vercel_url: string
+        }
+        Insert: {
+          build_duration?: number | null
+          created_at?: string
+          environment?: string
+          error_message?: string | null
+          id?: string
+          project_id?: string | null
+          ready_at?: string | null
+          status?: string
+          user_id: string
+          vercel_deployment_id: string
+          vercel_project_id: string
+          vercel_url: string
+        }
+        Update: {
+          build_duration?: number | null
+          created_at?: string
+          environment?: string
+          error_message?: string | null
+          id?: string
+          project_id?: string | null
+          ready_at?: string | null
+          status?: string
+          user_id?: string
+          vercel_deployment_id?: string
+          vercel_project_id?: string
+          vercel_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       detected_errors: {
         Row: {
           auto_fix_enabled: boolean | null
@@ -2028,6 +2081,47 @@ export type Database = {
           },
           {
             foreignKeyName: "project_comments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_environment_variables: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          project_id: string
+          target: string[]
+          updated_at: string
+          user_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          project_id: string
+          target?: string[]
+          updated_at?: string
+          user_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          project_id?: string
+          target?: string[]
+          updated_at?: string
+          user_id?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_environment_variables_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -2833,6 +2927,39 @@ export type Database = {
           last_activity_at?: string
           session_token?: string
           user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vercel_connections: {
+        Row: {
+          access_token: string
+          connected_at: string
+          id: string
+          last_used_at: string | null
+          team_id: string | null
+          team_name: string | null
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          connected_at?: string
+          id?: string
+          last_used_at?: string | null
+          team_id?: string | null
+          team_name?: string | null
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          connected_at?: string
+          id?: string
+          last_used_at?: string | null
+          team_id?: string | null
+          team_name?: string | null
+          user_email?: string | null
           user_id?: string
         }
         Relationships: []
