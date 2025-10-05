@@ -6,6 +6,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ExternalLink, Loader2, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AIErrorAnalysis } from "./AIErrorAnalysis";
+import { ConfigValidation } from "./ConfigValidation";
 
 interface PostgreSQLCredentialsFormProps {
   onSuccess: () => void;
@@ -14,6 +16,8 @@ interface PostgreSQLCredentialsFormProps {
 export function PostgreSQLCredentialsForm({ onSuccess }: PostgreSQLCredentialsFormProps) {
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testError, setTestError] = useState<string>("");
+  const [credentialId, setCredentialId] = useState<string | undefined>();
   const { toast } = useToast();
   
   const [credentials, setCredentials] = useState({
@@ -27,6 +31,7 @@ export function PostgreSQLCredentialsForm({ onSuccess }: PostgreSQLCredentialsFo
 
   const testConnection = async () => {
     setTesting(true);
+    setTestError("");
     try {
       const { data, error } = await supabase.functions.invoke('test-database-connection', {
         body: {
@@ -42,21 +47,26 @@ export function PostgreSQLCredentialsForm({ onSuccess }: PostgreSQLCredentialsFo
           title: "Success!",
           description: "PostgreSQL credentials validated",
         });
+        setTestError("");
         return true;
       } else {
+        const errorMsg = data.message || 'Connection test failed';
         toast({
           title: "Validation Failed",
-          description: data.message,
+          description: errorMsg,
           variant: "destructive",
         });
+        setTestError(errorMsg);
         return false;
       }
     } catch (error: any) {
+      const errorMsg = error.message || 'Failed to test connection';
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMsg,
         variant: "destructive",
       });
+      setTestError(errorMsg);
       return false;
     } finally {
       setTesting(false);
@@ -87,6 +97,7 @@ export function PostgreSQLCredentialsForm({ onSuccess }: PostgreSQLCredentialsFo
         description: "PostgreSQL credentials saved securely",
       });
       
+      setCredentialId(data.credentialId);
       onSuccess();
     } catch (error: any) {
       toast({
@@ -100,7 +111,8 @@ export function PostgreSQLCredentialsForm({ onSuccess }: PostgreSQLCredentialsFo
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+    <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 mt-4">
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
@@ -195,5 +207,28 @@ export function PostgreSQLCredentialsForm({ onSuccess }: PostgreSQLCredentialsFo
         </Button>
       </div>
     </form>
+
+    {testError && (
+      <AIErrorAnalysis
+        provider="postgresql"
+        error={testError}
+        credentials={credentials}
+        credentialId={credentialId}
+        onFixApplied={(updatedCreds) => {
+          setCredentials(updatedCreds);
+          setTestError("");
+          toast({
+            title: "Fix Applied",
+            description: "Credentials updated with AI suggestion",
+          });
+        }}
+      />
+    )}
+
+    <ConfigValidation 
+      provider="postgresql" 
+      credentials={credentials} 
+    />
+  </div>
   );
 }

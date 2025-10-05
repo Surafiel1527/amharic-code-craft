@@ -836,6 +836,92 @@ export type Database = {
         }
         Relationships: []
       }
+      database_connection_errors: {
+        Row: {
+          ai_analysis: Json | null
+          created_at: string | null
+          credential_id: string | null
+          error_context: Json | null
+          error_message: string
+          fix_applied: boolean | null
+          id: string
+          provider: string
+          resolved: boolean | null
+          resolved_at: string | null
+          suggested_fixes: Json | null
+          user_id: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          created_at?: string | null
+          credential_id?: string | null
+          error_context?: Json | null
+          error_message: string
+          fix_applied?: boolean | null
+          id?: string
+          provider: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          suggested_fixes?: Json | null
+          user_id: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          created_at?: string | null
+          credential_id?: string | null
+          error_context?: Json | null
+          error_message?: string
+          fix_applied?: boolean | null
+          id?: string
+          provider?: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          suggested_fixes?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "database_connection_errors_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "database_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      database_connection_patterns: {
+        Row: {
+          common_environment: string | null
+          configuration: Json
+          created_at: string | null
+          id: string
+          last_success_at: string | null
+          notes: string | null
+          provider: string
+          success_count: number | null
+        }
+        Insert: {
+          common_environment?: string | null
+          configuration: Json
+          created_at?: string | null
+          id?: string
+          last_success_at?: string | null
+          notes?: string | null
+          provider: string
+          success_count?: number | null
+        }
+        Update: {
+          common_environment?: string | null
+          configuration?: Json
+          created_at?: string | null
+          id?: string
+          last_success_at?: string | null
+          notes?: string | null
+          provider?: string
+          success_count?: number | null
+        }
+        Relationships: []
+      }
       database_credentials: {
         Row: {
           connection_name: string
@@ -872,6 +958,33 @@ export type Database = {
           test_status?: string | null
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      database_provider_docs: {
+        Row: {
+          cache_expires_at: string | null
+          documentation: Json
+          fetched_at: string | null
+          id: string
+          provider: string
+          version: string | null
+        }
+        Insert: {
+          cache_expires_at?: string | null
+          documentation: Json
+          fetched_at?: string | null
+          id?: string
+          provider: string
+          version?: string | null
+        }
+        Update: {
+          cache_expires_at?: string | null
+          documentation?: Json
+          fetched_at?: string | null
+          id?: string
+          provider?: string
+          version?: string | null
         }
         Relationships: []
       }

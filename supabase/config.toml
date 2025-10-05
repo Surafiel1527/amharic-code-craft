@@ -189,3 +189,12 @@ verify_jwt = true
 [functions.get-security-audit-logs]
 verify_jwt = true
 
+[functions.analyze-database-error]
+verify_jwt = true
+
+[functions.validate-database-config]
+verify_jwt = true
+
+[functions.fetch-provider-docs]
+verify_jwt = false
+
