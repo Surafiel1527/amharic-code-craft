@@ -506,6 +506,10 @@ const Index = () => {
                   <Keyboard className="h-4 w-4" />
                 </Button>
                 <ThemeToggle />
+                <Button variant="outline" size="sm" onClick={() => navigate("/quality-hub")} className="gap-2 hover-scale">
+                  <Shield className="h-4 w-4" />
+                  <span className="hidden lg:inline">Quality</span>
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => navigate("/ai-system")} className="gap-2 hover-scale">
                   <Brain className="h-4 w-4" />
                   <span className="hidden lg:inline">AI System</span>

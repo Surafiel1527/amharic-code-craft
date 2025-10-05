@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Brain, Package, Zap, CheckCircle2, AlertCircle, Code, Cpu, Database, Download, Sparkles, Code2, Star } from "lucide-react";
+import { Brain, Package, Zap, CheckCircle2, AlertCircle, Code, Cpu, Database, Download, Sparkles, Code2, Star, Shield } from "lucide-react";
 import { CompleteProjectPackager } from "./CompleteProjectPackager";
 import InstantPackageInstaller from "./InstantPackageInstaller";
 import BeyondMegaMindDashboard from "./BeyondMegaMindDashboard";
@@ -70,12 +70,20 @@ export const MegaMindDashboard = () => {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center gap-3 mb-6">
         <Brain className="w-8 h-8 text-primary" />
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold">🧠 Mega Mind System</h1>
           <p className="text-muted-foreground">
             Complete project generation with automatic dependency management
           </p>
         </div>
+        <Button 
+          onClick={() => window.location.href = '/quality-hub'} 
+          variant="outline"
+          className="gap-2"
+        >
+          <Shield className="h-4 w-4" />
+          Quality Hub
+        </Button>
       </div>
 
       <Tabs defaultValue="orchestrator" className="w-full">
