@@ -728,6 +728,39 @@ export type Database = {
           },
         ]
       }
+      complete_project_packages: {
+        Row: {
+          created_at: string | null
+          dependencies_count: number | null
+          id: string
+          package_data: Json
+          project_name: string
+          status: string | null
+          total_dependencies: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dependencies_count?: number | null
+          id?: string
+          package_data: Json
+          project_name: string
+          status?: string | null
+          total_dependencies?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dependencies_count?: number | null
+          id?: string
+          package_data?: Json
+          project_name?: string
+          status?: string | null
+          total_dependencies?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       component_dependencies: {
         Row: {
           complexity_score: number | null
