@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { useUniversalAIChat, Message } from "@/hooks/useUniversalAIChat";
 import { EnhancedSensitiveDataDetector } from "@/components/EnhancedSensitiveDataDetector";
+import { RealtimeAIPanel } from "@/components/RealtimeAIPanel";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css";
 import "prismjs/components/prism-typescript";
@@ -241,6 +242,12 @@ export function UniversalChatInterface({
           </div>
         </Card>
       )}
+
+      {/* Real-time AI Status */}
+      <RealtimeAIPanel 
+        projectId={projectId}
+        conversationId={conversationId || activeConversationId}
+      />
 
       {/* Messages */}
       <ScrollArea className="flex-1 pr-4 mb-3">

@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,12 +13,40 @@ serve(async (req) => {
   }
 
   try {
-    const { task, context = {} } = await req.json();
+    const { task, context = {}, projectId, conversationId } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     console.log('Orchestrating complex task:', task);
 
+    // Initialize Supabase for real-time broadcasts
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
+    const channelId = projectId || conversationId || 'default';
+    
+    const broadcastStatus = async (status: string, message: string, progress?: number) => {
+      try {
+        await supabaseClient.channel(`ai-status-${channelId}`).send({
+          type: 'broadcast',
+          event: 'status-update',
+          payload: {
+            status,
+            message,
+            timestamp: new Date().toISOString(),
+            progress
+          }
+        });
+      } catch (e) {
+        console.error('Broadcast error:', e);
+      }
+    };
+
+    await broadcastStatus('thinking', 'Breaking down your request into steps...', 5);
+
     // Step 1: Break down the task into subtasks
+    await broadcastStatus('analyzing', 'Creating execution plan...', 15);
     const planResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -54,11 +83,16 @@ Return a JSON array of steps with: step_number, description, action_type (code_g
     }
 
     console.log('Execution plan created:', executionPlan.length, 'steps');
+    await broadcastStatus('generating', `Plan created with ${executionPlan.length} steps. Starting execution...`, 30);
 
     // Step 2: Execute each step
     const results: any[] = [];
-    for (const step of executionPlan) {
+    for (let i = 0; i < executionPlan.length; i++) {
+      const step = executionPlan[i];
+      const progress = 30 + ((i / executionPlan.length) * 50);
+      
       console.log(`Executing step ${step.step_number}: ${step.description}`);
+      await broadcastStatus('editing', `Step ${step.step_number}/${executionPlan.length}: ${step.description}`, progress);
       
       const stepResponse: any = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -93,9 +127,24 @@ Action type: ${step.action_type}. Provide detailed, actionable output.`
       };
 
       results.push(stepResult);
+      
+      // Broadcast code update if applicable
+      if (step.action_type === 'code_gen' && stepResult.output) {
+        await supabaseClient.channel(`preview-${channelId}`).send({
+          type: 'broadcast',
+          event: 'code-update',
+          payload: {
+            component: step.description,
+            code: stepResult.output,
+            timestamp: new Date().toISOString(),
+            status: 'complete'
+          }
+        });
+      }
     }
 
     // Step 3: Generate final summary
+    await broadcastStatus('analyzing', 'Generating summary and recommendations...', 85);
     const summaryResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -118,6 +167,8 @@ Action type: ${step.action_type}. Provide detailed, actionable output.`
     });
 
     const summaryData = await summaryResponse.json();
+
+    await broadcastStatus('idle', 'All steps completed successfully!', 100);
 
     return new Response(
       JSON.stringify({
