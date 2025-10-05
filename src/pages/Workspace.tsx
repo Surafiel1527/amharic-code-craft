@@ -31,6 +31,9 @@ import { FileTemplatesLibrary } from "@/components/FileTemplatesLibrary";
 import { DependencyGraph } from "@/components/DependencyGraph";
 import { CodeMetrics } from "@/components/CodeMetrics";
 import { useAutoSave } from "@/hooks/useAutoSave";
+import { ConversationMemory } from "@/components/ConversationMemory";
+import { AIImageGenerator } from "@/components/AIImageGenerator";
+import { IntelligentRefactoring } from "@/components/IntelligentRefactoring";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -774,13 +777,15 @@ export default function Workspace() {
                 )}
               </div>
 
-              {/* Right Sidebar - Tabs for Templates, Metrics, Dependencies */}
+              {/* Right Sidebar - Enhanced with Phase 2 Features */}
               <div className="w-96">
                 <Tabs defaultValue="templates">
-                  <TabsList className="w-full grid grid-cols-3">
+                  <TabsList className="w-full grid grid-cols-3 lg:grid-cols-5">
                     <TabsTrigger value="templates">Templates</TabsTrigger>
                     <TabsTrigger value="metrics">Metrics</TabsTrigger>
                     <TabsTrigger value="deps">Deps</TabsTrigger>
+                    <TabsTrigger value="refactor">Refactor</TabsTrigger>
+                    <TabsTrigger value="ai">AI</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="templates" className="h-[calc(100vh-200px)]">
@@ -806,6 +811,34 @@ export default function Workspace() {
                       files={projectFiles}
                       selectedFile={selectedFiles[0]}
                     />
+                  </TabsContent>
+
+                  <TabsContent value="refactor" className="h-[calc(100vh-200px)]">
+                    {selectedFiles[0] && projectFiles.find(f => f.file_path === selectedFiles[0]) && (
+                      <IntelligentRefactoring
+                        code={projectFiles.find(f => f.file_path === selectedFiles[0])!.file_content}
+                        filePath={selectedFiles[0]}
+                        onApplySuggestion={(newCode) => {
+                          handleSaveFile(newCode);
+                        }}
+                      />
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="ai" className="h-[calc(100vh-200px)] overflow-auto">
+                    <div className="space-y-4">
+                      {conversationId && user && (
+                        <ConversationMemory
+                          conversationId={conversationId}
+                          userId={user.id}
+                        />
+                      )}
+                      <AIImageGenerator
+                        onImageGenerated={(url) => {
+                          toast.success('Image generated! You can now use it in your project');
+                        }}
+                      />
+                    </div>
                   </TabsContent>
                 </Tabs>
               </div>
