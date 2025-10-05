@@ -8,6 +8,7 @@ import Explore from "./pages/Explore";
 import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
 import AISystemTest from "./pages/AISystemTest";
+import AISystemDashboard from "./pages/AISystemDashboard";
 import Builder from "./pages/Builder";
 import Workspace from "./pages/Workspace";
 import DatabaseManager from "./pages/DatabaseManager";
@@ -28,6 +29,7 @@ const App = () => {
         <Route path="/profile/:userId" element={<UserProfile />} />
         <Route path="/shared/:shareToken" element={<SharedProject />} />
         <Route path="/ai-test" element={<AISystemTest />} />
+        <Route path="/ai-system" element={<AISystemDashboard />} />
         <Route path="/database-manager" element={<DatabaseManager />} />
         <Route path="/deploy/:projectId" element={<Deploy />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
