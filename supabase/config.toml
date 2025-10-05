@@ -146,3 +146,9 @@ verify_jwt = false
 
 [functions.proactive-intelligence]
 verify_jwt = false
+
+[functions.knowledge-ingest]
+verify_jwt = false
+
+[functions.dockerfile-agent]
+verify_jwt = false
