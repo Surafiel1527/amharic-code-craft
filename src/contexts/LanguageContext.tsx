@@ -111,6 +111,11 @@ const translations = {
     "toast.dataFetchError": "Error fetching data",
     "toast.roleUpdated": "User role updated successfully",
     "toast.roleUpdateError": "Error updating role",
+    "toast.errorOccurred": "An error occurred",
+    
+    // Network
+    "network.online": "Back online",
+    "network.offline": "You are offline",
     
     // Sections
     "section.backup": "Backup & Restore",
@@ -259,6 +264,9 @@ const translations = {
     "projectActions.share": "Share",
     "projectActions.shareTitle": "Share Project",
     "projectActions.shareDesc": "Use this link to share the project with others",
+    "projectActions.makePublic": "Make Public",
+    "projectActions.addedToFavorites": "Added to favorites",
+    "projectActions.removedFromFavorites": "Removed from favorites",
     
     // Templates Browser
     "templates.fetchError": "Failed to load templates",

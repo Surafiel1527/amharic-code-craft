@@ -55,11 +55,11 @@ export const ProjectActions = ({ project, onUpdate }: ProjectActionsProps) => {
         .eq("id", project.id);
 
       if (error) throw error;
-      toast.success(project.is_favorite ? "ከተወዳጆች ተወግዷል" : "ወደ ተወዳጆች ታክሏል");
+      toast.success(project.is_favorite ? t("projectActions.removedFromFavorites") : t("projectActions.addedToFavorites"));
       onUpdate();
     } catch (error) {
       console.error("Error toggling favorite:", error);
-      toast.error("ስህተት ተከስቷል");
+      toast.error(t("toast.errorOccurred"));
     }
   };
 
@@ -163,7 +163,7 @@ export const ProjectActions = ({ project, onUpdate }: ProjectActionsProps) => {
             className="flex-1"
           >
             <Link2 className="h-4 w-4 mr-1" />
-            <span className="text-xs">ይፋ አድርግ</span>
+            <span className="text-xs">{t("projectActions.makePublic")}</span>
           </Button>
         )}
 

@@ -1,18 +1,20 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const useNetworkStatus = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      toast.success("ከመስመር ጋር ተገናኝተዋል");
+      toast.success(t("network.online"));
     };
 
     const handleOffline = () => {
       setIsOnline(false);
-      toast.error("ከመስመር ውጭ ነዎት", {
+      toast.error(t("network.offline"), {
         duration: Infinity,
         id: "offline-toast",
       });
