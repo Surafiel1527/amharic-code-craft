@@ -37,6 +37,9 @@ import { IntelligentRefactoring } from "@/components/IntelligentRefactoring";
 import { ProactiveAIAssistant } from "@/components/ProactiveAIAssistant";
 import { PatternIntelligenceDashboard } from "@/components/PatternIntelligenceDashboard";
 import { EnhancedChatInterface } from "@/components/EnhancedChatInterface";
+import { ReactComponentGenerator } from "@/components/ReactComponentGenerator";
+import { TailwindUtilitiesBuilder } from "@/components/TailwindUtilitiesBuilder";
+import { StateManagementHelper } from "@/components/StateManagementHelper";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -783,13 +786,15 @@ export default function Workspace() {
               {/* Right Sidebar - Enhanced with Phase 2 Features */}
               <div className="w-96">
                 <Tabs defaultValue="templates">
-                  <TabsList className="w-full grid grid-cols-3 lg:grid-cols-7">
+                  <TabsList className="w-full grid grid-cols-3 lg:grid-cols-9">
                     <TabsTrigger value="templates">Templates</TabsTrigger>
                     <TabsTrigger value="metrics">Metrics</TabsTrigger>
                     <TabsTrigger value="deps">Deps</TabsTrigger>
                     <TabsTrigger value="refactor">Refactor</TabsTrigger>
                     <TabsTrigger value="proactive">Proactive</TabsTrigger>
                     <TabsTrigger value="chat">Chat</TabsTrigger>
+                    <TabsTrigger value="framework">Framework</TabsTrigger>
+                    <TabsTrigger value="state">State</TabsTrigger>
                     <TabsTrigger value="ai">AI</TabsTrigger>
                   </TabsList>
                   
@@ -855,6 +860,23 @@ export default function Workspace() {
                         }
                       }}
                     />
+                  </TabsContent>
+
+                  <TabsContent value="framework" className="h-[calc(100vh-200px)] overflow-auto">
+                    <div className="space-y-4">
+                      <ReactComponentGenerator
+                        onComponentGenerated={(code, fileName) => {
+                          handleCreateFile(fileName, 'file');
+                          // Save the generated code
+                          toast.success(`Generated ${fileName}`);
+                        }}
+                      />
+                      <TailwindUtilitiesBuilder />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="state" className="h-[calc(100vh-200px)]">
+                    <StateManagementHelper />
                   </TabsContent>
 
                   <TabsContent value="ai" className="h-[calc(100vh-200px)] overflow-auto">

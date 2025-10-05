@@ -161,3 +161,6 @@ verify_jwt = true
 
 [functions.proactive-intelligence]
 verify_jwt = true
+
+[functions.react-component-generator]
+verify_jwt = true
