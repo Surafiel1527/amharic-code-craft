@@ -20,10 +20,12 @@ import TestingHub from "./pages/TestingHub";
 import AITrainingDashboard from "./pages/AITrainingDashboard";
 import Marketplace from "./pages/Marketplace";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { BackgroundJobsIndicator } from "./components/BackgroundJobsIndicator";
 
 const App = () => {
   return (
     <ErrorBoundary>
+      <BackgroundJobsIndicator />
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />

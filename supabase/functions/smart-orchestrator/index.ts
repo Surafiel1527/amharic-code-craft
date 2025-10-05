@@ -13,21 +13,62 @@ serve(async (req) => {
   }
 
   try {
-    const { task, context = {}, projectId, conversationId } = await req.json();
+    const { task, context = {}, projectId, conversationId, userId } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     console.log('Orchestrating complex task:', task);
 
-    // Initialize Supabase for real-time broadcasts
+    // Initialize Supabase for real-time broadcasts and state persistence
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: {
+            Authorization: req.headers.get('Authorization') ?? ''
+          }
+        }
+      }
     );
 
     const channelId = projectId || conversationId || 'default';
     
+    // Create job record for state persistence
+    const { data: job, error: jobError } = await supabaseClient
+      .from('ai_generation_jobs')
+      .insert({
+        user_id: userId,
+        conversation_id: conversationId,
+        project_id: projectId,
+        job_type: 'orchestration',
+        status: 'running',
+        input_data: { task, context },
+        started_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (jobError) {
+      console.error('Failed to create job:', jobError);
+    }
+
+    const jobId = job?.id;
+    
     const broadcastStatus = async (status: string, message: string, progress?: number) => {
       try {
+        // Update job in database
+        if (jobId) {
+          await supabaseClient
+            .from('ai_generation_jobs')
+            .update({
+              progress: progress || 0,
+              current_step: message,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', jobId);
+        }
+
+        // Broadcast for real-time updates (for users currently watching)
         await supabaseClient.channel(`ai-status-${channelId}`).send({
           type: 'broadcast',
           event: 'status-update',
@@ -35,7 +76,8 @@ serve(async (req) => {
             status,
             message,
             timestamp: new Date().toISOString(),
-            progress
+            progress,
+            jobId
           }
         });
       } catch (e) {
@@ -43,7 +85,10 @@ serve(async (req) => {
       }
     };
 
-    await broadcastStatus('thinking', 'Breaking down your request into steps...', 5);
+    // Define background task
+    const processTask = async () => {
+      try {
+        await broadcastStatus('thinking', 'Breaking down your request into steps...', 5);
 
     // Step 1: Break down the task into subtasks
     await broadcastStatus('analyzing', 'Creating execution plan...', 15);
@@ -170,15 +215,64 @@ Action type: ${step.action_type}. Provide detailed, actionable output.`
 
     await broadcastStatus('idle', 'All steps completed successfully!', 100);
 
+    // Mark job as completed
+    if (jobId) {
+      await supabaseClient
+        .from('ai_generation_jobs')
+        .update({
+          status: 'completed',
+          progress: 100,
+          completed_at: new Date().toISOString(),
+          output_data: {
+            execution_plan: executionPlan,
+            results,
+            summary: summaryData.choices[0].message.content,
+          }
+        })
+        .eq('id', jobId);
+    }
+
+    return {
+      task,
+      jobId,
+      execution_plan: executionPlan,
+      results,
+      summary: summaryData.choices[0].message.content,
+      total_steps: results.length,
+      success_rate: 100,
+      total_time: results.length * 30
+    };
+      } catch (error: any) {
+        console.error('Error in background task:', error);
+        
+        // Mark job as failed
+        if (jobId) {
+          await supabaseClient
+            .from('ai_generation_jobs')
+            .update({
+              status: 'failed',
+              error_message: error.message,
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', jobId);
+        }
+        
+        throw error;
+      }
+    };
+
+    // Run background task and return immediately
+    processTask().catch(error => {
+      console.error('Background task error:', error);
+    });
+
+    // Return immediately with job ID
     return new Response(
       JSON.stringify({
-        task,
-        execution_plan: executionPlan,
-        results,
-        summary: summaryData.choices[0].message.content,
-        total_steps: results.length,
-        success_rate: 100,
-        total_time: results.length * 30 // estimate
+        success: true,
+        jobId,
+        message: 'Processing started in background. You can safely close this window.',
+        estimatedTime: '5-15 minutes'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

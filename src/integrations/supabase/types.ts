@@ -210,6 +210,84 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_generation_jobs: {
+        Row: {
+          completed_at: string | null
+          completed_steps: number | null
+          conversation_id: string | null
+          created_at: string
+          current_step: string | null
+          error_message: string | null
+          id: string
+          input_data: Json
+          job_type: string
+          output_data: Json | null
+          progress: number | null
+          project_id: string | null
+          retry_count: number | null
+          started_at: string | null
+          status: string
+          total_steps: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_steps?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          current_step?: string | null
+          error_message?: string | null
+          id?: string
+          input_data?: Json
+          job_type: string
+          output_data?: Json | null
+          progress?: number | null
+          project_id?: string | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string
+          total_steps?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_steps?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          current_step?: string | null
+          error_message?: string | null
+          id?: string
+          input_data?: Json
+          job_type?: string
+          output_data?: Json | null
+          progress?: number | null
+          project_id?: string | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string
+          total_steps?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_generation_jobs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_generation_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_improvement_logs: {
         Row: {
           after_metric: number
