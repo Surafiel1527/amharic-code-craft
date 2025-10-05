@@ -97,8 +97,17 @@ export function EnhancedChatInterface({
 
   const extractFilePath = (code: string): string | undefined => {
     const firstLine = code.split('\n')[0];
-    if (firstLine.startsWith('//') && firstLine.includes('.tsx')) {
+    // Check for file path comments in various formats
+    if (firstLine.startsWith('//') && (firstLine.includes('.tsx') || firstLine.includes('.ts') || firstLine.includes('.jsx') || firstLine.includes('.js'))) {
       return firstLine.replace('//', '').trim();
+    }
+    // Check for file path in format: "File: src/..."
+    if (firstLine.toLowerCase().includes('file:') && (firstLine.includes('.tsx') || firstLine.includes('.ts'))) {
+      return firstLine.split('file:')[1].trim();
+    }
+    // Try to extract from selected files context
+    if (selectedFiles.length === 1) {
+      return selectedFiles[0];
     }
     return undefined;
   };
@@ -172,8 +181,39 @@ export function EnhancedChatInterface({
 
       if (error) throw error;
 
-      const fullContent = data?.message || data?.finalCode || data?.explanation || "I'm here to help!";
+      // Extract code from various response formats
+      let fullContent = data?.message || data?.explanation || "I'm here to help!";
+      let codeToApply = null;
+      let filePathToApply = null;
+
+      // Check if smart orchestrator returned raw code in finalCode
+      if (data?.finalCode) {
+        codeToApply = data.finalCode;
+        // Try to determine file path from context or selected files
+        filePathToApply = selectedFiles.length === 1 ? selectedFiles[0] : null;
+        fullContent = `I've fixed the issue. Here's the updated code:\n\n\`\`\`typescript\n${data.finalCode}\n\`\`\`\n\n${data?.explanation || ''}`;
+      }
+
       const codeBlock = extractCodeBlocks(fullContent);
+
+      // Prefer codeBlock if it has a file path, otherwise use raw finalCode
+      if (codeBlock && codeBlock.filePath) {
+        codeToApply = codeBlock.code;
+        filePathToApply = codeBlock.filePath;
+      }
+
+      // Auto-apply code fixes if we have code and file path
+      if (codeToApply && filePathToApply && onCodeApply) {
+        try {
+          await onCodeApply(codeToApply, filePathToApply);
+          toast.success(`✅ Auto-applied fix to ${filePathToApply}`);
+        } catch (applyError) {
+          console.error('Failed to auto-apply code:', applyError);
+          toast.error('Code generated but failed to auto-apply. Use the Apply button.');
+        }
+      } else if (codeToApply && !filePathToApply) {
+        toast.info('💡 Code fix generated. Please select a file or use the Apply button.');
+      }
 
       // Update the assistant message with complete response
       setMessages(prev => prev.map(m => 
