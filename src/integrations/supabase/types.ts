@@ -2007,6 +2007,63 @@ export type Database = {
           },
         ]
       }
+      mega_mind_orchestrations: {
+        Row: {
+          analysis_phase: Json | null
+          completed_at: string | null
+          context: Json | null
+          created_at: string | null
+          dependencies_installed: Json | null
+          dependency_phase: Json | null
+          errors_fixed: Json | null
+          files_generated: Json | null
+          generation_phase: Json | null
+          id: string
+          original_request: string
+          request_type: string
+          started_at: string | null
+          status: string | null
+          user_id: string
+          verification_phase: Json | null
+        }
+        Insert: {
+          analysis_phase?: Json | null
+          completed_at?: string | null
+          context?: Json | null
+          created_at?: string | null
+          dependencies_installed?: Json | null
+          dependency_phase?: Json | null
+          errors_fixed?: Json | null
+          files_generated?: Json | null
+          generation_phase?: Json | null
+          id?: string
+          original_request: string
+          request_type: string
+          started_at?: string | null
+          status?: string | null
+          user_id: string
+          verification_phase?: Json | null
+        }
+        Update: {
+          analysis_phase?: Json | null
+          completed_at?: string | null
+          context?: Json | null
+          created_at?: string | null
+          dependencies_installed?: Json | null
+          dependency_phase?: Json | null
+          errors_fixed?: Json | null
+          files_generated?: Json | null
+          generation_phase?: Json | null
+          id?: string
+          original_request?: string
+          request_type?: string
+          started_at?: string | null
+          status?: string | null
+          user_id?: string
+          verification_phase?: Json | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -2952,6 +3009,71 @@ export type Database = {
         }
         Relationships: []
       }
+      smart_dependency_tracking: {
+        Row: {
+          alternative_packages: Json | null
+          conflicts_with: Json | null
+          created_at: string | null
+          detected_from: string
+          detection_context: Json | null
+          id: string
+          install_location: string | null
+          installation_command: string | null
+          installation_result: Json | null
+          installed_at: string | null
+          orchestration_id: string | null
+          package_name: string
+          peer_dependencies: Json | null
+          should_install: boolean | null
+          status: string | null
+          version: string | null
+        }
+        Insert: {
+          alternative_packages?: Json | null
+          conflicts_with?: Json | null
+          created_at?: string | null
+          detected_from: string
+          detection_context?: Json | null
+          id?: string
+          install_location?: string | null
+          installation_command?: string | null
+          installation_result?: Json | null
+          installed_at?: string | null
+          orchestration_id?: string | null
+          package_name: string
+          peer_dependencies?: Json | null
+          should_install?: boolean | null
+          status?: string | null
+          version?: string | null
+        }
+        Update: {
+          alternative_packages?: Json | null
+          conflicts_with?: Json | null
+          created_at?: string | null
+          detected_from?: string
+          detection_context?: Json | null
+          id?: string
+          install_location?: string | null
+          installation_command?: string | null
+          installation_result?: Json | null
+          installed_at?: string | null
+          orchestration_id?: string | null
+          package_name?: string
+          peer_dependencies?: Json | null
+          should_install?: boolean | null
+          status?: string | null
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_dependency_tracking_orchestration_id_fkey"
+            columns: ["orchestration_id"]
+            isOneToOne: false
+            referencedRelation: "mega_mind_orchestrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_health: {
         Row: {
           created_at: string
@@ -3291,7 +3413,9 @@ export type Database = {
           common_triggers: Json | null
           confidence_score: number | null
           created_at: string
+          deployment_provider: string | null
           diagnosis: Json
+          environment: string | null
           error_category: string
           error_pattern: string
           error_signature: string
@@ -3316,7 +3440,9 @@ export type Database = {
           common_triggers?: Json | null
           confidence_score?: number | null
           created_at?: string
+          deployment_provider?: string | null
           diagnosis: Json
+          environment?: string | null
           error_category: string
           error_pattern: string
           error_signature: string
@@ -3341,7 +3467,9 @@ export type Database = {
           common_triggers?: Json | null
           confidence_score?: number | null
           created_at?: string
+          deployment_provider?: string | null
           diagnosis?: Json
+          environment?: string | null
           error_category?: string
           error_pattern?: string
           error_signature?: string

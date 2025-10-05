@@ -24,6 +24,7 @@ import { AIAnalyticsDashboard } from "@/components/AIAnalyticsDashboard";
 import { ConversationSearchPanel } from "@/components/ConversationSearchPanel";
 import { PhaseCompletionDashboard } from "@/components/PhaseCompletionDashboard";
 import { UniversalErrorLearningDashboard } from "@/components/UniversalErrorLearningDashboard";
+import { MegaMindDashboard } from "@/components/MegaMindDashboard";
 
 export default function AISystemDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -100,17 +101,21 @@ export default function AISystemDashboard() {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Overview
+          </TabsTrigger>
+          <TabsTrigger value="mega-mind" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            Mega Mind
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <LineChart className="h-4 w-4" />
             Analytics
           </TabsTrigger>
           <TabsTrigger value="error-learning" className="flex items-center gap-2">
-            <Brain className="h-4 w-4" />
+            <Zap className="h-4 w-4" />
             Error Learning
           </TabsTrigger>
           <TabsTrigger value="search" className="flex items-center gap-2">
@@ -220,6 +225,10 @@ export default function AISystemDashboard() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="mega-mind">
+          <MegaMindDashboard />
         </TabsContent>
 
         <TabsContent value="analytics">

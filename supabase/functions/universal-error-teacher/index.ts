@@ -7,14 +7,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Error category detection patterns
+// Enhanced error category detection patterns (includes deployment)
 const ERROR_CATEGORIES = {
-  deployment: /vercel|netlify|deployment|build output|dist|public directory|failed to deploy|deploy error/i,
+  deployment: /vercel|netlify|firebase|deployment|build output|dist|public directory|failed to deploy|deploy error|hosting|production build/i,
+  dependency: /module not found|cannot find module|npm|yarn|package|dependency|peer dependency/i,
   runtime: /undefined|null|cannot read property|reference error|is not a function|maximum call stack|memory/i,
   typescript: /type error|ts\(|typescript|interface|property.*does not exist|type.*is not assignable/i,
   api: /fetch|api|network|cors|401|403|404|429|500|rate limit|timeout|request failed/i,
   database: /supabase|postgres|sql|query|database|connection refused|authentication failed|rls|row level security/i,
-  build: /bundle|webpack|vite|rollup|compilation|module not found|cannot resolve|dependency/i,
+  build: /bundle|webpack|vite|rollup|compilation|cannot resolve/i,
   ui: /layout|render|component|react|hook|state|props|css|style|responsive/i,
   performance: /slow|performance|optimization|memory leak|lag|fps|bottleneck/i
 };
@@ -54,7 +55,7 @@ serve(async (req) => {
   }
 
   try {
-    const { errorMessage, errorContext, projectContext } = await req.json();
+    const { errorMessage, errorContext, projectContext, deploymentProvider } = await req.json();
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -206,7 +207,7 @@ ${JSON.stringify(projectContext, null, 2)}
     const aiData = await aiResponse.json();
     const learningResult = JSON.parse(aiData.choices[0].message.content);
 
-    // Step 4: Store this learning for future use
+    // Step 4: Store this learning for future use (includes deployment info)
     const { data: newPattern, error: insertError } = await supabaseClient
       .from('universal_error_patterns')
       .insert({
@@ -224,7 +225,9 @@ ${JSON.stringify(projectContext, null, 2)}
         related_errors: learningResult.relatedErrors,
         confidence_score: confidence,
         learned_from_user_id: user.id,
-        learned_from_project_id: projectContext?.projectId
+        learned_from_project_id: projectContext?.projectId,
+        deployment_provider: deploymentProvider || null,
+        environment: errorContext?.environment || 'development'
       })
       .select()
       .single();

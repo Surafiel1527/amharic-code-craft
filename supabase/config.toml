@@ -231,3 +231,9 @@ verify_jwt = false
 [functions.auto-install-dependency]
 verify_jwt = true
 
+[functions.mega-mind-orchestrator]
+verify_jwt = true
+
+[functions.smart-dependency-detector]
+verify_jwt = false
+
