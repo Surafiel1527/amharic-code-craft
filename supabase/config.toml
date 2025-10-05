@@ -9,6 +9,12 @@ verify_jwt = true
 [functions.ci-cd-webhook]
 verify_jwt = true
 
+[functions.real-package-installer]
+verify_jwt = true
+
+[functions.generate-package-json]
+verify_jwt = true
+
 [functions.smart-dependency-detector]
 verify_jwt = true
 

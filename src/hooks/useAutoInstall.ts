@@ -95,7 +95,7 @@ export function useAutoInstall(code: string, enabled: boolean = true) {
     try {
       for (const pkg of packages) {
         try {
-          const { error } = await supabase.functions.invoke('intelligent-package-installer', {
+          const { error } = await supabase.functions.invoke('real-package-installer', {
             body: {
               packageName: pkg.name,
               action: 'install',
@@ -135,7 +135,7 @@ export function useAutoInstall(code: string, enabled: boolean = true) {
   const installPackage = async (packageName: string) => {
     setIsInstalling(true);
     try {
-      const { error } = await supabase.functions.invoke('intelligent-package-installer', {
+      const { error } = await supabase.functions.invoke('real-package-installer', {
         body: {
           packageName,
           action: 'install',

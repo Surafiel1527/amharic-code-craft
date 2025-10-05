@@ -2247,6 +2247,47 @@ export type Database = {
           },
         ]
       }
+      installed_packages: {
+        Row: {
+          auto_detected: boolean | null
+          id: string
+          installed_at: string | null
+          metadata: Json | null
+          package_name: string
+          project_id: string | null
+          user_id: string
+          version: string
+        }
+        Insert: {
+          auto_detected?: boolean | null
+          id?: string
+          installed_at?: string | null
+          metadata?: Json | null
+          package_name: string
+          project_id?: string | null
+          user_id: string
+          version: string
+        }
+        Update: {
+          auto_detected?: boolean | null
+          id?: string
+          installed_at?: string | null
+          metadata?: Json | null
+          package_name?: string
+          project_id?: string | null
+          user_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installed_packages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_usage_logs: {
         Row: {
           action_type: string
@@ -2656,6 +2697,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      package_install_logs: {
+        Row: {
+          action: string
+          auto_detected: boolean | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          package_name: string
+          success: boolean | null
+          user_id: string
+          version: string
+        }
+        Insert: {
+          action: string
+          auto_detected?: boolean | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          package_name: string
+          success?: boolean | null
+          user_id: string
+          version: string
+        }
+        Update: {
+          action?: string
+          auto_detected?: boolean | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          package_name?: string
+          success?: boolean | null
+          user_id?: string
+          version?: string
+        }
+        Relationships: []
       }
       package_installations: {
         Row: {
@@ -4531,6 +4608,17 @@ export type Database = {
       get_error_rate: {
         Args: { time_window?: unknown }
         Returns: number
+      }
+      get_package_stats: {
+        Args: { p_user_id?: string }
+        Returns: {
+          auto_detected_packages: number
+          manual_packages: number
+          most_installed: string[]
+          total_installs: number
+          total_packages: number
+          total_uninstalls: number
+        }[]
       }
       get_privacy_audit: {
         Args: Record<PropertyKey, never>

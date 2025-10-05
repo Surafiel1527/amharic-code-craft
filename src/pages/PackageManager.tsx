@@ -72,12 +72,29 @@ import moment from 'moment';
     
     setIsSearching(true);
     try {
-      // In a real implementation, this would call an edge function
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { data, error } = await supabase.functions.invoke('real-package-installer', {
+        body: {
+          packageName: searchQuery,
+          action: 'search'
+        }
+      });
+
+      if (error) throw error;
+
+      // Add search results to packages list
+      const searchResults: PackageInfo[] = data.results.slice(0, 10).map((pkg: any) => ({
+        name: pkg.name,
+        version: pkg.version,
+        description: pkg.description,
+        status: "available" as const,
+        lastUpdated: new Date(pkg.date).toLocaleDateString()
+      }));
+
+      setPackages(prev => [...prev.filter(p => p.status === 'installed'), ...searchResults]);
       
       toast({
         title: "Search Complete",
-        description: `Found packages matching "${searchQuery}"`
+        description: `Found ${data.total} packages matching "${searchQuery}"`
       });
     } catch (error) {
       toast({
@@ -92,7 +109,7 @@ import moment from 'moment';
 
   const installPackage = async (packageName: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('intelligent-package-installer', {
+      const { data, error } = await supabase.functions.invoke('real-package-installer', {
         body: {
           packageName,
           action: 'install'
@@ -103,12 +120,17 @@ import moment from 'moment';
 
       toast({
         title: "Package Installed",
-        description: `${packageName} installed successfully`
+        description: `${packageName}@${data.package.version} installed successfully`
       });
 
       // Update package status
       setPackages(prev => prev.map(pkg =>
-        pkg.name === packageName ? { ...pkg, status: "installed" as const } : pkg
+        pkg.name === packageName ? { 
+          ...pkg, 
+          status: "installed" as const,
+          version: data.package.version,
+          size: `${(data.package.size / 1024).toFixed(1)} KB`
+        } : pkg
       ));
     } catch (error) {
       toast({
@@ -121,7 +143,14 @@ import moment from 'moment';
 
   const uninstallPackage = async (packageName: string) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const { error } = await supabase.functions.invoke('real-package-installer', {
+        body: {
+          packageName,
+          action: 'uninstall'
+        }
+      });
+
+      if (error) throw error;
       
       toast({
         title: "Package Uninstalled",
