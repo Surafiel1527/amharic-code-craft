@@ -283,12 +283,25 @@ const Index = () => {
     }
 
     setIsGenerating(true);
+    
+    // Show progress toast
+    const progressToast = toast.loading("🚀 Smart Orchestrator activated - analyzing your request...");
+    
     try {
-      const { data, error } = await supabase.functions.invoke("generate-website", {
-        body: { prompt },
+      // Use smart orchestrator for full-stack generation
+      const { data, error } = await supabase.functions.invoke("smart-orchestrator", {
+        body: { 
+          task: prompt,
+          userId: user.id,
+          context: {
+            requestType: 'full-stack-generation',
+            timestamp: new Date().toISOString()
+          }
+        },
       });
 
       if (error) {
+        toast.dismiss(progressToast);
         if (error.message.includes("429")) {
           toast.error(t("toast.rateLimitTitle"), { description: t("toast.rateLimitDesc") });
         } else if (error.message.includes("402")) {
@@ -299,7 +312,11 @@ const Index = () => {
         throw error;
       }
 
-      setGeneratedCode(data.html);
+      toast.dismiss(progressToast);
+      
+      // Smart orchestrator returns structured data
+      const generatedHTML = data?.result?.generatedCode || data?.generatedCode || data?.html || '';
+      setGeneratedCode(generatedHTML);
       
       // Auto-save Quick generation and open in workspace
       const title = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt;
