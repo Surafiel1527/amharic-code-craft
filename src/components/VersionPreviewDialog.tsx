@@ -57,18 +57,6 @@ export function VersionPreviewDialog({
               </DialogDescription>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-auto">
-                <TabsList className="h-8">
-                  <TabsTrigger value="preview" className="text-xs gap-1">
-                    <ExternalLink className="h-3 w-3" />
-                    Preview
-                  </TabsTrigger>
-                  <TabsTrigger value="code" className="text-xs gap-1">
-                    <Code2 className="h-3 w-3" />
-                    Code
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
               <Button
                 variant="outline"
                 size="sm"
@@ -82,8 +70,21 @@ export function VersionPreviewDialog({
           </div>
         </DialogHeader>
         
-        <div className="flex-1 overflow-hidden">
-          <TabsContent value="preview" className="h-full m-0 p-0" forceMount hidden={activeTab !== 'preview'}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-4 pt-2 border-b shrink-0">
+            <TabsList className="h-8">
+              <TabsTrigger value="preview" className="text-xs gap-1">
+                <ExternalLink className="h-3 w-3" />
+                Preview
+              </TabsTrigger>
+              <TabsTrigger value="code" className="text-xs gap-1">
+                <Code2 className="h-3 w-3" />
+                Code
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="preview" className="flex-1 m-0 p-0 overflow-hidden">
             {previewUrl ? (
               <iframe
                 src={previewUrl}
@@ -98,14 +99,14 @@ export function VersionPreviewDialog({
             )}
           </TabsContent>
           
-          <TabsContent value="code" className="h-full m-0 p-0" forceMount hidden={activeTab !== 'code'}>
+          <TabsContent value="code" className="flex-1 m-0 p-0 overflow-hidden">
             <ScrollArea className="h-full">
               <pre className="text-xs bg-muted p-4 m-4 rounded-lg overflow-x-auto">
                 <code>{htmlCode}</code>
               </pre>
             </ScrollArea>
           </TabsContent>
-        </div>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
