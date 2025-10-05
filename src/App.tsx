@@ -19,6 +19,7 @@ import PackageManager from "./pages/PackageManager";
 import TestingHub from "./pages/TestingHub";
 import AITrainingDashboard from "./pages/AITrainingDashboard";
 import Marketplace from "./pages/Marketplace";
+import TaskManagerOrchestration from "./pages/TaskManagerOrchestration";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { BackgroundJobsIndicator } from "./components/BackgroundJobsIndicator";
 
@@ -46,6 +47,7 @@ const App = () => {
         <Route path="/testing" element={<TestingHub />} />
         <Route path="/ai-training" element={<AITrainingDashboard />} />
         <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/task-manager-orchestration" element={<TaskManagerOrchestration />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
