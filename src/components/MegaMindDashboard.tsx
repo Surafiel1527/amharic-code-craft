@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Brain, Package, Zap, CheckCircle2, AlertCircle, Code, Cpu, Database, Download } from "lucide-react";
 import { CompleteProjectPackager } from "./CompleteProjectPackager";
+import InstantPackageInstaller from "./InstantPackageInstaller";
 
 export const MegaMindDashboard = () => {
   const [request, setRequest] = useState("");
@@ -73,8 +74,12 @@ export const MegaMindDashboard = () => {
       </div>
 
       <Tabs defaultValue="orchestrator" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="orchestrator">Live Orchestrator</TabsTrigger>
+          <TabsTrigger value="installer">
+            <Zap className="w-4 h-4 mr-2" />
+            Package Installer
+          </TabsTrigger>
           <TabsTrigger value="packager">
             <Download className="w-4 h-4 mr-2" />
             Project Packager
@@ -250,6 +255,10 @@ export const MegaMindDashboard = () => {
               </p>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="installer" className="space-y-4">
+          <InstantPackageInstaller />
         </TabsContent>
 
         <TabsContent value="packager" className="space-y-4">

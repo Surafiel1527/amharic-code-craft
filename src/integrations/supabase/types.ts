@@ -2295,6 +2295,36 @@ export type Database = {
           },
         ]
       }
+      package_installations: {
+        Row: {
+          created_at: string
+          errors: Json | null
+          id: string
+          installation_time_ms: number
+          packages: Json
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          errors?: Json | null
+          id?: string
+          installation_time_ms: number
+          packages?: Json
+          success?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          errors?: Json | null
+          id?: string
+          installation_time_ms?: number
+          packages?: Json
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       pattern_cache: {
         Row: {
           cache_key: string
