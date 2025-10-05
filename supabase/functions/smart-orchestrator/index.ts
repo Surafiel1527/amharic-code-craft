@@ -11,7 +11,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function to call AI with automatic fallback
+// Helper function to call AI with automatic fallback (Lovable Gateway → Direct Gemini)
 async function callAIWithFallback(
   LOVABLE_API_KEY: string,
   messages: any[],
@@ -24,12 +24,13 @@ async function callAIWithFallback(
   
   let lastError: Error | null = null;
 
+  // Phase 1 & 2: Try Lovable AI Gateway with primary and backup models
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
     const isBackup = i > 0;
     
     try {
-      console.log(`${isBackup ? '🔄 Backup' : '🚀 Primary'} attempt with model: ${model}`);
+      console.log(`${isBackup ? '🔄 Backup' : '🚀 Primary'} attempt with Lovable Gateway: ${model}`);
       
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -46,34 +47,97 @@ async function callAIWithFallback(
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`API error (${response.status}): ${errorText}`);
-        throw new Error(`API error (${response.status}): ${errorText}`);
+        console.error(`Lovable Gateway error (${response.status}): ${errorText}`);
+        throw new Error(`Lovable Gateway error (${response.status}): ${errorText}`);
       }
 
       const data = await response.json();
-      console.log(`✅ Success with ${isBackup ? 'backup' : 'primary'} model: ${model}`);
+      console.log(`✅ Success with Lovable Gateway ${isBackup ? 'backup' : 'primary'}: ${model}`);
       
       return {
         success: true,
         data,
         modelUsed: model,
-        wasBackup: isBackup
+        wasBackup: isBackup,
+        gateway: 'lovable'
       };
     } catch (error: any) {
-      console.error(`❌ ${isBackup ? 'Backup' : 'Primary'} model ${model} failed:`, error.message);
+      console.error(`❌ Lovable Gateway ${isBackup ? 'backup' : 'primary'} ${model} failed:`, error.message);
       lastError = error;
       
-      // If this was not the last model, continue to next
       if (i < models.length - 1) {
         console.log(`⏳ Falling back to backup model in 1 second...`);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Brief delay before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
         continue;
       }
     }
   }
 
-  // All models failed
-  throw new Error(`All AI models failed. Last error: ${lastError?.message}`);
+  // Phase 3: Emergency fallback to Direct Gemini API
+  console.log('🆘 All Lovable Gateway attempts failed. Trying direct Gemini API as emergency fallback...');
+  
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+  if (!GEMINI_API_KEY) {
+    console.error('❌ GEMINI_API_KEY not configured. Cannot use emergency fallback.');
+    throw new Error(`All AI providers failed. Last error: ${lastError?.message}. Set GEMINI_API_KEY for emergency fallback.`);
+  }
+
+  try {
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Brief delay before emergency fallback
+    
+    // Convert messages to Gemini format
+    const geminiMessages = messages.map(msg => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }]
+    }));
+
+    console.log('🔧 Calling direct Gemini API (gemini-2.0-flash-exp)...');
+    
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: geminiMessages,
+          generationConfig: {
+            temperature: temperature,
+            maxOutputTokens: 8000,
+          }
+        })
+      }
+    );
+
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      console.error(`Direct Gemini API error (${geminiResponse.status}): ${errorText}`);
+      throw new Error(`Direct Gemini API error (${geminiResponse.status}): ${errorText}`);
+    }
+
+    const geminiData = await geminiResponse.json();
+    console.log('✅ SUCCESS with direct Gemini API emergency fallback!');
+    
+    // Convert Gemini response format to OpenAI-compatible format
+    const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    return {
+      success: true,
+      data: {
+        choices: [{
+          message: {
+            role: 'assistant',
+            content: content
+          }
+        }]
+      },
+      modelUsed: 'gemini-2.0-flash-exp',
+      wasBackup: true,
+      gateway: 'direct-gemini-emergency'
+    };
+  } catch (error: any) {
+    console.error('❌ Emergency Gemini fallback also failed:', error.message);
+    throw new Error(`ALL AI providers failed including emergency fallback. Lovable Gateway error: ${lastError?.message}. Gemini error: ${error.message}`);
+  }
 }
 
 // Helper: Load project memory and context
