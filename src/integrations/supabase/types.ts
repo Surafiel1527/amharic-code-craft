@@ -49,6 +49,54 @@ export type Database = {
           },
         ]
       }
+      admin_approval_queue: {
+        Row: {
+          approval_score: number | null
+          auto_approved: boolean | null
+          created_at: string
+          id: string
+          item_id: string
+          item_type: string
+          metadata: Json | null
+          priority: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_notes: string | null
+          status: string
+          submitted_by: string
+        }
+        Insert: {
+          approval_score?: number | null
+          auto_approved?: boolean | null
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: string
+          metadata?: Json | null
+          priority?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          submitted_by: string
+        }
+        Update: {
+          approval_score?: number | null
+          auto_approved?: boolean | null
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: string
+          metadata?: Json | null
+          priority?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          submitted_by?: string
+        }
+        Relationships: []
+      }
       admin_chat_messages: {
         Row: {
           content: string
@@ -117,6 +165,87 @@ export type Database = {
           prompt?: string
           status?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      ai_feedback_patterns: {
+        Row: {
+          avg_user_rating: number | null
+          created_at: string
+          id: string
+          improved_prompt: string
+          last_used_at: string | null
+          learned_from_feedback_count: number | null
+          metadata: Json | null
+          original_prompt: string
+          pattern_category: string
+          success_rate: number | null
+          times_used: number | null
+        }
+        Insert: {
+          avg_user_rating?: number | null
+          created_at?: string
+          id?: string
+          improved_prompt: string
+          last_used_at?: string | null
+          learned_from_feedback_count?: number | null
+          metadata?: Json | null
+          original_prompt: string
+          pattern_category: string
+          success_rate?: number | null
+          times_used?: number | null
+        }
+        Update: {
+          avg_user_rating?: number | null
+          created_at?: string
+          id?: string
+          improved_prompt?: string
+          last_used_at?: string | null
+          learned_from_feedback_count?: number | null
+          metadata?: Json | null
+          original_prompt?: string
+          pattern_category?: string
+          success_rate?: number | null
+          times_used?: number | null
+        }
+        Relationships: []
+      }
+      ai_improvement_logs: {
+        Row: {
+          after_metric: number
+          applied_at: string
+          before_metric: number
+          changes_made: Json
+          confidence_score: number | null
+          id: string
+          improvement_percentage: number | null
+          improvement_type: string
+          validated_at: string | null
+          validation_status: string | null
+        }
+        Insert: {
+          after_metric: number
+          applied_at?: string
+          before_metric: number
+          changes_made: Json
+          confidence_score?: number | null
+          id?: string
+          improvement_percentage?: number | null
+          improvement_type: string
+          validated_at?: string | null
+          validation_status?: string | null
+        }
+        Update: {
+          after_metric?: number
+          applied_at?: string
+          before_metric?: number
+          changes_made?: Json
+          confidence_score?: number | null
+          id?: string
+          improvement_percentage?: number | null
+          improvement_type?: string
+          validated_at?: string | null
+          validation_status?: string | null
         }
         Relationships: []
       }
@@ -1157,6 +1286,44 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creator_analytics: {
+        Row: {
+          creator_id: string
+          id: string
+          metric_type: string
+          metric_value: number
+          plugin_id: string | null
+          recorded_at: string
+          time_period: string
+        }
+        Insert: {
+          creator_id: string
+          id?: string
+          metric_type: string
+          metric_value: number
+          plugin_id?: string | null
+          recorded_at?: string
+          time_period: string
+        }
+        Update: {
+          creator_id?: string
+          id?: string
+          metric_type?: string
+          metric_value?: number
+          plugin_id?: string | null
+          recorded_at?: string
+          time_period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_analytics_plugin_id_fkey"
+            columns: ["plugin_id"]
+            isOneToOne: false
+            referencedRelation: "ai_plugins"
             referencedColumns: ["id"]
           },
         ]
@@ -2886,6 +3053,101 @@ export type Database = {
           },
         ]
       }
+      pattern_recognition_cache: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string
+          occurrence_count: number | null
+          pattern_signature: string
+          pattern_type: string
+          recommended_action: Json | null
+          success_rate: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          occurrence_count?: number | null
+          pattern_signature: string
+          pattern_type: string
+          recommended_action?: Json | null
+          success_rate?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          occurrence_count?: number | null
+          pattern_signature?: string
+          pattern_type?: string
+          recommended_action?: Json | null
+          success_rate?: number | null
+        }
+        Relationships: []
+      }
+      payment_transactions: {
+        Row: {
+          amount_creator: number
+          amount_platform: number
+          amount_total: number
+          buyer_id: string
+          created_at: string
+          currency: string
+          id: string
+          payment_method: string | null
+          payment_status: string
+          plugin_id: string | null
+          receipt_url: string | null
+          seller_id: string
+          stripe_customer_id: string | null
+          stripe_payment_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_creator: number
+          amount_platform: number
+          amount_total: number
+          buyer_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          payment_method?: string | null
+          payment_status: string
+          plugin_id?: string | null
+          receipt_url?: string | null
+          seller_id: string
+          stripe_customer_id?: string | null
+          stripe_payment_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_creator?: number
+          amount_platform?: number
+          amount_total?: number
+          buyer_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          payment_method?: string | null
+          payment_status?: string
+          plugin_id?: string | null
+          receipt_url?: string | null
+          seller_id?: string
+          stripe_customer_id?: string | null
+          stripe_payment_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_transactions_plugin_id_fkey"
+            columns: ["plugin_id"]
+            isOneToOne: false
+            referencedRelation: "ai_plugins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_optimizations: {
         Row: {
           after_performance: Json
@@ -2958,6 +3220,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "plugin_installations_plugin_id_fkey"
+            columns: ["plugin_id"]
+            isOneToOne: false
+            referencedRelation: "ai_plugins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plugin_security_scans: {
+        Row: {
+          created_at: string
+          id: string
+          plugin_id: string
+          recommendations: Json | null
+          scan_status: string
+          scan_type: string
+          scanned_at: string | null
+          security_score: number | null
+          severity_level: string | null
+          vulnerabilities_found: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          plugin_id: string
+          recommendations?: Json | null
+          scan_status?: string
+          scan_type: string
+          scanned_at?: string | null
+          security_score?: number | null
+          severity_level?: string | null
+          vulnerabilities_found?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          plugin_id?: string
+          recommendations?: Json | null
+          scan_status?: string
+          scan_type?: string
+          scanned_at?: string | null
+          security_score?: number | null
+          severity_level?: string | null
+          vulnerabilities_found?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plugin_security_scans_plugin_id_fkey"
             columns: ["plugin_id"]
             isOneToOne: false
             referencedRelation: "ai_plugins"

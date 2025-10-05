@@ -321,3 +321,15 @@ verify_jwt = true
 [functions.marketplace-publish]
 verify_jwt = true
 
+[functions.self-learning-engine]
+verify_jwt = false
+
+[functions.plugin-security-scanner]
+verify_jwt = false
+
+[functions.process-plugin-purchase]
+verify_jwt = true
+
+[functions.pattern-recognizer]
+verify_jwt = false
+
