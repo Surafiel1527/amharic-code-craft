@@ -22,9 +22,12 @@ import "prismjs/components/prism-json";
 export interface UniversalChatInterfaceProps {
   // Core props
   projectId?: string;
+  conversationId?: string;
   selectedFiles?: string[];
   projectFiles?: Array<{ file_path: string; file_content: string }>;
   onCodeApply?: (code: string, filePath: string) => Promise<void>;
+  onConversationChange?: (id: string) => void;
+  projectContext?: any;
   
   // UI customization
   mode?: 'fullscreen' | 'sidebar' | 'panel' | 'inline';
@@ -33,10 +36,14 @@ export interface UniversalChatInterfaceProps {
   showFooter?: boolean;
   height?: string;
   className?: string;
+  welcomeMessage?: React.ReactNode;
   
   // Behavior
   autoLearn?: boolean;
   autoApply?: boolean;
+  persistMessages?: boolean;
+  enableTools?: boolean;
+  enableStreaming?: boolean;
   placeholder?: string;
 }
 
@@ -95,18 +102,25 @@ const ROUTE_COLORS = {
  */
 export function UniversalChatInterface({
   projectId,
+  conversationId,
   selectedFiles = [],
   projectFiles = [],
   onCodeApply,
+  onConversationChange,
+  projectContext,
   mode = 'panel',
   showContext = true,
   showHeader = true,
   showFooter = true,
   height,
   className = '',
+  welcomeMessage,
   autoLearn = true,
   autoApply = true,
-  placeholder = "Ask anything... I can fix errors, generate code, or answer questions"
+  persistMessages = false,
+  enableTools = false,
+  enableStreaming = false,
+  placeholder = 'Type your message...'
 }: UniversalChatInterfaceProps) {
   const [input, setInput] = useState("");
   const [contextMode, setContextMode] = useState<'selected' | 'all' | 'none'>('selected');
@@ -122,16 +136,23 @@ export function UniversalChatInterface({
     isLoading,
     sendMessage,
     clearMessages,
-    stopGeneration
+    stopGeneration,
+    conversationId: activeConversationId,
+    currentPhase,
+    progress
   } = useUniversalAIChat({
     projectId,
+    conversationId,
     contextFiles: projectFiles,
-    selectedFiles: contextMode === 'none' ? [] : 
-                   contextMode === 'selected' ? selectedFiles :
-                   projectFiles.map(f => f.file_path),
+    selectedFiles: contextMode === 'selected' ? selectedFiles : contextMode === 'all' ? projectFiles.map(f => f.file_path) : [],
     onCodeApply,
+    onConversationChange,
     autoLearn,
-    autoApply
+    autoApply,
+    persistMessages,
+    enableTools,
+    enableStreaming,
+    projectContext
   });
 
   // Auto-scroll on new messages
