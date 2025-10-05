@@ -213,6 +213,90 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_plugins: {
+        Row: {
+          config_schema: Json
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          install_count: number | null
+          is_public: boolean | null
+          plugin_code: string
+          plugin_name: string
+          rating: number | null
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          config_schema: Json
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          install_count?: number | null
+          is_public?: boolean | null
+          plugin_code: string
+          plugin_name: string
+          rating?: number | null
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          config_schema?: Json
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          install_count?: number | null
+          is_public?: boolean | null
+          plugin_code?: string
+          plugin_name?: string
+          rating?: number | null
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
+      ai_workflows: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          trigger_config: Json | null
+          trigger_type: string
+          updated_at: string
+          user_id: string
+          workflow_name: string
+          workflow_steps: Json
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          trigger_config?: Json | null
+          trigger_type?: string
+          updated_at?: string
+          user_id: string
+          workflow_name: string
+          workflow_steps: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          trigger_config?: Json | null
+          trigger_type?: string
+          updated_at?: string
+          user_id?: string
+          workflow_name?: string
+          workflow_steps?: Json
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           api_key: string
@@ -599,6 +683,47 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collaborative_messages: {
+        Row: {
+          code_block: string | null
+          content: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          role: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          code_block?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          code_block?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collaborative_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "team_ai_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -1561,6 +1686,48 @@ export type Database = {
         }
         Relationships: []
       }
+      external_integrations: {
+        Row: {
+          config: Json | null
+          created_at: string
+          credentials: Json
+          id: string
+          integration_name: string
+          integration_type: string
+          is_active: boolean | null
+          last_tested_at: string | null
+          test_status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          credentials: Json
+          id?: string
+          integration_name: string
+          integration_type: string
+          is_active?: boolean | null
+          last_tested_at?: string | null
+          test_status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          credentials?: Json
+          id?: string
+          integration_name?: string
+          integration_type?: string
+          is_active?: boolean | null
+          last_tested_at?: string | null
+          test_status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       featured_projects: {
         Row: {
           display_order: number | null
@@ -1793,6 +1960,53 @@ export type Database = {
           },
         ]
       }
+      integration_usage_logs: {
+        Row: {
+          action_type: string
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          integration_id: string
+          request_data: Json | null
+          response_data: Json | null
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          integration_id: string
+          request_data?: Json | null
+          response_data?: Json | null
+          success: boolean
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          integration_id?: string
+          request_data?: Json | null
+          response_data?: Json | null
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_usage_logs_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "external_integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -1863,6 +2077,53 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      multi_model_logs: {
+        Row: {
+          cost_estimate: number | null
+          created_at: string
+          duration_ms: number | null
+          execution_id: string | null
+          id: string
+          input_data: Json
+          model_used: string
+          output_data: Json | null
+          step_number: number
+          success: boolean
+        }
+        Insert: {
+          cost_estimate?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          execution_id?: string | null
+          id?: string
+          input_data: Json
+          model_used: string
+          output_data?: Json | null
+          step_number: number
+          success: boolean
+        }
+        Update: {
+          cost_estimate?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          execution_id?: string | null
+          id?: string
+          input_data?: Json
+          model_used?: string
+          output_data?: Json | null
+          step_number?: number
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "multi_model_logs_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_executions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -2005,6 +2266,85 @@ export type Database = {
             columns: ["pattern_id"]
             isOneToOne: false
             referencedRelation: "cross_project_patterns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipeline_optimizations: {
+        Row: {
+          after_performance: Json
+          applied: boolean | null
+          applied_at: string | null
+          before_performance: Json
+          created_at: string
+          id: string
+          improvement_percentage: number | null
+          optimization_type: string
+          workflow_id: string
+        }
+        Insert: {
+          after_performance: Json
+          applied?: boolean | null
+          applied_at?: string | null
+          before_performance: Json
+          created_at?: string
+          id?: string
+          improvement_percentage?: number | null
+          optimization_type: string
+          workflow_id: string
+        }
+        Update: {
+          after_performance?: Json
+          applied?: boolean | null
+          applied_at?: string | null
+          before_performance?: Json
+          created_at?: string
+          id?: string
+          improvement_percentage?: number | null
+          optimization_type?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_optimizations_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "ai_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plugin_installations: {
+        Row: {
+          config: Json | null
+          id: string
+          installed_at: string
+          is_active: boolean | null
+          plugin_id: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json | null
+          id?: string
+          installed_at?: string
+          is_active?: boolean | null
+          plugin_id: string
+          user_id: string
+        }
+        Update: {
+          config?: Json | null
+          id?: string
+          installed_at?: string
+          is_active?: boolean | null
+          plugin_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plugin_installations_plugin_id_fkey"
+            columns: ["plugin_id"]
+            isOneToOne: false
+            referencedRelation: "ai_plugins"
             referencedColumns: ["id"]
           },
         ]
@@ -2675,6 +3015,75 @@ export type Database = {
         }
         Relationships: []
       }
+      team_ai_sessions: {
+        Row: {
+          created_at: string
+          created_by: string
+          ended_at: string | null
+          id: string
+          is_active: boolean | null
+          participants: Json | null
+          session_name: string
+          shared_context: Json | null
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          participants?: Json | null
+          session_name: string
+          shared_context?: Json | null
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          participants?: Json | null
+          session_name?: string
+          shared_context?: Json | null
+          workspace_id?: string | null
+        }
+        Relationships: []
+      }
+      team_learning_contributions: {
+        Row: {
+          contribution_type: string
+          created_at: string
+          id: string
+          impact_score: number | null
+          pattern_learned: string
+          times_reused: number | null
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          contribution_type: string
+          created_at?: string
+          id?: string
+          impact_score?: number | null
+          pattern_learned: string
+          times_reused?: number | null
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          contribution_type?: string
+          created_at?: string
+          id?: string
+          impact_score?: number | null
+          pattern_learned?: string
+          times_reused?: number | null
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           id: string
@@ -3047,6 +3456,47 @@ export type Database = {
         }
         Relationships: []
       }
+      user_presence: {
+        Row: {
+          current_file: string | null
+          cursor_position: Json | null
+          id: string
+          last_seen_at: string
+          metadata: Json | null
+          session_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          current_file?: string | null
+          cursor_position?: Json | null
+          id?: string
+          last_seen_at?: string
+          metadata?: Json | null
+          session_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          current_file?: string | null
+          cursor_position?: Json | null
+          id?: string
+          last_seen_at?: string
+          metadata?: Json | null
+          session_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_presence_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "team_ai_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -3136,6 +3586,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      workflow_executions: {
+        Row: {
+          completed_at: string | null
+          current_step: number | null
+          error_message: string | null
+          execution_data: Json | null
+          id: string
+          results: Json | null
+          started_at: string
+          status: string
+          total_steps: number
+          user_id: string
+          workflow_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          current_step?: number | null
+          error_message?: string | null
+          execution_data?: Json | null
+          id?: string
+          results?: Json | null
+          started_at?: string
+          status?: string
+          total_steps: number
+          user_id: string
+          workflow_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          current_step?: number | null
+          error_message?: string | null
+          execution_data?: Json | null
+          id?: string
+          results?: Json | null
+          started_at?: string
+          status?: string
+          total_steps?: number
+          user_id?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_executions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "ai_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
