@@ -1,5 +1,14 @@
 project_id = "xuncvfnvatgqshlivuep"
 
+[functions.real-code-analysis]
+verify_jwt = true
+
+[functions.real-test-execution]
+verify_jwt = true
+
+[functions.physical-build-blocker]
+verify_jwt = true
+
 [functions.sophisticated-code-analysis]
 verify_jwt = true
 
