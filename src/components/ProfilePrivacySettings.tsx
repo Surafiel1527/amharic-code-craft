@@ -32,16 +32,20 @@ export const ProfilePrivacySettings = () => {
 
       if (error) throw error;
       
-      // If no profile exists yet, create one
+      // If no profile exists yet, create one with upsert
       if (!data) {
-        const { error: insertError } = await supabase
+        const { error: upsertError } = await supabase
           .from("profiles")
-          .insert({
+          .upsert({
             id: user.id,
-            profile_visibility: "public"
+            profile_visibility: "public",
+            email: user.email,
+            full_name: user.user_metadata?.full_name || "",
+          }, {
+            onConflict: 'id'
           });
         
-        if (insertError) throw insertError;
+        if (upsertError) throw upsertError;
         setVisibility("public");
       } else {
         setVisibility(data.profile_visibility || "public");
@@ -59,10 +63,16 @@ export const ProfilePrivacySettings = () => {
     
     setSaving(true);
     try {
+      // Use upsert to handle both insert and update
       const { error } = await supabase
         .from("profiles")
-        .update({ profile_visibility: visibility })
-        .eq("id", user.id);
+        .upsert({
+          id: user.id,
+          profile_visibility: visibility,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'id'
+        });
 
       if (error) throw error;
 

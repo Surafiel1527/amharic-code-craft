@@ -41,13 +41,29 @@ const Settings = () => {
         .from("profiles")
         .select("*")
         .eq("id", user?.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 
       if (data) {
         setFullName(data.full_name || "");
         setAvatarUrl(data.avatar_url || "");
+      } else {
+        // No profile exists yet - create one
+        const { error: insertError } = await supabase
+          .from("profiles")
+          .insert({
+            id: user?.id,
+            full_name: user?.user_metadata?.full_name || "",
+            email: user?.email || "",
+          });
+        
+        if (insertError && insertError.code !== '23505') { // Ignore duplicate key error
+          throw insertError;
+        }
+        
+        // Set defaults
+        setFullName(user?.user_metadata?.full_name || "");
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -62,13 +78,17 @@ const Settings = () => {
 
     setSaving(true);
     try {
+      // Use upsert to handle both insert and update cases
       const { error } = await supabase
         .from("profiles")
-        .update({
+        .upsert({
+          id: user.id,
           full_name: fullName,
           avatar_url: avatarUrl,
-        })
-        .eq("id", user.id);
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'id'
+        });
 
       if (error) throw error;
 
