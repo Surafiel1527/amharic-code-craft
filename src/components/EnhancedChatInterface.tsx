@@ -117,6 +117,17 @@ export function EnhancedChatInterface({
         content: f.file_content.substring(0, 1000) // First 1000 chars for context
       }));
 
+      // Build comprehensive code context from selected files
+      const currentCode = contextFiles.length > 0 
+        ? contextFiles.map(f => `// ${f.file_path}\n${f.file_content}`).join('\n\n')
+        : '';
+
+      // Get conversation history for context
+      const conversationHistory = messages.slice(-5).map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+
       // Streaming response
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
@@ -129,13 +140,18 @@ export function EnhancedChatInterface({
 
       // Add timeout to prevent indefinite waiting
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout - please try again')), 30000) // 30 second timeout
+        setTimeout(() => reject(new Error('Request timeout - please try again')), 60000) // 60 second timeout for complex fixes
       );
 
-      const invokePromise = supabase.functions.invoke('intelligent-conversation', {
+      // Use smart orchestrator for complex fixes with full context
+      const invokePromise = supabase.functions.invoke('smart-orchestrator', {
         body: {
-          message: input,
-          projectId,
+          userRequest: input,
+          conversationId: projectId, // Use projectId as conversation context
+          currentCode,
+          conversationHistory,
+          autoRefine: true,
+          autoLearn: true,
           context: {
             files: contextData,
             selectedFiles
@@ -147,7 +163,7 @@ export function EnhancedChatInterface({
 
       if (error) throw error;
 
-      const fullContent = data?.response || data?.message || "I'm here to help!";
+      const fullContent = data?.message || data?.finalCode || data?.explanation || "I'm here to help!";
       const codeBlock = extractCodeBlocks(fullContent);
 
       // Update the assistant message with complete response
@@ -164,12 +180,13 @@ export function EnhancedChatInterface({
 
     } catch (error) {
       console.error('Chat error:', error);
-      toast.error('Failed to send message');
+      const errorMsg = error instanceof Error ? error.message : 'Failed to send message';
+      toast.error(errorMsg);
       
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: `Sorry, I encountered an error: ${errorMsg}. Please try again or simplify your request.`,
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
