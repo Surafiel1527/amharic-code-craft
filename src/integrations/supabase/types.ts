@@ -1469,6 +1469,53 @@ export type Database = {
         }
         Relationships: []
       }
+      error_fix_feedback: {
+        Row: {
+          applied_solution: Json | null
+          created_at: string
+          error_context: Json | null
+          fix_applied_at: string
+          fix_worked: boolean
+          id: string
+          pattern_id: string
+          project_id: string | null
+          user_feedback: string | null
+          user_id: string
+        }
+        Insert: {
+          applied_solution?: Json | null
+          created_at?: string
+          error_context?: Json | null
+          fix_applied_at?: string
+          fix_worked: boolean
+          id?: string
+          pattern_id: string
+          project_id?: string | null
+          user_feedback?: string | null
+          user_id: string
+        }
+        Update: {
+          applied_solution?: Json | null
+          created_at?: string
+          error_context?: Json | null
+          fix_applied_at?: string
+          fix_worked?: boolean
+          id?: string
+          pattern_id?: string
+          project_id?: string | null
+          user_feedback?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "error_fix_feedback_pattern_id_fkey"
+            columns: ["pattern_id"]
+            isOneToOne: false
+            referencedRelation: "universal_error_patterns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       error_patterns: {
         Row: {
           affected_model: string | null
@@ -2828,6 +2875,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      universal_error_patterns: {
+        Row: {
+          affected_technologies: Json | null
+          common_triggers: Json | null
+          confidence_score: number | null
+          created_at: string
+          diagnosis: Json
+          error_category: string
+          error_pattern: string
+          error_signature: string
+          error_subcategory: string | null
+          failure_count: number
+          fix_type: string
+          id: string
+          last_success_at: string | null
+          last_used_at: string | null
+          learned_at: string
+          learned_from_project_id: string | null
+          learned_from_user_id: string | null
+          prevention_tips: Json | null
+          related_errors: Json | null
+          root_cause: string
+          solution: Json
+          success_count: number
+          times_encountered: number | null
+        }
+        Insert: {
+          affected_technologies?: Json | null
+          common_triggers?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          diagnosis: Json
+          error_category: string
+          error_pattern: string
+          error_signature: string
+          error_subcategory?: string | null
+          failure_count?: number
+          fix_type: string
+          id?: string
+          last_success_at?: string | null
+          last_used_at?: string | null
+          learned_at?: string
+          learned_from_project_id?: string | null
+          learned_from_user_id?: string | null
+          prevention_tips?: Json | null
+          related_errors?: Json | null
+          root_cause: string
+          solution: Json
+          success_count?: number
+          times_encountered?: number | null
+        }
+        Update: {
+          affected_technologies?: Json | null
+          common_triggers?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          diagnosis?: Json
+          error_category?: string
+          error_pattern?: string
+          error_signature?: string
+          error_subcategory?: string | null
+          failure_count?: number
+          fix_type?: string
+          id?: string
+          last_success_at?: string | null
+          last_used_at?: string | null
+          learned_at?: string
+          learned_from_project_id?: string | null
+          learned_from_user_id?: string | null
+          prevention_tips?: Json | null
+          related_errors?: Json | null
+          root_cause?: string
+          solution?: Json
+          success_count?: number
+          times_encountered?: number | null
+        }
+        Relationships: []
       }
       user_coding_preferences: {
         Row: {

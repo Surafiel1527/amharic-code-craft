@@ -219,3 +219,9 @@ verify_jwt = true
 [functions.optimize-connection-cost]
 verify_jwt = true
 
+[functions.deployment-fix-teacher]
+verify_jwt = true
+
+[functions.universal-error-teacher]
+verify_jwt = true
+
