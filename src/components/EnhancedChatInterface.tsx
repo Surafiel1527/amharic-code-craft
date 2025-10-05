@@ -146,6 +146,28 @@ export function EnhancedChatInterface({
         content: m.content
       }));
 
+      // Check if this is a deployment error (teach the AI)
+      const isDeploymentError = /vercel|deployment|build|output directory|dist|failed to deploy/i.test(input);
+      
+      if (isDeploymentError) {
+        // First, let AI learn from this deployment error
+        const { data: teachingResult } = await supabase.functions.invoke('deployment-fix-teacher', {
+          body: {
+            errorMessage: input,
+            projectContext: {
+              files: contextData,
+              selectedFiles,
+              projectType: 'vite-react'
+            },
+            deploymentProvider: 'vercel'
+          }
+        });
+
+        if (teachingResult?.solution) {
+          toast.success('🎓 AI learned how to fix this deployment error!');
+        }
+      }
+
       // Streaming response
       const assistantMessage: Message = {
         id: crypto.randomUUID(),

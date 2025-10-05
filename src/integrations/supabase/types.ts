@@ -1314,6 +1314,54 @@ export type Database = {
           },
         ]
       }
+      deployment_error_patterns: {
+        Row: {
+          created_at: string
+          diagnosis: string | null
+          error_pattern: string
+          error_type: string
+          failure_count: number
+          id: string
+          last_used_at: string | null
+          learned_at: string
+          prevention_tips: Json | null
+          provider: string
+          related_errors: Json | null
+          solution: Json
+          success_count: number
+        }
+        Insert: {
+          created_at?: string
+          diagnosis?: string | null
+          error_pattern: string
+          error_type: string
+          failure_count?: number
+          id?: string
+          last_used_at?: string | null
+          learned_at?: string
+          prevention_tips?: Json | null
+          provider: string
+          related_errors?: Json | null
+          solution: Json
+          success_count?: number
+        }
+        Update: {
+          created_at?: string
+          diagnosis?: string | null
+          error_pattern?: string
+          error_type?: string
+          failure_count?: number
+          id?: string
+          last_used_at?: string | null
+          learned_at?: string
+          prevention_tips?: Json | null
+          provider?: string
+          related_errors?: Json | null
+          solution?: Json
+          success_count?: number
+        }
+        Relationships: []
+      }
       deployments: {
         Row: {
           build_duration: number | null
