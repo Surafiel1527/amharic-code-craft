@@ -2040,6 +2040,39 @@ export type Database = {
           },
         ]
       }
+      language_detections: {
+        Row: {
+          confidence: number
+          created_at: string
+          detected_language: string
+          framework: string | null
+          id: string
+          recommended_runtime: string
+          user_id: string
+          user_request: string
+        }
+        Insert: {
+          confidence: number
+          created_at?: string
+          detected_language: string
+          framework?: string | null
+          id?: string
+          recommended_runtime: string
+          user_id: string
+          user_request: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          detected_language?: string
+          framework?: string | null
+          id?: string
+          recommended_runtime?: string
+          user_id?: string
+          user_request?: string
+        }
+        Relationships: []
+      }
       mega_mind_orchestrations: {
         Row: {
           analysis_phase: Json | null
@@ -3010,6 +3043,75 @@ export type Database = {
           traffic_percentage?: number | null
           updated_at?: string | null
           version?: string
+        }
+        Relationships: []
+      }
+      python_executions: {
+        Row: {
+          code_length: number
+          created_at: string
+          execution_time_ms: number
+          exit_code: number
+          has_error: boolean
+          id: string
+          packages_installed: number
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          code_length: number
+          created_at?: string
+          execution_time_ms: number
+          exit_code: number
+          has_error?: boolean
+          id?: string
+          packages_installed?: number
+          success?: boolean
+          user_id: string
+        }
+        Update: {
+          code_length?: number
+          created_at?: string
+          execution_time_ms?: number
+          exit_code?: number
+          has_error?: boolean
+          id?: string
+          packages_installed?: number
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      python_projects: {
+        Row: {
+          created_at: string
+          dependencies_count: number
+          files_count: number
+          id: string
+          project_name: string
+          project_type: string
+          user_id: string
+          user_request: string
+        }
+        Insert: {
+          created_at?: string
+          dependencies_count?: number
+          files_count?: number
+          id?: string
+          project_name: string
+          project_type: string
+          user_id: string
+          user_request: string
+        }
+        Update: {
+          created_at?: string
+          dependencies_count?: number
+          files_count?: number
+          id?: string
+          project_name?: string
+          project_type?: string
+          user_id?: string
+          user_request?: string
         }
         Relationships: []
       }

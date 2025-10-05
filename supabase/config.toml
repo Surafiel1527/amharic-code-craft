@@ -249,3 +249,12 @@ verify_jwt = true
 [functions.multi-modal-generator]
 verify_jwt = true
 
+[functions.intelligent-language-detector]
+verify_jwt = true
+
+[functions.python-project-generator]
+verify_jwt = true
+
+[functions.python-executor]
+verify_jwt = true
+
