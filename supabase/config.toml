@@ -207,3 +207,15 @@ verify_jwt = false
 [functions.intelligent-retry-connection]
 verify_jwt = true
 
+[functions.setup-monitoring-cron]
+verify_jwt = true
+
+[functions.send-alert-notification]
+verify_jwt = false
+
+[functions.predict-failure]
+verify_jwt = true
+
+[functions.optimize-connection-cost]
+verify_jwt = true
+
