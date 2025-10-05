@@ -56,56 +56,53 @@ export function TypeScriptErrorPanel({ projectId, onAutoFix }: TypeScriptErrorPa
 
   if (errors.length === 0) {
     return (
-      <Card className="p-4">
+      <Card className="p-2">
         <div className="flex items-center gap-2 text-green-500">
-          <CheckCircle className="h-5 w-5" />
-          <span className="font-medium">No TypeScript errors</span>
+          <CheckCircle className="h-3 w-3" />
+          <span className="text-xs">No errors</span>
         </div>
       </Card>
     );
   }
 
   return (
-    <Card className="p-4">
-      <div className="space-y-4">
+    <Card className="p-2">
+      <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-destructive" />
-            <span className="font-semibold">TypeScript Issues</span>
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-3 w-3 text-destructive" />
+            <span className="text-xs font-medium">TS Issues</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             {errorCount > 0 && (
-              <Badge variant="destructive">{errorCount} errors</Badge>
+              <Badge variant="destructive" className="text-xs h-5">{errorCount}</Badge>
             )}
             {warningCount > 0 && (
-              <Badge variant="outline" className="border-yellow-500 text-yellow-500">
-                {warningCount} warnings
+              <Badge variant="outline" className="border-yellow-500 text-yellow-500 text-xs h-5">
+                {warningCount}
               </Badge>
             )}
           </div>
         </div>
 
-        <ScrollArea className="h-[300px]">
-          <div className="space-y-2">
+        <ScrollArea className="h-[200px]">
+          <div className="space-y-1">
             {errors.map((error, i) => (
-              <Card key={i} className="p-3 space-y-2">
+              <Card key={i} className="p-2 space-y-1">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <Badge 
                         variant={error.severity === 'error' ? 'destructive' : 'outline'}
-                        className="text-xs"
+                        className="text-xs h-4"
                       >
                         {error.severity}
                       </Badge>
-                      <span className="text-sm font-mono text-muted-foreground">
-                        {error.file}:{error.line}:{error.column}
+                      <span className="text-xs font-mono text-muted-foreground truncate">
+                        {error.file}:{error.line}
                       </span>
                     </div>
-                    <p className="text-sm">{error.message}</p>
-                    <code className="text-xs bg-muted p-1 rounded block">
-                      {error.code}
-                    </code>
+                    <p className="text-xs truncate">{error.message}</p>
                   </div>
                   {error.fixable && (
                     <Button
@@ -113,17 +110,12 @@ export function TypeScriptErrorPanel({ projectId, onAutoFix }: TypeScriptErrorPa
                       variant="outline"
                       onClick={() => handleFix(error)}
                       disabled={fixing.includes(error.code)}
+                      className="h-6 text-xs"
                     >
                       {fixing.includes(error.code) ? (
-                        <>
-                          <Wrench className="h-3 w-3 mr-1 animate-spin" />
-                          Fixing...
-                        </>
+                        <Wrench className="h-3 w-3 animate-spin" />
                       ) : (
-                        <>
-                          <Wrench className="h-3 w-3 mr-1" />
-                          Auto Fix
-                        </>
+                        <Wrench className="h-3 w-3" />
                       )}
                     </Button>
                   )}

@@ -72,58 +72,34 @@ export function AIStatusMonitor({ projectId }: AIStatusMonitorProps) {
   };
 
   return (
-    <Card className="p-4 space-y-4">
+    <Card className="p-2 space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold">AI Status</h3>
         <Badge variant="outline" className={getStatusColor(currentStatus.status)}>
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-1 text-xs">
             {getStatusIcon(currentStatus.status)}
-            {currentStatus.status.toUpperCase()}
+            {currentStatus.status}
           </span>
         </Badge>
+        <span className="text-xs text-muted-foreground">{currentStatus.message}</span>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-start gap-2">
-          <div className="text-sm font-medium">Current:</div>
-          <div className="text-sm text-muted-foreground flex-1">{currentStatus.message}</div>
+      {currentStatus.progress !== undefined && (
+        <div className="w-full bg-secondary rounded-full h-1">
+          <div 
+            className="bg-primary h-1 rounded-full transition-all duration-300"
+            style={{ width: `${currentStatus.progress}%` }}
+          />
         </div>
+      )}
 
-        {currentStatus.progress !== undefined && (
-          <div className="w-full bg-secondary rounded-full h-2">
-            <div 
-              className="bg-primary h-2 rounded-full transition-all duration-300"
-              style={{ width: `${currentStatus.progress}%` }}
-            />
-          </div>
-        )}
-
-        {currentStatus.errors && currentStatus.errors.length > 0 && (
-          <div className="space-y-1 mt-2">
-            <div className="text-sm font-medium text-destructive">TypeScript Errors:</div>
-            {currentStatus.errors.map((error, i) => (
-              <div key={i} className="text-xs text-muted-foreground bg-destructive/10 p-2 rounded">
-                {error}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {history.length > 0 && (
-        <div className="space-y-2 pt-2 border-t">
-          <div className="text-sm font-medium">Recent Activity:</div>
-          <div className="space-y-1 max-h-40 overflow-y-auto">
-            {history.map((item, i) => (
-              <div key={i} className="text-xs flex items-center gap-2 text-muted-foreground">
-                {getStatusIcon(item.status)}
-                <span className="flex-1">{item.message}</span>
-                <span className="text-xs opacity-50">
-                  {item.timestamp.toLocaleTimeString()}
-                </span>
-              </div>
-            ))}
-          </div>
+      {currentStatus.errors && currentStatus.errors.length > 0 && (
+        <div className="space-y-1">
+          <div className="text-xs font-medium text-destructive">{currentStatus.errors.length} errors</div>
+          {currentStatus.errors.slice(0, 2).map((error, i) => (
+            <div key={i} className="text-xs text-muted-foreground bg-destructive/10 p-1 rounded truncate">
+              {error}
+            </div>
+          ))}
         </div>
       )}
     </Card>

@@ -56,40 +56,39 @@ export default function LiveWorkspace() {
   return (
     <div className="h-screen flex flex-col">
       {/* Header */}
-      <header className="border-b p-4 bg-background">
+      <header className="border-b p-2 bg-background">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Super Mega Mind Live Workspace</h1>
-          <div className="text-sm text-muted-foreground">
-            Real-time AI Development Platform
+          <h1 className="text-lg font-bold">Super Mega Mind</h1>
+          <div className="text-xs text-muted-foreground">
+            Live AI Platform
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
-        <div className="h-full grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+        <div className="h-full grid grid-cols-1 lg:grid-cols-2 gap-2 p-2">
           {/* Left Panel - AI Status & Controls */}
-          <div className="space-y-4 overflow-y-auto">
+          <div className="space-y-2 overflow-y-auto">
             <AIStatusMonitor projectId={projectId} />
             
-            <Card className="p-4 space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">What do you want to build?</label>
-                <Textarea
-                  placeholder="E.g., Create a user dashboard with profile cards, a navigation header, and a statistics section..."
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  rows={5}
-                  disabled={generating}
-                />
-              </div>
+            <Card className="p-2 space-y-2">
+              <Textarea
+                placeholder="What do you want to build?"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={3}
+                disabled={generating}
+                className="text-sm"
+              />
               <Button 
                 onClick={handleGenerate}
                 disabled={!prompt.trim() || generating}
+                size="sm"
                 className="w-full"
               >
-                <Send className="h-4 w-4 mr-2" />
-                {generating ? 'Generating...' : 'Generate Code'}
+                <Send className="h-3 w-3 mr-1" />
+                {generating ? 'Generating...' : 'Generate'}
               </Button>
             </Card>
 
@@ -97,13 +96,12 @@ export default function LiveWorkspace() {
               projectId={projectId}
               onAutoFix={async (error) => {
                 console.log('Auto-fixing:', error);
-                // AI will handle the fix
               }}
             />
           </div>
 
           {/* Right Panel - Live Preview */}
-          <div className="space-y-4 overflow-y-auto">
+          <div className="overflow-y-auto">
             <IncrementalPreview 
               projectId={projectId}
               className="h-full"

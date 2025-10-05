@@ -85,23 +85,25 @@ export function IncrementalPreview({ projectId, className }: IncrementalPreviewP
   }, [previewHtml]);
 
   return (
-    <div className={`flex flex-col gap-4 ${className}`}>
+    <div className={`flex flex-col gap-2 ${className}`}>
       {/* Component Status Bar */}
-      <Card className="p-3">
-        <div className="flex flex-wrap gap-2">
-          {updates.map((update, i) => (
-            <Badge 
-              key={i} 
-              variant={update.status === 'complete' ? 'default' : 'outline'}
-              className="gap-1"
-            >
-              {update.status === 'rendering' && <Loader2 className="h-3 w-3 animate-spin" />}
-              {update.status === 'complete' && <CheckCircle2 className="h-3 w-3" />}
-              {update.component}
-            </Badge>
-          ))}
-        </div>
-      </Card>
+      {updates.length > 0 && (
+        <Card className="p-2">
+          <div className="flex flex-wrap gap-1">
+            {updates.slice(-5).map((update, i) => (
+              <Badge 
+                key={i} 
+                variant={update.status === 'complete' ? 'default' : 'outline'}
+                className="gap-1 text-xs h-5"
+              >
+                {update.status === 'rendering' && <Loader2 className="h-2 w-2 animate-spin" />}
+                {update.status === 'complete' && <CheckCircle2 className="h-2 w-2" />}
+                {update.component}
+              </Badge>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Live Preview Frame */}
       <Card className="flex-1 overflow-hidden">
