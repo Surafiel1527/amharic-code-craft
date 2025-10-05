@@ -188,29 +188,42 @@ async function routeToModule(
       }
 
       case 'code-generation': {
-        // Route to Component Generation Agent (existing agentic method)
+        // Route to Smart Update Agent - understands existing project context
         if (subIntent === 'component' || subIntent === 'general') {
-        console.log('🤖 AGENTIC METHOD: Starting 3-step code generation workflow');
+        console.log('🧠 SMART UPDATE: Analyzing project and applying intelligent changes...');
         
-        // STEP 1: PLAN GENERATION
-        console.log('📋 STEP 1: Generating component plan...');
-        const planPrompt = `You are a technical architect. Analyze this request and create a detailed implementation plan.
+        // Enhanced context: understand what exists
+        const projectContext = {
+          currentCode: context.currentCode,
+          hasCode: !!context.currentCode,
+          message: userMessage,
+          conversationHistory: context.conversationHistory
+        };
+        
+        // SMART ANALYSIS: Understand the intent and target
+        const analysisPrompt = `You are an expert software architect analyzing a modification request.
 
-User Request: ${userMessage}
+CURRENT PROJECT:
+${projectContext.hasCode ? `\`\`\`\n${projectContext.currentCode.substring(0, 3000)}\n\`\`\`` : 'No existing code'}
 
-Return ONLY a valid JSON object with this exact structure:
+USER REQUEST: ${userMessage}
+
+ANALYZE:
+1. What specific element/component needs to be changed?
+2. What type of change is being requested (color, layout, text, functionality)?
+3. What files/sections are affected?
+4. What's the minimal change needed?
+
+Return a JSON object with:
 {
-  "componentName": "string",
-  "description": "string",
-  "framework": "React with TypeScript",
-  "requiredTailwindClasses": ["array", "of", "tailwind", "classes"],
-  "structure": ["array", "of", "html", "element", "descriptions"],
-  "features": ["array", "of", "functional", "requirements"]
-}
+  "changeType": "style" | "content" | "structure" | "functionality",
+  "targetElement": "description of what to change (e.g., 'header background color')",
+  "targetSelector": "CSS selector or component name if identifiable",
+  "modification": "specific change description",
+  "reasoning": "why this interpretation"
+}`;
 
-Focus on Tailwind CSS utility classes. Be specific about which classes will be used.`;
-
-        const planResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const analysisResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${LOVABLE_API_KEY}`,
@@ -218,97 +231,57 @@ Focus on Tailwind CSS utility classes. Be specific about which classes will be u
           },
           body: JSON.stringify({
             model: 'google/gemini-2.5-pro',
-            messages: [{ role: 'user', content: planPrompt }],
-            temperature: 0.3
+            messages: [{ role: 'user', content: analysisPrompt }],
+            temperature: 0.1
           })
         });
 
-        if (!planResponse.ok) {
-          throw new Error(`Plan generation failed: ${planResponse.status}`);
+        if (!analysisResponse.ok) {
+          throw new Error(`Analysis failed: ${analysisResponse.status}`);
         }
 
-        const planData = await planResponse.json();
-        let planContent = planData.choices[0].message.content;
+        const analysisData = await analysisResponse.json();
+        let analysisContent = analysisData.choices[0].message.content;
         
-        // Extract JSON from markdown code blocks if present
-        const jsonMatch = planContent.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        const jsonMatch = analysisContent.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
         if (jsonMatch) {
-          planContent = jsonMatch[1];
+          analysisContent = jsonMatch[1];
         }
         
-        const plan = JSON.parse(planContent);
-        console.log('✅ STEP 1 COMPLETE: Plan generated', plan);
-
-        // STEP 2: STRUCTURE (HTML) GENERATION
-        console.log('🏗️ STEP 2: Generating React component structure...');
-        const structurePrompt = `You are a React developer. Create a clean, semantic React component with TypeScript based on this plan:
-
-Component Name: ${plan.componentName}
-Description: ${plan.description}
-Structure Required: ${plan.structure.join(', ')}
-Features: ${plan.features.join(', ')}
-
-CRITICAL RULES:
-1. Generate ONLY a React functional component with TypeScript
-2. Use NO inline styles
-3. Use NO className attributes yet (they will be added in the next step)
-4. Use semantic HTML elements (div, section, article, header, etc.)
-5. Include all necessary props with proper TypeScript types
-6. Add placeholder text where needed
-
-Return ONLY the raw React component code, nothing else.`;
-
-        const structureResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-pro',
-            messages: [{ role: 'user', content: structurePrompt }],
-            temperature: 0.2
-          })
-        });
-
-        if (!structureResponse.ok) {
-          throw new Error(`Structure generation failed: ${structureResponse.status}`);
-        }
-
-        const structureData = await structureResponse.json();
-        let rawComponent = structureData.choices[0].message.content;
+        const analysis = JSON.parse(analysisContent);
+        console.log('✅ ANALYSIS COMPLETE:', analysis);
         
-        // Extract code from markdown blocks if present
-        const codeMatch = rawComponent.match(/```(?:tsx|typescript|jsx)?\s*([\s\S]*?)\s*```/);
-        if (codeMatch) {
-          rawComponent = codeMatch[1];
-        }
-        
-        console.log('✅ STEP 2 COMPLETE: Component structure generated');
+        // SMART MODIFICATION: Apply the change intelligently
+        console.log('🔧 APPLYING MODIFICATION...');
+        const modificationPrompt = `You are an expert developer. Apply this specific modification to the existing code.
 
-        // STEP 3: STYLE (TAILWIND CLASS) INJECTION
-        console.log('🎨 STEP 3: Injecting Tailwind CSS classes...');
-        const stylePrompt = `You are a Tailwind CSS expert. Take this unstyled React component and add Tailwind CSS classes to make it beautiful and functional.
-
-UNSTYLED COMPONENT:
-\`\`\`tsx
-${rawComponent}
+CURRENT CODE:
+\`\`\`
+${projectContext.currentCode || '<!-- No existing code -->'}
 \`\`\`
 
-REQUIRED TAILWIND CLASSES TO USE:
-${plan.requiredTailwindClasses.join(', ')}
+MODIFICATION NEEDED:
+- Target: ${analysis.targetElement}
+- Change Type: ${analysis.changeType}
+- Modification: ${analysis.modification}
+- User Request: ${userMessage}
 
 CRITICAL RULES:
-1. Add className attributes with Tailwind utility classes to EVERY element that needs styling
-2. You MUST use Tailwind CSS classes - this is mandatory
-3. Make the component responsive using Tailwind responsive prefixes (sm:, md:, lg:)
-4. Use the Tailwind classes specified in the requirements
-5. Ensure proper spacing, typography, colors, and layout
-6. Keep the same component structure, only add className attributes
+1. If code exists, MODIFY it - don't create from scratch
+2. Keep ALL existing functionality and structure
+3. ONLY change what's requested
+4. For style changes (colors, sizes), update only those attributes
+5. Maintain all existing classes and content
+6. Return the COMPLETE modified code
 
-Return ONLY the complete styled React component code with Tailwind classes, nothing else.`;
+If the change is a color change:
+- Find the element (header, button, section, etc.)
+- Update its background/color classes from red/current to gray/requested
+- Keep everything else identical
 
-        const styleResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+Return ONLY the complete updated code, ready to use.`;
+
+        const modificationResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${LOVABLE_API_KEY}`,
@@ -316,38 +289,40 @@ Return ONLY the complete styled React component code with Tailwind classes, noth
           },
           body: JSON.stringify({
             model: 'google/gemini-2.5-pro',
-            messages: [{ role: 'user', content: stylePrompt }],
-            temperature: 0.2
+            messages: [{ role: 'user', content: modificationPrompt }],
+            temperature: 0.1
           })
         });
 
-        if (!styleResponse.ok) {
-          throw new Error(`Style injection failed: ${styleResponse.status}`);
+        if (!modificationResponse.ok) {
+          throw new Error(`Modification failed: ${modificationResponse.status}`);
         }
 
-        const styleData = await styleResponse.json();
-        let finalCode = styleData.choices[0].message.content;
+        const modificationData = await modificationResponse.json();
+        let modifiedCode = modificationData.choices[0].message.content;
         
-        // Extract final code from markdown blocks if present
-        const finalCodeMatch = finalCode.match(/```(?:tsx|typescript|jsx)?\s*([\s\S]*?)\s*```/);
-        if (finalCodeMatch) {
-          finalCode = finalCodeMatch[1];
+        const codeMatch = modifiedCode.match(/```(?:html|tsx|typescript|jsx)?\s*([\s\S]*?)\s*```/);
+        if (codeMatch) {
+          modifiedCode = codeMatch[1];
         }
         
-        console.log('✅ STEP 3 COMPLETE: Tailwind classes injected');
-        console.log('🎉 AGENTIC METHOD: All 3 steps completed successfully');
+        console.log('✅ MODIFICATION COMPLETE');
+        console.log('🎉 SMART UPDATE: Successfully applied changes');
 
         return {
           intent: 'code-generation',
           subIntent: subIntent,
-          module: 'agentic-code-generation',
+          module: 'smart-update-agent',
           response: {
             success: true,
-            code: finalCode,
-            generatedCode: finalCode,
-            agenticWorkflow: {
-              plan: plan,
-              steps: ['plan-generation', 'structure-generation', 'style-injection'],
+            code: modifiedCode,
+            generatedCode: modifiedCode,
+            finalCode: modifiedCode,
+            analysis: analysis,
+            explanation: `Updated ${analysis.targetElement}: ${analysis.modification}`,
+            smartWorkflow: {
+              analysis: analysis,
+              steps: ['analyze-intent', 'apply-modification'],
               completed: true
             }
           }

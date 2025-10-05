@@ -71,8 +71,8 @@ serve(async (req) => {
 
     if (masterError) throw masterError;
 
-    // Extract response from master
-    const responseData = masterResponse?.data || masterResponse;
+    // Extract response from master (handle nested data structure)
+    const responseData = masterResponse?.data?.data || masterResponse?.data || masterResponse;
     const orchestrationTime = Date.now() - orchestrationStart;
 
     console.log('✅ smart-orchestrator wrapper - response received from master');
@@ -80,14 +80,20 @@ serve(async (req) => {
     // Format response in expected orchestrator format
     const finalResponse = {
       success: true,
+      finalCode: responseData?.finalCode || responseData?.code || responseData?.generatedCode,
       code: responseData?.code || responseData?.generatedCode,
-      plan: responseData?.plan,
+      plan: responseData?.plan || responseData?.analysis,
       reasoning: responseData?.reasoning,
       reflection: responseData?.reflection,
+      explanation: responseData?.explanation,
       proactiveInsights: responseData?.proactiveInsights,
+      phases: responseData?.smartWorkflow?.steps || responseData?.agenticWorkflow?.steps || [],
+      totalDuration: orchestrationTime,
+      qualityMetrics: responseData?.qualityMetrics,
       metadata: {
         totalTime: orchestrationTime,
-        ...(responseData?.metadata || {})
+        module: masterResponse?.module || responseData?.module,
+        ...(responseData?.metadata || masterResponse?.metadata || {})
       }
     };
 
