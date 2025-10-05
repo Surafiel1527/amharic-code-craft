@@ -29,35 +29,42 @@ export function OrchestrationProgress({ phases, isLoading, totalDuration }: Orch
   const progress = (phases.length / expectedPhases.length) * 100;
 
   return (
-    <Card className="p-4 space-y-3">
+    <Card className="p-3 space-y-2 bg-muted/50">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Smart Orchestration</h3>
+        <h3 className="text-xs font-semibold flex items-center gap-1">
+          {!isLoading && progress === 100 ? (
+            <CheckCircle2 className="w-3 h-3 text-green-500" />
+          ) : (
+            <Loader2 className="w-3 h-3 animate-spin text-primary" />
+          )}
+          Smart Orchestration
+        </h3>
         {totalDuration && (
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs h-5">
             <Clock className="w-3 h-3 mr-1" />
             {(totalDuration / 1000).toFixed(2)}s
           </Badge>
         )}
       </div>
 
-      <Progress value={progress} className="h-2" />
+      <Progress value={progress} className="h-1.5" />
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {expectedPhases.map((phaseName) => {
           const phase = phases.find(p => p.name === phaseName);
           const isCompleted = !!phase;
           const isCurrent = isLoading && phases.length > 0 && phases[phases.length - 1].name === phaseName;
 
           return (
-            <div key={phaseName} className="flex items-center gap-2 text-sm">
+            <div key={phaseName} className="flex items-center gap-2 text-xs">
               {isCompleted ? (
-                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
               ) : isCurrent ? (
-                <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary shrink-0" />
               ) : (
-                <div className="w-4 h-4 rounded-full border-2 border-muted shrink-0" />
+                <div className="w-3.5 h-3.5 rounded-full border-2 border-muted shrink-0" />
               )}
-              <span className={isCompleted || isCurrent ? "text-foreground" : "text-muted-foreground"}>
+              <span className={isCompleted || isCurrent ? "text-foreground font-medium" : "text-muted-foreground"}>
                 {phaseLabels[phaseName]}
               </span>
               {phase && (

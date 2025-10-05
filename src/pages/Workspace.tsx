@@ -956,8 +956,8 @@ export default function Workspace() {
           {/* Chat Panel - Collapsible at bottom when preview expanded */}
           <div className={`flex flex-col border-r bg-card/30 transition-all ${
             isPreviewExpanded 
-              ? 'fixed bottom-0 left-0 right-0 h-16 border-t border-r-0 z-50' 
-              : 'lg:w-[400px] w-full'
+              ? 'fixed bottom-0 left-0 right-0 h-20 border-t border-r-0 z-50' 
+              : 'lg:w-[480px] w-full'
           }`}>
               {!isPreviewExpanded && (
                 <>
@@ -1000,8 +1000,8 @@ export default function Workspace() {
                     </div>
                   </ScrollArea>
 
-                  {isLoading && currentOrchestration && (
-                    <div className="px-4 pb-4">
+                  {currentOrchestration && currentOrchestration.phases.length > 0 && (
+                    <div className="px-4 pb-2">
                       <OrchestrationProgress 
                         phases={currentOrchestration.phases}
                         isLoading={isLoading}
@@ -1012,13 +1012,13 @@ export default function Workspace() {
                 </>
               )}
 
-              <div className={`p-4 border-t bg-background ${isPreviewExpanded ? 'p-2' : ''}`}>
+              <div className={`p-4 border-t bg-background shrink-0 ${isPreviewExpanded ? 'p-2' : ''}`}>
                 <div className="flex gap-2">
                   <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder={isPreviewExpanded ? "Type to chat..." : "Describe what you want to add or improve..."}
-                    className="resize-none"
+                    className="resize-none min-h-[60px]"
                     rows={isPreviewExpanded ? 1 : 2}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -1031,9 +1031,13 @@ export default function Workspace() {
                     onClick={handleSendMessage}
                     disabled={isLoading || !input.trim()}
                     size="icon"
-                    className="shrink-0"
+                    className="shrink-0 h-[60px] w-[60px]"
                   >
-                    <Send className="w-4 h-4" />
+                    {isLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Send className="w-5 h-5" />
+                    )}
                   </Button>
                 </div>
                 {!isPreviewExpanded && (
