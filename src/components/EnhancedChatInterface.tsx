@@ -146,113 +146,135 @@ export function EnhancedChatInterface({
         content: m.content
       }));
 
-      // 🎓 UNIVERSAL ERROR DETECTION - Learn from ANY error
+      // 🤖 SMART ROUTING: Decide between Universal Error Teacher and Smart Orchestrator
       const errorKeywords = /error|failed|exception|warning|issue|problem|bug|broken|not working|doesn't work|can't|cannot|unable|crash|freeze/i;
-      const isError = errorKeywords.test(input);
+      const isLikelyError = errorKeywords.test(input);
       
-      if (isError) {
-        console.log('🔍 Detected potential error - invoking universal error teacher');
+      // Route 1: Error Detection - Use Universal Error Teacher first
+      if (isLikelyError) {
+        console.log('🔍 Error detected - trying universal error teacher first');
         
-        // Call universal error teacher to learn and fix
-        const { data: teachingResult, error: teachError } = await supabase.functions.invoke('universal-error-teacher', {
-          body: {
-            errorMessage: input,
-            errorContext: {
-              selectedFiles,
-              conversationHistory: messages.slice(-3).map(m => ({ role: m.role, content: m.content })),
-              timestamp: new Date().toISOString()
-            },
-            projectContext: {
-              files: contextData,
-              selectedFiles,
-              projectId,
-              projectType: 'vite-react-typescript'
-            }
-          }
-        });
-
-        if (teachingResult?.solution && !teachError) {
-          const { solution, diagnosis, category, confidence, isKnown } = teachingResult;
-          
-          toast.success(isKnown 
-            ? `✅ Applied known ${category} fix (${Math.round(confidence * 100)}% confidence)` 
-            : `🎓 AI learned new ${category} fix - applying now!`
-          );
-          
-          // Extract and apply the fix
-          if (solution.files && solution.files.length > 0) {
-            const fileToApply = solution.files[0];
-            const fileCode = fileToApply.content;
-            const filePath = fileToApply.path;
-            
-            // Auto-apply the fix immediately
-            if (onCodeApply && fileCode && filePath) {
-              try {
-                await onCodeApply(fileCode, filePath);
-                
-                // Build comprehensive success message
-                const successMsg = `✅ **${category.toUpperCase()} Error Fixed!**\n\n` +
-                  `**What was wrong:** ${diagnosis}\n\n` +
-                  `**What I did:**\n` +
-                  solution.files.map((f: any, i: number) => 
-                    `${i + 1}. ${f.action === 'create' ? 'Created' : f.action === 'modify' ? 'Modified' : 'Updated'} \`${f.path}\`\n   → ${f.explanation}`
-                  ).join('\n') +
-                  `\n\n**Steps to verify:**\n` +
-                  solution.steps.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n') +
-                  `\n\n**Verification:** ${solution.verification}` +
-                  (teachingResult.preventionTips?.length > 0 
-                    ? `\n\n**💡 Prevention Tips:**\n${teachingResult.preventionTips.map((t: string) => `• ${t}`).join('\n')}` 
-                    : '') +
-                  `\n\n---\n\n${isKnown 
-                    ? `🧠 **This was a known ${category} error.** The AI has seen this ${Math.round(confidence * 100)} times before and knows how to fix it.` 
-                    : `🎓 **The AI just learned how to fix this ${category} error!** It will remember this solution for future issues.`}`;
-                
-                const successMessage: Message = {
-                  id: crypto.randomUUID(),
-                  role: 'assistant',
-                  content: successMsg,
-                  timestamp: new Date().toISOString(),
-                  codeBlock: {
-                    language: filePath.endsWith('.json') ? 'json' : filePath.endsWith('.ts') || filePath.endsWith('.tsx') ? 'typescript' : 'javascript',
-                    code: fileCode,
-                    filePath: filePath
-                  }
-                };
-                
-                setMessages(prev => [...prev, successMessage]);
-                setLoading(false);
-                toast.success(`✅ ${category} error fixed - created ${filePath}`);
-                return; // Exit early - we've handled the error
-              } catch (applyError) {
-                console.error('Failed to auto-apply fix:', applyError);
-                toast.error('Generated fix but failed to apply - check console');
+        try {
+          const { data: errorTeacherResult, error: teachError } = await supabase.functions.invoke('universal-error-teacher', {
+            body: {
+              errorMessage: input,
+              errorContext: {
+                selectedFiles,
+                conversationHistory: messages.slice(-3).map(m => ({ role: m.role, content: m.content })),
+                timestamp: new Date().toISOString()
+              },
+              projectContext: {
+                files: contextData,
+                selectedFiles,
+                projectId,
+                projectType: 'vite-react-typescript'
               }
             }
-          } else if (solution.codeChanges && solution.codeChanges.length > 0) {
-            // Handle code changes (modifications to existing code)
-            const changeInstructions = solution.codeChanges.map((change: any, i: number) =>
-              `**${i + 1}. ${change.file}**\n${change.changes}\n\`\`\`typescript\n${change.after}\n\`\`\``
-            ).join('\n\n');
+          });
+
+          // If error teacher found a solution, apply it
+          if (errorTeacherResult?.solution && !teachError) {
+            const { solution, diagnosis, category, confidence, isKnown, patternId } = errorTeacherResult;
             
-            const instructionsMsg = `🔧 **${category.toUpperCase()} Error Analysis**\n\n` +
-              `**Diagnosis:** ${diagnosis}\n\n` +
-              `**Required Changes:**\n${changeInstructions}\n\n` +
-              `**Steps:**\n${solution.steps.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n')}`;
+            toast.success(isKnown 
+              ? `✅ Applied known ${category} fix (${Math.round(confidence * 100)}% confidence)` 
+              : `🎓 AI learned new ${category} fix - applying now!`
+            );
             
-            const instructionsMessage: Message = {
-              id: crypto.randomUUID(),
-              role: 'assistant',
-              content: instructionsMsg,
-              timestamp: new Date().toISOString()
-            };
-            
-            setMessages(prev => [...prev, instructionsMessage]);
-            setLoading(false);
-            return;
+            // Extract and apply the first file fix
+            if (solution.files && solution.files.length > 0) {
+              const fileToApply = solution.files[0];
+              const fileCode = fileToApply.content;
+              const filePath = fileToApply.path;
+              
+              if (onCodeApply && fileCode && filePath) {
+                try {
+                  await onCodeApply(fileCode, filePath);
+                  
+                  // Build success message with feedback option
+                  const successMsg = `✅ **${category.toUpperCase()} Error Fixed!**\n\n` +
+                    `**What was wrong:** ${diagnosis}\n\n` +
+                    `**What I did:**\n` +
+                    solution.files.map((f: any, i: number) => 
+                      `${i + 1}. ${f.action === 'create' ? 'Created' : f.action === 'modify' ? 'Modified' : 'Updated'} \`${f.path}\`\n   → ${f.explanation}`
+                    ).join('\n') +
+                    `\n\n**Verification steps:**\n` +
+                    solution.steps.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n') +
+                    `\n\n${solution.verification}` +
+                    (errorTeacherResult.preventionTips?.length > 0 
+                      ? `\n\n**💡 Prevention Tips:**\n${errorTeacherResult.preventionTips.map((t: string) => `• ${t}`).join('\n')}` 
+                      : '') +
+                    `\n\n---\n\n${isKnown 
+                      ? `🧠 **Known Solution Applied** - The AI recognized this ${category} error and applied a proven fix.` 
+                      : `🎓 **New Pattern Learned** - The AI learned how to fix this ${category} error for future occurrences.`}`;
+                  
+                  const successMessage: Message = {
+                    id: crypto.randomUUID(),
+                    role: 'assistant',
+                    content: successMsg,
+                    timestamp: new Date().toISOString(),
+                    codeBlock: {
+                      language: filePath.endsWith('.json') ? 'json' : filePath.endsWith('.ts') || filePath.endsWith('.tsx') ? 'typescript' : 'javascript',
+                      code: fileCode,
+                      filePath: filePath
+                    }
+                  };
+                  
+                  setMessages(prev => [...prev, successMessage]);
+                  
+                  // Submit feedback automatically as success
+                  if (patternId) {
+                    await supabase.from('error_fix_feedback').insert({
+                      pattern_id: patternId,
+                      user_id: (await supabase.auth.getUser()).data.user?.id,
+                      project_id: projectId,
+                      fix_worked: true,
+                      error_context: { errorMessage: input, selectedFiles },
+                      applied_solution: solution
+                    });
+                  }
+                  
+                  setLoading(false);
+                  toast.success(`✅ ${category} error fixed - created ${filePath}`);
+                  return; // Successfully handled by error teacher
+                } catch (applyError) {
+                  console.error('Failed to auto-apply error fix:', applyError);
+                  // Continue to smart orchestrator as fallback
+                }
+              }
+            } else if (solution.codeChanges && solution.codeChanges.length > 0) {
+              // Handle code modifications (not file creation)
+              const changeInstructions = solution.codeChanges.map((change: any, i: number) =>
+                `**${i + 1}. ${change.file}**\n${change.changes}\n\`\`\`typescript\n// Before:\n${change.before || '// N/A'}\n\n// After:\n${change.after}\n\`\`\``
+              ).join('\n\n');
+              
+              const instructionsMsg = `🔧 **${category.toUpperCase()} Error Analysis**\n\n` +
+                `**Diagnosis:** ${diagnosis}\n\n` +
+                `**Required Changes:**\n${changeInstructions}\n\n` +
+                `**Steps:**\n${solution.steps.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n')}\n\n` +
+                `**Verification:** ${solution.verification}`;
+              
+              const instructionsMessage: Message = {
+                id: crypto.randomUUID(),
+                role: 'assistant',
+                content: instructionsMsg,
+                timestamp: new Date().toISOString()
+              };
+              
+              setMessages(prev => [...prev, instructionsMessage]);
+              setLoading(false);
+              return;
+            }
           }
+        } catch (errorTeacherError) {
+          console.log('⚠️ Error teacher failed, falling back to smart orchestrator:', errorTeacherError);
+          // Continue to smart orchestrator as fallback
         }
       }
 
+      // Route 2: Smart Orchestrator - Handles general requests and complex fixes
+      console.log('🎯 Routing to smart orchestrator for intelligent processing');
+      
       // Streaming response
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
@@ -420,6 +442,12 @@ export function EnhancedChatInterface({
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5" />
           <h3 className="font-semibold">Enhanced AI Chat</h3>
+          <Badge variant="outline" className="text-[10px]">
+            🧠 Universal Error Learning
+          </Badge>
+          <Badge variant="secondary" className="text-[10px]">
+            🎯 Smart Orchestrator
+          </Badge>
         </div>
         <Tabs value={contextMode} onValueChange={(v) => setContextMode(v as any)}>
           <TabsList className="h-8">
@@ -579,7 +607,15 @@ export function EnhancedChatInterface({
       </div>
 
       <div className="text-xs text-muted-foreground text-center">
-        Multi-file context • Syntax highlighting • Code preview • Smart security detection
+        <div className="flex items-center justify-center gap-2 flex-wrap">
+          <span>🧠 Universal Error Learning (8 categories)</span>
+          <span>•</span>
+          <span>🎯 Smart Orchestrator</span>
+          <span>•</span>
+          <span>🔒 Privacy Protected</span>
+          <span>•</span>
+          <span>📊 Auto-improving AI</span>
+        </div>
       </div>
     </Card>
   );
