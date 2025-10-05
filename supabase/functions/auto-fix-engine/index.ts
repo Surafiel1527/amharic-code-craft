@@ -1,10 +1,23 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+interface AutoFixRequest {
+  code: string;
+  language: string;
+  issues: Array<{
+    line: number;
+    severity: string;
+    message: string;
+    rule?: string;
+  }>;
+  validationResultId?: string;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,247 +25,205 @@ serve(async (req) => {
   }
 
   try {
-    const { errorId } = await req.json();
+    const { 
+      code, 
+      language, 
+      issues,
+      validationResultId 
+    }: AutoFixRequest = await req.json();
 
-    if (!errorId) {
-      throw new Error('errorId is required');
+    if (!code || !issues || issues.length === 0) {
+      throw new Error('Code and issues are required');
     }
 
-    console.log('Auto-fix engine analyzing error:', errorId);
-
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
-    }
-
-    // Get error details
-    const { data: error, error: fetchError } = await supabaseClient
-      .from('detected_errors')
-      .select('*')
-      .eq('id', errorId)
-      .single();
-
-    if (fetchError || !error) {
-      throw new Error('Error not found');
-    }
-
-    // Check if we should attempt fixing (prevent infinite loops)
-    if (error.fix_attempts >= 3) {
-      console.log('Max fix attempts reached, skipping');
-      await supabaseClient
-        .from('detected_errors')
-        .update({ status: 'failed', auto_fix_enabled: false })
-        .eq('id', errorId);
-      
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: 'Max fix attempts reached' 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Authorization required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Update status to analyzing
-    await supabaseClient
-      .from('detected_errors')
-      .update({ status: 'analyzing' })
-      .eq('id', errorId);
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
 
-    // Check knowledge base for similar fixed errors
-    const { data: knowledgeBase } = await supabaseClient
-      .from('error_patterns')
-      .select('*')
-      .eq('error_type', error.error_type)
-      .eq('resolution_status', 'solved')
-      .order('frequency', { ascending: false })
-      .limit(3);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
 
-    // Build enhanced AI prompt with codebase context
-    const knowledgeContext = knowledgeBase && knowledgeBase.length > 0
-      ? `\n\nKNOWN SOLUTIONS (${knowledgeBase.length} patterns found):\n${knowledgeBase.map(kb => 
-          `- Pattern: ${kb.error_pattern}\n  Solution: ${kb.solution}\n  Success Rate: ${(kb.auto_fix_success_rate * 100).toFixed(0)}%`
-        ).join('\n\n')}`
-      : '\n\nNo similar patterns found in knowledge base.';
-
-    const codebaseContext = `
-CODEBASE ARCHITECTURE:
-- Frontend: React 18 + TypeScript + Vite + TailwindCSS
-- Backend: Supabase (PostgreSQL + Edge Functions)
-- Authentication: Supabase Auth with email/password
-- State Management: React hooks (useState, useEffect)
-- Routing: React Router v6
-- UI Components: Radix UI + shadcn/ui
-- AI Integration: Lovable AI Gateway (Gemini 2.5)
-
-COMMON PATTERNS IN THIS CODEBASE:
-- RLS policies use security definer functions to avoid recursion
-- All database operations use Supabase client methods (never raw SQL in edge functions)
-- Edge functions use CORS headers for all responses
-- Authentication stores full session object, not just user
-- Error reporting goes to 'report-error' edge function
-- Components use semantic design tokens from index.css
-
-SECURITY REQUIREMENTS:
-- Never expose API keys or secrets in frontend
-- Always validate user input
-- Use parameterized queries (Supabase client handles this)
-- Implement proper RLS policies for all tables
-- Check auth.uid() for user-specific operations`;
-
-    const aiPrompt = `You are an expert full-stack debugger specializing in React + Supabase applications.
-
-🔍 ERROR ANALYSIS:
-Type: ${error.error_type}
-Message: ${error.error_message}
-Source: ${error.source}
-${error.function_name ? `Function: ${error.function_name}` : ''}
-${error.file_path ? `File: ${error.file_path}` : ''}
-Severity: ${error.severity}
-${error.stack_trace ? `\nStack Trace:\n${error.stack_trace}` : ''}
-
-📋 ERROR CONTEXT:
-${JSON.stringify(error.error_context, null, 2)}
-
-💡 ${knowledgeContext}
-
-🏗️ ${codebaseContext}
-
-🎯 YOUR TASK:
-1. Analyze the root cause considering the codebase architecture
-2. Generate a precise fix that follows the codebase patterns
-3. Choose the appropriate fix type:
-   - code_patch: For frontend/component fixes (React, TypeScript, UI)
-   - migration: For database changes (tables, RLS, triggers, functions)
-   - config_change: For configuration updates (env vars, settings)
-4. Provide detailed explanation with reasoning
-5. Assign honest confidence score based on:
-   - How well error matches known patterns (0.9+ if exact match)
-   - Completeness of error information (0.8+ if full stack trace)
-   - Complexity of fix (0.7+ if simple, 0.5-0.7 if complex)
-
-⚠️ CRITICAL RULES:
-- For RLS recursion: Create security definer function, never self-reference
-- For null/undefined: Add optional chaining and null checks
-- For auth errors: Ensure full session storage and onAuthStateChange
-- For CORS: Add headers to ALL responses including errors
-- For edge functions: Always return Response with proper headers
-- For database: Use Supabase client methods, never raw SQL
-
-Return JSON ONLY in this exact format:
-{
-  "fixType": "code_patch|migration|config_change",
-  "originalCode": "the problematic code if available",
-  "fixedCode": "complete working solution with proper syntax",
-  "explanation": "detailed explanation: what was wrong, why it failed, how the fix works, and what it prevents",
-  "confidence": 0.85,
-  "reasoning": "why this confidence score - mention pattern matches, info completeness, fix complexity"
-}`;
-
-    // Call AI to generate fix
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'user', content: aiPrompt }
-        ],
-        response_format: { type: "json_object" }
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      throw new Error(`AI API error: ${aiResponse.status}`);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authorization' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const aiData = await aiResponse.json();
-    const fixData = JSON.parse(aiData.choices[0].message.content);
+    console.log(`🔧 Generating auto-fixes for ${issues.length} issues`);
 
-    console.log('✅ Generated fix:', {
-      fixType: fixData.fixType,
-      confidence: fixData.confidence,
-      reasoning: fixData.reasoning,
-      errorType: error.error_type,
-      source: error.source
-    });
-
-    // Store the generated fix
-    const { data: autoFix, error: fixInsertError } = await supabaseClient
-      .from('auto_fixes')
-      .insert({
-        error_id: errorId,
-        fix_type: fixData.fixType,
-        original_code: fixData.originalCode,
-        fixed_code: fixData.fixedCode,
-        explanation: fixData.explanation,
-        ai_confidence: fixData.confidence,
-        status: 'pending'
-      })
-      .select()
-      .single();
-
-    if (fixInsertError) throw fixInsertError;
-
-    // Update error status
-    await supabaseClient
-      .from('detected_errors')
-      .update({ 
-        status: 'fixing',
-        fix_attempts: error.fix_attempts + 1
-      })
-      .eq('id', errorId);
-
-    // Auto-apply fix if confidence is high enough
-    if (fixData.confidence >= 0.8) {
-      console.log('High confidence fix, auto-applying...');
+    // Check for learned patterns first
+    const fixSuggestions = await Promise.all(issues.map(async (issue) => {
+      const issueSignature = generateIssueSignature(issue);
       
-      // Trigger fix application in background (don't await)
-      fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/apply-fix`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': req.headers.get('Authorization') || '',
-        },
-        body: JSON.stringify({ fixId: autoFix.id }),
-      }).catch(err => console.error('Failed to apply fix:', err));
-    } else {
-      // Notify admins for manual review
-      await supabaseClient.rpc('notify_admins', {
-        notification_type: 'improvement',
-        notification_title: '🔧 Fix Generated (Manual Review Required)',
-        notification_message: `Fix generated for ${error.error_type} with ${(fixData.confidence * 100).toFixed(0)}% confidence. Review required.`,
-        notification_data: {
-          fixId: autoFix.id,
-          errorId: errorId,
-          confidence: fixData.confidence
-        }
-      });
-    }
+      // Check if we have a learned pattern for this issue
+      const { data: pattern } = await supabaseClient
+        .from('validation_patterns')
+        .select('*')
+        .eq('issue_signature', issueSignature)
+        .eq('language', language)
+        .order('confidence_score', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (pattern && pattern.confidence_score > 0.7) {
+        console.log(`✨ Using learned pattern for issue: ${issue.message}`);
+        return {
+          issue,
+          fixedCode: applyLearnedPattern(code, issue, pattern.fix_strategy),
+          explanation: pattern.fix_strategy.explanation,
+          confidence: pattern.confidence_score,
+          fromPattern: true
+        };
+      }
+
+      // Generate new fix using AI
+      return await generateAIFix(code, language, issue);
+    }));
+
+    // Store fix suggestions in database
+    const storedSuggestions = await Promise.all(fixSuggestions.map(async (suggestion) => {
+      const { data, error } = await supabaseClient
+        .from('auto_fix_suggestions')
+        .insert({
+          user_id: user.id,
+          validation_result_id: validationResultId || null,
+          issue_type: suggestion.issue.rule || 'unknown',
+          issue_description: suggestion.issue.message,
+          original_code: code,
+          fixed_code: suggestion.fixedCode,
+          fix_explanation: suggestion.explanation,
+          confidence_score: suggestion.confidence
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Failed to store fix suggestion:', error);
+      }
+
+      return data;
+    }));
+
+    console.log(`✅ Generated ${fixSuggestions.length} fix suggestions`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        fixId: autoFix.id,
-        confidence: fixData.confidence,
-        autoApplied: fixData.confidence >= 0.8
+      JSON.stringify({
+        success: true,
+        fixes: fixSuggestions.map((fix, index) => ({
+          ...fix,
+          id: storedSuggestions[index]?.id
+        }))
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error in auto-fix-engine:', error);
+    console.error('❌ Auto-fix error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ 
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
+
+function generateIssueSignature(issue: any): string {
+  const signature = `${issue.severity}:${issue.message}:${issue.rule || 'unknown'}`;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(signature);
+  return btoa(String.fromCharCode(...data));
+}
+
+function applyLearnedPattern(code: string, issue: any, fixStrategy: any): string {
+  // Apply the learned fix strategy
+  const lines = code.split('\n');
+  const targetLine = issue.line - 1;
+  
+  if (targetLine >= 0 && targetLine < lines.length) {
+    const originalLine = lines[targetLine];
+    
+    if (fixStrategy.type === 'replace') {
+      lines[targetLine] = fixStrategy.replacement;
+    } else if (fixStrategy.type === 'insert') {
+      lines.splice(targetLine, 0, fixStrategy.insertion);
+    } else if (fixStrategy.type === 'remove') {
+      lines.splice(targetLine, 1);
+    }
+  }
+  
+  return lines.join('\n');
+}
+
+async function generateAIFix(code: string, language: string, issue: any) {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) {
+    throw new Error('LOVABLE_API_KEY not configured');
+  }
+
+  const fixPrompt = `Fix this ${language} code issue:
+
+**Original Code:**
+\`\`\`${language}
+${code}
+\`\`\`
+
+**Issue at line ${issue.line}:**
+- Severity: ${issue.severity}
+- Message: ${issue.message}
+- Rule: ${issue.rule || 'unknown'}
+
+**Generate:**
+1. Fixed version of the ENTIRE code
+2. Clear explanation of what was fixed and why
+3. Confidence score (0.0 to 1.0)
+
+**Output Format (JSON only):**
+{
+  "fixedCode": "complete fixed code here",
+  "explanation": "detailed explanation of the fix",
+  "confidence": 0.95
+}`;
+
+  const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: 'You are a code fixing expert. Always respond with valid JSON only.' },
+        { role: 'user', content: fixPrompt }
+      ],
+      response_format: { type: "json_object" }
+    }),
+  });
+
+  if (!aiResponse.ok) {
+    throw new Error(`AI API error: ${aiResponse.status}`);
+  }
+
+  const aiData = await aiResponse.json();
+  const result = JSON.parse(aiData.choices[0].message.content);
+
+  return {
+    issue,
+    fixedCode: result.fixedCode,
+    explanation: result.explanation,
+    confidence: result.confidence,
+    fromPattern: false
+  };
+}

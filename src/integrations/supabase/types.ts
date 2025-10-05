@@ -505,6 +505,59 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_fix_suggestions: {
+        Row: {
+          applied: boolean | null
+          applied_at: string | null
+          confidence_score: number | null
+          created_at: string | null
+          fix_explanation: string
+          fixed_code: string
+          id: string
+          issue_description: string
+          issue_type: string
+          original_code: string
+          user_id: string
+          validation_result_id: string | null
+        }
+        Insert: {
+          applied?: boolean | null
+          applied_at?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          fix_explanation: string
+          fixed_code: string
+          id?: string
+          issue_description: string
+          issue_type: string
+          original_code: string
+          user_id: string
+          validation_result_id?: string | null
+        }
+        Update: {
+          applied?: boolean | null
+          applied_at?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          fix_explanation?: string
+          fixed_code?: string
+          id?: string
+          issue_description?: string
+          issue_type?: string
+          original_code?: string
+          user_id?: string
+          validation_result_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_fix_suggestions_validation_result_id_fkey"
+            columns: ["validation_result_id"]
+            isOneToOne: false
+            referencedRelation: "validation_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auto_fixes: {
         Row: {
           ai_confidence: number | null
@@ -561,6 +614,51 @@ export type Database = {
           },
         ]
       }
+      build_quality_gates: {
+        Row: {
+          block_on_fail: boolean | null
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          max_critical_issues: number | null
+          max_security_issues: number | null
+          min_code_quality_score: number | null
+          min_test_coverage: number | null
+          project_id: string | null
+          require_tests: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          block_on_fail?: boolean | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          max_critical_issues?: number | null
+          max_security_issues?: number | null
+          min_code_quality_score?: number | null
+          min_test_coverage?: number | null
+          project_id?: string | null
+          require_tests?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          block_on_fail?: boolean | null
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          max_critical_issues?: number | null
+          max_security_issues?: number | null
+          min_code_quality_score?: number | null
+          min_test_coverage?: number | null
+          project_id?: string | null
+          require_tests?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       code_analysis: {
         Row: {
           analysis_type: string
@@ -598,6 +696,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      code_analysis_cache: {
+        Row: {
+          analyzed_at: string | null
+          bundle_size_kb: number | null
+          cache_expires_at: string | null
+          code_hash: string
+          complexity_score: number | null
+          eslint_results: Json | null
+          id: string
+          language: string
+          performance_metrics: Json | null
+          typescript_diagnostics: Json | null
+        }
+        Insert: {
+          analyzed_at?: string | null
+          bundle_size_kb?: number | null
+          cache_expires_at?: string | null
+          code_hash: string
+          complexity_score?: number | null
+          eslint_results?: Json | null
+          id?: string
+          language: string
+          performance_metrics?: Json | null
+          typescript_diagnostics?: Json | null
+        }
+        Update: {
+          analyzed_at?: string | null
+          bundle_size_kb?: number | null
+          cache_expires_at?: string | null
+          code_hash?: string
+          complexity_score?: number | null
+          eslint_results?: Json | null
+          id?: string
+          language?: string
+          performance_metrics?: Json | null
+          typescript_diagnostics?: Json | null
+        }
+        Relationships: []
       }
       code_documentation: {
         Row: {
@@ -1940,6 +2077,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      generated_tests: {
+        Row: {
+          coverage_percentage: number | null
+          created_at: string | null
+          execution_results: Json | null
+          execution_status: string | null
+          id: string
+          source_code: string
+          test_code: string
+          test_framework: string
+          test_type: string
+          user_id: string
+        }
+        Insert: {
+          coverage_percentage?: number | null
+          created_at?: string | null
+          execution_results?: Json | null
+          execution_status?: string | null
+          id?: string
+          source_code: string
+          test_code: string
+          test_framework: string
+          test_type: string
+          user_id: string
+        }
+        Update: {
+          coverage_percentage?: number | null
+          created_at?: string | null
+          execution_results?: Json | null
+          execution_status?: string | null
+          id?: string
+          source_code?: string
+          test_code?: string
+          test_framework?: string
+          test_type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       generation_analytics: {
         Row: {
@@ -4135,6 +4311,87 @@ export type Database = {
           session_token?: string
           user_agent?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      validation_patterns: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          failure_count: number | null
+          fix_strategy: Json
+          id: string
+          issue_signature: string
+          language: string
+          last_used_at: string | null
+          pattern_type: string
+          success_count: number | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          failure_count?: number | null
+          fix_strategy: Json
+          id?: string
+          issue_signature: string
+          language: string
+          last_used_at?: string | null
+          pattern_type: string
+          success_count?: number | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          failure_count?: number | null
+          fix_strategy?: Json
+          id?: string
+          issue_signature?: string
+          language?: string
+          last_used_at?: string | null
+          pattern_type?: string
+          success_count?: number | null
+        }
+        Relationships: []
+      }
+      validation_results: {
+        Row: {
+          auto_fixed: boolean | null
+          code_hash: string
+          created_at: string | null
+          fix_applied: Json | null
+          id: string
+          issues: Json | null
+          language: string
+          score: number
+          status: string
+          user_id: string
+          validation_type: string
+        }
+        Insert: {
+          auto_fixed?: boolean | null
+          code_hash: string
+          created_at?: string | null
+          fix_applied?: Json | null
+          id?: string
+          issues?: Json | null
+          language: string
+          score: number
+          status: string
+          user_id: string
+          validation_type: string
+        }
+        Update: {
+          auto_fixed?: boolean | null
+          code_hash?: string
+          created_at?: string | null
+          fix_applied?: Json | null
+          id?: string
+          issues?: Json | null
+          language?: string
+          score?: number
+          status?: string
+          user_id?: string
+          validation_type?: string
         }
         Relationships: []
       }

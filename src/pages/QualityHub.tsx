@@ -9,6 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { IntelligentPackageManager } from "@/components/IntelligentPackageManager";
 import { SandboxExecutionEnvironment } from "@/components/SandboxExecutionEnvironment";
 import { RealTimeValidationDashboard } from "@/components/RealTimeValidationDashboard";
+import { AutomatedTestGenerator } from "@/components/AutomatedTestGenerator";
+import { AutoFixEngine } from "@/components/AutoFixEngine";
+import { BuildQualityGate } from "@/components/BuildQualityGate";
 import { 
   Shield, 
   TrendingUp, 
@@ -423,17 +426,45 @@ export default TodoApp;`;
                       code={demoCode}
                       language="typescript"
                     />
+
+                    <AutoFixEngine 
+                      code={demoCode}
+                      language="typescript"
+                      issues={[
+                        { line: 5, severity: 'warning', message: 'Missing type annotation', rule: 'typescript' }
+                      ]}
+                      onFixApplied={(fixedCode) => console.log('Fix applied:', fixedCode)}
+                    />
                   </div>
                   
-                  {/* Right Column: Sandbox Execution */}
-                  <SandboxExecutionEnvironment 
-                    code={demoCode}
-                    language="javascript"
-                    onExecutionComplete={(result) => {
-                      console.log('Execution result:', result);
-                    }}
-                  />
+                  {/* Right Column: Testing & Execution */}
+                  <div className="space-y-6">
+                    <SandboxExecutionEnvironment 
+                      code={demoCode}
+                      language="javascript"
+                      onExecutionComplete={(result) => {
+                        console.log('Execution result:', result);
+                      }}
+                    />
+
+                    <AutomatedTestGenerator 
+                      sourceCode={demoCode}
+                      language="typescript"
+                      componentName="TodoApp"
+                    />
+                  </div>
                 </div>
+
+                {/* Quality Gate */}
+                <BuildQualityGate 
+                  validationResults={{
+                    codeQualityScore: 85,
+                    securityIssues: 0,
+                    criticalIssues: 0,
+                    testCoverage: 75
+                  }}
+                  onGateChecked={(result) => console.log('Quality gate:', result)}
+                />
               </CardContent>
             </Card>
 
