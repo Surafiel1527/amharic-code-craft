@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Loader2, Send, Save, ArrowLeft, Maximize2, Minimize2, 
-  History, Code2, Eye, MessageSquare, Sparkles, RotateCcw, Target, Download, Code
+  History, Code2, Eye, MessageSquare, Sparkles, RotateCcw, Target, Download, Code, FileCode2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -24,6 +24,7 @@ import { FileTree } from "@/components/FileTree";
 import { CodeEditor } from "@/components/CodeEditor";
 import { ComponentTemplates } from "@/components/ComponentTemplates";
 import { CollaborativePresence } from "@/components/CollaborativePresence";
+import { MultiFileGenerator } from "@/components/MultiFileGenerator";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -71,6 +72,7 @@ export default function Workspace() {
   const [projectFiles, setProjectFiles] = useState<any[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'single' | 'multi'>('single');
+  const [showMultiFileGen, setShowMultiFileGen] = useState(false);
 
   const handleRestoreVersion = async (htmlCode: string) => {
     if (!project) return;
@@ -588,6 +590,37 @@ export default function Workspace() {
             </Button>
             <Button
               variant="ghost"
+              size="sm"
+              onClick={() => setViewMode(viewMode === 'single' ? 'multi' : 'single')}
+              className="gap-2"
+            >
+              {viewMode === 'single' ? (
+                <>
+                  <FileCode2 className="h-4 w-4" />
+                  Multi-File Mode
+                </>
+              ) : (
+                <>
+                  <Code2 className="h-4 w-4" />
+                  Single-File Mode
+                </>
+              )}
+            </Button>
+            
+            {viewMode === 'multi' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMultiFileGen(!showMultiFileGen)}
+                className="gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                Generate Project
+              </Button>
+            )}
+            
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => setIsPreviewExpanded(!isPreviewExpanded)}
             >
@@ -608,48 +641,83 @@ export default function Workspace() {
       <div className="flex-1 overflow-hidden">
         {viewMode === 'multi' ? (
           /* Multi-File View */
-          <div className="flex h-full">
-            {/* File Tree */}
-            <div className="w-64">
-              <FileTree
-                files={projectFiles.map(f => ({
-                  id: f.id,
-                  path: f.file_path,
-                  type: 'file' as const,
-                  content: f.file_content
-                }))}
-                selectedFile={selectedFile}
-                onSelectFile={setSelectedFile}
-                onCreateFile={handleCreateFile}
-                onDeleteFile={handleDeleteFile}
-                onRenameFile={handleRenameFile}
-              />
-            </div>
+          <>
+            {showMultiFileGen && (
+              <div className="absolute top-0 left-0 right-0 bottom-0 z-50 bg-background/95 p-4 overflow-auto">
+                <div className="max-w-4xl mx-auto">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-2xl font-bold">Multi-File Project Generator</h2>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowMultiFileGen(false)}
+                    >
+                      Close
+                    </Button>
+                  </div>
+                  <MultiFileGenerator
+                    projectId={projectId!}
+                    conversationId={conversationId!}
+                    onFilesGenerated={() => {
+                      // Reload files
+                      const loadFiles = async () => {
+                        const { data } = await supabase
+                          .from('project_files')
+                          .select('*')
+                          .eq('project_id', projectId);
+                        if (data) setProjectFiles(data);
+                      };
+                      loadFiles();
+                      setShowMultiFileGen(false);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            
+            <div className="flex h-full">
+              {/* File Tree */}
+              <div className="w-64">
+                <FileTree
+                  files={projectFiles.map(f => ({
+                    id: f.id,
+                    path: f.file_path,
+                    type: 'file' as const,
+                    content: f.file_content
+                  }))}
+                  selectedFile={selectedFile}
+                  onSelectFile={setSelectedFile}
+                  onCreateFile={handleCreateFile}
+                  onDeleteFile={handleDeleteFile}
+                  onRenameFile={handleRenameFile}
+                />
+              </div>
 
-            {/* Code Editor */}
-            <div className="flex-1 border-r">
-              <CodeEditor
-                filePath={selectedFile}
-                initialContent={projectFiles.find(f => f.file_path === selectedFile)?.file_content || ''}
-                onSave={handleSaveFile}
-              />
-            </div>
+              {/* Code Editor */}
+              <div className="flex-1 border-r">
+                <CodeEditor
+                  filePath={selectedFile}
+                  initialContent={projectFiles.find(f => f.file_path === selectedFile)?.file_content || ''}
+                  onSave={handleSaveFile}
+                />
+              </div>
 
-            {/* Component Templates Sidebar */}
-            <div className="w-96">
-              <ComponentTemplates
-                onInsertTemplate={(code, name) => {
-                  if (selectedFile) {
-                    const currentContent = projectFiles.find(f => f.file_path === selectedFile)?.file_content || '';
-                    handleSaveFile(currentContent + '\n\n' + code);
-                    toast.success(`Inserted ${name}`);
-                  } else {
-                    toast.info('Please select a file first');
-                  }
-                }}
-              />
+              {/* Component Templates Sidebar */}
+              <div className="w-96">
+                <ComponentTemplates
+                  onInsertTemplate={(code, name) => {
+                    if (selectedFile) {
+                      const currentContent = projectFiles.find(f => f.file_path === selectedFile)?.file_content || '';
+                      handleSaveFile(currentContent + '\n\n' + code);
+                      toast.success(`Inserted ${name}`);
+                    } else {
+                      toast.info('Please select a file first');
+                    }
+                  }}
+                />
+              </div>
             </div>
-          </div>
+          </>
         ) : (
           /* Single-File View (Original) */
           <div className={`flex h-full ${isPreviewExpanded ? '' : 'lg:flex-row flex-col'} transition-all`}>
