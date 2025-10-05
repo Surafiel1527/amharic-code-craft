@@ -215,11 +215,15 @@ export function EnhancedChatInterface({
       if (codeToApply && filePathToApply && onCodeApply && codeToApply.length > 50) {
         try {
           await onCodeApply(codeToApply, filePathToApply);
-          fullContent = `✅ Fixed and applied to ${filePathToApply}\n\n${fullContent}`;
+          fullContent = `✅ **Fix Complete!**\n\nApplied changes to: \`${filePathToApply}\`\n\n${fullContent}\n\n---\n\n💡 **Next Steps:**\n• Check the preview to verify the fix\n• Test the deployment if this was a deployment error\n• Ask me for more improvements if needed`;
+          toast.success(`✅ Fix applied to ${filePathToApply}`);
         } catch (applyError) {
           console.error('Failed to auto-apply code:', applyError);
+          fullContent = `⚠️ **Fix Generated But Not Applied**\n\n${fullContent}\n\nPlease manually apply the changes or check file permissions.`;
           toast.error('Generated fix but failed to apply. Please check the file.');
         }
+      } else if (codeToApply && !filePathToApply) {
+        fullContent = `📝 **Fix Generated**\n\n${fullContent}\n\n⚠️ No target file specified. Please select a file to apply changes.`;
       }
 
       // Update the assistant message with complete response
@@ -243,10 +247,13 @@ export function EnhancedChatInterface({
       const errorMsg = error instanceof Error ? error.message : 'Failed to send message';
       toast.error(errorMsg);
       
+      // Remove the streaming assistant message
+      setMessages(prev => prev.filter(m => !m.streaming));
+      
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: `Sorry, I encountered an error: ${errorMsg}. Please try again or simplify your request.`,
+        content: `❌ **Error Occurred**\n\n${errorMsg}\n\n**What to try:**\n• Simplify your request\n• Check if files are selected\n• Try again in a moment`,
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
