@@ -836,6 +836,45 @@ export type Database = {
         }
         Relationships: []
       }
+      database_credentials: {
+        Row: {
+          connection_name: string
+          created_at: string | null
+          credentials: Json
+          id: string
+          is_active: boolean | null
+          last_tested_at: string | null
+          provider: string
+          test_status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          connection_name: string
+          created_at?: string | null
+          credentials: Json
+          id?: string
+          is_active?: boolean | null
+          last_tested_at?: string | null
+          provider: string
+          test_status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          connection_name?: string
+          created_at?: string | null
+          credentials?: Json
+          id?: string
+          is_active?: boolean | null
+          last_tested_at?: string | null
+          provider?: string
+          test_status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       dependency_audits: {
         Row: {
           audit_score: number | null

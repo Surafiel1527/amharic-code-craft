@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import AISystemTest from "./pages/AISystemTest";
 import Builder from "./pages/Builder";
 import Workspace from "./pages/Workspace";
+import DatabaseManager from "./pages/DatabaseManager";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const App = () => {
@@ -26,6 +27,7 @@ const App = () => {
         <Route path="/profile/:userId" element={<UserProfile />} />
         <Route path="/shared/:shareToken" element={<SharedProject />} />
         <Route path="/ai-test" element={<AISystemTest />} />
+        <Route path="/database-manager" element={<DatabaseManager />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
