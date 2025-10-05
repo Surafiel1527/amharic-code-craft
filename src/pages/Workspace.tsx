@@ -116,18 +116,33 @@ export default function Workspace() {
   const handleRestoreVersion = async (htmlCode: string) => {
     if (!project) return;
     
-    setProject(prev => prev ? { ...prev, html_code: htmlCode } : null);
-    await handleSave();
-    setShowVersionHistory(false);
-    toast.success("✅ Version restored! Chat context updated with restored code.");
-    
-    // Notify user that chat is now using restored code
-    const restoreNotification: Message = {
-      role: 'assistant',
-      content: '🔄 **Code restored!** I\'m now using the restored version as context for any further fixes you need.',
-      timestamp: new Date().toISOString()
-    };
-    setMessages(prev => [...prev, restoreNotification]);
+    try {
+      // Update local state
+      setProject(prev => prev ? { ...prev, html_code: htmlCode } : null);
+      
+      // Save directly to database
+      const { error } = await supabase
+        .from('projects')
+        .update({ 
+          html_code: htmlCode,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', project.id);
+
+      if (error) throw error;
+      
+      setShowVersionHistory(false);
+      toast.success("✅ Version restored! Refreshing preview...");
+      
+      // Force reload the page to show restored version in preview
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+      
+    } catch (error) {
+      console.error('Restore error:', error);
+      toast.error("Failed to restore version");
+    }
   };
 
   // Redirect to auth if not logged in
