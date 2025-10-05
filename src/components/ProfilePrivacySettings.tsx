@@ -28,11 +28,24 @@ export const ProfilePrivacySettings = () => {
         .from("profiles")
         .select("profile_visibility")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       
-      setVisibility(data.profile_visibility || "public");
+      // If no profile exists yet, create one
+      if (!data) {
+        const { error: insertError } = await supabase
+          .from("profiles")
+          .insert({
+            id: user.id,
+            profile_visibility: "public"
+          });
+        
+        if (insertError) throw insertError;
+        setVisibility("public");
+      } else {
+        setVisibility(data.profile_visibility || "public");
+      }
     } catch (error) {
       console.error("Error fetching privacy settings:", error);
       toast.error("Failed to load privacy settings");
