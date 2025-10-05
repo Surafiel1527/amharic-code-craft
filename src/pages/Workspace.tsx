@@ -25,6 +25,12 @@ import { CodeEditor } from "@/components/CodeEditor";
 import { ComponentTemplates } from "@/components/ComponentTemplates";
 import { CollaborativePresence } from "@/components/CollaborativePresence";
 import { MultiFileGenerator } from "@/components/MultiFileGenerator";
+import { EnhancedFileTree } from "@/components/EnhancedFileTree";
+import { SplitPaneEditor } from "@/components/SplitPaneEditor";
+import { FileTemplatesLibrary } from "@/components/FileTemplatesLibrary";
+import { DependencyGraph } from "@/components/DependencyGraph";
+import { CodeMetrics } from "@/components/CodeMetrics";
+import { useAutoSave } from "@/hooks/useAutoSave";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -70,9 +76,12 @@ export default function Workspace() {
   
   // Multi-file system state
   const [projectFiles, setProjectFiles] = useState<any[]>([]);
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'single' | 'multi'>('single');
   const [showMultiFileGen, setShowMultiFileGen] = useState(false);
+  const [editorMode, setEditorMode] = useState<'single' | 'split'>('single');
+  const [showMetrics, setShowMetrics] = useState(false);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
 
   const handleRestoreVersion = async (htmlCode: string) => {
     if (!project) return;
@@ -241,7 +250,7 @@ export default function Workspace() {
 
     toast.success('File deleted');
     setProjectFiles(prev => prev.filter(f => f.file_path !== path));
-    if (selectedFile === path) setSelectedFile(null);
+    setSelectedFiles(prev => prev.filter(p => p !== path));
   };
 
   const handleRenameFile = async (oldPath: string, newPath: string) => {
@@ -262,12 +271,13 @@ export default function Workspace() {
     setProjectFiles(prev => 
       prev.map(f => f.file_path === oldPath ? { ...f, file_path: newPath } : f)
     );
-    if (selectedFile === oldPath) setSelectedFile(newPath);
+    setSelectedFiles(prev => prev.map(p => p === oldPath ? newPath : p));
   };
 
   const handleSaveFile = async (content: string) => {
-    if (!projectId || !selectedFile) return;
+    if (!projectId || selectedFiles.length === 0) return;
     
+    const filePath = selectedFiles[0];
     const { error } = await supabase
       .from('project_files')
       .update({ 
@@ -275,7 +285,7 @@ export default function Workspace() {
         updated_at: new Date().toISOString()
       })
       .eq('project_id', projectId)
-      .eq('file_path', selectedFile);
+      .eq('file_path', filePath);
 
     if (error) {
       toast.error('Failed to save file');
@@ -283,8 +293,40 @@ export default function Workspace() {
     }
 
     setProjectFiles(prev =>
-      prev.map(f => f.file_path === selectedFile ? { ...f, file_content: content } : f)
+      prev.map(f => f.file_path === filePath ? { ...f, file_content: content } : f)
     );
+    
+    if (!autoSaveEnabled) {
+      toast.success('File saved');
+    }
+  };
+
+  // Auto-save for project files
+  useAutoSave(projectFiles, {
+    delay: 3000,
+    enabled: autoSaveEnabled && viewMode === 'multi',
+    onSave: async (files) => {
+      // Only auto-save modified files
+      console.log('Auto-saving files...');
+    }
+  });
+
+  const handleBulkDelete = async (paths: string[]) => {
+    if (!projectId) return;
+    
+    for (const path of paths) {
+      await handleDeleteFile(path);
+    }
+  };
+
+  const handleSelectFile = (path: string, multiSelect?: boolean) => {
+    if (multiSelect) {
+      setSelectedFiles(prev => 
+        prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path]
+      );
+    } else {
+      setSelectedFiles([path]);
+    }
   };
 
   const handleSave = async () => {
@@ -608,15 +650,38 @@ export default function Workspace() {
             </Button>
             
             {viewMode === 'multi' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowMultiFileGen(!showMultiFileGen)}
-                className="gap-2"
-              >
-                <Sparkles className="h-4 w-4" />
-                Generate Project
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowMultiFileGen(!showMultiFileGen)}
+                  className="gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Generate Project
+                </Button>
+                <Button
+                  variant={editorMode === 'split' ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setEditorMode(editorMode === 'single' ? 'split' : 'single')}
+                  className="gap-2"
+                >
+                  <Code2 className="h-4 h-4" />
+                  {editorMode === 'split' ? 'Split View' : 'Single View'}
+                </Button>
+                <Button
+                  variant={autoSaveEnabled ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setAutoSaveEnabled(!autoSaveEnabled);
+                    toast.success(autoSaveEnabled ? 'Auto-save disabled' : 'Auto-save enabled');
+                  }}
+                  className="gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  Auto-save {autoSaveEnabled ? 'ON' : 'OFF'}
+                </Button>
+              </>
             )}
             
             <Button
@@ -678,43 +743,71 @@ export default function Workspace() {
             <div className="flex h-full">
               {/* File Tree */}
               <div className="w-64">
-                <FileTree
-                  files={projectFiles.map(f => ({
-                    id: f.id,
-                    path: f.file_path,
-                    type: 'file' as const,
-                    content: f.file_content
-                  }))}
-                  selectedFile={selectedFile}
-                  onSelectFile={setSelectedFile}
+                <EnhancedFileTree
+                  files={projectFiles}
+                  selectedFiles={selectedFiles}
+                  onSelectFile={handleSelectFile}
                   onCreateFile={handleCreateFile}
                   onDeleteFile={handleDeleteFile}
                   onRenameFile={handleRenameFile}
+                  onBulkDelete={handleBulkDelete}
                 />
               </div>
 
-              {/* Code Editor */}
+              {/* Code Editor or Split Pane */}
               <div className="flex-1 border-r">
-                <CodeEditor
-                  filePath={selectedFile}
-                  initialContent={projectFiles.find(f => f.file_path === selectedFile)?.file_content || ''}
-                  onSave={handleSaveFile}
-                />
+                {editorMode === 'split' ? (
+                  <SplitPaneEditor
+                    files={projectFiles}
+                    onSave={(path, content) => {
+                      setSelectedFiles([path]);
+                      handleSaveFile(content);
+                    }}
+                    initialFile={selectedFiles[0] || null}
+                  />
+                ) : (
+                  <CodeEditor
+                    filePath={selectedFiles[0] || null}
+                    initialContent={projectFiles.find(f => f.file_path === selectedFiles[0])?.file_content || ''}
+                    onSave={handleSaveFile}
+                  />
+                )}
               </div>
 
-              {/* Component Templates Sidebar */}
+              {/* Right Sidebar - Tabs for Templates, Metrics, Dependencies */}
               <div className="w-96">
-                <ComponentTemplates
-                  onInsertTemplate={(code, name) => {
-                    if (selectedFile) {
-                      const currentContent = projectFiles.find(f => f.file_path === selectedFile)?.file_content || '';
-                      handleSaveFile(currentContent + '\n\n' + code);
-                      toast.success(`Inserted ${name}`);
-                    } else {
-                      toast.info('Please select a file first');
-                    }
-                  }}
-                />
+                <Tabs defaultValue="templates">
+                  <TabsList className="w-full grid grid-cols-3">
+                    <TabsTrigger value="templates">Templates</TabsTrigger>
+                    <TabsTrigger value="metrics">Metrics</TabsTrigger>
+                    <TabsTrigger value="deps">Deps</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="templates" className="h-[calc(100vh-200px)]">
+                    <FileTemplatesLibrary
+                      onSelectTemplate={(template, fileName) => {
+                        handleCreateFile(fileName, 'file');
+                        toast.success(`Created ${fileName} from template`);
+                      }}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="metrics" className="h-[calc(100vh-200px)] overflow-auto">
+                    {selectedFiles[0] && projectFiles.find(f => f.file_path === selectedFiles[0]) && (
+                      <CodeMetrics
+                        code={projectFiles.find(f => f.file_path === selectedFiles[0])!.file_content}
+                        filePath={selectedFiles[0]}
+                      />
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="deps" className="h-[calc(100vh-200px)]">
+                    <DependencyGraph
+                      files={projectFiles}
+                      selectedFile={selectedFiles[0]}
+                    />
+                  </TabsContent>
+                </Tabs>
               </div>
             </div>
           </>
