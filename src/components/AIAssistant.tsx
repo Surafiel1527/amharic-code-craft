@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Send, Bot, User } from "lucide-react";
+import { Loader2, Send, Bot, User, Code, Download } from "lucide-react";
 import { toast } from "sonner";
 import { AICapabilitiesGuide } from "./AICapabilitiesGuide";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -29,6 +29,7 @@ interface AIAssistantProps {
     prompt: string;
     codeLength: number;
     codeSnippet?: string; // First 1000 chars of code for context
+    fullCode?: string; // Full code for code view
   };
 }
 
@@ -37,6 +38,8 @@ export const AIAssistant = ({ projectContext }: AIAssistantProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"chat" | "code">("chat");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,18 +48,94 @@ export const AIAssistant = ({ projectContext }: AIAssistantProps) => {
     }
   }, [messages]);
 
+  // Load or create conversation on mount
+  useEffect(() => {
+    const initConversation = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Try to find existing conversation for this project
+        let convId: string | null = null;
+        
+        if (projectContext) {
+          const { data: existingConvs } = await supabase
+            .from('assistant_conversations')
+            .select('id, created_at')
+            .eq('user_id', user.id)
+            .eq('title', `AI Assistant: ${projectContext.title}`)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (existingConvs && existingConvs.length > 0) {
+            convId = existingConvs[0].id;
+            
+            // Load messages from this conversation
+            const { data: existingMessages } = await supabase
+              .from('assistant_messages')
+              .select('*')
+              .eq('conversation_id', convId)
+              .order('created_at', { ascending: true });
+
+            if (existingMessages && existingMessages.length > 0) {
+              setMessages(existingMessages.map(msg => {
+                const metadata = msg.metadata as any;
+                return {
+                  role: msg.role as 'user' | 'assistant',
+                  content: msg.content,
+                  toolUsed: metadata?.toolUsed,
+                  toolResult: metadata?.toolResult
+                };
+              }));
+            }
+          }
+        }
+
+        // Create new conversation if none exists
+        if (!convId) {
+          const { data: newConv, error } = await supabase
+            .from('assistant_conversations')
+            .insert({
+              user_id: user.id,
+              title: projectContext ? `AI Assistant: ${projectContext.title}` : 'AI Assistant Chat',
+              context: projectContext ? { projectTitle: projectContext.title, prompt: projectContext.prompt } : {}
+            })
+            .select('id')
+            .single();
+
+          if (error) throw error;
+          convId = newConv.id;
+        }
+
+        setConversationId(convId);
+      } catch (error) {
+        console.error('Error initializing conversation:', error);
+      }
+    };
+
+    initConversation();
+  }, [projectContext?.title]);
+
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !conversationId) return;
 
     const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
+    const messageText = input;
     setInput("");
     setIsLoading(true);
 
     try {
+      // Save user message to database
+      await supabase.from('assistant_messages').insert({
+        conversation_id: conversationId,
+        role: 'user',
+        content: messageText
+      });
+
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
         body: {
-          message: input,
+          message: messageText,
           history: messages.map(m => ({ role: m.role, content: m.content })), // Send clean history
           projectContext
         }
@@ -82,6 +161,17 @@ export const AIAssistant = ({ projectContext }: AIAssistantProps) => {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Save assistant message to database
+      await supabase.from('assistant_messages').insert({
+        conversation_id: conversationId,
+        role: 'assistant',
+        content: data.message,
+        metadata: {
+          toolUsed: data.toolUsed,
+          toolResult: data.toolResult
+        }
+      });
 
       // Show toast for tool usage
       if (data.toolUsed) {
@@ -109,21 +199,69 @@ export const AIAssistant = ({ projectContext }: AIAssistantProps) => {
     }
   };
 
+  const handleDownloadZip = async () => {
+    if (!projectContext?.fullCode) {
+      toast.error("No code available to download");
+      return;
+    }
+
+    try {
+      // Create a simple HTML file download (for full zip with multiple files, would need JSZip library)
+      const blob = new Blob([projectContext.fullCode], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${projectContext.title || 'project'}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Code downloaded successfully!");
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error("Failed to download code");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <AICapabilitiesGuide />
       
       <Card className="glass-effect border-primary/20 h-[600px] flex flex-col">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5" />
-            {t("aiAssistant.title")}
-          </CardTitle>
-          <CardDescription>
-            {t("aiAssistant.subtitle")}
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5" />
+                {t("aiAssistant.title")}
+              </CardTitle>
+              <CardDescription>
+                {t("aiAssistant.subtitle")}
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant={activeTab === "chat" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTab("chat")}
+              >
+                Chat
+              </Button>
+              <Button
+                variant={activeTab === "code" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTab("code")}
+                disabled={!projectContext?.fullCode}
+              >
+                <Code className="h-4 w-4 mr-2" />
+                Code
+              </Button>
+            </div>
+          </div>
         </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-4 p-4">
+        {activeTab === "chat" ? (
+          <>
         <ScrollArea ref={scrollRef} className="flex-1 pr-4">
           <div className="space-y-4">
             {messages.length === 0 && (
@@ -232,6 +370,28 @@ export const AIAssistant = ({ projectContext }: AIAssistantProps) => {
             )}
           </Button>
         </div>
+        </>
+        ) : (
+          <div className="flex-1 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Project Code</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadZip}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download HTML
+              </Button>
+            </div>
+            <ScrollArea className="flex-1">
+              <pre className="text-xs bg-muted p-4 rounded-lg overflow-x-auto">
+                <code>{projectContext?.fullCode || "No code available"}</code>
+              </pre>
+            </ScrollArea>
+          </div>
+        )}
       </CardContent>
     </Card>
     </div>

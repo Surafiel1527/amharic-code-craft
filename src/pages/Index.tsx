@@ -856,7 +856,8 @@ const Index = () => {
                       title: projectTitle || 'Current Project',
                       prompt: prompt,
                       codeLength: generatedCode.length,
-                      codeSnippet: generatedCode.substring(0, 1000) // First 1000 chars for context
+                      codeSnippet: generatedCode.substring(0, 1000), // First 1000 chars for context
+                      fullCode: generatedCode // Full code for viewing and download
                     } : undefined}
                   />
                 </TabsContent>
