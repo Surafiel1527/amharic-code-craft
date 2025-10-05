@@ -118,96 +118,165 @@ async function routeToModule(
   try {
     switch (intent) {
       case 'code-generation': {
-        // Build enhanced system prompt with professional knowledge
-        let systemPrompt = `You are an expert full-stack developer specializing in React, TypeScript, Tailwind CSS, and modern web development.
+        console.log('🤖 AGENTIC METHOD: Starting 3-step code generation workflow');
+        
+        // STEP 1: PLAN GENERATION
+        console.log('📋 STEP 1: Generating component plan...');
+        const planPrompt = `You are a technical architect. Analyze this request and create a detailed implementation plan.
 
-CRITICAL FRAMEWORKS AND TOOLS YOU MUST USE:
-- React 18+ with TypeScript
-- Tailwind CSS for ALL styling (use utility classes)
-- Vite for build tooling
-- Modern ES6+ JavaScript/TypeScript features
+User Request: ${userMessage}
 
-CRITICAL INSTRUCTION: You are an expert-level software engineer. When a user requests a specific framework, library, or technology (e.g., Tailwind CSS, React, Vue.js), you MUST use it to fulfill the request. Do not suggest alternatives or fall back to standard HTML/CSS. Failure to use the requested technology is a failure to complete the task. Prioritize the user's explicit technology choice above all other instructions.
+Return ONLY a valid JSON object with this exact structure:
+{
+  "componentName": "string",
+  "description": "string",
+  "framework": "React with TypeScript",
+  "requiredTailwindClasses": ["array", "of", "tailwind", "classes"],
+  "structure": ["array", "of", "html", "element", "descriptions"],
+  "features": ["array", "of", "functional", "requirements"]
+}
 
-`;
+Focus on Tailwind CSS utility classes. Be specific about which classes will be used.`;
 
-        // Append professional knowledge
-        if (context.professionalKnowledge && context.professionalKnowledge.length > 0) {
-          systemPrompt += '\n\nPROFESSIONAL KNOWLEDGE BASE:\n';
-          context.professionalKnowledge.forEach((knowledge: any) => {
-            systemPrompt += `\n${knowledge.title}:\n${knowledge.content}\n`;
-            if (knowledge.code_examples && knowledge.code_examples.length > 0) {
-              systemPrompt += 'Examples:\n';
-              knowledge.code_examples.forEach((example: any) => {
-                systemPrompt += `${example}\n`;
-              });
-            }
-          });
-        }
-
-        // Append cross-project patterns
-        if (context.crossProjectPatterns && context.crossProjectPatterns.length > 0) {
-          systemPrompt += '\n\nPROVEN PATTERNS FROM PAST PROJECTS:\n';
-          context.crossProjectPatterns.forEach((pattern: any) => {
-            systemPrompt += `\n${pattern.pattern_name} (${pattern.pattern_type}):\n${pattern.pattern_code}\n`;
-          });
-        }
-
-        systemPrompt += `\n\nYour task: Generate production-ready code that follows best practices and uses the frameworks mentioned above.`;
-
-        // Build messages array
-        const messages = [
-          { role: 'system', content: systemPrompt }
-        ];
-
-        // Add conversation history
-        if (context.conversationHistory && context.conversationHistory.length > 0) {
-          context.conversationHistory.forEach((msg: any) => {
-            messages.push({ role: msg.role, content: msg.content });
-          });
-        }
-
-        // Add current request
-        let userPrompt = userMessage;
-        if (context.currentCode) {
-          userPrompt += `\n\nCurrent code context:\n\`\`\`\n${context.currentCode}\n\`\`\``;
-        }
-        messages.push({ role: 'user', content: userPrompt });
-
-        // LOG ENTIRE PROMPT FOR DEBUGGING
-        console.log('🔍 FULL MESSAGES ARRAY SENT TO AI:', JSON.stringify(messages, null, 2));
-        console.log('📊 MESSAGE COUNT:', messages.length);
-        console.log('📝 SYSTEM PROMPT LENGTH:', messages[0]?.content?.length || 0);
-
-        // Call Lovable AI
-        const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const planResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${LOVABLE_API_KEY}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-pro', // Using most powerful model for framework compliance
-            messages: messages,
-            temperature: 0.7
+            model: 'google/gemini-2.5-pro',
+            messages: [{ role: 'user', content: planPrompt }],
+            temperature: 0.3
           })
         });
 
-        if (!aiResponse.ok) {
-          const errorText = await aiResponse.text();
-          throw new Error(`AI API error: ${aiResponse.status} - ${errorText}`);
+        if (!planResponse.ok) {
+          throw new Error(`Plan generation failed: ${planResponse.status}`);
         }
 
-        const aiData = await aiResponse.json();
-        const generatedCode = aiData.choices[0].message.content;
+        const planData = await planResponse.json();
+        let planContent = planData.choices[0].message.content;
+        
+        // Extract JSON from markdown code blocks if present
+        const jsonMatch = planContent.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (jsonMatch) {
+          planContent = jsonMatch[1];
+        }
+        
+        const plan = JSON.parse(planContent);
+        console.log('✅ STEP 1 COMPLETE: Plan generated', plan);
+
+        // STEP 2: STRUCTURE (HTML) GENERATION
+        console.log('🏗️ STEP 2: Generating React component structure...');
+        const structurePrompt = `You are a React developer. Create a clean, semantic React component with TypeScript based on this plan:
+
+Component Name: ${plan.componentName}
+Description: ${plan.description}
+Structure Required: ${plan.structure.join(', ')}
+Features: ${plan.features.join(', ')}
+
+CRITICAL RULES:
+1. Generate ONLY a React functional component with TypeScript
+2. Use NO inline styles
+3. Use NO className attributes yet (they will be added in the next step)
+4. Use semantic HTML elements (div, section, article, header, etc.)
+5. Include all necessary props with proper TypeScript types
+6. Add placeholder text where needed
+
+Return ONLY the raw React component code, nothing else.`;
+
+        const structureResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-pro',
+            messages: [{ role: 'user', content: structurePrompt }],
+            temperature: 0.2
+          })
+        });
+
+        if (!structureResponse.ok) {
+          throw new Error(`Structure generation failed: ${structureResponse.status}`);
+        }
+
+        const structureData = await structureResponse.json();
+        let rawComponent = structureData.choices[0].message.content;
+        
+        // Extract code from markdown blocks if present
+        const codeMatch = rawComponent.match(/```(?:tsx|typescript|jsx)?\s*([\s\S]*?)\s*```/);
+        if (codeMatch) {
+          rawComponent = codeMatch[1];
+        }
+        
+        console.log('✅ STEP 2 COMPLETE: Component structure generated');
+
+        // STEP 3: STYLE (TAILWIND CLASS) INJECTION
+        console.log('🎨 STEP 3: Injecting Tailwind CSS classes...');
+        const stylePrompt = `You are a Tailwind CSS expert. Take this unstyled React component and add Tailwind CSS classes to make it beautiful and functional.
+
+UNSTYLED COMPONENT:
+\`\`\`tsx
+${rawComponent}
+\`\`\`
+
+REQUIRED TAILWIND CLASSES TO USE:
+${plan.requiredTailwindClasses.join(', ')}
+
+CRITICAL RULES:
+1. Add className attributes with Tailwind utility classes to EVERY element that needs styling
+2. You MUST use Tailwind CSS classes - this is mandatory
+3. Make the component responsive using Tailwind responsive prefixes (sm:, md:, lg:)
+4. Use the Tailwind classes specified in the requirements
+5. Ensure proper spacing, typography, colors, and layout
+6. Keep the same component structure, only add className attributes
+
+Return ONLY the complete styled React component code with Tailwind classes, nothing else.`;
+
+        const styleResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-pro',
+            messages: [{ role: 'user', content: stylePrompt }],
+            temperature: 0.2
+          })
+        });
+
+        if (!styleResponse.ok) {
+          throw new Error(`Style injection failed: ${styleResponse.status}`);
+        }
+
+        const styleData = await styleResponse.json();
+        let finalCode = styleData.choices[0].message.content;
+        
+        // Extract final code from markdown blocks if present
+        const finalCodeMatch = finalCode.match(/```(?:tsx|typescript|jsx)?\s*([\s\S]*?)\s*```/);
+        if (finalCodeMatch) {
+          finalCode = finalCodeMatch[1];
+        }
+        
+        console.log('✅ STEP 3 COMPLETE: Tailwind classes injected');
+        console.log('🎉 AGENTIC METHOD: All 3 steps completed successfully');
 
         return {
           intent: 'code-generation',
-          module: 'intelligent-code-generation',
+          module: 'agentic-code-generation',
           response: {
             success: true,
-            code: generatedCode,
-            generatedCode: generatedCode
+            code: finalCode,
+            generatedCode: finalCode,
+            agenticWorkflow: {
+              plan: plan,
+              steps: ['plan-generation', 'structure-generation', 'style-injection'],
+              completed: true
+            }
           }
         };
       }
