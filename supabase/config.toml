@@ -134,3 +134,12 @@ verify_jwt = true
 
 [functions.refactor-code]
 verify_jwt = true
+
+[functions.advanced-reasoning]
+verify_jwt = false
+
+[functions.self-reflection]
+verify_jwt = false
+
+[functions.proactive-intelligence]
+verify_jwt = false

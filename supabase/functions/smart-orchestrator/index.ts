@@ -43,8 +43,32 @@ serve(async (req) => {
     const phases: any[] = [];
     let currentResult: any = {};
 
-    // PHASE 0: Load user preferences and professional knowledge
-    console.log('Phase 0: Loading User Context & Professional Knowledge');
+    // PHASE 0: Advanced Reasoning
+    console.log('Phase 0: Advanced Reasoning...');
+    const reasoningStart = Date.now();
+    
+    const reasoningResponse = await supabaseClient.functions.invoke('advanced-reasoning', {
+      body: {
+        userRequest,
+        conversationHistory: [],
+        currentContext: { conversationId, currentCode },
+        reasoningType: 'deep'
+      },
+      headers: { Authorization: authHeader }
+    });
+
+    const reasoning = reasoningResponse.data?.reasoning || {};
+    console.log('Reasoning complete:', reasoning);
+    
+    phases.push({
+      name: 'advanced_reasoning',
+      duration: Date.now() - reasoningStart,
+      result: { confidence: reasoning.confidence, approach: reasoning.approach }
+    });
+    currentResult.reasoning = reasoning;
+
+    // PHASE 1: Load user preferences and professional knowledge
+    console.log('Phase 1: Loading User Context & Professional Knowledge');
     const contextStart = Date.now();
     
     const { data: userPrefs } = await supabaseClient
@@ -95,15 +119,16 @@ serve(async (req) => {
 
     console.log('Starting smart orchestration for:', userRequest);
 
-    // PHASE 1: Architecture Planning (with user context)
-    console.log('Phase 1: Architecture Planning');
+    // PHASE 2: Architecture Planning (with user context and reasoning)
+    console.log('Phase 2: Architecture Planning');
     const planResponse = await supabaseClient.functions.invoke('generate-with-plan', {
       body: {
         phase: 'plan',
         userRequest,
         conversationId,
         currentCode,
-        userContext: currentResult.userContext // Include preferences
+        userContext: currentResult.userContext, // Include preferences
+        reasoning: currentResult.reasoning // Include reasoning results
       }
     });
 
@@ -116,8 +141,8 @@ serve(async (req) => {
     });
     currentResult.plan = planResponse.data;
 
-    // PHASE 2: Component Impact Analysis
-    console.log('Phase 2: Component Impact Analysis');
+    // PHASE 3: Component Impact Analysis
+    console.log('Phase 3: Component Impact Analysis');
     const impactStart = Date.now();
     
     if (currentCode) {
@@ -139,8 +164,8 @@ serve(async (req) => {
       }
     }
 
-    // PHASE 3: Pattern Retrieval
-    console.log('Phase 3: Pattern Retrieval');
+    // PHASE 4: Pattern Retrieval
+    console.log('Phase 4: Pattern Retrieval');
     const patternStart = Date.now();
     
     const patternResponse = await supabaseClient.functions.invoke('multi-project-learn', {
@@ -161,8 +186,8 @@ serve(async (req) => {
       currentResult.suggestedPatterns = patternResponse.data.patterns;
     }
 
-    // PHASE 4: Code Generation (with patterns and plan)
-    console.log('Phase 4: Code Generation');
+    // PHASE 5: Code Generation (with patterns, plan, and reasoning)
+    console.log('Phase 5: Code Generation');
     const genStart = Date.now();
     
     const generateResponse = await supabaseClient.functions.invoke('generate-with-plan', {
@@ -185,7 +210,30 @@ serve(async (req) => {
     });
     currentResult.generatedCode = generateResponse.data.code;
 
-    // PHASE 5: Automatic Refinement (if enabled)
+    // PHASE 6: Self-Reflection
+    console.log('Phase 6: Self-Reflection...');
+    const reflectionStart = Date.now();
+
+    const reflectionResponse = await supabaseClient.functions.invoke('self-reflection', {
+      body: {
+        generatedResponse: currentResult.generatedCode,
+        originalRequest: userRequest,
+        context: { userId: user.id, conversationId, plan: currentResult.plan, reasoning: currentResult.reasoning }
+      },
+      headers: { Authorization: authHeader }
+    });
+
+    const reflection = reflectionResponse.data?.reflection || {};
+    console.log('Self-reflection complete:', reflection);
+    
+    phases.push({
+      name: 'self_reflection',
+      duration: Date.now() - reflectionStart,
+      result: { quality_score: reflection.quality_score, should_regenerate: reflection.should_regenerate }
+    });
+    currentResult.reflection = reflection;
+
+    // PHASE 7: Automatic Refinement (if enabled)
     if (autoRefine && currentResult.generatedCode) {
       console.log('Phase 5: Automatic Refinement');
       const refineStart = Date.now();
@@ -211,9 +259,9 @@ serve(async (req) => {
       }
     }
 
-    // PHASE 6: Learning (if enabled) - Enhanced with conversation learning
-    if (autoLearn && currentResult.refinedCode) {
-      console.log('Phase 6: Pattern Learning & User Preference Learning');
+    // PHASE 8: Learning (if enabled) - Enhanced with conversation learning
+    if (autoLearn && (currentResult.refinedCode || currentResult.generatedCode)) {
+      console.log('Phase 8: Pattern Learning & User Preference Learning');
       const learnStart = Date.now();
       
       // Pattern learning
@@ -221,7 +269,7 @@ serve(async (req) => {
         body: {
           action: 'learn',
           userId: user.id,
-          generatedCode: currentResult.refinedCode,
+          generatedCode: currentResult.refinedCode || currentResult.generatedCode,
           context: userRequest,
           success: true
         }
@@ -233,7 +281,7 @@ serve(async (req) => {
           conversationId,
           messages: [],
           userRequest,
-          generatedResponse: currentResult.refinedCode
+          generatedResponse: currentResult.refinedCode || currentResult.generatedCode
         }
       });
 
@@ -247,6 +295,37 @@ serve(async (req) => {
           }
         });
       }
+    }
+
+    // PHASE 9: Proactive Intelligence
+    if (user.id) {
+      console.log('Phase 9: Generating proactive insights...');
+      const proactiveStart = Date.now();
+
+      const intelligenceResponse = await supabaseClient.functions.invoke('proactive-intelligence', {
+        body: {
+          userId: user.id,
+          projectContext: { currentCode, conversationId },
+          conversationHistory: [
+            { role: 'user', content: userRequest }, 
+            { role: 'assistant', content: currentResult.refinedCode || currentResult.generatedCode }
+          ]
+        },
+        headers: { Authorization: authHeader }
+      });
+
+      const proactiveInsights = intelligenceResponse.data?.intelligence || {};
+      console.log('Proactive insights generated:', proactiveInsights.suggestions?.length || 0, 'suggestions');
+      
+      phases.push({
+        name: 'proactive_intelligence',
+        duration: Date.now() - proactiveStart,
+        result: { 
+          insights_count: proactiveInsights.insights?.length || 0, 
+          suggestions_count: proactiveInsights.suggestions?.length || 0 
+        }
+      });
+      currentResult.proactiveInsights = proactiveInsights;
     }
 
     const totalDuration = Date.now() - startTime;
@@ -271,9 +350,13 @@ serve(async (req) => {
         totalDuration,
         finalCode: currentResult.refinedCode || currentResult.generatedCode,
         plan: currentResult.plan,
+        reasoning: currentResult.reasoning,
+        reflection: currentResult.reflection,
         impactAnalysis: currentResult.impactAnalysis,
         suggestedPatterns: currentResult.suggestedPatterns,
-        qualityMetrics: currentResult.qualityMetrics
+        qualityMetrics: currentResult.qualityMetrics,
+        proactiveInsights: currentResult.proactiveInsights,
+        intelligence: 'advanced'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
