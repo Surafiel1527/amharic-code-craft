@@ -2168,6 +2168,42 @@ export type Database = {
         }
         Relationships: []
       }
+      multi_modal_generations: {
+        Row: {
+          created_at: string
+          generation_time_ms: number
+          has_code: boolean
+          id: string
+          images_generated: number
+          included_code: boolean
+          included_images: boolean
+          prompt: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          generation_time_ms: number
+          has_code?: boolean
+          id?: string
+          images_generated?: number
+          included_code?: boolean
+          included_images?: boolean
+          prompt: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          generation_time_ms?: number
+          has_code?: boolean
+          id?: string
+          images_generated?: number
+          included_code?: boolean
+          included_images?: boolean
+          prompt?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       multi_model_logs: {
         Row: {
           cost_estimate: number | null
@@ -3774,6 +3810,39 @@ export type Database = {
           team_id?: string | null
           team_name?: string | null
           user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      visual_code_generations: {
+        Row: {
+          analysis: Json
+          created_at: string
+          framework: string
+          generated_code: Json
+          has_image: boolean
+          id: string
+          styling: string
+          user_id: string
+        }
+        Insert: {
+          analysis?: Json
+          created_at?: string
+          framework: string
+          generated_code?: Json
+          has_image?: boolean
+          id?: string
+          styling: string
+          user_id: string
+        }
+        Update: {
+          analysis?: Json
+          created_at?: string
+          framework?: string
+          generated_code?: Json
+          has_image?: boolean
+          id?: string
+          styling?: string
           user_id?: string
         }
         Relationships: []

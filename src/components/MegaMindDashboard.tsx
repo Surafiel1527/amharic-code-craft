@@ -6,9 +6,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Brain, Package, Zap, CheckCircle2, AlertCircle, Code, Cpu, Database, Download } from "lucide-react";
+import { Brain, Package, Zap, CheckCircle2, AlertCircle, Code, Cpu, Database, Download, Sparkles } from "lucide-react";
 import { CompleteProjectPackager } from "./CompleteProjectPackager";
 import InstantPackageInstaller from "./InstantPackageInstaller";
+import BeyondMegaMindDashboard from "./BeyondMegaMindDashboard";
 
 export const MegaMindDashboard = () => {
   const [request, setRequest] = useState("");
@@ -74,8 +75,12 @@ export const MegaMindDashboard = () => {
       </div>
 
       <Tabs defaultValue="orchestrator" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="orchestrator">Live Orchestrator</TabsTrigger>
+          <TabsTrigger value="beyond">
+            <Sparkles className="w-4 h-4 mr-2" />
+            Beyond Mega Mind
+          </TabsTrigger>
           <TabsTrigger value="installer">
             <Zap className="w-4 h-4 mr-2" />
             Package Installer
@@ -255,6 +260,10 @@ export const MegaMindDashboard = () => {
               </p>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="beyond" className="space-y-4">
+          <BeyondMegaMindDashboard />
         </TabsContent>
 
         <TabsContent value="installer" className="space-y-4">

@@ -243,3 +243,9 @@ verify_jwt = true
 [functions.intelligent-package-installer]
 verify_jwt = true
 
+[functions.visual-code-generator]
+verify_jwt = true
+
+[functions.multi-modal-generator]
+verify_jwt = true
+
