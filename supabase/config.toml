@@ -279,3 +279,6 @@ verify_jwt = true
 [functions.proactive-intelligence]
 verify_jwt = true
 
+[functions.terminal-executor]
+verify_jwt = true
+

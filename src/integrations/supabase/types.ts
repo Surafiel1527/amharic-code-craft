@@ -3744,6 +3744,72 @@ export type Database = {
         }
         Relationships: []
       }
+      terminal_history: {
+        Row: {
+          command: string
+          created_at: string | null
+          execution_time_ms: number | null
+          exit_code: number | null
+          id: string
+          output: string
+          user_id: string
+          working_directory: string | null
+        }
+        Insert: {
+          command: string
+          created_at?: string | null
+          execution_time_ms?: number | null
+          exit_code?: number | null
+          id?: string
+          output: string
+          user_id: string
+          working_directory?: string | null
+        }
+        Update: {
+          command?: string
+          created_at?: string | null
+          execution_time_ms?: number | null
+          exit_code?: number | null
+          id?: string
+          output?: string
+          user_id?: string
+          working_directory?: string | null
+        }
+        Relationships: []
+      }
+      terminal_sessions: {
+        Row: {
+          created_at: string | null
+          environment_vars: Json | null
+          id: string
+          is_active: boolean | null
+          last_command_at: string | null
+          session_name: string
+          user_id: string
+          working_directory: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          environment_vars?: Json | null
+          id?: string
+          is_active?: boolean | null
+          last_command_at?: string | null
+          session_name: string
+          user_id: string
+          working_directory?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          environment_vars?: Json | null
+          id?: string
+          is_active?: boolean | null
+          last_command_at?: string | null
+          session_name?: string
+          user_id?: string
+          working_directory?: string | null
+        }
+        Relationships: []
+      }
       test_suites: {
         Row: {
           code_to_test: string

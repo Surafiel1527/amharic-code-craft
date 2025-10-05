@@ -13,6 +13,7 @@ import BeyondMegaMindDashboard from "./BeyondMegaMindDashboard";
 import PythonDevelopmentHub from "./PythonDevelopmentHub";
 import SuperMegaMindHub from "./SuperMegaMindHub";
 import { EnterpriseProjectDashboard } from "./EnterpriseProjectDashboard";
+import { WebTerminal } from "./WebTerminal";
 
 export const MegaMindDashboard = () => {
   const [request, setRequest] = useState("");
@@ -78,8 +79,12 @@ export const MegaMindDashboard = () => {
       </div>
 
       <Tabs defaultValue="orchestrator" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="orchestrator">Orchestrator</TabsTrigger>
+          <TabsTrigger value="terminal">
+            <Code className="w-4 h-4 mr-2" />
+            Terminal
+          </TabsTrigger>
           <TabsTrigger value="super">
             <Star className="w-4 h-4 mr-2" />
             Super
@@ -275,6 +280,10 @@ export const MegaMindDashboard = () => {
               </p>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="terminal" className="space-y-4">
+          <WebTerminal />
         </TabsContent>
 
         <TabsContent value="super" className="space-y-4">
