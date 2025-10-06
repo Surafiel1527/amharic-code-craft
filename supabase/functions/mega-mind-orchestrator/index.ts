@@ -585,21 +585,36 @@ async function generateSolution(request: string, requestType: string, analysis: 
     throw new Error(`AI API failed with status ${response.status}: ${errorText}`);
   }
 
-  const data = await response.json();
+  // Read response as text first to handle potential parsing issues
+  const responseText = await response.text();
+  console.log('Raw AI response (first 500 chars):', responseText.substring(0, 500));
+  
+  let data;
+  try {
+    data = JSON.parse(responseText);
+  } catch (jsonError) {
+    console.error('Failed to parse AI response as JSON:', jsonError);
+    console.error('Response text:', responseText.substring(0, 1000));
+    const errorMsg = jsonError instanceof Error ? jsonError.message : String(jsonError);
+    throw new Error(`AI API returned invalid JSON: ${errorMsg}`);
+  }
+  
   console.log('AI Response structure:', JSON.stringify(data, null, 2).substring(0, 500));
   
   if (!data.choices?.[0]?.message?.content) {
-    console.error('Invalid AI response structure:', data);
+    console.error('Invalid AI response structure:', JSON.stringify(data, null, 2));
     throw new Error('AI response missing expected data structure');
   }
 
   try {
     const content = data.choices[0].message.content;
+    console.log('AI content to parse:', content.substring(0, 500));
     return JSON.parse(content);
   } catch (parseError) {
-    console.error('Failed to parse AI response content:', parseError);
-    console.error('Content received:', data.choices[0].message.content?.substring(0, 500));
-    throw new Error(`Failed to parse AI response: ${parseError.message}`);
+    console.error('Failed to parse AI content as JSON:', parseError);
+    console.error('Content received:', data.choices[0].message.content?.substring(0, 1000));
+    const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+    throw new Error(`Failed to parse AI generated content: ${errorMsg}`);
   }
 }
 
