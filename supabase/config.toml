@@ -372,3 +372,6 @@ verify_jwt = false
 [functions.stream-code-generation]
 verify_jwt = false
 
+[functions.autonomous-healing-engine]
+verify_jwt = false
+

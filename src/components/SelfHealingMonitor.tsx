@@ -57,6 +57,14 @@ export function SelfHealingMonitor() {
   const [reasoningStats, setReasoningStats] = useState<any>(null);
   const [isOptimizingContext, setIsOptimizingContext] = useState(false);
   const [contextualStats, setContextualStats] = useState<any>(null);
+  const [isAutonomous, setIsAutonomous] = useState(false);
+  const [autonomousStats, setAutonomousStats] = useState({
+    cycles_run: 0,
+    errors_detected: 0,
+    fixes_applied: 0,
+    patterns_learned: 0,
+    last_run: null as string | null,
+  });
   const { toast } = useToast();
   
   // Enable adaptive proactive monitoring
@@ -71,6 +79,46 @@ export function SelfHealingMonitor() {
       loadRecentPatterns();
     }, 30000);
 
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadStats = async () => {
+
+  // Auto-refresh autonomous stats
+  useEffect(() => {
+    const fetchAutonomousStats = async () => {
+      try {
+        const result = await supabase
+          .from('ai_improvement_logs')
+          .select('changes_made, applied_at')
+          .eq('operation_type', 'autonomous_healing_cycle')
+          .order('applied_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (result.error) {
+          console.error('Error fetching autonomous stats:', result.error);
+          return;
+        }
+
+        const data = result.data;
+        if (data?.changes_made && typeof data.changes_made === 'object') {
+          const changes = data.changes_made as Record<string, any>;
+          setAutonomousStats({
+            cycles_run: Number(changes.cycles_run) || 0,
+            errors_detected: Number(changes.errors_detected) || 0,
+            fixes_applied: Number(changes.fixes_applied) || 0,
+            patterns_learned: Number(changes.patterns_learned) || 0,
+            last_run: data.applied_at || new Date().toISOString(),
+          });
+        }
+      } catch (err) {
+        console.error('Exception fetching autonomous stats:', err);
+      }
+    };
+
+    fetchAutonomousStats();
+    const interval = setInterval(fetchAutonomousStats, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -332,6 +380,39 @@ export function SelfHealingMonitor() {
     }
   };
 
+  const runAutonomousCycle = async () => {
+    setIsAutonomous(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('autonomous-healing-engine');
+      
+      if (error) throw error;
+      
+      if (data?.results) {
+        setAutonomousStats({
+          cycles_run: data.results.cycles_run,
+          errors_detected: data.results.errors_detected,
+          fixes_applied: data.results.fixes_applied,
+          patterns_learned: data.results.patterns_learned,
+          last_run: new Date().toISOString(),
+        });
+        
+        toast({
+          title: "🤖 Autonomous Cycle Complete",
+          description: `${data.results.fixes_applied} fixes applied automatically`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Autonomous cycle error:', error);
+      toast({
+        title: "Autonomous Cycle Failed",
+        description: "Could not run autonomous cycle",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAutonomous(false);
+    }
+  };
+
   const runContextualOptimization = async () => {
     setIsOptimizingContext(true);
     try {
@@ -416,15 +497,16 @@ export function SelfHealingMonitor() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="healing" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="healing">🧠 Healing</TabsTrigger>
-          <TabsTrigger value="learning">📚 Learning</TabsTrigger>
+      <Tabs defaultValue="autonomous" className="w-full">
+        <TabsList className="grid w-full grid-cols-8">
+          <TabsTrigger value="autonomous" className="font-bold">🤖 AUTO</TabsTrigger>
+          <TabsTrigger value="healing">🧠 Heal</TabsTrigger>
+          <TabsTrigger value="learning">📚 Learn</TabsTrigger>
           <TabsTrigger value="meta">🎯 Meta</TabsTrigger>
-          <TabsTrigger value="reasoning">💡 Reasoning</TabsTrigger>
-          <TabsTrigger value="contextual">🌍 Contextual</TabsTrigger>
-          <TabsTrigger value="predictions">🔮 Predictions</TabsTrigger>
-          <TabsTrigger value="optimization">⚡ Optimization</TabsTrigger>
+          <TabsTrigger value="reasoning">💡 Reason</TabsTrigger>
+          <TabsTrigger value="contextual">🌍 Context</TabsTrigger>
+          <TabsTrigger value="predictions">🔮 Predict</TabsTrigger>
+          <TabsTrigger value="optimization">⚡ Optimize</TabsTrigger>
         </TabsList>
 
       <TabsContent value="healing" className="space-y-6">
@@ -1021,6 +1103,97 @@ export function SelfHealingMonitor() {
                   <p className="text-sm text-muted-foreground">Proactively prevents issues based on patterns</p>
                 </div>
                 <Sparkles className="h-5 w-5 text-yellow-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="autonomous" className="space-y-6">
+        <Card className="border-2 border-primary">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-primary" />
+              🤖 AUTONOMOUS MODE - FULLY AUTOMATED
+            </CardTitle>
+            <CardDescription>
+              System runs automatically in background - no manual intervention needed
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold">Status: ACTIVE</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-sm text-muted-foreground">Running automatically</span>
+                </div>
+              </div>
+              {autonomousStats.last_run && (
+                <div className="text-sm text-muted-foreground">
+                  Last cycle: {new Date(autonomousStats.last_run).toLocaleString()}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-primary">{autonomousStats.cycles_run}</div>
+                <div className="text-sm text-muted-foreground">Auto Cycles</div>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-primary">{autonomousStats.errors_detected}</div>
+                <div className="text-sm text-muted-foreground">Detected</div>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-green-500">{autonomousStats.fixes_applied}</div>
+                <div className="text-sm text-muted-foreground">Auto-Fixed</div>
+              </div>
+              <div className="text-center p-4 bg-muted rounded-lg">
+                <div className="text-2xl font-bold text-primary">{autonomousStats.patterns_learned}</div>
+                <div className="text-sm text-muted-foreground">Learned</div>
+              </div>
+            </div>
+
+            <Button 
+              onClick={runAutonomousCycle}
+              disabled={isAutonomous}
+              className="w-full"
+              size="lg"
+            >
+              {isAutonomous && <Zap className="mr-2 h-4 w-4 animate-spin" />}
+              🚀 Trigger Autonomous Cycle Now
+            </Button>
+
+            <div className="space-y-2 text-sm border-t pt-4">
+              <div className="font-semibold mb-2">What runs automatically:</div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                Error detection & auto-fix (high confidence patterns)
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                Universal pattern learning across projects
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                Deployment monitoring & correlation analysis
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                Contextual optimization (time & load based)
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                Self-improvement meta-analysis
+              </div>
+            </div>
+
+            <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+              <div className="font-semibold text-green-600 mb-1">✅ 100% AUTONOMOUS</div>
+              <div className="text-sm text-muted-foreground">
+                The system monitors, learns, fixes, and improves itself automatically. 
+                Manual intervention only needed for review and oversight.
               </div>
             </div>
           </CardContent>
