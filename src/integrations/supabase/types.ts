@@ -4479,6 +4479,45 @@ export type Database = {
           },
         ]
       }
+      platform_tests: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          execution_time_ms: number | null
+          id: string
+          metadata: Json | null
+          status: string
+          test_category: string
+          test_name: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          metadata?: Json | null
+          status: string
+          test_category: string
+          test_name: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          metadata?: Json | null
+          status?: string
+          test_category?: string
+          test_name?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       plugin_installations: {
         Row: {
           config: Json | null
@@ -6098,6 +6137,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      test_data: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          is_public: boolean | null
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_public?: boolean | null
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_public?: boolean | null
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       test_generation_requests: {
         Row: {

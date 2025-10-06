@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 const Builder = lazy(() => import("./pages/Builder"));
 const Workspace = lazy(() => import("./pages/Workspace"));
 const Settings = lazy(() => import("./pages/Settings"));
+const TestDashboard = lazy(() => import("./pages/TestDashboard"));
 const Admin = lazy(() => import("./pages/Admin"));
 const SharedProject = lazy(() => import("./pages/SharedProject"));
 const Explore = lazy(() => import("./pages/Explore"));
@@ -44,6 +45,7 @@ const App = () => {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/test-dashboard" element={<TestDashboard />} />
           <Route path="/builder" element={<Builder />} />
           <Route path="/workspace/:projectId" element={<Workspace />} />
           <Route path="/settings" element={<Settings />} />

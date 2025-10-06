@@ -207,9 +207,8 @@ const Index = () => {
   ]);
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate("/auth");
-    }
+    // Allow viewing homepage without auth, but redirect to auth if trying to do something
+    // We'll handle auth in the actual feature pages
   }, [user, loading, navigate]);
 
   useEffect(() => {
