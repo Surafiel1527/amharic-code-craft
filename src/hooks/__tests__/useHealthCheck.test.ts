@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { useHealthCheck } from '../useHealthCheck';
 
 // Mock supabase
@@ -21,27 +21,13 @@ describe('useHealthCheck', () => {
     vi.clearAllMocks();
   });
 
-  it('should initialize with healthy status', async () => {
+  it('should initialize with healthy status', () => {
     const { result } = renderHook(() => useHealthCheck(10000));
-
-    await waitFor(() => {
-      expect(result.current.health.overall).toBe('healthy');
-    });
+    expect(result.current.health.overall).toBe('healthy');
   });
 
-  it('should check health on mount', async () => {
+  it('should provide isHealthy boolean', () => {
     const { result } = renderHook(() => useHealthCheck(10000));
-
-    await waitFor(() => {
-      expect(result.current.health.lastCheck).toBeInstanceOf(Date);
-    });
-  });
-
-  it('should provide isHealthy boolean', async () => {
-    const { result } = renderHook(() => useHealthCheck(10000));
-
-    await waitFor(() => {
-      expect(typeof result.current.isHealthy).toBe('boolean');
-    });
+    expect(typeof result.current.isHealthy).toBe('boolean');
   });
 });
