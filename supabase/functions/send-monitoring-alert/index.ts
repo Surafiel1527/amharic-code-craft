@@ -56,7 +56,7 @@ serve(async (req) => {
         .filter(Boolean);
 
       // Send email notification via Resend if configured
-      if (resendApiKey && adminEmails.length > 0 && severity in ['error', 'critical']) {
+      if (resendApiKey && adminEmails.length > 0 && ['error', 'critical'].includes(severity)) {
         try {
           const emailResponse = await fetch('https://api.resend.com/emails', {
             method: 'POST',

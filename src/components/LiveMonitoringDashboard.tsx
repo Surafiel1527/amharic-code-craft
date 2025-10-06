@@ -76,7 +76,7 @@ export const LiveMonitoringDashboard = () => {
 
   const loadMetrics = async () => {
     const { data, error } = await supabase
-      .from('system_metrics')
+      .from('system_metrics' as any)
       .select('*')
       .order('recorded_at', { ascending: false })
       .limit(100);
@@ -86,12 +86,12 @@ export const LiveMonitoringDashboard = () => {
       return;
     }
 
-    setMetrics(data || []);
+    setMetrics(data as any || []);
   };
 
   const loadAlerts = async () => {
     const { data, error } = await supabase
-      .from('alert_notifications')
+      .from('alert_notifications' as any)
       .select('*')
       .order('created_at', { ascending: false })
       .limit(50);
@@ -101,12 +101,12 @@ export const LiveMonitoringDashboard = () => {
       return;
     }
 
-    setAlerts(data || []);
+    setAlerts(data as any || []);
   };
 
   const loadCircuitBreakers = async () => {
     const { data, error } = await supabase
-      .from('circuit_breaker_state')
+      .from('circuit_breaker_state' as any)
       .select('*')
       .order('updated_at', { ascending: false });
 
@@ -115,17 +115,17 @@ export const LiveMonitoringDashboard = () => {
       return;
     }
 
-    setCircuitBreakers(data || []);
+    setCircuitBreakers(data as any || []);
   };
 
   const acknowledgeAlert = async (alertId: string) => {
     const { error } = await supabase
-      .from('alert_notifications')
+      .from('alert_notifications' as any)
       .update({
         acknowledged: true,
         acknowledged_at: new Date().toISOString(),
         acknowledged_by: (await supabase.auth.getUser()).data.user?.id
-      })
+      } as any)
       .eq('id', alertId);
 
     if (error) {
@@ -141,17 +141,17 @@ export const LiveMonitoringDashboard = () => {
     switch (severity) {
       case 'critical': return 'destructive';
       case 'error': return 'destructive';
-      case 'warning': return 'warning';
-      case 'info': return 'default';
+      case 'warning': return 'default';
+      case 'info': return 'secondary';
       default: return 'secondary';
     }
   };
 
   const getCircuitBreakerColor = (state: string) => {
     switch (state) {
-      case 'closed': return 'text-success';
+      case 'closed': return 'text-green-600 dark:text-green-400';
       case 'open': return 'text-destructive';
-      case 'half_open': return 'text-warning';
+      case 'half_open': return 'text-yellow-600 dark:text-yellow-400';
       default: return 'text-muted-foreground';
     }
   };
@@ -239,7 +239,7 @@ export const LiveMonitoringDashboard = () => {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-success">Healthy</div>
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">Healthy</div>
                 <p className="text-xs text-muted-foreground">All systems operational</p>
               </CardContent>
             </Card>
@@ -299,7 +299,7 @@ export const LiveMonitoringDashboard = () => {
           {alerts.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <CheckCircle2 className="h-12 w-12 text-success mb-4" />
+                <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400 mb-4" />
                 <p className="text-lg font-medium">No alerts</p>
                 <p className="text-sm text-muted-foreground">Everything is running smoothly</p>
               </CardContent>
@@ -329,7 +329,7 @@ export const LiveMonitoringDashboard = () => {
                 <CardContent>
                   <p className="text-sm">{alert.message}</p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {new Date(alert.sent_at).toLocaleString()}
+                    {new Date((alert as any).created_at || alert.sent_at).toLocaleString()}
                   </p>
                 </CardContent>
               </Card>
