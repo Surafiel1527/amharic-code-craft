@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { callAIWithFallback } from '../_shared/aiWithFallback.ts';
 
-const SUPER_MODEL = 'claude-opus-4-20250514';
+const SUPER_MODEL = 'google/gemini-2.5-pro';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

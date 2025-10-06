@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { callAIWithFallback } from '../_shared/aiWithFallback.ts';
 
-const SUPER_MODEL = 'claude-opus-4-20250514';
+const SUPER_MODEL = 'google/gemini-2.5-pro';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -63,7 +63,7 @@ serve(async (req) => {
     const avgProgress = jobs.reduce((sum, j) => sum + (j.progress || 0), 0) / totalJobs;
     const failureRate = totalJobs > 0 ? (failedJobs / totalJobs) * 100 : 0;
 
-    // Deep analysis with Claude Opus 4
+    // Deep analysis with Gemini 2.5 Pro
     const analysisPrompt = `You are SUPER MEGA MIND's Predictive Analytics Engine with advanced reasoning capabilities.
 
 **MISSION:** Analyze system health data and PREDICT potential failures before they happen.

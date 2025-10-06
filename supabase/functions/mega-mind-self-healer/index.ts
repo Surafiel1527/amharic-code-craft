@@ -3,8 +3,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { callAIWithFallback, PRIMARY_MODEL } from '../_shared/aiWithFallback.ts';
 
-// Use Claude Opus 4 for deep reasoning
-const SUPER_MODEL = 'claude-opus-4-20250514';
+// Use Gemini 2.5 Pro for deep reasoning
+const SUPER_MODEL = 'google/gemini-2.5-pro';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
