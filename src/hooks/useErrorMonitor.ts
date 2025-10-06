@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/utils/logger';
 
 interface ErrorReport {
   errorType: string;
@@ -61,7 +62,7 @@ export const useErrorMonitor = () => {
     try {
       // Don't report in development if it's a minor error
       if (import.meta.env.DEV && errorData.severity === 'low') {
-        console.warn('Error detected but not reported in dev:', errorData);
+        logger.warn('Error detected but not reported in dev', errorData);
         return;
       }
 
@@ -70,12 +71,12 @@ export const useErrorMonitor = () => {
       });
 
       if (error) {
-        console.error('Failed to report error:', error);
+        logger.error('Failed to report error', error);
       } else {
-        console.log('Error reported to auto-fix system');
+        logger.success('Error reported to auto-fix system');
       }
     } catch (err) {
-      console.error('Error reporting failed:', err);
+      logger.error('Error reporting failed', err);
     }
   };
 

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logger } from '@/utils/logger';
 
 interface ModificationObject {
   type: 'hide' | 'show' | 'modify' | 'add';
@@ -25,19 +26,19 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
 
   const createModification = async (modification: ModificationObject) => {
     try {
-      console.log('Creating modification:', modification);
+      logger.info('Creating modification', { modification });
       
       const { data, error } = await supabase.functions.invoke('create-modification', {
         body: { modification }
       });
 
       if (error) {
-        console.error('Error creating modification:', error);
+        logger.error('Error creating modification', error);
         toast.error('Failed to create modification');
         return;
       }
 
-      console.log('Modification created:', data);
+      logger.success('Modification created', { data });
       toast.success('Change saved for review');
       
       // Close the inspector panel after successful modification

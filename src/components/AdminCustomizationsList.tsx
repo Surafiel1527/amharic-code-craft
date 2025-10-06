@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PagePreviewDialog } from './PagePreviewDialog';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { logger } from '@/utils/logger';
 
 interface Customization {
   id: string;
@@ -151,7 +152,7 @@ export default function AdminCustomizationsList() {
         return;
       }
 
-      console.log('Attempting to delete customization:', customizationId);
+      logger.info('Attempting to delete customization', { customizationId });
 
       // Delete the rejected customization
       const { error, data } = await supabase
@@ -162,11 +163,11 @@ export default function AdminCustomizationsList() {
         .select();
 
       if (error) {
-        console.error('Database error:', error);
+        logger.error('Database error', error);
         throw error;
       }
 
-      console.log('Deleted rows:', data);
+      logger.info('Deleted rows', { count: data?.length });
 
       if (!data || data.length === 0) {
         toast({

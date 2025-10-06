@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logger } from '@/utils/logger';
 
 export interface Message {
   id: string;
@@ -108,7 +109,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   const loadConversation = useCallback(async (convId: string) => {
     if (!persistMessages) return;
 
-    console.log('💬 Loading conversation:', convId);
+    logger.info('Loading conversation', { conversationId: convId });
     try {
       const { data, error } = await supabase
         .from("messages")
@@ -133,9 +134,9 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         }));
 
       setMessages(typedMessages);
-      console.log('✅ Loaded', typedMessages.length, 'messages');
+      logger.success('Loaded messages', { count: typedMessages.length });
     } catch (error) {
-      console.error('Failed to load conversation:', error);
+      logger.error('Failed to load conversation', error);
       toast.error('Failed to load conversation history');
     }
   }, [persistMessages]);
@@ -146,7 +147,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   const createConversation = useCallback(async (): Promise<string | null> => {
     if (!persistMessages) return null;
 
-    console.log('💬 Creating new conversation');
+    logger.info('Creating new conversation');
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -163,14 +164,14 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
       if (error) throw error;
 
-      console.log('✅ Created conversation:', data.id);
+      logger.success('Created conversation', { conversationId: data.id });
       setConversationId(data.id);
       if (onConversationChange) {
         onConversationChange(data.id);
       }
       return data.id;
     } catch (error) {
-      console.error('Failed to create conversation:', error);
+      logger.error('Failed to create conversation', error);
       return null;
     }
   }, [persistMessages, projectId, onConversationChange]);
@@ -242,7 +243,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
    * Routes the message to Universal Error Teacher
    */
   const routeToErrorTeacher = useCallback(async (message: string, context: any): Promise<any> => {
-    console.log('🧠 Routing to Universal Error Teacher');
+    logger.info('Routing to Universal Error Teacher');
 
     try {
       const { data, error } = await supabase.functions.invoke('universal-error-teacher', {
@@ -265,7 +266,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       if (error) throw error;
       return data;
     } catch (error) {
-      console.warn('Error teacher failed, will fallback to orchestrator:', error);
+      logger.warn('Error teacher failed, fallback to orchestrator', { error });
       return null;
     }
   }, [projectId, selectedFiles]);
@@ -274,7 +275,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
    * Routes the message to Smart Orchestrator
    */
   const routeToOrchestrator = useCallback(async (message: string, context: any): Promise<any> => {
-    console.log('🎯 Routing to Smart Orchestrator');
+    logger.info('Routing to Smart Orchestrator');
 
     try {
       const { data, error } = await supabase.functions.invoke('smart-orchestrator', {
@@ -471,7 +472,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
       // Smart Routing Decision
       if (isError) {
-        console.log('🔍 Error detected - trying Universal Error Teacher first');
+        logger.info('Error detected - trying Universal Error Teacher');
         response = await routeToErrorTeacher(message, context);
         
         if (response && response.solution) {
@@ -481,7 +482,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
             : `🎓 Learning new ${response.category} pattern`
           );
         } else {
-          console.log('⚠️ Error teacher no solution - falling back to orchestrator');
+          logger.warn('Error teacher no solution - falling back to orchestrator');
         }
       }
 
@@ -491,7 +492,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         const isSimpleChange = context.currentCode && message.toLowerCase().match(/\b(change|update|modify|fix|adjust|set|make)\b.*\b(color|style|text|size|font|background)\b/i);
         
         if (isSimpleChange) {
-          console.log('🚀 Using fast smart-diff-update');
+          logger.info('Using fast smart-diff-update');
           setCurrentPhase('Analyzing changes');
           setProgress(50);
           
@@ -509,7 +510,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
           }
         } else {
           // Full orchestration with progress tracking
-          console.log('🎯 Using full smart orchestration');
+          logger.info('Using full smart orchestration');
           const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
           let currentPhaseIdx = 0;
           

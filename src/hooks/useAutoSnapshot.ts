@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
+import { logger } from '@/utils/logger';
 
 interface AutoSnapshotConfig {
   enabled: boolean;
@@ -31,7 +32,7 @@ export function useAutoSnapshot(onChange?: () => void) {
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error loading auto-snapshot config:', error);
+        logger.error('Error loading auto-snapshot config', error);
         return;
       }
 
@@ -67,7 +68,7 @@ export function useAutoSnapshot(onChange?: () => void) {
 
     const createAutoSnapshot = async () => {
       try {
-        console.log('Creating auto-snapshot...');
+        logger.info('Creating auto-snapshot');
         
         // Capture screenshot
         const mainContent = document.querySelector('main') || document.body;
@@ -93,12 +94,12 @@ export function useAutoSnapshot(onChange?: () => void) {
         if (error) throw error;
 
         setLastSnapshot(new Date());
-        console.log('Auto-snapshot created successfully');
+        logger.success('Auto-snapshot created');
         
         // Clean up old snapshots if needed
         await cleanupOldSnapshots();
       } catch (error) {
-        console.error('Error creating auto-snapshot:', error);
+        logger.error('Error creating auto-snapshot', error);
       }
     };
 
@@ -137,10 +138,10 @@ export function useAutoSnapshot(onChange?: () => void) {
           .delete()
           .in('id', ids);
 
-        console.log(`Cleaned up ${ids.length} old snapshots`);
+        logger.info('Cleaned up old snapshots', { count: ids.length });
       }
     } catch (error) {
-      console.error('Error cleaning up snapshots:', error);
+      logger.error('Error cleaning up snapshots', error);
     }
   };
 
@@ -185,7 +186,7 @@ export function useAutoSnapshot(onChange?: () => void) {
       toast.success('Snapshot created successfully');
       setLastSnapshot(new Date());
     } catch (error) {
-      console.error('Error creating manual snapshot:', error);
+      logger.error('Error creating manual snapshot', error);
       toast.error('Failed to create snapshot');
     }
   };
