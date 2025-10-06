@@ -102,7 +102,7 @@ async function handleAllocateResource(params: any, supabase: any, requestId: str
     .eq('resource_type', resourceType)
     .eq('status', 'active');
 
-  const currentUsage = usage?.reduce((sum, u) => sum + (u.allocated_amount || 0), 0) || 0;
+  const currentUsage = usage?.reduce((sum: number, u: any) => sum + (u.allocated_amount || 0), 0) || 0;
   const quotaLimit = quota?.quota_limit || 1000;
 
   if (currentUsage + amount > quotaLimit) {

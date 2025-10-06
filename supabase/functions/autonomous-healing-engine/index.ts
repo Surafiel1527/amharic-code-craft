@@ -103,7 +103,7 @@ serve(async (req) => {
       for (const [signature, fixes] of errorGroups) {
         if (fixes.length >= 2) {
           // Create or update universal pattern
-          const avgConfidence = fixes.reduce((sum, f) => sum + (f.confidence || 0), 0) / fixes.length;
+          const avgConfidence = fixes.reduce((sum: number, f: any) => sum + (f.confidence || 0), 0) / fixes.length;
           
           await supabase
             .from('universal_error_patterns')
@@ -112,7 +112,7 @@ serve(async (req) => {
               solution_code: fixes[0].fix_code,
               confidence_score: avgConfidence,
               success_count: fixes.length,
-              projects_affected: [...new Set(fixes.map(f => f.detected_errors?.project_id))].length,
+              projects_affected: [...new Set(fixes.map((f: any) => f.detected_errors?.project_id))].length,
               auto_apply: avgConfidence >= 0.85,
             }, { onConflict: 'error_signature' });
 
@@ -238,7 +238,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in autonomous-healing-engine:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

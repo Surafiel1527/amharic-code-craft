@@ -312,8 +312,6 @@ ${JSON.stringify(errorContext, null, 2)}
     method: 'super_learning',
     patternId: newPattern?.id,
     solution: learningResult.solution,
-    intelligence: learningResult.intelligence,
-    confidence: learningResult.confidence,
     requiresManualImplementation: true,
   };
 }

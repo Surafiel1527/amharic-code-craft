@@ -73,7 +73,6 @@ serve(async (req) => {
     console.log(`[${requestId}] Operation completed successfully`);
 
     return new Response(JSON.stringify({ 
-      success: true, 
       requestId,
       ...result 
     }), {
@@ -409,7 +408,8 @@ async function performanceAudit(
     });
   }
 
-  if (code.includes('.map(').split('.map(').length > 3) {
+  const mapCount = (code.match(/\.map\(/g) || []).length;
+  if (mapCount > 3) {
     issues.push({
       severity: 'low',
       type: 'multiple_iterations',

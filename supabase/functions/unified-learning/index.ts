@@ -75,7 +75,6 @@ serve(async (req) => {
     console.log(`[${requestId}] Operation completed successfully`);
 
     return new Response(JSON.stringify({ 
-      success: true, 
       requestId,
       ...result 
     }), {

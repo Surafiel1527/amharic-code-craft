@@ -113,9 +113,9 @@ async function handleGetMetrics(params: any, supabase: any) {
   if (error) throw error;
 
   // Calculate aggregations
-  const average = metrics.reduce((sum, m) => sum + (m.metric_value || 0), 0) / (metrics.length || 1);
-  const max = Math.max(...metrics.map(m => m.metric_value || 0));
-  const min = Math.min(...metrics.map(m => m.metric_value || 0));
+  const average = metrics.reduce((sum: number, m: any) => sum + (m.metric_value || 0), 0) / (metrics.length || 1);
+  const max = Math.max(...metrics.map((m: any) => m.metric_value || 0));
+  const min = Math.min(...metrics.map((m: any) => m.metric_value || 0));
 
   return {
     metrics,
@@ -181,10 +181,10 @@ async function handleGetErrors(params: any, supabase: any) {
     errors,
     count: errors.length,
     bySeverity: {
-      critical: errors.filter(e => e.severity === 'critical').length,
-      high: errors.filter(e => e.severity === 'high').length,
-      medium: errors.filter(e => e.severity === 'medium').length,
-      low: errors.filter(e => e.severity === 'low').length
+      critical: errors.filter((e: any) => e.severity === 'critical').length,
+      high: errors.filter((e: any) => e.severity === 'high').length,
+      medium: errors.filter((e: any) => e.severity === 'medium').length,
+      low: errors.filter((e: any) => e.severity === 'low').length
     }
   };
 }

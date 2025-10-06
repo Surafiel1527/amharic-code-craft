@@ -204,11 +204,11 @@ async function handleGetCacheStats(params: any, supabase: any, requestId: string
   const now = Date.now();
   const stats = {
     totalEntries: cacheEntries.length,
-    activeEntries: cacheEntries.filter(e => new Date(e.expires_at).getTime() > now).length,
-    expiredEntries: cacheEntries.filter(e => new Date(e.expires_at).getTime() <= now).length,
-    totalHits: cacheEntries.reduce((sum, e) => sum + (e.hit_count || 0), 0),
+    activeEntries: cacheEntries.filter((e: any) => new Date(e.expires_at).getTime() > now).length,
+    expiredEntries: cacheEntries.filter((e: any) => new Date(e.expires_at).getTime() <= now).length,
+    totalHits: cacheEntries.reduce((sum: number, e: any) => sum + (e.hit_count || 0), 0),
     averageHits: cacheEntries.length > 0 
-      ? cacheEntries.reduce((sum, e) => sum + (e.hit_count || 0), 0) / cacheEntries.length 
+      ? cacheEntries.reduce((sum: number, e: any) => sum + (e.hit_count || 0), 0) / cacheEntries.length 
       : 0,
   };
 

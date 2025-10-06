@@ -181,7 +181,12 @@ async function handleGetUserStats(params: any, supabase: any, requestId: string)
     .eq('user_id', userId)
     .gte('created_at', cutoff);
 
-  const stats = {
+  const stats: {
+    totalEvents: number;
+    eventsByType: Record<string, number>;
+    metricAverages: Record<string, number>;
+    timeRange: any;
+  } = {
     totalEvents: events?.length || 0,
     eventsByType: {},
     metricAverages: {},
@@ -207,7 +212,7 @@ async function handleGetUserStats(params: any, supabase: any, requestId: string)
   });
 
   Object.entries(metricGroups).forEach(([type, values]) => {
-    stats.metricAverages[type] = values.reduce((a, b) => a + b, 0) / values.length;
+    stats.metricAverages[type] = values.reduce((a: number, b: number) => a + b, 0) / values.length;
   });
 
   console.log(`[${requestId}] User stats compiled`);

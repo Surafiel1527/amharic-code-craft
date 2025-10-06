@@ -100,7 +100,6 @@ serve(async (req) => {
     console.log(`[${requestId}] Operation completed in ${duration}ms`);
 
     return new Response(JSON.stringify({ 
-      success: true, 
       requestId,
       duration,
       timestamp: new Date().toISOString(),
@@ -200,7 +199,7 @@ async function createWorkflow(
       metadata: { workflow_name: workflow.workflow_name }
     })
     .then(() => console.log(`[${requestId}] Audit log created`))
-    .catch(err => console.warn(`[${requestId}] Failed to create audit log:`, err));
+    .catch((err: any) => console.warn(`[${requestId}] Failed to create audit log:`, err));
 
   return {
     success: true,
@@ -315,21 +314,21 @@ async function executeWorkflowStep(
       if (!params?.table || !params?.data) {
         throw new Error('update_database requires table and data');
       }
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from(params.table)
         .insert(params.data);
-      if (error) throw error;
+      if (insertError) throw insertError;
       return { updated: true };
       
     case 'call_function':
       if (!params?.function_name) {
         throw new Error('call_function requires function_name');
       }
-      const { data, error } = await supabase.functions.invoke(params.function_name, {
+      const { data: funcData, error: funcError } = await supabase.functions.invoke(params.function_name, {
         body: params.body || {}
       });
-      if (error) throw error;
-      return data;
+      if (funcError) throw funcError;
+      return funcData;
       
     default:
       console.warn(`[${requestId}] Unknown action: ${action}`);
@@ -526,7 +525,7 @@ async function getExecutionStatus(
   supabase: any, 
   requestId: string
 ): Promise<AutomationResult> {
-  const { executionId } = payload;
+  const { executionId } = payload as any;
   
   if (!executionId) {
     throw new Error('executionId is required');

@@ -99,7 +99,7 @@ async function handleScanCode(params: any, supabase: any, requestId: string) {
   const issues: any[] = [];
   const lines = code.split('\n');
 
-  lines.forEach((line, index) => {
+  lines.forEach((line: string, index: number) => {
     securityPatterns.forEach(({ pattern, severity, issue }) => {
       if (pattern.test(line)) {
         issues.push({
@@ -217,8 +217,8 @@ async function handleCheckVulnerabilities(params: any, supabase: any, requestId:
   const { data: scans, error } = await query;
   if (error) throw error;
 
-  const totalIssues = scans?.reduce((sum, scan) => sum + (scan.issues_found || 0), 0) || 0;
-  const criticalIssues = scans?.reduce((sum, scan) => 
+  const totalIssues = scans?.reduce((sum: number, scan: any) => sum + (scan.issues_found || 0), 0) || 0;
+  const criticalIssues = scans?.reduce((sum: number, scan: any) => 
     sum + (scan.severity_breakdown?.critical || 0), 0) || 0;
 
   console.log(`[${requestId}] Vulnerability check: ${totalIssues} total, ${criticalIssues} critical`);
@@ -275,7 +275,7 @@ async function handleValidatePermissions(params: any, supabase: any, requestId: 
 
   if (error) throw error;
 
-  const userRoles = roles?.map(r => r.role) || [];
+  const userRoles = roles?.map((r: any) => r.role) || [];
   const hasPermission = userRoles.includes(requiredRole) || userRoles.includes('admin');
 
   console.log(`[${requestId}] Permission check: ${hasPermission ? 'granted' : 'denied'}`);
@@ -339,7 +339,7 @@ async function handleGenerateReport(params: any, supabase: any, requestId: strin
     reportType,
     summary: {
       totalScans: scans?.length || 0,
-      totalIssues: scans?.reduce((sum, s) => sum + (s.issues_found || 0), 0) || 0,
+      totalIssues: scans?.reduce((sum: number, s: any) => sum + (s.issues_found || 0), 0) || 0,
       totalAudits: audits?.length || 0,
     },
     scans: scans || [],
@@ -369,9 +369,9 @@ async function handleGetSecurityScore(params: any, supabase: any, requestId: str
   let score = 100;
 
   if (scans && scans.length > 0) {
-    const totalCritical = scans.reduce((sum, s) => sum + (s.severity_breakdown?.critical || 0), 0);
-    const totalHigh = scans.reduce((sum, s) => sum + (s.severity_breakdown?.high || 0), 0);
-    const totalMedium = scans.reduce((sum, s) => sum + (s.severity_breakdown?.medium || 0), 0);
+    const totalCritical = scans.reduce((sum: number, s: any) => sum + (s.severity_breakdown?.critical || 0), 0);
+    const totalHigh = scans.reduce((sum: number, s: any) => sum + (s.severity_breakdown?.high || 0), 0);
+    const totalMedium = scans.reduce((sum: number, s: any) => sum + (s.severity_breakdown?.medium || 0), 0);
 
     score -= totalCritical * 20;
     score -= totalHigh * 10;

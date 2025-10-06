@@ -130,7 +130,7 @@ async function handleCreateSnapshot(params: any, supabase: any, requestId: strin
     .order('created_at', { ascending: false });
 
   if (allSnapshots && allSnapshots.length > 50) {
-    const toDelete = allSnapshots.slice(50).map(s => s.id);
+    const toDelete = allSnapshots.slice(50).map((s: any) => s.id);
     await supabase
       .from('project_snapshots')
       .delete()
