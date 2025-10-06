@@ -51,6 +51,8 @@ export function SelfHealingMonitor() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [isLearning, setIsLearning] = useState(false);
   const [learningStats, setLearningStats] = useState<any>(null);
+  const [isMetaImproving, setIsMetaImproving] = useState(false);
+  const [metaStats, setMetaStats] = useState<any>(null);
   const { toast } = useToast();
   
   // Enable adaptive proactive monitoring
@@ -264,6 +266,35 @@ export function SelfHealingMonitor() {
     }
   };
 
+  const runMetaImprovement = async () => {
+    setIsMetaImproving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('meta-self-improvement');
+
+      if (error) throw error;
+
+      if (data.meta) {
+        setMetaStats(data.meta);
+        
+        toast({
+          title: "🎯 Meta-Improvement Complete",
+          description: `${data.meta.improvementsApplied} optimizations applied, ${data.meta.confidenceBoost} patterns recalibrated`,
+        });
+      }
+
+      loadStats();
+    } catch (error) {
+      console.error('Meta-improvement error:', error);
+      toast({
+        title: "Meta-Improvement Failed",
+        description: "Could not run meta-improvement analysis",
+        variant: "destructive",
+      });
+    } finally {
+      setIsMetaImproving(false);
+    }
+  };
+
   const getSuccessRate = (pattern: HealingPattern) => {
     const total = pattern.success_count + pattern.failure_count;
     if (total === 0) return 0;
@@ -315,9 +346,10 @@ export function SelfHealingMonitor() {
       </Card>
 
       <Tabs defaultValue="healing" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="healing">🧠 Self-Healing</TabsTrigger>
           <TabsTrigger value="learning">📚 Learning</TabsTrigger>
+          <TabsTrigger value="meta">🎯 Meta</TabsTrigger>
           <TabsTrigger value="predictions">🔮 Predictions</TabsTrigger>
           <TabsTrigger value="optimization">⚡ Optimization</TabsTrigger>
         </TabsList>
@@ -547,6 +579,114 @@ export function SelfHealingMonitor() {
               <p className="text-sm">
                 Discovered <strong>{learningStats.crossProjectInsights}</strong> universal patterns 
                 that work across multiple projects. These are now available system-wide!
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </TabsContent>
+
+      <TabsContent value="meta" className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold">Meta-Self-Improvement</h3>
+            <p className="text-sm text-muted-foreground">System improves its own improvement algorithms</p>
+          </div>
+          <Button onClick={runMetaImprovement} disabled={isMetaImproving} size="sm">
+            <Target className="mr-2 h-4 w-4" />
+            {isMetaImproving ? 'Analyzing...' : 'Run Meta-Analysis'}
+          </Button>
+        </div>
+
+        {metaStats && (
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Strategies Analyzed</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{metaStats.strategiesAnalyzed}</div>
+                <p className="text-xs text-muted-foreground">Learning sessions reviewed</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Optimizations</CardTitle>
+                <Zap className="h-4 w-4 text-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{metaStats.improvementsApplied}</div>
+                <p className="text-xs text-muted-foreground">Applied to learning process</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Efficiency Gain</CardTitle>
+                <TrendingUp className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{metaStats.efficiencyGain}%</div>
+                <p className="text-xs text-muted-foreground">Expected improvement</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Meta-Learning Capabilities</CardTitle>
+            <CardDescription>
+              The system analyzes and improves its own learning process
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Strategy Effectiveness Analysis</p>
+                  <p className="text-sm text-muted-foreground">Evaluates which learning approaches work best</p>
+                </div>
+                <Activity className="h-5 w-5 text-blue-500 animate-pulse" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Confidence Recalibration</p>
+                  <p className="text-sm text-muted-foreground">Adjusts confidence based on actual success rates</p>
+                </div>
+                <Target className="h-5 w-5 text-green-500" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Auto-Apply Threshold Optimization</p>
+                  <p className="text-sm text-muted-foreground">Finds optimal threshold for auto-applying fixes</p>
+                </div>
+                <Zap className="h-5 w-5 text-yellow-500" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Pattern Maturity Analysis</p>
+                  <p className="text-sm text-muted-foreground">Identifies which patterns improve with age</p>
+                </div>
+                <TrendingUp className="h-5 w-5 text-purple-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {metaStats && metaStats.confidenceBoost > 0 && (
+          <Card className="border-2 border-green-500/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                Confidence Boost Applied
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm">
+                Recalibrated <strong>{metaStats.confidenceBoost}</strong> patterns based on actual performance.
+                The system is now more accurate at predicting fix success!
               </p>
             </CardContent>
           </Card>
