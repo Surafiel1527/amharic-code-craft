@@ -10,11 +10,58 @@ import { toast } from 'sonner';
 import { useState } from 'react';
 
 const PHASE_STEPS = {
-  'database_setup': ['Creating tables', 'Setting up relationships', 'Configuring RLS policies'],
-  'authentication': ['Setting up auth', 'Creating user profiles', 'Configuring permissions'],
-  'code_generation': ['Analyzing requirements', 'Generating components', 'Optimizing code'],
-  'file_operations': ['Creating files', 'Writing code', 'Organizing structure'],
-  'default': ['Initializing', 'Processing', 'Finalizing']
+  'database_setup': [
+    'Setting up database schema',
+    'Creating tables and columns',
+    'Configuring relationships',
+    'Setting up RLS policies',
+    'Testing security'
+  ],
+  'authentication': [
+    'Configuring authentication',
+    'Setting up user profiles', 
+    'Creating signup flow',
+    'Implementing login',
+    'Setting permissions'
+  ],
+  'code_generation': [
+    'Analyzing requirements',
+    'Planning architecture',
+    'Generating components',
+    'Adding AI features',
+    'Optimizing code',
+    'Adding animations'
+  ],
+  'ai_integration': [
+    'Setting up AI gateway',
+    'Creating chat interface',
+    'Implementing smart suggestions',
+    'Adding auto-categorization',
+    'Testing AI features'
+  ],
+  'ui_components': [
+    'Creating dashboard layout',
+    'Building task components',
+    'Adding drag-and-drop',
+    'Implementing filters',
+    'Making it responsive'
+  ],
+  'realtime_features': [
+    'Setting up realtime subscriptions',
+    'Configuring live updates',
+    'Testing sync functionality'
+  ],
+  'file_operations': [
+    'Creating files',
+    'Writing code',
+    'Organizing structure',
+    'Adding dependencies'
+  ],
+  'default': [
+    'Initializing',
+    'Processing',
+    'Finalizing'
+  ]
 };
 
 export function BackgroundJobsIndicator() {
@@ -48,12 +95,45 @@ export function BackgroundJobsIndicator() {
     }
   };
 
-  const getPhaseSteps = (jobType: string) => {
-    return PHASE_STEPS[jobType as keyof typeof PHASE_STEPS] || PHASE_STEPS.default;
+  const getPhaseSteps = (jobType: string, currentStep?: string) => {
+    // Try to match the job type to a phase category
+    const phaseKeys = Object.keys(PHASE_STEPS);
+    for (const key of phaseKeys) {
+      if (jobType.includes(key) || (currentStep && currentStep.toLowerCase().includes(key))) {
+        return PHASE_STEPS[key as keyof typeof PHASE_STEPS];
+      }
+    }
+    
+    // If job mentions multiple systems, create a combined flow
+    if (jobType.includes('complete') || jobType.includes('full')) {
+      return [
+        'Planning architecture',
+        'Setting up database',
+        'Configuring authentication',
+        'Building UI components',
+        'Adding AI features',
+        'Implementing realtime',
+        'Testing & polishing',
+        'Finalizing deployment'
+      ];
+    }
+    
+    return PHASE_STEPS.default;
   };
 
   const getCurrentPhaseIndex = (progress: number, totalSteps: number) => {
+    // More granular progress tracking
     return Math.min(Math.floor((progress / 100) * totalSteps), totalSteps - 1);
+  };
+
+  const getMotivationalMessage = (progress: number, phaseIndex: number, steps: string[]) => {
+    if (progress === 0) return "🚀 Starting your build...";
+    if (progress < 20) return "⚡ Setting things up...";
+    if (progress < 40) return "🎯 Making great progress!";
+    if (progress < 60) return "🔥 More than halfway there!";
+    if (progress < 80) return "✨ Almost done!";
+    if (progress < 100) return "🎉 Finishing touches...";
+    return "✅ Complete!";
   };
 
   if (!hasActiveJobs && completedJobs.length === 0) {
@@ -64,9 +144,10 @@ export function BackgroundJobsIndicator() {
     <div className="fixed bottom-4 right-4 z-50 space-y-2 max-w-sm">
       {/* Active Jobs */}
       {activeJobs.map(job => {
-        const steps = getPhaseSteps(job.job_type);
+        const steps = getPhaseSteps(job.job_type, job.current_step || undefined);
         const currentPhaseIndex = getCurrentPhaseIndex(job.progress, steps.length);
         const isExpanded = expandedJobs.has(job.id);
+        const motivationMsg = getMotivationalMessage(job.progress, currentPhaseIndex, steps);
 
         return (
           <Collapsible
@@ -83,10 +164,10 @@ export function BackgroundJobsIndicator() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-auto p-0 hover:bg-transparent"
+                        className="h-auto p-0 hover:bg-transparent flex items-center gap-1"
                       >
-                        <span className="text-sm font-medium">Processing in Background</span>
-                        <ChevronDown className={`h-3 w-3 ml-1 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        <span className="text-sm font-medium">Building Your App</span>
+                        <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                       </Button>
                     </CollapsibleTrigger>
                     <div className="flex items-center gap-2">
@@ -104,12 +185,16 @@ export function BackgroundJobsIndicator() {
                     </div>
                   </div>
                   
+                  <p className="text-xs font-medium text-primary mb-1">
+                    {motivationMsg}
+                  </p>
+                  
                   <p className="text-xs text-muted-foreground mb-2">
-                    {steps[currentPhaseIndex]}
+                    {job.current_step || steps[currentPhaseIndex]}
                   </p>
 
                   <CollapsibleContent>
-                    <div className="space-y-1.5 mb-2">
+                    <div className="space-y-1.5 mb-3 max-h-[200px] overflow-y-auto">
                       {steps.map((step, index) => {
                         const isCompleted = index < currentPhaseIndex;
                         const isCurrent = index === currentPhaseIndex;
@@ -117,11 +202,11 @@ export function BackgroundJobsIndicator() {
                         return (
                           <div key={index} className="flex items-center gap-2">
                             {isCompleted ? (
-                              <CheckCircle className="h-3 w-3 text-green-500" />
+                              <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
                             ) : isCurrent ? (
-                              <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                              <Loader2 className="h-3 w-3 animate-spin text-primary flex-shrink-0" />
                             ) : (
-                              <Clock className="h-3 w-3 text-muted-foreground" />
+                              <Clock className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                             )}
                             <span className={`text-xs ${
                               isCompleted ? 'text-green-500 line-through' : 
@@ -137,9 +222,9 @@ export function BackgroundJobsIndicator() {
                   </CollapsibleContent>
 
                   {job.progress > 0 && (
-                    <div className="mt-2 w-full bg-secondary rounded-full h-1">
+                    <div className="mt-2 w-full bg-secondary rounded-full h-1.5">
                       <div 
-                        className="bg-primary h-1 rounded-full transition-all duration-300"
+                        className="bg-gradient-to-r from-primary to-primary/80 h-1.5 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${job.progress}%` }}
                       />
                     </div>
@@ -147,7 +232,7 @@ export function BackgroundJobsIndicator() {
                   
                   <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
-                    <span>You can safely close this window</span>
+                    <span>You can safely continue using the app</span>
                   </div>
                 </div>
               </div>
