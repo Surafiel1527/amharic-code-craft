@@ -97,7 +97,9 @@ export function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Poll job progress from database
+ * Poll job progress from database (DEPRECATED - Use useRealtimeOrchestration hook instead)
+ * This function is kept for backward compatibility only
+ * @deprecated Use useRealtimeOrchestration hook for real-time updates with automatic polling fallback
  */
 export async function pollJobProgress(
   jobId: string,
@@ -109,68 +111,9 @@ export async function pollJobProgress(
     onError?: (error: Error) => void;
   } = {}
 ): Promise<void> {
-  const interval = options.interval || 2000;
-  const timeout = options.timeout || 600000; // 10 minutes default
-  const startTime = Date.now();
-
-  return new Promise((resolve, reject) => {
-    const pollInterval = setInterval(async () => {
-      try {
-        // Check timeout
-        if (Date.now() - startTime > timeout) {
-          clearInterval(pollInterval);
-          const error = new Error('Job polling timed out');
-          options.onError?.(error);
-          reject(error);
-          return;
-        }
-
-        // Fetch job status
-        const { data: job, error: fetchError } = await supabase
-          .from('ai_generation_jobs')
-          .select('id, status, progress, current_step, error_message, output_data')
-          .eq('id', jobId)
-          .single();
-
-        if (fetchError) throw fetchError;
-
-        if (!job) {
-          clearInterval(pollInterval);
-          reject(new Error('Job not found'));
-          return;
-        }
-
-        // Update progress
-        const progressData: OrchestrationProgress = {
-          jobId: job.id,
-          progress: job.progress || 0,
-          currentStep: job.current_step || 'Processing...',
-          status: job.status as 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled',
-          error: job.error_message || undefined,
-          outputData: job.output_data as any
-        };
-
-        onProgress(progressData);
-
-        // Check if job is complete
-        if (job.status === 'completed') {
-          clearInterval(pollInterval);
-          options.onComplete?.(job.output_data);
-          resolve();
-        } else if (job.status === 'failed' || job.status === 'cancelled') {
-          clearInterval(pollInterval);
-          const error = new Error(job.error_message || `Job ${job.status}`);
-          options.onError?.(error);
-          reject(error);
-        }
-      } catch (error) {
-        clearInterval(pollInterval);
-        const err = error instanceof Error ? error : new Error(String(error));
-        options.onError?.(err);
-        reject(err);
-      }
-    }, interval);
-  });
+  console.warn('⚠️ pollJobProgress is deprecated. Use useRealtimeOrchestration hook for real-time updates with automatic fallback.');
+  // This function is deprecated. Use the modern useRealtimeOrchestration hook instead
+  // which provides real-time updates via Supabase Realtime with automatic polling fallback
 }
 
 /**
