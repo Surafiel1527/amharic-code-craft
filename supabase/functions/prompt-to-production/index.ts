@@ -14,18 +14,28 @@ serve(async (req) => {
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('Unauthorized');
+    // Get user from auth header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
     }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError) {
+      console.error('Auth error:', userError);
+      throw new Error(`Authentication failed: ${userError.message}`);
+    }
+    
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    console.log(`✅ Authenticated user: ${user.id}`);
 
     const { prompt, projectName } = await req.json();
 
@@ -52,8 +62,9 @@ serve(async (req) => {
       .select()
       .single();
 
-    if (projectError || !project) {
-      throw new Error('Failed to create project');
+    if (projectError) {
+      console.error('Project creation error:', projectError);
+      throw new Error(`Failed to create project: ${projectError.message}`);
     }
 
     const projectId = project.id;
@@ -269,16 +280,20 @@ USER REQUEST: Generate a fully functional application. Include all features requ
       throw new Error(`Deployment failed: ${deploymentError.message}`);
     }
 
-    console.log('✅ Deployment initiated:', deploymentData.deploymentId);
+    console.log('✅ Deployment completed:', deploymentData);
 
     // Update project with generated code
     const mainContent = projectFiles['src/App.tsx'] || projectFiles['index.html'] || '';
-    await supabase
+    const { error: updateError } = await supabase
       .from('projects')
       .update({
         html_code: mainContent,
       })
       .eq('id', projectId);
+
+    if (updateError) {
+      console.warn('Failed to update project code:', updateError);
+    }
 
     return new Response(
       JSON.stringify({
@@ -294,14 +309,19 @@ USER REQUEST: Generate a fully functional application. Include all features requ
     );
   } catch (error) {
     console.error('❌ Pipeline error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const statusCode = errorMessage.includes('Authentication') ? 401 : 400;
+    
     return new Response(
       JSON.stringify({
         success: false,
         error: errorMessage,
+        details: error instanceof Error ? error.stack : undefined,
       }),
       {
-        status: 400,
+        status: statusCode,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
