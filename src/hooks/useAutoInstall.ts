@@ -48,9 +48,10 @@ export function useAutoInstall(code: string, enabled: boolean = true) {
           return;
         }
 
-        // Check which packages are missing
-        const { data, error } = await supabase.functions.invoke('smart-dependency-detector', {
+        // Check which packages are missing - route to unified-package-manager
+        const { data, error } = await supabase.functions.invoke('unified-package-manager', {
           body: {
+            operation: 'check-missing',
             imports: Array.from(imports),
             code
           }

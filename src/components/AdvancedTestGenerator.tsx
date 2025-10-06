@@ -41,8 +41,10 @@ export function AdvancedTestGenerator() {
 
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-tests', {
+      // Route to unified-test-manager for test generation
+      const { data, error } = await supabase.functions.invoke('unified-test-manager', {
         body: {
+          operation: 'generate-tests',
           sourceCode,
           testType,
           framework: testFramework,

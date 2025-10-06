@@ -27,8 +27,16 @@ export const ImageGenerator = ({ projectId, onImageGenerated }: ImageGeneratorPr
 
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-image', {
-        body: { prompt }
+      // Use Lovable AI's Nano banana model for image generation
+      const { data, error } = await supabase.functions.invoke('unified-ai-workers', {
+        body: { 
+          operation: 'generate-image',
+          model: 'google/gemini-2.5-flash-image-preview',
+          messages: [
+            { role: 'user', content: prompt }
+          ],
+          modalities: ['image', 'text']
+        }
       });
 
       if (error) {
@@ -42,7 +50,11 @@ export const ImageGenerator = ({ projectId, onImageGenerated }: ImageGeneratorPr
         throw error;
       }
 
-      const imageUrl = data.imageUrl;
+      // Extract image from Lovable AI response
+      const imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+      if (!imageUrl) {
+        throw new Error('No image generated');
+      }
       setGeneratedImage(imageUrl);
 
       // Save to database

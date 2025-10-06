@@ -97,15 +97,20 @@ export function AIImageGenerator({ conversationId }: AIImageGeneratorProps) {
 
       if (batchCount > 1) {
         const promises = Array(batchCount).fill(null).map(() =>
-          supabase.functions.invoke('generate-ai-image', {
-            body: { prompt: enhancedPrompt }
+          supabase.functions.invoke('unified-ai-workers', {
+            body: { 
+              operation: 'generate-image',
+              model: 'google/gemini-2.5-flash-image-preview',
+              messages: [{ role: 'user', content: enhancedPrompt }],
+              modalities: ['image', 'text']
+            }
           })
         );
 
         const results = await Promise.all(promises);
         const images = results
-          .filter(r => r.data?.imageUrl)
-          .map(r => r.data.imageUrl);
+          .filter(r => r.data?.choices?.[0]?.message?.images?.[0])
+          .map(r => r.data.choices[0].message.images[0].image_url.url);
 
         if (images.length > 0) {
           setGeneratedImage(images[0]);
@@ -113,14 +118,20 @@ export function AIImageGenerator({ conversationId }: AIImageGeneratorProps) {
           await loadHistory();
         }
       } else {
-        const { data, error } = await supabase.functions.invoke('generate-ai-image', {
-          body: { prompt: enhancedPrompt }
+        const { data, error } = await supabase.functions.invoke('unified-ai-workers', {
+          body: { 
+            operation: 'generate-image',
+            model: 'google/gemini-2.5-flash-image-preview',
+            messages: [{ role: 'user', content: enhancedPrompt }],
+            modalities: ['image', 'text']
+          }
         });
 
         if (error) throw error;
 
-        if (data?.imageUrl) {
-          setGeneratedImage(data.imageUrl);
+        const imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+        if (imageUrl) {
+          setGeneratedImage(imageUrl);
           toast.success("Image generated successfully!");
           await loadHistory();
         }
@@ -141,21 +152,29 @@ export function AIImageGenerator({ conversationId }: AIImageGeneratorProps) {
 
     setEditing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-ai-image', {
+      const { data, error } = await supabase.functions.invoke('unified-ai-workers', {
         body: { 
-          prompt: editPrompt,
-          baseImage: generatedImage,
-          mode: 'edit'
+          operation: 'edit-image',
+          model: 'google/gemini-2.5-flash-image-preview',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: editPrompt },
+                { type: 'image_url', image_url: { url: generatedImage } }
+              ]
+            }
+          ],
+          modalities: ['image', 'text']
         }
       });
 
       if (error) throw error;
 
-      if (data?.imageUrl) {
-        setGeneratedImage(data.imageUrl);
-        setEditPrompt("");
+      const editedImageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+      if (editedImageUrl) {
+        setGeneratedImage(editedImageUrl);
         toast.success("Image edited successfully!");
-        await loadHistory();
       }
     } catch (error) {
       logger.error('Edit error', error);

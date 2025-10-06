@@ -18,9 +18,10 @@ export const CompleteProjectPackager = () => {
     setPackageReady(false);
 
     try {
-      // First, detect all dependencies from current project
-      const detectionResponse = await supabase.functions.invoke('smart-dependency-detector', {
+      // First, detect all dependencies - route to unified-package-manager
+      const detectionResponse = await supabase.functions.invoke('unified-package-manager', {
         body: {
+          operation: 'detect-dependencies',
           code: 'project-wide-scan',
           language: 'typescript',
           appType: 'general'
@@ -34,9 +35,10 @@ export const CompleteProjectPackager = () => {
         description: `Detected ${dependencies.length} dependencies. Creating complete package...`,
       });
 
-      // Package the complete project
-      const packageResponse = await supabase.functions.invoke('package-complete-project', {
+      // Package the complete project - route to unified-backup-manager
+      const packageResponse = await supabase.functions.invoke('unified-backup-manager', {
         body: {
+          operation: 'package-project',
           projectName,
           dependencies,
           projectFiles: {} // In real implementation, this would include all project files

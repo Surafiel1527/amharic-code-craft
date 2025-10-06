@@ -37,8 +37,10 @@ export function IntelligentRefactoring({ code, filePath, onApplySuggestion }: In
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase.functions.invoke('intelligent-refactor', {
+      // Route to unified-code-operations for refactoring
+      const { data, error } = await supabase.functions.invoke('unified-code-operations', {
         body: {
+          operation: 'refactor',
           code,
           filePath
         },

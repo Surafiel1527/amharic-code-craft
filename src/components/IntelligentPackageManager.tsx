@@ -40,8 +40,10 @@ export const IntelligentPackageManager = ({
     setProgress(10);
 
     try {
-      const { data, error } = await supabase.functions.invoke('smart-dependency-detector', {
+      // Route to unified-package-manager for dependency detection
+      const { data, error } = await supabase.functions.invoke('unified-package-manager', {
         body: { 
+          operation: 'detect-dependencies',
           code,
           language: 'javascript',
           appType: projectType 

@@ -30,8 +30,14 @@ export const TestGenerator = ({ code: initialCode = "", projectId }: TestGenerat
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-tests', {
-        body: { code, projectId, framework }
+      // Route to unified-test-manager for test generation
+      const { data, error } = await supabase.functions.invoke('unified-test-manager', {
+        body: { 
+          operation: 'generate-tests',
+          code,
+          projectId,
+          framework 
+        }
       });
 
       if (error) throw error;

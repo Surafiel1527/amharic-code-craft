@@ -42,17 +42,24 @@ export const DesignToCode = ({ onCodeGenerated }: DesignToCodeProps) => {
 
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('design-to-code', {
+      // Route to mega-mind-orchestrator for design-to-code
+      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
         body: {
-          imageData: imagePreview,
-          requirements: requirements.trim() || undefined
+          request: `Convert this design to code: ${requirements.trim() || 'Create a clean, responsive UI'}`,
+          requestType: 'design-to-code',
+          context: {
+            imageData: imagePreview,
+            requirements: requirements.trim()
+          }
         }
       });
 
       if (error) throw error;
 
-      if (data.code) {
-        onCodeGenerated?.(data.code);
+      // Extract code from orchestrator response
+      const generatedCode = data?.generation?.files?.[0]?.content || data?.generatedCode || data?.finalCode;
+      if (generatedCode) {
+        onCodeGenerated?.(generatedCode);
         toast.success("ኮድ በተሳካ ሁኔታ ተፈጠረ!");
       }
     } catch (error) {

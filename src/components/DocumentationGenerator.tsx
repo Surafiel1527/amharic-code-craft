@@ -28,8 +28,18 @@ export const DocumentationGenerator = ({ code: initialCode = "", projectId }: Do
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-docs', {
-        body: { code, projectId, docType, filePath: 'component' }
+      // Route to mega-mind-orchestrator for documentation generation
+      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
+        body: {
+          request: `Generate ${docType} documentation for this code`,
+          requestType: 'documentation',
+          context: { 
+            code,
+            projectId,
+            docType,
+            filePath: 'component'
+          }
+        }
       });
 
       if (error) throw error;

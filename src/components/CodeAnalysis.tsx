@@ -51,8 +51,13 @@ export const CodeAnalysis = ({ code, projectId, onOptimize }: CodeAnalysisProps)
 
     setIsAnalyzing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('analyze-code', {
-        body: { code, projectId }
+      // Route to unified-code-operations for code analysis
+      const { data, error } = await supabase.functions.invoke('unified-code-operations', {
+        body: { 
+          operation: 'analyze',
+          code,
+          projectId 
+        }
       });
 
       if (error) throw error;
@@ -87,8 +92,10 @@ export const CodeAnalysis = ({ code, projectId, onOptimize }: CodeAnalysisProps)
 
     setIsOptimizing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('optimize-code', {
+      // Route to unified-code-operations for optimization
+      const { data, error } = await supabase.functions.invoke('unified-code-operations', {
         body: { 
+          operation: 'optimize',
           code, 
           issues: analysis.issues.filter(i => i.severity !== 'info')
         }

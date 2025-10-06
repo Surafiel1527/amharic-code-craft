@@ -37,8 +37,13 @@ export const AccessibilityChecker = ({ code, onCodeFixed }: AccessibilityChecker
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('accessibility-check', {
-        body: { code, autoFix: false }
+      // Route to unified-quality for accessibility checking
+      const { data, error } = await supabase.functions.invoke('unified-quality', {
+        body: { 
+          operation: 'accessibility-check',
+          code,
+          autoFix: false 
+        }
       });
 
       if (error) throw error;
@@ -55,8 +60,13 @@ export const AccessibilityChecker = ({ code, onCodeFixed }: AccessibilityChecker
   const handleAutoFix = async () => {
     setIsFixing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('accessibility-check', {
-        body: { code, autoFix: true }
+      // Route to unified-quality for auto-fixing accessibility issues
+      const { data, error } = await supabase.functions.invoke('unified-quality', {
+        body: { 
+          operation: 'accessibility-check',
+          code,
+          autoFix: true 
+        }
       });
 
       if (error) throw error;

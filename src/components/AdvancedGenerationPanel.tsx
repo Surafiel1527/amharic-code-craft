@@ -59,12 +59,16 @@ export const AdvancedGenerationPanel: React.FC<AdvancedGenerationPanelProps> = (
     setPhase('planning');
 
     try {
-      const { data, error } = await supabase.functions.invoke('generate-with-plan', {
+      // Route to mega-mind-orchestrator for planning
+      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
         body: {
-          phase: 'plan',
-          userRequest,
-          conversationId: conversationId || 'temp-' + Date.now(),
-          currentCode
+          request: `Create a detailed plan for: ${userRequest}`,
+          requestType: 'planning',
+          context: {
+            conversationId: conversationId || 'temp-' + Date.now(),
+            currentCode,
+            phase: 'analysis'
+          }
         }
       });
 
@@ -94,14 +98,18 @@ export const AdvancedGenerationPanel: React.FC<AdvancedGenerationPanelProps> = (
     try {
       const { data: userData } = await supabase.auth.getUser();
       
-      const { data, error } = await supabase.functions.invoke('generate-with-plan', {
+      // Already fixed above - this section now uses mega-mind-orchestrator
+      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
         body: {
-          phase: 'generate',
-          userRequest,
-          conversationId: conversationId || 'temp-' + Date.now(),
-          planId: plan.planId,
-          currentCode,
-          userId: userData.user?.id
+          request: userRequest,
+          requestType: 'code-generation',
+          context: {
+            conversationId: conversationId || 'temp-' + Date.now(),
+            planId: plan.planId,
+            currentCode,
+            userId: userData.user?.id,
+            approvedPlan: plan
+          }
         }
       });
 
