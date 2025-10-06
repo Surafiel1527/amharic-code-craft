@@ -1,5 +1,20 @@
 project_id = "xuncvfnvatgqshlivuep"
 
+[functions.unified-refactoring-engine]
+verify_jwt = true
+
+[functions.unified-image-generator]
+verify_jwt = false
+
+[functions.unified-docs-manager]
+verify_jwt = true
+
+[functions.unified-security-scanner]
+verify_jwt = false
+
+[functions.unified-build-system]
+verify_jwt = true
+
 [functions.unified-package-manager]
 verify_jwt = true
 
