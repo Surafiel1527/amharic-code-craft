@@ -7,6 +7,7 @@ import { Loader2, Shield, CheckCircle, AlertCircle, Info, Wand2 } from "lucide-r
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import { logger } from "@/utils/logger";
 
 interface AccessibilityCheckerProps {
   code: string;
@@ -44,7 +45,7 @@ export const AccessibilityChecker = ({ code, onCodeFixed }: AccessibilityChecker
       setReport(data);
       toast.success("የተደራሽነት ትንተና ተጠናቀቀ");
     } catch (error) {
-      console.error('Error analyzing accessibility:', error);
+      logger.error('Error analyzing accessibility', error);
       toast.error("ትንተና ማድረግ አልተቻለም");
     } finally {
       setIsAnalyzing(false);
@@ -67,7 +68,7 @@ export const AccessibilityChecker = ({ code, onCodeFixed }: AccessibilityChecker
         handleAnalyze();
       }
     } catch (error) {
-      console.error('Error fixing accessibility:', error);
+      logger.error('Error fixing accessibility', error);
       toast.error("ችግሮችን ማስተካከል አልተቻለም");
     } finally {
       setIsFixing(false);

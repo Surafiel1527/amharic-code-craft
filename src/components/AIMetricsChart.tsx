@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, Activity, Target } from "lucide-react";
+import { logger } from "@/utils/logger";
 
 export const AIMetricsChart = () => {
   const [dailyData, setDailyData] = useState<any[]>([]);
@@ -40,7 +41,7 @@ export const AIMetricsChart = () => {
         setStatusData(statusMetrics);
       }
     } catch (error) {
-      console.error('Error fetching metrics:', error);
+      logger.error('Error fetching metrics', error);
     } finally {
       setLoading(false);
     }

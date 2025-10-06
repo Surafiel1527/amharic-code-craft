@@ -15,6 +15,7 @@ import { UniversalChatInterface } from "./UniversalChatInterface";
 import { AICapabilitiesGuide } from "./AICapabilitiesGuide";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
+import { logger } from "@/utils/logger";
 
 interface AIAssistantProps {
   projectContext?: {
@@ -48,7 +49,7 @@ export const AIAssistant = ({ projectContext }: AIAssistantProps) => {
       URL.revokeObjectURL(url);
       toast.success("Code downloaded successfully!");
     } catch (error) {
-      console.error('Download error:', error);
+      logger.error('Download error', error);
       toast.error("Failed to download code");
     }
   };

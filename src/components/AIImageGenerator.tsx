@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Wand2, Download, Image as ImageIcon, Sparkles, Loader2, Edit, History, Folder } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logger } from "@/utils/logger";
 
 interface AIImageGeneratorProps {
   conversationId: string;
@@ -67,7 +68,7 @@ export function AIImageGenerator({ conversationId }: AIImageGeneratorProps) {
       if (error) throw error;
       setImageHistory(data || []);
     } catch (error) {
-      console.error('Failed to load history:', error);
+      logger.error('Failed to load history', error);
     } finally {
       setLoadingHistory(false);
     }
@@ -125,7 +126,7 @@ export function AIImageGenerator({ conversationId }: AIImageGeneratorProps) {
         }
       }
     } catch (error) {
-      console.error('Generation error:', error);
+      logger.error('Generation error', error);
       toast.error("Failed to generate image");
     } finally {
       setGenerating(false);
@@ -157,7 +158,7 @@ export function AIImageGenerator({ conversationId }: AIImageGeneratorProps) {
         await loadHistory();
       }
     } catch (error) {
-      console.error('Edit error:', error);
+      logger.error('Edit error', error);
       toast.error("Failed to edit image");
     } finally {
       setEditing(false);
