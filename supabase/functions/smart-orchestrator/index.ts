@@ -520,23 +520,24 @@ Create a comprehensive execution plan that can handle any project complexity and
       const step = executionPlan[i];
       const progress = 25 + ((i / executionPlan.length) * 65);
       
-      console.log(`⚡ Step ${step.step_number}/${executionPlan.length}: ${step.description} [${step.action_type}]`);
-      
-      // Generate friendly progress message
-      const friendlyMessage = generateFriendlyMessage(step, i, executionPlan.length);
-      await broadcastStatus('editing', friendlyMessage, progress);
-      
-      // Choose the right model based on action complexity
-      const preferredModel = step.action_type === 'database_migration' || step.action_type === 'edge_function' 
-        ? PRIMARY_MODEL
-        : BACKUP_MODEL;
-      
-      const stepResponse = await callAIWithFallback(
-        LOVABLE_API_KEY,
-        [
-          {
-            role: 'system',
-            content: `You are a Super Mastermind AI Developer executing step ${step.step_number} of ${executionPlan.length}.
+      try {
+        console.log(`⚡ Step ${step.step_number}/${executionPlan.length}: ${step.description} [${step.action_type}]`);
+        
+        // Generate friendly progress message
+        const friendlyMessage = generateFriendlyMessage(step, i, executionPlan.length);
+        await broadcastStatus('editing', friendlyMessage, progress);
+        
+        // Choose the right model based on action complexity
+        const preferredModel = step.action_type === 'database_migration' || step.action_type === 'edge_function' 
+          ? PRIMARY_MODEL
+          : BACKUP_MODEL;
+        
+        const stepResponse = await callAIWithFallback(
+          LOVABLE_API_KEY,
+          [
+            {
+              role: 'system',
+              content: `You are a Super Mastermind AI Developer executing step ${step.step_number} of ${executionPlan.length}.
 
 Action type: ${step.action_type}
 
@@ -553,10 +554,10 @@ Capabilities by action type:
 Previous completed steps: ${completedSteps.map((s: any) => `${s.step_number}. ${s.description}`).join(', ')}
 
 Provide detailed, production-ready output. Include code comments and error handling.`
-          },
-          {
-            role: 'user',
-            content: `Execute this step: ${step.description}
+            },
+            {
+              role: 'user',
+              content: `Execute this step: ${step.description}
 
 Context:
 - Project size: ${projectContext.projectSize}
@@ -565,77 +566,106 @@ Context:
 - Enhanced context: ${JSON.stringify(enhancedContext)}
 
 Generate complete, production-ready implementation.`
-          }
-        ],
-        { preferredModel }
-      );
+            }
+          ],
+          { preferredModel }
+        );
 
-      const stepResult: any = {
-        step_number: step.step_number,
-        description: step.description,
-        action_type: step.action_type,
-        output: stepResponse.data.choices[0].message.content,
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-        model_used: stepResponse.modelUsed,
-        used_backup: stepResponse.wasBackup
-      };
+        const stepResult: any = {
+          step_number: step.step_number,
+          description: step.description,
+          action_type: step.action_type,
+          output: stepResponse.data.choices[0].message.content,
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          model_used: stepResponse.modelUsed,
+          used_backup: stepResponse.wasBackup
+        };
 
-      results.push(stepResult);
-      completedSteps.push(stepResult);
-      
-      // Celebrate major completions
-      const celebrationMessage = generateCelebrationMessage(step, i + 1, executionPlan.length);
-      if (celebrationMessage) {
-        await broadcastStatus('idle', celebrationMessage, progress);
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Brief pause to let user see celebration
-      }
-      
-      // Checkpoint: Save progress for long-running tasks
-      if (step.checkpoint || i % 5 === 0) {
-        await supabaseClient
-          .from('ai_generation_jobs')
-          .update({
-            completed_steps: i + 1,
-            output_data: { results: completedSteps }
-          })
-          .eq('id', localJobId);
-        console.log(`💾 Checkpoint: Saved progress at step ${i + 1}`);
-      }
-      
-      // Broadcast code/schema updates
-      if (step.action_type === 'code_gen' || step.action_type === 'edge_function') {
-        await supabaseClient.channel(`preview-${channelId}`).send({
-          type: 'broadcast',
-          event: 'code-update',
-          payload: {
-            component: step.description,
-            code: stepResult.output,
-            timestamp: new Date().toISOString(),
-            status: 'complete',
-            step: i + 1,
-            total: executionPlan.length
-          }
-        });
-      }
-      
-      // Learn from this step
-      if (step.action_type === 'code_gen' && userId) {
-        try {
-          await supabaseClient
-            .from('conversation_learnings')
-            .insert({
-              user_id: userId,
-              conversation_id: conversationId,
-              learned_pattern: step.description,
-              pattern_category: step.action_type,
-              context: { step_number: step.step_number, estimated_time: step.estimated_time },
-              confidence: 70
-            });
-          console.log(`📚 Learned from step: ${step.description}`);
-        } catch (e) {
-          console.log('Learning error:', e);
+        results.push(stepResult);
+        completedSteps.push(stepResult);
+        
+        // Celebrate major completions
+        const celebrationMessage = generateCelebrationMessage(step, i + 1, executionPlan.length);
+        if (celebrationMessage) {
+          await broadcastStatus('idle', celebrationMessage, progress);
+          await new Promise(resolve => setTimeout(resolve, 1500)); // Brief pause to let user see celebration
         }
+        
+        // Checkpoint: Save progress for long-running tasks
+        if (step.checkpoint || i % 5 === 0) {
+          const { error: checkpointError } = await supabaseClient
+            .from('ai_generation_jobs')
+            .update({
+              completed_steps: i + 1,
+              output_data: { results: completedSteps }
+            })
+            .eq('id', localJobId);
+          
+          if (checkpointError) {
+            console.error(`⚠️ Failed to save checkpoint at step ${i + 1}:`, checkpointError);
+          } else {
+            console.log(`💾 Checkpoint: Saved progress at step ${i + 1}`);
+          }
+        }
+        
+        // Broadcast code/schema updates
+        if (step.action_type === 'code_gen' || step.action_type === 'edge_function') {
+          await supabaseClient.channel(`preview-${channelId}`).send({
+            type: 'broadcast',
+            event: 'code-update',
+            payload: {
+              component: step.description,
+              code: stepResult.output,
+              timestamp: new Date().toISOString(),
+              status: 'complete',
+              step: i + 1,
+              total: executionPlan.length
+            }
+          });
+        }
+        
+        // Learn from this step
+        if (step.action_type === 'code_gen' && userId) {
+          try {
+            await supabaseClient
+              .from('conversation_learnings')
+              .insert({
+                user_id: userId,
+                conversation_id: conversationId,
+                learned_pattern: step.description,
+                pattern_category: step.action_type,
+                context: { step_number: step.step_number, estimated_time: step.estimated_time },
+                confidence: 70
+              });
+            console.log(`📚 Learned from step: ${step.description}`);
+          } catch (e) {
+            console.log('Learning error:', e);
+          }
+        }
+      } catch (stepError: any) {
+        console.error(`💥 Error executing step ${step.step_number}:`, stepError);
+        
+        // Save the error and continue or fail based on criticality
+        const stepResult: any = {
+          step_number: step.step_number,
+          description: step.description,
+          action_type: step.action_type,
+          status: 'failed',
+          error: stepError.message,
+          failed_at: new Date().toISOString()
+        };
+        
+        results.push(stepResult);
+        
+        // For critical steps, throw the error to fail the whole orchestration
+        if (step.action_type === 'database_migration' || step.action_type === 'auth_setup') {
+          throw new Error(`Critical step ${step.step_number} failed: ${stepError.message}`);
+        }
+        
+        // For non-critical steps, log and continue
+        console.log(`⚠️ Continuing despite failure in step ${step.step_number}`);
+        await broadcastStatus('warning', `Step ${step.step_number} had issues, continuing...`, progress);
       }
     }
 
@@ -772,9 +802,32 @@ Generate a comprehensive summary.`
       }
     };
 
-    // Run background task and return immediately
-    processTask().catch(error => {
-      console.error('Background task error:', error);
+    // Start background task - the function will stay alive until this completes
+    processTask().catch(async (backgroundError) => {
+      console.error('💥 Background task failed:', backgroundError);
+      
+      // Update job status to failed
+      if (jobId) {
+        try {
+          await supabaseClient
+            .from('ai_generation_jobs')
+            .update({
+              status: 'failed',
+              error_message: `Background task error: ${backgroundError.message || 'Unknown error'}`,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', jobId);
+        } catch (updateError) {
+          console.error('Failed to update job status after error:', updateError);
+        }
+      }
+      
+      // Broadcast failure status
+      try {
+        await broadcastStatus('error', `Task failed: ${backgroundError.message}`, 0);
+      } catch (broadcastError) {
+        console.error('Failed to broadcast error status:', broadcastError);
+      }
     });
 
     // Return immediately with job ID and project intelligence
