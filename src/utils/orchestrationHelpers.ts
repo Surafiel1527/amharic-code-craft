@@ -97,26 +97,6 @@ export function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Poll job progress from database (DEPRECATED - Use useRealtimeOrchestration hook instead)
- * This function is kept for backward compatibility only
- * @deprecated Use useRealtimeOrchestration hook for real-time updates with automatic polling fallback
- */
-export async function pollJobProgress(
-  jobId: string,
-  onProgress: (progress: OrchestrationProgress) => void,
-  options: {
-    interval?: number;
-    timeout?: number;
-    onComplete?: (data: any) => void;
-    onError?: (error: Error) => void;
-  } = {}
-): Promise<void> {
-  console.warn('⚠️ pollJobProgress is deprecated. Use useRealtimeOrchestration hook for real-time updates with automatic fallback.');
-  // This function is deprecated. Use the modern useRealtimeOrchestration hook instead
-  // which provides real-time updates via Supabase Realtime with automatic polling fallback
-}
-
-/**
  * Save orchestration progress to database for persistence
  */
 export async function saveProgress(
