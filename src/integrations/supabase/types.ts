@@ -1487,6 +1487,53 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_domains: {
+        Row: {
+          created_at: string
+          dns_records: Json | null
+          domain_name: string
+          id: string
+          project_id: string | null
+          ssl_status: string | null
+          user_id: string
+          vercel_config_id: string | null
+          verification_status: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          dns_records?: Json | null
+          domain_name: string
+          id?: string
+          project_id?: string | null
+          ssl_status?: string | null
+          user_id: string
+          vercel_config_id?: string | null
+          verification_status?: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          dns_records?: Json | null
+          domain_name?: string
+          id?: string
+          project_id?: string | null
+          ssl_status?: string | null
+          user_id?: string
+          vercel_config_id?: string | null
+          verification_status?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_domains_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customization_snapshots: {
         Row: {
           created_at: string
@@ -2024,6 +2071,47 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deployment_builds: {
+        Row: {
+          build_step: string
+          completed_at: string | null
+          created_at: string
+          deployment_id: string
+          duration_ms: number | null
+          id: string
+          output_log: string | null
+          status: string
+        }
+        Insert: {
+          build_step: string
+          completed_at?: string | null
+          created_at?: string
+          deployment_id: string
+          duration_ms?: number | null
+          id?: string
+          output_log?: string | null
+          status?: string
+        }
+        Update: {
+          build_step?: string
+          completed_at?: string | null
+          created_at?: string
+          deployment_id?: string
+          duration_ms?: number | null
+          id?: string
+          output_log?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployment_builds_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "vercel_deployments"
             referencedColumns: ["id"]
           },
         ]
@@ -5215,6 +5303,74 @@ export type Database = {
         }
         Relationships: []
       }
+      vercel_deployments: {
+        Row: {
+          build_command: string | null
+          build_logs: Json | null
+          completed_at: string | null
+          created_at: string
+          custom_domain: string | null
+          deployment_url: string | null
+          env_variables: Json | null
+          error_message: string | null
+          framework: string | null
+          id: string
+          last_checked_at: string | null
+          project_id: string | null
+          started_at: string | null
+          status: string
+          user_id: string
+          vercel_deployment_id: string | null
+          vercel_project_id: string | null
+        }
+        Insert: {
+          build_command?: string | null
+          build_logs?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          custom_domain?: string | null
+          deployment_url?: string | null
+          env_variables?: Json | null
+          error_message?: string | null
+          framework?: string | null
+          id?: string
+          last_checked_at?: string | null
+          project_id?: string | null
+          started_at?: string | null
+          status?: string
+          user_id: string
+          vercel_deployment_id?: string | null
+          vercel_project_id?: string | null
+        }
+        Update: {
+          build_command?: string | null
+          build_logs?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          custom_domain?: string | null
+          deployment_url?: string | null
+          env_variables?: Json | null
+          error_message?: string | null
+          framework?: string | null
+          id?: string
+          last_checked_at?: string | null
+          project_id?: string | null
+          started_at?: string | null
+          status?: string
+          user_id?: string
+          vercel_deployment_id?: string | null
+          vercel_project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vercel_deployments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visual_code_generations: {
         Row: {
           analysis: Json
@@ -5377,6 +5533,14 @@ export type Database = {
           notification_message: string
           notification_title: string
           notification_type: string
+        }
+        Returns: undefined
+      }
+      update_deployment_status: {
+        Args: {
+          p_deployment_id: string
+          p_error_message?: string
+          p_status: string
         }
         Returns: undefined
       }

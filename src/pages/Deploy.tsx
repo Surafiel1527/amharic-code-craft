@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { VercelDeploymentManager } from "@/components/VercelDeploymentManager";
+import { DeploymentDashboard } from "@/components/DeploymentDashboard";
 import { Rocket, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ const Deploy = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [projectName, setProjectName] = useState<string>("");
+  const [projectFiles, setProjectFiles] = useState<Array<{ path: string; content: string }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,13 +25,42 @@ const Deploy = () => {
       try {
         const { data, error } = await supabase
           .from("projects")
-          .select("title")
+          .select("title, html_code")
           .eq("id", projectId)
           .single();
 
         if (error) throw error;
         if (data) {
           setProjectName(data.title);
+          
+          // Prepare files for deployment
+          const files = [
+            { path: 'index.html', content: data.html_code || '' },
+            { path: 'package.json', content: JSON.stringify({
+              name: data.title.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+              version: '1.0.0',
+              scripts: {
+                dev: 'vite',
+                build: 'vite build',
+                preview: 'vite preview'
+              },
+              dependencies: {
+                react: '^18.3.1',
+                'react-dom': '^18.3.1'
+              },
+              devDependencies: {
+                '@vitejs/plugin-react': '^4.3.1',
+                vite: '^5.4.2'
+              }
+            }, null, 2) },
+            { path: 'vite.config.js', content: `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+})` }
+          ];
+          setProjectFiles(files);
         }
       } catch (error) {
         console.error("Error loading project:", error);
@@ -93,9 +123,10 @@ const Deploy = () => {
               </ul>
             </div>
 
-            <VercelDeploymentManager 
+            <DeploymentDashboard 
               projectId={projectId} 
               projectName={projectName}
+              projectFiles={projectFiles}
             />
           </div>
         </CardContent>
