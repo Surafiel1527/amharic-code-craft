@@ -1,4 +1,4 @@
-import { SmartChatBuilder } from "@/components/SmartChatBuilder";
+import { UniversalChatInterface } from "@/components/UniversalChatInterface";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Brain, Shield, GitBranch, AlertTriangle, ArrowLeft } from "lucide-react";
@@ -74,7 +74,15 @@ export default function AISystemTest() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <SmartChatBuilder />
+                <UniversalChatInterface
+                  mode="panel"
+                  height="h-[600px]"
+                  autoLearn={true}
+                  autoApply={false}
+                  showContext={true}
+                  persistMessages={true}
+                  placeholder="Describe what you want to build..."
+                />
               </CardContent>
             </Card>
           </TabsContent>

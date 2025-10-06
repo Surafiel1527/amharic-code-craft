@@ -9,7 +9,6 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 // Lazy-loaded pages for better performance
-const Builder = lazy(() => import("./pages/Builder"));
 const Workspace = lazy(() => import("./pages/Workspace"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Admin = lazy(() => import("./pages/Admin"));
@@ -26,7 +25,6 @@ const PackageManager = lazy(() => import("./pages/PackageManager"));
 const TestingHub = lazy(() => import("./pages/TestingHub"));
 const AITrainingDashboard = lazy(() => import("./pages/AITrainingDashboard"));
 const Marketplace = lazy(() => import("./pages/Marketplace"));
-const TaskManagerOrchestration = lazy(() => import("./pages/TaskManagerOrchestration"));
 const SelfHealingHub = lazy(() => import("./pages/SelfHealingHub"));
 const ActivityDemo = lazy(() => import("./pages/ActivityDemo"));
 const ProjectsDashboard = lazy(() => import("./pages/ProjectsDashboard"));
@@ -45,7 +43,6 @@ const App = () => {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/builder" element={<Builder />} />
           <Route path="/workspace/:projectId" element={<Workspace />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin" element={<Admin />} />
@@ -62,7 +59,6 @@ const App = () => {
           <Route path="/testing" element={<TestingHub />} />
           <Route path="/ai-training" element={<AITrainingDashboard />} />
           <Route path="/marketplace" element={<Marketplace />} />
-          <Route path="/task-manager-orchestration" element={<TaskManagerOrchestration />} />
           <Route path="/self-healing" element={<SelfHealingHub />} />
           <Route path="/activity-demo" element={<ActivityDemo />} />
           <Route path="/projects" element={<ProjectsDashboard />} />
