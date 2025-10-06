@@ -1,13 +1,29 @@
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, X } from 'lucide-react';
 import { useBackgroundJobs } from '@/hooks/useBackgroundJobs';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export function BackgroundJobsIndicator() {
   const { user } = useAuth();
   const { activeJobs, completedJobs, dismissCompleted, hasActiveJobs } = useBackgroundJobs(user?.id);
+
+  const handleCancelJob = async (jobId: string) => {
+    try {
+      await supabase
+        .from('ai_generation_jobs')
+        .update({ status: 'cancelled' })
+        .eq('id', jobId);
+      
+      toast.success('Job cancelled successfully');
+    } catch (error) {
+      console.error('Cancel error:', error);
+      toast.error('Failed to cancel job');
+    }
+  };
 
   if (!hasActiveJobs && completedJobs.length === 0) {
     return null;
@@ -23,9 +39,19 @@ export function BackgroundJobsIndicator() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2 mb-1">
                 <span className="text-sm font-medium">Processing in Background</span>
-                <Badge variant="outline" className="text-xs">
-                  {job.progress}%
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    {job.progress}%
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleCancelJob(job.id)}
+                    className="h-6 w-6 p-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground truncate">
                 {job.current_step || 'Working on your request...'}

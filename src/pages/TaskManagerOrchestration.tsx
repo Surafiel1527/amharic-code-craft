@@ -29,9 +29,77 @@ export default function TaskManagerOrchestration() {
       return;
     }
 
-    setHasStarted(true);
     const startOrchestration = async () => {
       try {
+        // Check for existing running jobs first
+        const { data: existingJobs } = await supabase
+          .from('ai_generation_jobs')
+          .select('id, status')
+          .eq('user_id', user.id)
+          .eq('job_type', 'orchestration')
+          .in('status', ['queued', 'processing'])
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (existingJobs && existingJobs.length > 0) {
+          const existingJob = existingJobs[0];
+          setJobId(existingJob.id);
+          setHasStarted(true);
+          toast({
+            title: "Resuming Orchestration",
+            description: "Found existing job, resuming...",
+          });
+          
+          // Start monitoring the existing job
+          const interval = setInterval(async () => {
+            if (isCancelled) {
+              clearInterval(interval);
+              return;
+            }
+
+            const { data: job } = await supabase
+              .from('ai_generation_jobs')
+              .select('status, progress, current_step, output_data')
+              .eq('id', existingJob.id)
+              .single();
+
+            if (job) {
+              setStatus(job.current_step || "Processing...");
+              setProgress(job.progress || 0);
+
+              if (job.output_data) {
+                const outputData = job.output_data as any;
+                if (outputData.generatedCode) {
+                  setGeneratedCode(outputData.generatedCode);
+                } else if (outputData.html) {
+                  setGeneratedCode(outputData.html);
+                }
+              }
+
+              if (job.status === 'completed') {
+                clearInterval(interval);
+                toast({
+                  title: "✅ Complete!",
+                  description: "Your task manager is ready!",
+                });
+                setTimeout(() => {
+                  window.location.href = '/';
+                }, 2000);
+              } else if (job.status === 'failed' || job.status === 'cancelled') {
+                clearInterval(interval);
+                toast({
+                  title: "Orchestration " + job.status,
+                  description: "Please try again",
+                  variant: "destructive"
+                });
+              }
+            }
+          }, 2000);
+          
+          return;
+        }
+
+        setHasStarted(true);
         setStatus("🚀 Starting orchestration...");
         
         const { data, error } = await supabase.functions.invoke("smart-orchestrator", {
