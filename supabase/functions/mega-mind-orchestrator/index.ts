@@ -315,6 +315,15 @@ serve(async (req) => {
 
     // Mark job as completed
     if (jobId) {
+      // Format the generated code for frontend display
+      let generatedCode = '';
+      if (generation.files && generation.files.length > 0) {
+        // Create a combined view of all files
+        generatedCode = generation.files.map((file: any) => 
+          `// File: ${file.path}\n${file.description ? `// ${file.description}\n` : ''}${file.content}\n\n`
+        ).join('\n');
+      }
+
       await supabaseClient
         .from('ai_generation_jobs')
         .update({
@@ -325,13 +334,17 @@ serve(async (req) => {
           updated_at: new Date().toISOString(),
           output_data: {
             orchestrationId,
+            generatedCode, // Add this for frontend preview
+            html: generatedCode, // Also add as html for compatibility
             dependencies: dependencies.length > 0 ? {
               detected: dependencies.length,
               installed: dependencies.filter(d => d.shouldInstall).length,
               list: dependencies
             } : null,
             generation,
-            verification
+            verification,
+            instructions: generation.instructions,
+            nextSteps: generation.nextSteps
           }
         })
         .eq('id', jobId);
