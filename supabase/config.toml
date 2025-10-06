@@ -146,6 +146,3 @@ verify_jwt = true
 [functions.complete-vercel-pipeline]
 verify_jwt = true
 
-[functions.prompt-to-production]
-verify_jwt = true
-

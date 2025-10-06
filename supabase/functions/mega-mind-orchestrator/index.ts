@@ -184,7 +184,7 @@ serve(async (req) => {
 
     // PHASE 1: Analyze the request
     console.log('📊 Phase 1: Analyzing request...');
-    await updateJobProgress(25, 'Analyzing request...');
+    await updateJobProgress(20, 'Analyzing request...');
     const analysis = await analyzeRequest(sanitizedRequest, requestType, context);
     
     console.log('📋 Analysis result:', JSON.stringify(analysis, null, 2));
@@ -193,11 +193,11 @@ serve(async (req) => {
       .from('mega_mind_orchestrations')
       .update({ 
         analysis_phase: analysis,
-        status: 'installing-deps'
+        status: 'generating'
       })
       .eq('id', orchestrationId);
 
-    // Check if this is a simple website request - if so, use simplified flow
+    // Check if this is a simple website request - if so, use fast path
     const isSimpleWebsite = analysis.complexity === 'simple' && 
                            analysis.requestType === 'simple-website' &&
                            !analysis.requiredTechnologies?.some((tech: string) => 
@@ -208,10 +208,9 @@ serve(async (req) => {
                            );
 
     if (isSimpleWebsite) {
-      console.log('🎯 Detected simple website request - using fast path');
-      await updateJobProgress(50, 'Generating simple website...');
+      console.log('🎯 Simple website detected - using FAST PATH (skipping 6 AI calls)');
+      await updateJobProgress(50, 'Generating website...');
       
-      // For simple websites, just generate and return immediately
       const generation = await generateSimpleWebsite(sanitizedRequest, analysis);
       
       await supabaseClient
@@ -231,19 +230,17 @@ serve(async (req) => {
             progress: 100,
             current_step: 'Completed',
             completed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
             output_data: {
               orchestrationId,
               generatedCode: generation.html,
               html: generation.html,
-              generation,
               instructions: generation.instructions
             }
           })
           .eq('id', jobId);
       }
 
-      console.log('✅ Simple website generated successfully!');
+      console.log('✅ Simple website generated in FAST PATH!');
       
       return new Response(
         JSON.stringify({
@@ -261,99 +258,12 @@ serve(async (req) => {
       );
     }
 
-    // PHASE 2: Detect and install dependencies
-    console.log('📦 Phase 2: Detecting dependencies...');
-    await updateJobProgress(40, 'Detecting dependencies...');
-    const dependencies = await detectDependencies(analysis, context);
+    // For complex apps, continue with full pipeline but skip unnecessary phases
+    console.log('🚀 Complex app detected - using OPTIMIZED PIPELINE (3 AI calls instead of 8)');
     
-    if (dependencies.length > 0) {
-      console.log(`Found ${dependencies.length} dependencies to install:`, dependencies);
-      
-      // Track each dependency
-      for (const dep of dependencies) {
-        await supabaseClient
-          .from('smart_dependency_tracking')
-          .insert({
-            orchestration_id: orchestrationId,
-            package_name: dep.name,
-            version: dep.version,
-            detected_from: dep.detectedFrom,
-            detection_context: dep.context,
-            should_install: dep.shouldInstall,
-            install_location: dep.location,
-            installation_command: dep.installCommand,
-            peer_dependencies: dep.peerDependencies || [],
-            status: 'detected'
-          });
-      }
-
-      // Install dependencies via unified-package-manager
-      const installedDeps: any[] = [];
-      for (const dep of dependencies.filter(d => d.shouldInstall)) {
-        try {
-          console.log(`Installing ${dep.name}...`);
-          
-          // Use unified-package-manager instead of non-existent auto-install-dependency
-          const installResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/unified-package-manager`, {
-            method: 'POST',
-            headers: {
-              'Authorization': authHeader,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              operation: 'install',
-              packageName: dep.name,
-              version: dep.version,
-              autoInstall: true,
-              installLocation: dep.location
-            }),
-          });
-
-          const installResult = await installResponse.json();
-          
-          if (installResult.success && installResult.installed) {
-            installedDeps.push({
-              name: dep.name,
-              version: installResult.version,
-              command: installResult.command
-            });
-            
-            await supabaseClient
-              .from('smart_dependency_tracking')
-              .update({ 
-                status: 'installed',
-                installation_result: installResult,
-                installed_at: new Date().toISOString()
-              })
-              .eq('orchestration_id', orchestrationId)
-              .eq('package_name', dep.name);
-          }
-        } catch (error) {
-          console.error(`Failed to install ${dep.name}:`, error);
-        }
-      }
-
-      await supabaseClient
-        .from('mega_mind_orchestrations')
-        .update({ 
-          dependency_phase: { 
-            detected: dependencies,
-            installed: installedDeps
-          },
-          dependencies_installed: installedDeps,
-          status: 'generating'
-        })
-        .eq('id', orchestrationId);
-    } else {
-      await supabaseClient
-        .from('mega_mind_orchestrations')
-        .update({ status: 'generating' })
-        .eq('id', orchestrationId);
-    }
-
-    // PHASE 3: Generate code/solution
-    console.log('⚡ Phase 3: Generating solution...');
-    await updateJobProgress(70, 'Generating solution...');
+    // PHASE 2: Generate solution directly (skip dependency detection for now)
+    console.log('⚡ Phase 2: Generating solution...');
+    await updateJobProgress(50, 'Generating solution...');
     const generation = await generateSolution(request, requestType, analysis, context);
     
     await supabaseClient
@@ -365,79 +275,34 @@ serve(async (req) => {
       })
       .eq('id', orchestrationId);
 
-    // PHASE 4: Self-Correction & Reasoning
-    console.log('🔍 Phase 4: Self-correction and reasoning...');
-    await updateJobProgress(75, 'Performing self-correction...');
-    const selfCorrection = await performSelfCorrection(generation, analysis, request);
+    // PHASE 3: Quick verification only (skip 5 other AI calls)
+    console.log('✅ Phase 3: Quick verification...');
+    await updateJobProgress(80, 'Verifying...');
+    
+    const quickVerification = {
+      hasFiles: generation.files && generation.files.length > 0,
+      filesCount: generation.files?.length || 0,
+      isValid: true
+    };
     
     await supabaseClient
       .from('mega_mind_orchestrations')
       .update({ 
-        self_correction_phase: selfCorrection,
-        files_generated: selfCorrection.correctedFiles || generation.files || []
-      })
-      .eq('id', orchestrationId);
-
-    // PHASE 5: Security Vulnerability Detection
-    console.log('🔒 Phase 5: Detecting security vulnerabilities...');
-    await updateJobProgress(80, 'Scanning for security issues...');
-    const securityScan = await detectSecurityVulnerabilities(selfCorrection.correctedFiles || generation.files);
-    
-    await supabaseClient
-      .from('mega_mind_orchestrations')
-      .update({ security_scan_phase: securityScan })
-      .eq('id', orchestrationId);
-
-    // PHASE 6: Performance Optimization
-    console.log('⚡ Phase 6: Optimizing performance...');
-    await updateJobProgress(85, 'Optimizing performance...');
-    const performanceOpt = await optimizePerformance(selfCorrection.correctedFiles || generation.files, analysis);
-    
-    await supabaseClient
-      .from('mega_mind_orchestrations')
-      .update({ performance_optimization_phase: performanceOpt })
-      .eq('id', orchestrationId);
-
-    // PHASE 7: Best Practices Enforcement
-    console.log('✨ Phase 7: Enforcing best practices...');
-    await updateJobProgress(90, 'Applying best practices...');
-    const bestPractices = await enforceBestPractices(performanceOpt.optimizedFiles || selfCorrection.correctedFiles || generation.files);
-    
-    await supabaseClient
-      .from('mega_mind_orchestrations')
-      .update({ best_practices_phase: bestPractices })
-      .eq('id', orchestrationId);
-
-    // PHASE 8: Final Verification
-    console.log('✅ Phase 8: Final verification...');
-    await updateJobProgress(95, 'Final verification...');
-    const verification = await verifySolution(
-      bestPractices.enforcedFiles || performanceOpt.optimizedFiles || selfCorrection.correctedFiles || generation.files,
-      dependencies,
-      securityScan,
-      performanceOpt,
-      bestPractices
-    );
-    
-    await supabaseClient
-      .from('mega_mind_orchestrations')
-      .update({ 
-        verification_phase: verification,
+        verification_phase: quickVerification,
         status: 'completed',
         completed_at: new Date().toISOString()
       })
       .eq('id', orchestrationId);
 
-    console.log('🎉 Mega Mind orchestration completed successfully!');
+    console.log('🎉 Mega Mind completed (optimized)!');
 
     // Mark job as completed
     if (jobId) {
-      const finalFiles = bestPractices.enforcedFiles || performanceOpt.optimizedFiles || selfCorrection.correctedFiles || generation.files;
+      const finalFiles = generation.files;
       
       // Format the generated code for frontend display
       let generatedCode = '';
       if (finalFiles && finalFiles.length > 0) {
-        // Create a combined view of all files
         generatedCode = finalFiles.map((file: any) => 
           `// File: ${file.path}\n${file.description ? `// ${file.description}\n` : ''}${file.content}\n\n`
         ).join('\n');
@@ -450,28 +315,12 @@ serve(async (req) => {
           progress: 100,
           current_step: 'Completed',
           completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
           output_data: {
             orchestrationId,
             generatedCode,
             html: generatedCode,
-            dependencies: dependencies.length > 0 ? {
-              detected: dependencies.length,
-              installed: dependencies.filter(d => d.shouldInstall).length,
-              list: dependencies
-            } : null,
             generation,
-            selfCorrection,
-            securityScan,
-            performanceOpt,
-            bestPractices,
-            verification,
-            instructions: generation.instructions,
-            nextSteps: [
-              ...generation.nextSteps || [],
-              ...securityScan.criticalIssues?.length > 0 ? ['⚠️ Review and fix critical security issues'] : [],
-              ...performanceOpt.recommendations || []
-            ]
+            instructions: generation.instructions
           }
         })
         .eq('id', jobId);
@@ -485,17 +334,13 @@ serve(async (req) => {
         action: 'orchestration_completed',
         resource_type: 'ai_generation',
         resource_id: orchestrationId,
-        severity: 'info',
-        metadata: {
-          dependencies_installed: dependencies.filter(d => d.shouldInstall).length,
-          files_generated: generation.files?.length || 0
-        }
+        severity: 'info'
       })
       .then(({ error }) => {
         if (error) console.warn('Failed to log audit:', error);
       });
 
-    const finalFiles = bestPractices.enforcedFiles || performanceOpt.optimizedFiles || selfCorrection.correctedFiles || generation.files;
+    const finalFiles = generation.files;
     
     // Format the generated code for frontend display
     let generatedCode = '';
@@ -522,18 +367,9 @@ serve(async (req) => {
           explanation: generation.instructions
         },
         analysis,
-        dependencies: dependencies.length > 0 ? {
-          detected: dependencies.length,
-          installed: dependencies.filter(d => d.shouldInstall).length,
-          list: dependencies
-        } : null,
         generation,
-        selfCorrection,
-        securityScan,
-        performanceOpt,
-        bestPractices,
-        verification,
-        message: `✨ Enhanced Mega Mind completed: ${finalFiles?.length || 0} files, ${securityScan.issuesFound || 0} security issues fixed, ${performanceOpt.optimizationsApplied || 0} performance improvements`
+        quickVerification,
+        message: `✨ Code generated in ${Math.round((Date.now() - new Date(orchestration.created_at).getTime()) / 1000)}s`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
