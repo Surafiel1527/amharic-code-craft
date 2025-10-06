@@ -1,18 +1,64 @@
 project_id = "xuncvfnvatgqshlivuep"
 
-[functions.unified-refactoring-engine]
+# ============================================
+# PROTECTED CORE INTELLIGENCE FUNCTIONS (10)
+# These provide system-wide orchestration
+# ============================================
+
+[functions.mega-mind-orchestrator]
 verify_jwt = true
 
-[functions.unified-image-generator]
+[functions.mega-mind-self-healer]
 verify_jwt = false
 
-[functions.unified-docs-manager]
+[functions.advanced-reasoning-engine]
+verify_jwt = false
+
+[functions.proactive-monitor]
+verify_jwt = false
+
+[functions.proactive-intelligence]
 verify_jwt = true
 
-[functions.unified-security-scanner]
+[functions.self-learning-engine]
 verify_jwt = false
 
-[functions.unified-build-system]
+[functions.pattern-recognizer]
+verify_jwt = false
+
+[functions.predictive-alert-engine]
+verify_jwt = false
+
+[functions.autonomous-healing-engine]
+verify_jwt = false
+
+[functions.meta-self-improvement]
+verify_jwt = false
+
+# ============================================
+# UNIFIED WORKER FUNCTIONS (20)
+# Enterprise-grade consolidated operations
+# ============================================
+
+[functions.unified-ai-workers]
+verify_jwt = false
+
+[functions.unified-code-operations]
+verify_jwt = true
+
+[functions.unified-deployment]
+verify_jwt = true
+
+[functions.unified-infrastructure]
+verify_jwt = true
+
+[functions.unified-monitoring]
+verify_jwt = false
+
+[functions.unified-learning]
+verify_jwt = true
+
+[functions.unified-quality]
 verify_jwt = true
 
 [functions.unified-package-manager]
@@ -21,407 +67,38 @@ verify_jwt = true
 [functions.unified-healing-engine]
 verify_jwt = true
 
-[functions.unified-dependency-analyzer]
-verify_jwt = true
-
-[functions.unified-code-generator]
-verify_jwt = true
-
 [functions.unified-test-manager]
 verify_jwt = true
 
-[functions.unified-deployment-manager]
+[functions.unified-automation]
 verify_jwt = true
 
-[functions.unified-code-quality]
+[functions.unified-notifications]
+verify_jwt = false
+
+[functions.unified-cache-manager]
 verify_jwt = true
 
-[functions.unified-performance-optimizer]
+[functions.unified-resource-manager]
 verify_jwt = true
 
-[functions.smart-build-optimizer]
+[functions.unified-analytics]
 verify_jwt = false
 
-[functions.predictive-alert-engine]
+[functions.unified-security]
 verify_jwt = false
 
-[functions.deployment-orchestrator]
+[functions.unified-snapshot-manager]
 verify_jwt = true
 
-[functions.smart-rollback-engine]
-verify_jwt = false
-
-[functions.real-package-installer]
+[functions.unified-webhook-manager]
 verify_jwt = true
 
-[functions.generate-package-json]
+[functions.unified-backup-manager]
 verify_jwt = true
 
-[functions.smart-dependency-detector]
-verify_jwt = true
-
-[functions.real-code-analysis]
-verify_jwt = true
-
-[functions.real-test-execution]
+[functions.unified-rate-limiter]
 verify_jwt = false
-
-[functions.ci-cd-webhook]
-verify_jwt = true
-
-[functions.sophisticated-code-analysis]
-verify_jwt = true
-
-[functions.automated-test-generator]
-verify_jwt = false
-
-[functions.auto-fix-engine]
-verify_jwt = false
-
-[functions.build-quality-gate]
-verify_jwt = true
-
-[functions.physical-build-blocker]
-verify_jwt = true
-
-[functions.intelligent-conversation]
-verify_jwt = false
-
-[functions.ai-code-builder]
-verify_jwt = false
-
-[functions.chat-generate]
-verify_jwt = false
-
-[functions.generate-image]
-verify_jwt = false
-
-[functions.analyze-code]
-verify_jwt = false
-
-[functions.optimize-code]
-verify_jwt = false
-
-[functions.ai-assistant]
-verify_jwt = false
-
-[functions.design-to-code]
-verify_jwt = false
-
-[functions.accessibility-check]
-verify_jwt = false
-
-[functions.seo-analyze]
-verify_jwt = false
-
-[functions.security-scan]
-verify_jwt = false
-
-[functions.api-generate]
-verify_jwt = false
-
-[functions.meta-improve]
-verify_jwt = true
-
-[functions.self-heal]
-verify_jwt = false
-
-[functions.mega-mind-self-healer]
-verify_jwt = false
-
-[functions.super-predictive-analyzer]
-verify_jwt = false
-
-[functions.auto-performance-optimizer]
-verify_jwt = false
-
-[functions.self-learning-engine]
-verify_jwt = false
-
-[functions.fix-stuck-job]
-verify_jwt = false
-
-[functions.ai-reflect]
-verify_jwt = false
-
-[functions.scheduled-improvement]
-verify_jwt = false
-
-[functions.admin-self-modify]
-verify_jwt = true
-
-[functions.rollback-customization]
-verify_jwt = true
-
-[functions.save-snapshot]
-verify_jwt = true
-
-[functions.restore-snapshot]
-verify_jwt = true
-
-[functions.report-error]
-verify_jwt = false
-
-[functions.apply-fix]
-verify_jwt = false
-
-[functions.proactive-monitor]
-verify_jwt = false
-
-[functions.code-quality-analyzer]
-verify_jwt = false
-
-[functions.create-modification]
-verify_jwt = false
-
-[functions.generate-tests]
-verify_jwt = false
-
-[functions.learn-from-conversation]
-verify_jwt = true
-
-[functions.manage-preferences]
-verify_jwt = true
-
-[functions.suggest-refactoring]
-verify_jwt = true
-
-[functions.audit-dependencies]
-verify_jwt = true
-
-[functions.generate-docs]
-verify_jwt = true
-
-[functions.generate-with-plan]
-verify_jwt = false
-
-[functions.smart-diff-update]
-verify_jwt = false
-
-[functions.learn-user-preferences]
-verify_jwt = false
-
-[functions.multi-project-learn]
-verify_jwt = false
-
-[functions.iterative-refine]
-verify_jwt = false
-
-[functions.component-awareness]
-verify_jwt = false
-
-[functions.model-selector]
-verify_jwt = false
-
-[functions.feedback-processor]
-verify_jwt = false
-
-[functions.learn-pattern]
-verify_jwt = false
-
-[functions.multi-file-generate]
-verify_jwt = true
-
-[functions.refactor-code]
-verify_jwt = true
-
-[functions.advanced-reasoning]
-verify_jwt = false
-
-[functions.self-reflection]
-verify_jwt = false
-
-[functions.proactive-intelligence]
-verify_jwt = true
-
-[functions.knowledge-ingest]
-verify_jwt = false
-
-[functions.dockerfile-agent]
-verify_jwt = false
-
-[functions.generate-ai-image]
-verify_jwt = true
-
-[functions.intelligent-refactor]
-verify_jwt = true
-
-[functions.react-component-generator]
-verify_jwt = true
-
-[functions.save-database-credentials]
-verify_jwt = true
-
-[functions.test-database-connection]
-verify_jwt = true
-
-[functions.list-database-credentials]
-verify_jwt = true
-
-[functions.check-database-health]
-verify_jwt = true
-
-[functions.delete-database-credentials]
-verify_jwt = true
-
-[functions.get-security-metrics]
-verify_jwt = true
-
-[functions.get-security-audit-logs]
-verify_jwt = true
-
-[functions.analyze-database-error]
-verify_jwt = true
-
-[functions.validate-database-config]
-verify_jwt = true
-
-[functions.fetch-provider-docs]
-verify_jwt = false
-
-[functions.proactive-health-monitor]
-verify_jwt = false
-
-[functions.learn-connection-knowledge]
-verify_jwt = false
-
-[functions.intelligent-retry-connection]
-verify_jwt = true
-
-[functions.setup-monitoring-cron]
-verify_jwt = true
-
-[functions.send-alert-notification]
-verify_jwt = false
-
-[functions.predict-failure]
-verify_jwt = true
-
-[functions.optimize-connection-cost]
-verify_jwt = true
-
-[functions.deployment-fix-teacher]
-verify_jwt = true
-
-[functions.universal-error-teacher]
-verify_jwt = true
-
-[functions.fetch-documentation]
-verify_jwt = false
-
-[functions.auto-install-dependency]
-verify_jwt = true
-
-[functions.mega-mind-orchestrator]
-verify_jwt = true
-
-[functions.package-complete-project]
-verify_jwt = true
-
-[functions.intelligent-package-installer]
-verify_jwt = true
-
-[functions.visual-code-generator]
-verify_jwt = true
-
-[functions.multi-modal-generator]
-verify_jwt = true
-
-[functions.intelligent-language-detector]
-verify_jwt = true
-
-[functions.python-project-generator]
-verify_jwt = true
-
-[functions.python-executor]
-verify_jwt = true
-
-[functions.ai-code-reviewer]
-verify_jwt = true
-
-[functions.ai-debugger]
-verify_jwt = true
-
-[functions.auto-deployer]
-verify_jwt = true
-
-[functions.security-vulnerability-scanner]
-verify_jwt = false
-
-[functions.smart-orchestrator]
-verify_jwt = true
-
-[functions.terminal-executor]
-verify_jwt = false
-
-[functions.train-ai-model]
-verify_jwt = true
-
-[functions.marketplace-publish]
-verify_jwt = true
-
-[functions.plugin-security-scanner]
-verify_jwt = false
-
-[functions.process-plugin-purchase]
-verify_jwt = true
-
-[functions.pattern-recognizer]
-verify_jwt = false
-
-[functions.performance-optimizer]
-verify_jwt = false
-
-[functions.automated-test-runner]
-verify_jwt = false
-
-[functions.analytics-aggregator]
-verify_jwt = false
-
-[functions.meta-self-improvement]
-verify_jwt = false
-
-[functions.advanced-reasoning-engine]
-verify_jwt = false
-
-[functions.contextual-auto-optimizer]
-verify_jwt = false
-
-[functions.stream-code-generation]
-verify_jwt = false
-
-[functions.autonomous-healing-engine]
-verify_jwt = false
-
-[functions.vercel-deploy-full]
-verify_jwt = true
-
-[functions.ai-deployment-advisor]
-verify_jwt = true
 
 [functions.deployment-health-monitor]
-verify_jwt = false
-
-[functions.ai-package-security-scanner]
-verify_jwt = true
-
-[functions.ai-package-updater]
-verify_jwt = true
-
-[functions.ai-dependency-resolver]
-verify_jwt = true
-
-[functions.ai-package-suggester]
-verify_jwt = true
-
-[functions.ai-package-auto-installer]
-verify_jwt = true
-
-[functions.package-auto-monitor]
-verify_jwt = false
-
-[functions.ai-test-generator]
-verify_jwt = true
-
-[functions.ai-test-auto-runner]
 verify_jwt = false
