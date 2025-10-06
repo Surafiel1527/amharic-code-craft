@@ -204,7 +204,7 @@ export const useMetrics = (filters?: any, timeRange?: string) => {
  */
 export const useCodeReview = () => {
   return useMutation({
-    mutationFn: unifiedFunctions.quality.reviewCode,
+    mutationFn: unifiedFunctions.quality.codeReview,
     onSuccess: () => {
       toast.success("Code review completed");
     },

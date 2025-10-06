@@ -75,20 +75,20 @@ export const aiWorkers = {
  * Consolidates: analysis, optimization, refactoring, testing, component generation
  */
 export const codeOps = {
-  analyze: (params: { code: string; language: string }) =>
+  analyze: (params: { code: string; projectId?: string; analysisType?: string }) =>
     invokeUnifiedFunction("unified-code-operations", "analyze", params),
 
   optimize: (params: { code: string; optimizationType?: string }) =>
     invokeUnifiedFunction("unified-code-operations", "optimize", params),
 
-  refactor: (params: { code: string; refactorType: string }) =>
+  refactor: (params: { code: string; refactoringGoal: string }) =>
     invokeUnifiedFunction("unified-code-operations", "refactor", params),
 
-  runTests: (params: { projectId: string; testFiles?: string[] }) =>
-    invokeUnifiedFunction("unified-code-operations", "run_tests", params),
+  runTests: (params: { testSuite: any; projectId?: string }) =>
+    invokeUnifiedFunction("unified-code-operations", "test_runner", params),
 
-  generateComponent: (params: { description: string; framework?: string }) =>
-    invokeUnifiedFunction("unified-code-operations", "generate_component", params),
+  generateComponent: (params: { componentType: string; requirements: string }) =>
+    invokeUnifiedFunction("unified-code-operations", "component_generation", params),
 };
 
 /**
@@ -105,7 +105,7 @@ export const deployment = {
   build: (params: { projectId: string; buildConfig?: any }) =>
     invokeUnifiedFunction("unified-deployment", "build", params),
 
-  rollback: (params: { deploymentId: string; targetVersion?: string }) =>
+  rollback: (params: { fromDeploymentId: string; toDeploymentId?: string; reason?: string }) =>
     invokeUnifiedFunction("unified-deployment", "rollback", params),
 
   healthCheck: (params: { deploymentId: string }) =>
@@ -118,21 +118,18 @@ export const deployment = {
  */
 export const infrastructure = {
   database: {
-    query: (params: { query: string; params?: any[] }) =>
-      invokeUnifiedFunction("unified-infrastructure", "db_query", params),
+    query: (params: { table: string; operation: string; data?: any; filters?: any }) =>
+      invokeUnifiedFunction("unified-infrastructure", "database_query", params),
 
-    migrate: (params: { migration: string }) =>
-      invokeUnifiedFunction("unified-infrastructure", "db_migrate", params),
+    health: (params: { credentialId: string }) =>
+      invokeUnifiedFunction("unified-infrastructure", "database_health", params),
   },
 
   packages: {
-    install: (params: { packageName: string; version?: string }) =>
+    install: (params: { packageName: string; version?: string; userId: string; projectId?: string }) =>
       invokeUnifiedFunction("unified-infrastructure", "package_install", params),
 
-    uninstall: (params: { packageName: string }) =>
-      invokeUnifiedFunction("unified-infrastructure", "package_uninstall", params),
-
-    audit: (params: { projectId: string }) =>
+    audit: (params: { userId: string; projectId?: string }) =>
       invokeUnifiedFunction("unified-infrastructure", "package_audit", params),
   },
 
@@ -142,15 +139,15 @@ export const infrastructure = {
   },
 
   admin: {
-    getStats: () =>
-      invokeUnifiedFunction("unified-infrastructure", "admin_stats", {}),
+    action: (params: { action: string; targetId?: string; metadata?: any }) =>
+      invokeUnifiedFunction("unified-infrastructure", "admin_action", params),
   },
 
   snapshots: {
-    create: (params: { projectId: string; description?: string }) =>
+    create: (params: { userId: string; projectId: string; description?: string }) =>
       invokeUnifiedFunction("unified-infrastructure", "snapshot_create", params),
 
-    restore: (params: { snapshotId: string }) =>
+    restore: (params: { snapshotId: string; projectId: string }) =>
       invokeUnifiedFunction("unified-infrastructure", "snapshot_restore", params),
   },
 };
@@ -176,43 +173,46 @@ export const monitoring = {
  * Learning Systems Unified Client
  */
 export const learning = {
-  learnFromConversation: (params: { conversationId: string; patterns: any[] }) =>
-    invokeUnifiedFunction("unified-learning", "learn_conversation", params),
+  learnFromConversation: (params: { conversationId: string; userId: string }) =>
+    invokeUnifiedFunction("unified-learning", "learn_from_conversation", params),
 
-  learnPattern: (params: { pattern: any; category: string }) =>
+  learnPattern: (params: { userId: string; data: { pattern: string; category: string; context?: any; confidence?: number } }) =>
     invokeUnifiedFunction("unified-learning", "learn_pattern", params),
 
-  learnPreferences: (params: { userId: string; preferences: any }) =>
-    invokeUnifiedFunction("unified-learning", "learn_preferences", params),
+  learnUserPreferences: (params: { userId: string; data: { preferences: any } }) =>
+    invokeUnifiedFunction("unified-learning", "learn_user_preferences", params),
 
-  reinforcePattern: (params: { patternId: string; success: boolean }) =>
+  getLearnedPatterns: (params: { userId: string; data?: { category?: string; minConfidence?: number; limit?: number } }) =>
+    invokeUnifiedFunction("unified-learning", "get_learned_patterns", params),
+
+  reinforcePattern: (params: { patternId: string }) =>
     invokeUnifiedFunction("unified-learning", "reinforce_pattern", params),
 
-  learnFromFeedback: (params: { feedback: any; context: any }) =>
-    invokeUnifiedFunction("unified-learning", "learn_feedback", params),
+  feedbackLearning: (params: { userId: string; data: { feedback: any } }) =>
+    invokeUnifiedFunction("unified-learning", "feedback_learning", params),
 };
 
 /**
  * Quality & Documentation Unified Client
  */
 export const quality = {
-  analyzeQuality: (params: { code: string; standards?: string[] }) =>
+  analyzeQuality: (params: { code: string; language?: string; projectId?: string; userId?: string }) =>
     invokeUnifiedFunction("unified-quality", "analyze_quality", params),
 
-  reviewCode: (params: { code: string; reviewType?: string }) =>
-    invokeUnifiedFunction("unified-quality", "review_code", params),
+  codeReview: (params: { code: string; language?: string; userId: string }) =>
+    invokeUnifiedFunction("unified-quality", "code_review", params),
 
-  auditSecurity: (params: { projectId: string }) =>
-    invokeUnifiedFunction("unified-quality", "audit_security", params),
+  auditSecurity: (params: { code: string; projectId?: string }) =>
+    invokeUnifiedFunction("unified-quality", "security_audit", params),
 
-  auditPerformance: (params: { projectId: string }) =>
-    invokeUnifiedFunction("unified-quality", "audit_performance", params),
+  auditPerformance: (params: { code: string; language?: string }) =>
+    invokeUnifiedFunction("unified-quality", "performance_audit", params),
 
-  checkAccessibility: (params: { html: string; wcagLevel?: string }) =>
-    invokeUnifiedFunction("unified-quality", "check_accessibility", params),
+  checkAccessibility: (params: { code: string }) =>
+    invokeUnifiedFunction("unified-quality", "accessibility_check", params),
 
-  generateDocs: (params: { code: string; docType?: string }) =>
-    invokeUnifiedFunction("unified-quality", "generate_docs", params),
+  generateDocs: (params: { code: string; language?: string; projectId?: string; userId: string }) =>
+    invokeUnifiedFunction("unified-quality", "generate_documentation", params),
 };
 
 /**
