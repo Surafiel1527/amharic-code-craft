@@ -20,6 +20,7 @@ import TestingHub from "./pages/TestingHub";
 import AITrainingDashboard from "./pages/AITrainingDashboard";
 import Marketplace from "./pages/Marketplace";
 import TaskManagerOrchestration from "./pages/TaskManagerOrchestration";
+import SelfHealingHub from "./pages/SelfHealingHub";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { BackgroundJobsIndicator } from "./components/BackgroundJobsIndicator";
 
@@ -48,6 +49,7 @@ const App = () => {
         <Route path="/ai-training" element={<AITrainingDashboard />} />
         <Route path="/marketplace" element={<Marketplace />} />
         <Route path="/task-manager-orchestration" element={<TaskManagerOrchestration />} />
+        <Route path="/self-healing" element={<SelfHealingHub />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

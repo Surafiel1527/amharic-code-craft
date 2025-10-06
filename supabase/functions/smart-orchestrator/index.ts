@@ -796,6 +796,22 @@ Generate a comprehensive summary.`
               completed_at: new Date().toISOString()
             })
             .eq('id', localJobId);
+          
+          // Trigger Mega Mind self-healer to learn from this failure
+          console.log('🧠 Triggering Mega Mind self-healer...');
+          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/mega-mind-self-healer`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+            },
+            body: JSON.stringify({
+              mode: 'auto',
+              jobId: localJobId
+            })
+          }).catch(healError => {
+            console.error('Failed to trigger self-healer:', healError);
+          });
         }
         
         throw error;

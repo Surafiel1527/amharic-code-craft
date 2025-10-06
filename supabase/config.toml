@@ -78,6 +78,9 @@ verify_jwt = true
 [functions.self-heal]
 verify_jwt = false
 
+[functions.mega-mind-self-healer]
+verify_jwt = false
+
 [functions.ai-reflect]
 verify_jwt = false
 
