@@ -47,6 +47,9 @@ serve(async (req) => {
 
   try {
     const { request, requestType, context = {}, jobId } = await req.json();
+    
+    // Extract projectId from context if available
+    const projectId = context.projectId || null;
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -258,12 +261,12 @@ serve(async (req) => {
       );
     }
 
-    // For complex apps, continue with full pipeline but skip unnecessary phases
-    console.log('🚀 Complex app detected - using OPTIMIZED PIPELINE (3 AI calls instead of 8)');
+    // For complex apps, continue with full pipeline with dependency detection
+    console.log('🚀 Complex app detected - using OPTIMIZED PIPELINE with dependency tracking');
     
-    // PHASE 2: Generate solution directly (skip dependency detection for now)
+    // PHASE 2: Generate solution
     console.log('⚡ Phase 2: Generating solution...');
-    await updateJobProgress(50, 'Generating solution...');
+    await updateJobProgress(40, 'Generating solution...');
     const generation = await generateSolution(request, requestType, analysis, context);
     
     await supabaseClient
@@ -271,17 +274,98 @@ serve(async (req) => {
       .update({ 
         generation_phase: generation,
         files_generated: generation.files || [],
+        status: 'detecting_dependencies'
+      })
+      .eq('id', orchestrationId);
+
+    // PHASE 3: Detect and track dependencies from generated code
+    console.log('📦 Phase 3: Detecting dependencies...');
+    await updateJobProgress(60, 'Detecting dependencies...');
+    
+    let detectedPackages: string[] = [];
+    try {
+      // Extract all code content from generated files
+      const allCode = generation.files?.map((f: any) => f.content).join('\n') || '';
+      
+      // Call unified-package-manager to auto-detect dependencies
+      const { data: detectResult } = await supabaseClient.functions.invoke('unified-package-manager', {
+        body: {
+          operation: 'auto_detect',
+          params: {
+            code: allCode,
+            userId
+          }
+        }
+      });
+      
+      detectedPackages = detectResult?.data?.detected || [];
+      console.log(`📦 Detected ${detectedPackages.length} packages:`, detectedPackages);
+      
+      // Track each detected package in the database
+      for (const packageName of detectedPackages) {
+        try {
+          await supabaseClient.functions.invoke('unified-package-manager', {
+            body: {
+              operation: 'install',
+              params: {
+                packageName,
+                userId,
+                projectId,
+                autoDetected: true
+              }
+            }
+          });
+          console.log(`✅ Tracked package: ${packageName}`);
+        } catch (err) {
+          console.warn(`⚠️ Could not track ${packageName}:`, err);
+        }
+      }
+      
+      // Generate package.json
+      const { data: packageJsonResult } = await supabaseClient.functions.invoke('unified-package-manager', {
+        body: {
+          operation: 'generate_package_json',
+          params: {
+            userId,
+            projectId,
+            projectName: 'mega-mind-project'
+          }
+        }
+      });
+      
+      if (packageJsonResult?.data?.packageJson) {
+        // Add package.json to generated files
+        generation.files = generation.files || [];
+        generation.files.push({
+          path: 'package.json',
+          content: JSON.stringify(packageJsonResult.data.packageJson, null, 2),
+          description: 'Project dependencies configuration'
+        });
+        console.log(`📝 Generated package.json with ${packageJsonResult.data.dependenciesCount} dependencies`);
+      }
+      
+    } catch (error) {
+      console.error('Error detecting dependencies:', error);
+      // Continue even if dependency detection fails
+    }
+
+    await supabaseClient
+      .from('mega_mind_orchestrations')
+      .update({ 
+        dependencies: detectedPackages,
         status: 'verifying'
       })
       .eq('id', orchestrationId);
 
-    // PHASE 3: Quick verification only (skip 5 other AI calls)
-    console.log('✅ Phase 3: Quick verification...');
-    await updateJobProgress(80, 'Verifying...');
+    // PHASE 4: Quick verification
+    console.log('✅ Phase 4: Quick verification...');
+    await updateJobProgress(85, 'Verifying...');
     
     const quickVerification = {
       hasFiles: generation.files && generation.files.length > 0,
       filesCount: generation.files?.length || 0,
+      hasPackageJson: generation.files?.some((f: any) => f.path === 'package.json'),
+      dependenciesDetected: detectedPackages.length,
       isValid: true
     };
     
