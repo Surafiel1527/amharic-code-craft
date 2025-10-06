@@ -18,19 +18,23 @@ export default function TaskManagerOrchestration() {
   const [hasStarted, setHasStarted] = useState(false);
 
   useEffect(() => {
-    if (!user || hasStarted) {
-      if (!user) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign in to continue",
-          variant: "destructive"
-        });
-      }
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to continue",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (hasStarted) {
       return;
     }
 
     const startOrchestration = async () => {
       try {
+        setHasStarted(true);
+        
         // Check for existing running jobs first
         const { data: existingJobs } = await supabase
           .from('ai_generation_jobs')
@@ -44,7 +48,6 @@ export default function TaskManagerOrchestration() {
         if (existingJobs && existingJobs.length > 0) {
           const existingJob = existingJobs[0];
           setJobId(existingJob.id);
-          setHasStarted(true);
           toast({
             title: "Resuming Orchestration",
             description: "Found existing job, resuming...",
@@ -112,7 +115,6 @@ export default function TaskManagerOrchestration() {
           return;
         }
 
-        setHasStarted(true);
         setStatus("🚀 Starting orchestration...");
         
         const { data, error } = await supabase.functions.invoke("smart-orchestrator", {
