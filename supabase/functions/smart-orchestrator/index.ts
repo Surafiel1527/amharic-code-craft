@@ -389,6 +389,10 @@ serve(async (req) => {
       const localProjectId = projectId;
       const localJobId = jobId;
       
+      // Declare these variables outside try block so they're accessible in catch
+      let results: any[] = [];
+      let executionPlan: any[] = [];
+      
       try {
         console.log('🔄 Background task started with task:', localTask?.substring(0, 50));
         
@@ -513,7 +517,7 @@ Create a comprehensive execution plan that can handle any project complexity and
     await broadcastStatus('generating', `Intelligent plan ready: ${executionPlan.length} steps (~${totalEstimatedMinutes} min). Executing...`, 25);
 
     // Step 2: Execute each step with full backend integration
-    const results: any[] = [];
+    results = []; // Reset results array
     const completedSteps: any[] = [];
     
     for (let i = 0; i < executionPlan.length; i++) {
@@ -788,7 +792,7 @@ Generate a comprehensive summary.`
         
         const errorMessage = error.message || 'Unknown error';
         const currentStep = results.length > 0 ? results[results.length - 1].description : 'Unknown step';
-        const currentProgress = Math.round((results.length / steps.length) * 100);
+        const currentProgress = Math.round((results.length / executionPlan.length) * 100);
         
         // Mark job as failed with detailed context
         if (localJobId) {
