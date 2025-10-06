@@ -528,49 +528,28 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         }
       }
 
-      // Fallback or direct routing to orchestrator
+      // Route to orchestrator if no error teacher solution
       if (!response) {
-        // Detect if simple modification for fast path
-        const isSimpleChange = context.currentCode && message.toLowerCase().match(/\b(change|update|modify|fix|adjust|set|make)\b.*\b(color|style|text|size|font|background)\b/i);
+        // Full orchestration with progress tracking
+        logger.info('Routing to Mega Mind Orchestrator');
+        const phases = ['Analyzing', 'Planning', 'Generating', 'Refining', 'Verifying'];
+        let currentPhaseIdx = 0;
         
-        if (isSimpleChange) {
-          logger.info('Using fast smart-diff-update');
-          setCurrentPhase('Analyzing changes');
-          setProgress(50);
-          
-          const { data: diffData, error: diffError } = await supabase.functions.invoke("smart-diff-update", {
-            body: {
-              userRequest: message,
-              currentCode: context.currentCode,
-            },
-          });
-          
-          if (!diffError && diffData) {
-            response = diffData;
-            routedTo = 'orchestrator';
-            setProgress(100);
+        const progressInterval = setInterval(() => {
+          if (currentPhaseIdx < phases.length) {
+            setCurrentPhase(phases[currentPhaseIdx]);
+            setProgress((currentPhaseIdx + 1) * 20);
+            currentPhaseIdx++;
           }
-        } else {
-          // Full orchestration with progress tracking
-          logger.info('Using full smart orchestration');
-          const phases = ['Planning', 'Analyzing', 'Generating', 'Refining', 'Learning'];
-          let currentPhaseIdx = 0;
-          
-          const progressInterval = setInterval(() => {
-            if (currentPhaseIdx < phases.length) {
-              setCurrentPhase(phases[currentPhaseIdx]);
-              setProgress((currentPhaseIdx + 1) * 20);
-              currentPhaseIdx++;
-            }
-          }, 800);
+        }, 1000);
 
-          try {
-            response = await routeToOrchestrator(message, context);
-            routedTo = 'orchestrator';
-          } finally {
-            clearInterval(progressInterval);
-            setProgress(100);
-          }
+        try {
+          response = await routeToOrchestrator(message, context);
+          routedTo = 'orchestrator';
+        } finally {
+          clearInterval(progressInterval);
+          setProgress(100);
+          setCurrentPhase('Complete');
         }
       }
 
