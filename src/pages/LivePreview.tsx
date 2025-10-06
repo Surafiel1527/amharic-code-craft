@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Eye, Code, RefreshCw, Monitor, Smartphone, Tablet, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { BuildActivityLog } from "@/components/BuildActivityLog";
 
 export default function LivePreview() {
   const [deviceMode, setDeviceMode] = useState<"desktop" | "tablet" | "mobile">("desktop");
@@ -203,6 +204,8 @@ export default function App() {
           </Tabs>
         </CardContent>
       </Card>
+
+      <BuildActivityLog />
 
       <Card>
         <CardHeader>
