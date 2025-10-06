@@ -27,8 +27,14 @@ export const DependencyIntelligence = ({ code: initialCode = "", projectId }: De
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('audit-dependencies', {
-        body: { code, projectId, currentPackages: [] }
+      // Route to unified-package-manager for dependency audit
+      const { data, error } = await supabase.functions.invoke('unified-package-manager', {
+        body: { 
+          operation: 'audit-dependencies',
+          code, 
+          projectId, 
+          currentPackages: [] 
+        }
       });
 
       if (error) throw error;
