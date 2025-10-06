@@ -221,19 +221,21 @@ serve(async (req) => {
           });
       }
 
-      // Install dependencies via auto-install-dependency function
+      // Install dependencies via unified-package-manager
       const installedDeps: any[] = [];
       for (const dep of dependencies.filter(d => d.shouldInstall)) {
         try {
           console.log(`Installing ${dep.name}...`);
           
-          const installResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/auto-install-dependency`, {
+          // Use unified-package-manager instead of non-existent auto-install-dependency
+          const installResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/unified-package-manager`, {
             method: 'POST',
             headers: {
               'Authorization': authHeader,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
+              operation: 'install',
               packageName: dep.name,
               version: dep.version,
               autoInstall: true,

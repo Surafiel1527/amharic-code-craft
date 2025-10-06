@@ -134,19 +134,28 @@ export const AdvancedGenerationPanel: React.FC<AdvancedGenerationPanelProps> = (
     try {
       const { data: userData } = await supabase.auth.getUser();
       
-      const { data, error } = await supabase.functions.invoke('smart-diff-update', {
+      // Route to mega-mind-orchestrator instead of non-existent smart-diff-update
+      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
         body: {
-          userRequest,
-          currentCode,
-          conversationId: conversationId || 'temp-' + Date.now(),
-          userId: userData.user?.id
+          request: userRequest,
+          requestType: 'code-modification',
+          context: {
+            currentCode,
+            conversationId: conversationId || 'temp-' + Date.now(),
+            userId: userData.user?.id,
+            files: currentCode ? [{ file_path: 'current-file', file_content: currentCode }] : []
+          }
         }
       });
 
       if (error) throw error;
 
-      if (data.success && data.code) {
-        onCodeGenerated(data.code, data.explanation);
+      // Handle orchestrator response
+      const generatedCode = data?.generation?.files?.[0]?.content || data?.generatedCode || data?.finalCode;
+      const explanation = data?.generation?.instructions || data?.message || data?.explanation;
+      
+      if (generatedCode) {
+        onCodeGenerated(generatedCode, explanation);
         setPhase('complete');
         
         const efficiency = data.changeAnalysis?.efficiency;

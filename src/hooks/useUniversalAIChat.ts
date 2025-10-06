@@ -241,19 +241,22 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   }, [contextFiles, selectedFiles, messages, maxContextLength]);
 
   /**
-   * Routes the message to Universal Error Teacher
+   * Routes the message to Error Healing Engine
    */
   const routeToErrorTeacher = useCallback(async (message: string, context: any): Promise<any> => {
-    logger.info('Routing to Universal Error Teacher');
+    logger.info('Routing to Unified Healing Engine');
 
     try {
-      const { data, error } = await supabase.functions.invoke('universal-error-teacher', {
+      // Use unified-healing-engine instead of non-existent universal-error-teacher
+      const { data, error } = await supabase.functions.invoke('unified-healing-engine', {
         body: {
+          operation: 'diagnose-and-fix',
           errorMessage: message,
           errorContext: {
             selectedFiles,
             conversationHistory: context.conversationHistory,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            currentCode: context.currentCode
           },
           projectContext: {
             files: context.contextData,
@@ -267,7 +270,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       if (error) throw error;
       return data;
     } catch (error) {
-      logger.warn('Error teacher failed, fallback to orchestrator', { error });
+      logger.warn('Healing engine failed, fallback to orchestrator', { error });
       return null;
     }
   }, [projectId, selectedFiles]);

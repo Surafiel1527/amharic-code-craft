@@ -100,9 +100,12 @@ export const IntelligentPackageManager = ({
     );
 
     try {
-      const { data, error } = await supabase.functions.invoke('auto-install-dependency', {
+      // Use unified-package-manager instead of non-existent auto-install-dependency
+      const { data, error } = await supabase.functions.invoke('unified-package-manager', {
         body: {
+          operation: 'install',
           packageName: pkg.name,
+          version: pkg.version,
           autoInstall: true,
           projectContext: { type: projectType }
         }
@@ -110,7 +113,7 @@ export const IntelligentPackageManager = ({
 
       if (error) throw error;
 
-      if (data.success && data.shouldInstall) {
+      if (data.success) {
         setDependencies(prev => 
           prev.map(d => d.name === pkg.name ? { ...d, status: 'installed' } : d)
         );
