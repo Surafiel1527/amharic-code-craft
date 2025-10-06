@@ -5,7 +5,40 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
 };
+
+// Rate limiting map (in-memory for this instance)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const limit = rateLimitMap.get(userId);
+  
+  if (!limit || now > limit.resetTime) {
+    rateLimitMap.set(userId, { count: 1, resetTime: now + 60000 }); // 1 minute window
+    return true;
+  }
+  
+  if (limit.count >= 10) { // Max 10 requests per minute
+    return false;
+  }
+  
+  limit.count++;
+  return true;
+}
+
+function sanitizeInput(input: string): string {
+  // Remove potential script tags and malicious content
+  return input
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=/gi, '')
+    .trim();
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -75,16 +108,55 @@ serve(async (req) => {
       console.log('✅ User authenticated:', userId);
     }
 
-    console.log('🧠 Mega Mind Orchestrator - Starting:', { requestType, request: request?.substring(0, 100) || 'No request text' });
+    // Rate limiting check
+    if (!checkRateLimit(userId)) {
+      console.warn('⚠️ Rate limit exceeded for user:', userId);
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // Create orchestration record
+    // Sanitize inputs
+    const sanitizedRequest = request ? sanitizeInput(request) : '';
+    
+    console.log('🧠 Mega Mind Orchestrator - Starting:', { 
+      requestType, 
+      userId,
+      requestLength: sanitizedRequest.length,
+      jobId: jobId || 'new'
+    });
+
+    // Audit log
+    await supabaseClient
+      .from('audit_logs')
+      .insert({
+        user_id: userId,
+        action: 'orchestration_started',
+        resource_type: 'ai_generation',
+        resource_id: jobId,
+        severity: 'info',
+        metadata: {
+          request_type: requestType,
+          request_length: sanitizedRequest.length
+        }
+      })
+      .then(({ error }) => {
+        if (error) console.warn('Failed to log audit:', error);
+      });
+
+    // Create orchestration record with sanitized data
     const { data: orchestration, error: orchError } = await supabaseClient
       .from('mega_mind_orchestrations')
       .insert({
         user_id: userId,
         request_type: requestType,
-        original_request: request,
-        context,
+        original_request: sanitizedRequest,
+        context: {
+          ...context,
+          ip_hash: req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown',
+          timestamp: new Date().toISOString()
+        },
         status: 'analyzing'
       })
       .select()
@@ -223,6 +295,24 @@ serve(async (req) => {
 
     console.log('🎉 Mega Mind orchestration completed successfully!');
 
+    // Audit log completion
+    await supabaseClient
+      .from('audit_logs')
+      .insert({
+        user_id: userId,
+        action: 'orchestration_completed',
+        resource_type: 'ai_generation',
+        resource_id: orchestrationId,
+        severity: 'info',
+        metadata: {
+          dependencies_installed: dependencies.filter(d => d.shouldInstall).length,
+          files_generated: generation.files?.length || 0
+        }
+      })
+      .then(({ error }) => {
+        if (error) console.warn('Failed to log audit:', error);
+      });
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -242,10 +332,35 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Error in mega-mind-orchestrator:', error);
+    
+    // Audit log error
+    try {
+      const authHeader = req.headers.get('Authorization');
+      if (authHeader) {
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+        
+        await supabaseClient
+          .from('audit_logs')
+          .insert({
+            action: 'orchestration_error',
+            resource_type: 'ai_generation',
+            severity: 'error',
+            metadata: {
+              error: error instanceof Error ? error.message : 'Unknown error'
+            }
+          });
+      }
+    } catch (auditError) {
+      console.error('Failed to log error audit:', auditError);
+    }
+    
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: 'An error occurred during processing. Please try again.'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

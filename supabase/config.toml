@@ -105,3 +105,15 @@ verify_jwt = false
 
 [functions.deployment-health-monitor]
 verify_jwt = false
+
+# ============================================
+# SECURITY & ENCRYPTION FUNCTIONS
+# Advanced security features
+# ============================================
+
+[functions.encrypt-sensitive-data]
+verify_jwt = true
+
+[functions.security-audit]
+verify_jwt = true
+
