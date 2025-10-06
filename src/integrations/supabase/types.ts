@@ -4794,6 +4794,50 @@ export type Database = {
         }
         Relationships: []
       }
+      quality_metrics: {
+        Row: {
+          id: string
+          metric_data: Json | null
+          metric_type: string
+          metric_value: number
+          project_id: string | null
+          recorded_at: string
+          threshold_met: boolean | null
+          trend: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          metric_data?: Json | null
+          metric_type: string
+          metric_value: number
+          project_id?: string | null
+          recorded_at?: string
+          threshold_met?: boolean | null
+          trend?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          metric_data?: Json | null
+          metric_type?: string
+          metric_value?: number
+          project_id?: string | null
+          recorded_at?: string
+          threshold_met?: boolean | null
+          trend?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quality_metrics_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       refactoring_suggestions: {
         Row: {
           applied_at: string | null
@@ -5428,6 +5472,231 @@ export type Database = {
         }
         Relationships: []
       }
+      test_auto_fixes: {
+        Row: {
+          ai_confidence: number | null
+          applied_at: string | null
+          created_at: string
+          failure_reason: string
+          fix_strategy: string
+          fixed_test_code: string
+          id: string
+          original_test_code: string
+          reverted_at: string | null
+          status: string | null
+          test_case_id: string | null
+          user_id: string
+          verification_status: string | null
+        }
+        Insert: {
+          ai_confidence?: number | null
+          applied_at?: string | null
+          created_at?: string
+          failure_reason: string
+          fix_strategy: string
+          fixed_test_code: string
+          id?: string
+          original_test_code: string
+          reverted_at?: string | null
+          status?: string | null
+          test_case_id?: string | null
+          user_id: string
+          verification_status?: string | null
+        }
+        Update: {
+          ai_confidence?: number | null
+          applied_at?: string | null
+          created_at?: string
+          failure_reason?: string
+          fix_strategy?: string
+          fixed_test_code?: string
+          id?: string
+          original_test_code?: string
+          reverted_at?: string | null
+          status?: string | null
+          test_case_id?: string | null
+          user_id?: string
+          verification_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_auto_fixes_test_case_id_fkey"
+            columns: ["test_case_id"]
+            isOneToOne: false
+            referencedRelation: "test_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_cases: {
+        Row: {
+          ai_generated: boolean | null
+          assertions_count: number | null
+          auto_fix_attempts: number | null
+          confidence_score: number | null
+          created_at: string
+          error_message: string | null
+          error_stack: string | null
+          execution_time_ms: number | null
+          id: string
+          last_run_at: string | null
+          status: string | null
+          suite_id: string | null
+          test_code: string
+          test_file_path: string
+          test_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_generated?: boolean | null
+          assertions_count?: number | null
+          auto_fix_attempts?: number | null
+          confidence_score?: number | null
+          created_at?: string
+          error_message?: string | null
+          error_stack?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          last_run_at?: string | null
+          status?: string | null
+          suite_id?: string | null
+          test_code: string
+          test_file_path: string
+          test_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_generated?: boolean | null
+          assertions_count?: number | null
+          auto_fix_attempts?: number | null
+          confidence_score?: number | null
+          created_at?: string
+          error_message?: string | null
+          error_stack?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          last_run_at?: string | null
+          status?: string | null
+          suite_id?: string | null
+          test_code?: string
+          test_file_path?: string
+          test_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_cases_suite_id_fkey"
+            columns: ["suite_id"]
+            isOneToOne: false
+            referencedRelation: "test_suites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_generation_requests: {
+        Row: {
+          ai_model: string | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          file_path: string
+          generated_tests: Json | null
+          generation_time_ms: number | null
+          id: string
+          project_id: string | null
+          source_code: string
+          status: string | null
+          test_type: string
+          tests_count: number | null
+          user_id: string
+        }
+        Insert: {
+          ai_model?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          file_path: string
+          generated_tests?: Json | null
+          generation_time_ms?: number | null
+          id?: string
+          project_id?: string | null
+          source_code: string
+          status?: string | null
+          test_type: string
+          tests_count?: number | null
+          user_id: string
+        }
+        Update: {
+          ai_model?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          file_path?: string
+          generated_tests?: Json | null
+          generation_time_ms?: number | null
+          id?: string
+          project_id?: string | null
+          source_code?: string
+          status?: string | null
+          test_type?: string
+          tests_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_generation_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_learning_patterns: {
+        Row: {
+          confidence_score: number | null
+          contexts: Json | null
+          created_at: string
+          id: string
+          last_used_at: string | null
+          learned_from_tests: number | null
+          pattern_code: string
+          pattern_name: string
+          pattern_type: string
+          success_rate: number | null
+          usage_count: number | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          contexts?: Json | null
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          learned_from_tests?: number | null
+          pattern_code: string
+          pattern_name: string
+          pattern_type: string
+          success_rate?: number | null
+          usage_count?: number | null
+        }
+        Update: {
+          confidence_score?: number | null
+          contexts?: Json | null
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          learned_from_tests?: number | null
+          pattern_code?: string
+          pattern_name?: string
+          pattern_type?: string
+          success_rate?: number | null
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       test_results: {
         Row: {
           commit_hash: string | null
@@ -5466,6 +5735,78 @@ export type Database = {
           test_suite?: string
         }
         Relationships: []
+      }
+      test_runs: {
+        Row: {
+          completed_at: string | null
+          coverage_data: Json | null
+          created_at: string
+          duration_ms: number | null
+          failed_tests: number | null
+          id: string
+          passed_tests: number | null
+          project_id: string | null
+          run_type: string | null
+          skipped_tests: number | null
+          started_at: string | null
+          status: string | null
+          suite_id: string | null
+          total_tests: number | null
+          triggered_by: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          coverage_data?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          failed_tests?: number | null
+          id?: string
+          passed_tests?: number | null
+          project_id?: string | null
+          run_type?: string | null
+          skipped_tests?: number | null
+          started_at?: string | null
+          status?: string | null
+          suite_id?: string | null
+          total_tests?: number | null
+          triggered_by?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          coverage_data?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          failed_tests?: number | null
+          id?: string
+          passed_tests?: number | null
+          project_id?: string | null
+          run_type?: string | null
+          skipped_tests?: number | null
+          started_at?: string | null
+          status?: string | null
+          suite_id?: string | null
+          total_tests?: number | null
+          triggered_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_runs_suite_id_fkey"
+            columns: ["suite_id"]
+            isOneToOne: false
+            referencedRelation: "test_suites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       test_suites: {
         Row: {

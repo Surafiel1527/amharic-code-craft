@@ -3,11 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Sparkles, BarChart3, Zap, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Play, Sparkles, BarChart3, Zap, CheckCircle, XCircle, Clock, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AutonomousTestingDashboard } from "@/components/AutonomousTestingDashboard";
 
 const TestingHub = () => {
   const { toast } = useToast();
@@ -113,8 +114,12 @@ const TestingHub = () => {
         </Badge>
       </div>
 
-      <Tabs defaultValue="execute" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="autonomous" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="autonomous">
+            <Bot className="w-4 h-4 mr-2" />
+            Autonomous
+          </TabsTrigger>
           <TabsTrigger value="execute">
             <Play className="w-4 h-4 mr-2" />
             Execute Tests
@@ -132,6 +137,10 @@ const TestingHub = () => {
             Performance
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="autonomous" className="space-y-4">
+          <AutonomousTestingDashboard />
+        </TabsContent>
 
         <TabsContent value="execute" className="space-y-4">
           <Card>

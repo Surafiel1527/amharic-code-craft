@@ -368,3 +368,9 @@ verify_jwt = true
 
 [functions.package-auto-monitor]
 verify_jwt = false
+
+[functions.ai-test-generator]
+verify_jwt = true
+
+[functions.ai-test-auto-runner]
+verify_jwt = false
