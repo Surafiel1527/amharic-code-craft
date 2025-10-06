@@ -12,6 +12,15 @@ verify_jwt = true
 [functions.smart-rollback-engine]
 verify_jwt = false
 
+[functions.real-package-installer]
+verify_jwt = true
+
+[functions.generate-package-json]
+verify_jwt = true
+
+[functions.smart-dependency-detector]
+verify_jwt = true
+
 [functions.real-code-analysis]
 verify_jwt = true
 
