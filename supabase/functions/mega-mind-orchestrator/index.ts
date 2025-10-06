@@ -439,35 +439,38 @@ async function analyzeRequest(request: string, requestType: string, context: any
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-  const prompt = `Analyze this request and determine if it's a simple website or complex full-stack app:
+  const prompt = `Analyze this request and determine the best architecture:
 
 **Request:** ${request}
 **Type:** ${requestType}
 **Context:** ${JSON.stringify(context, null, 2)}
 
+**DEFAULT: Use React/TypeScript for everything unless explicitly requesting pure HTML**
+
 **Classification Rules:**
-1. "simple-website" = Single HTML file, basic CSS/JS, no backend, no frameworks
-2. "full-stack-app" = React/Node/Database, multiple files, complex architecture
+1. "simple-website" = ONLY if user explicitly says "no React", "only HTML", "pure HTML", "static HTML"
+2. "full-stack-app" = DEFAULT - Use React/TypeScript for all apps and websites
 
-**Examples of simple-website:**
-- "Create a landing page for a coffee shop"
-- "Build a portfolio website"
-- "Make a simple contact form page"
+**Examples of simple-website (HTML only):**
+- "Create a landing page using only HTML and CSS"
+- "Build a pure HTML portfolio"
+- "Make a static HTML page without React"
 
-**Examples of full-stack-app:**
-- "Build a todo app with user authentication"
-- "Create an e-commerce platform"
-- "Make a social media dashboard"
+**Examples of full-stack-app (React/TypeScript - DEFAULT):**
+- "Build a todo app" (use React)
+- "Create a landing page" (use React)
+- "Make a portfolio" (use React)
+- "Build an e-commerce platform" (use React + backend)
 
 **Output JSON:**
 {
-  "requestType": "simple-website" or "full-stack-app",
+  "requestType": "full-stack-app" (default for everything except explicit HTML-only requests),
   "mainGoal": "what the user wants to achieve",
   "subTasks": ["task 1", "task 2"],
-  "requiredTechnologies": ["html", "css", "javascript"] or ["react", "typescript", "node", etc],
+  "requiredTechnologies": ["react", "typescript", "tailwind"] (default stack),
   "complexity": "simple|moderate|complex",
-  "estimatedFiles": 1 for simple, 5+ for complex,
-  "architecturalApproach": "single HTML file" or "multi-file React app"
+  "estimatedFiles": 5+ for React apps,
+  "architecturalApproach": "React/TypeScript app with Tailwind CSS"
 }`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -489,16 +492,28 @@ async function analyzeRequest(request: string, requestType: string, context: any
   const data = await response.json();
   const analysis = JSON.parse(data.choices[0].message.content);
   
-  // Force simple classification for basic website keywords
-  const simpleKeywords = ['landing page', 'portfolio', 'simple website', 'single page', 'contact form', 'about page', 'homepage'];
+  // Only force simple-website if explicitly requesting no React/pure HTML
+  const explicitHtmlKeywords = ['only html', 'pure html', 'just html', 'no react', 'no javascript', 'static html', 'plain html'];
   const requestLower = request.toLowerCase();
-  const hasSimpleKeyword = simpleKeywords.some(keyword => requestLower.includes(keyword));
+  const wantsOnlyHtml = explicitHtmlKeywords.some(keyword => requestLower.includes(keyword));
   
-  if (hasSimpleKeyword && !requestLower.includes('backend') && !requestLower.includes('database') && !requestLower.includes('api')) {
+  if (wantsOnlyHtml) {
     analysis.requestType = 'simple-website';
     analysis.complexity = 'simple';
     analysis.estimatedFiles = 1;
-    analysis.requiredTechnologies = ['html', 'css', 'javascript'];
+    analysis.requiredTechnologies = ['html', 'css'];
+  } else {
+    // Default to React/TypeScript for everything else
+    analysis.requestType = 'full-stack-app';
+    if (!analysis.requiredTechnologies || analysis.requiredTechnologies.length === 0) {
+      analysis.requiredTechnologies = ['react', 'typescript', 'tailwind'];
+    }
+    if (!analysis.complexity) {
+      analysis.complexity = 'moderate';
+    }
+    if (!analysis.estimatedFiles || analysis.estimatedFiles < 3) {
+      analysis.estimatedFiles = 5;
+    }
   }
   
   return analysis;
