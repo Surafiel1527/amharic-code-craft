@@ -299,10 +299,59 @@ serve(async (req) => {
       })
       .eq('id', orchestrationId);
 
-    // PHASE 4: Verify and optimize
-    console.log('✅ Phase 4: Verifying solution...');
-    await updateJobProgress(90, 'Verifying solution...');
-    const verification = await verifySolution(generation, dependencies);
+    // PHASE 4: Self-Correction & Reasoning
+    console.log('🔍 Phase 4: Self-correction and reasoning...');
+    await updateJobProgress(75, 'Performing self-correction...');
+    const selfCorrection = await performSelfCorrection(generation, analysis, request);
+    
+    await supabaseClient
+      .from('mega_mind_orchestrations')
+      .update({ 
+        self_correction_phase: selfCorrection,
+        files_generated: selfCorrection.correctedFiles || generation.files || []
+      })
+      .eq('id', orchestrationId);
+
+    // PHASE 5: Security Vulnerability Detection
+    console.log('🔒 Phase 5: Detecting security vulnerabilities...');
+    await updateJobProgress(80, 'Scanning for security issues...');
+    const securityScan = await detectSecurityVulnerabilities(selfCorrection.correctedFiles || generation.files);
+    
+    await supabaseClient
+      .from('mega_mind_orchestrations')
+      .update({ security_scan_phase: securityScan })
+      .eq('id', orchestrationId);
+
+    // PHASE 6: Performance Optimization
+    console.log('⚡ Phase 6: Optimizing performance...');
+    await updateJobProgress(85, 'Optimizing performance...');
+    const performanceOpt = await optimizePerformance(selfCorrection.correctedFiles || generation.files, analysis);
+    
+    await supabaseClient
+      .from('mega_mind_orchestrations')
+      .update({ performance_optimization_phase: performanceOpt })
+      .eq('id', orchestrationId);
+
+    // PHASE 7: Best Practices Enforcement
+    console.log('✨ Phase 7: Enforcing best practices...');
+    await updateJobProgress(90, 'Applying best practices...');
+    const bestPractices = await enforceBestPractices(performanceOpt.optimizedFiles || selfCorrection.correctedFiles || generation.files);
+    
+    await supabaseClient
+      .from('mega_mind_orchestrations')
+      .update({ best_practices_phase: bestPractices })
+      .eq('id', orchestrationId);
+
+    // PHASE 8: Final Verification
+    console.log('✅ Phase 8: Final verification...');
+    await updateJobProgress(95, 'Final verification...');
+    const verification = await verifySolution(
+      bestPractices.enforcedFiles || performanceOpt.optimizedFiles || selfCorrection.correctedFiles || generation.files,
+      dependencies,
+      securityScan,
+      performanceOpt,
+      bestPractices
+    );
     
     await supabaseClient
       .from('mega_mind_orchestrations')
@@ -317,11 +366,13 @@ serve(async (req) => {
 
     // Mark job as completed
     if (jobId) {
+      const finalFiles = bestPractices.enforcedFiles || performanceOpt.optimizedFiles || selfCorrection.correctedFiles || generation.files;
+      
       // Format the generated code for frontend display
       let generatedCode = '';
-      if (generation.files && generation.files.length > 0) {
+      if (finalFiles && finalFiles.length > 0) {
         // Create a combined view of all files
-        generatedCode = generation.files.map((file: any) => 
+        generatedCode = finalFiles.map((file: any) => 
           `// File: ${file.path}\n${file.description ? `// ${file.description}\n` : ''}${file.content}\n\n`
         ).join('\n');
       }
@@ -336,17 +387,25 @@ serve(async (req) => {
           updated_at: new Date().toISOString(),
           output_data: {
             orchestrationId,
-            generatedCode, // Add this for frontend preview
-            html: generatedCode, // Also add as html for compatibility
+            generatedCode,
+            html: generatedCode,
             dependencies: dependencies.length > 0 ? {
               detected: dependencies.length,
               installed: dependencies.filter(d => d.shouldInstall).length,
               list: dependencies
             } : null,
             generation,
+            selfCorrection,
+            securityScan,
+            performanceOpt,
+            bestPractices,
             verification,
             instructions: generation.instructions,
-            nextSteps: generation.nextSteps
+            nextSteps: [
+              ...generation.nextSteps || [],
+              ...securityScan.criticalIssues?.length > 0 ? ['⚠️ Review and fix critical security issues'] : [],
+              ...performanceOpt.recommendations || []
+            ]
           }
         })
         .eq('id', jobId);
@@ -370,6 +429,8 @@ serve(async (req) => {
         if (error) console.warn('Failed to log audit:', error);
       });
 
+    const finalFiles = bestPractices.enforcedFiles || performanceOpt.optimizedFiles || selfCorrection.correctedFiles || generation.files;
+    
     return new Response(
       JSON.stringify({
         success: true,
@@ -381,8 +442,12 @@ serve(async (req) => {
           list: dependencies
         } : null,
         generation,
+        selfCorrection,
+        securityScan,
+        performanceOpt,
+        bestPractices,
         verification,
-        message: `✨ Mega Mind completed: ${dependencies.length} dependencies installed, ${generation.files?.length || 0} files generated`
+        message: `✨ Enhanced Mega Mind completed: ${finalFiles?.length || 0} files, ${securityScan.issuesFound || 0} security issues fixed, ${performanceOpt.optimizationsApplied || 0} performance improvements`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -620,16 +685,227 @@ async function generateSolution(request: string, requestType: string, analysis: 
   }
 }
 
-async function verifySolution(generation: any, dependencies: any[]): Promise<any> {
+async function performSelfCorrection(generation: any, analysis: any, originalRequest: string): Promise<any> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+
+  const prompt = `Review and self-correct this generated solution using multi-step reasoning:
+
+**Original Request:** ${originalRequest}
+**Analysis:** ${JSON.stringify(analysis, null, 2)}
+**Generated Files:** ${JSON.stringify(generation.files?.map((f: any) => ({ path: f.path, contentLength: f.content?.length })), null, 2)}
+
+**Multi-Step Reasoning Process:**
+1. Does the solution fully address the original request?
+2. Are there any logical errors or bugs in the code?
+3. Is the code structure optimal?
+4. Are there missing edge cases?
+5. Can the code be simplified?
+
+**Output JSON:**
+{
+  "issuesFound": ["issue 1", "issue 2"],
+  "corrections": ["correction 1", "correction 2"],
+  "correctedFiles": [{"path": "...", "content": "...", "changes": "..."}],
+  "reasoning": "multi-step reasoning explanation",
+  "confidence": 0-100
+}`;
+
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-pro', // Use Pro for deeper reasoning
+      messages: [
+        { role: 'system', content: 'You are an expert code reviewer with deep reasoning capabilities. Respond with JSON only.' },
+        { role: 'user', content: prompt }
+      ],
+      response_format: { type: "json_object" }
+    }),
+  });
+
+  const data = await response.json();
+  return JSON.parse(data.choices[0].message.content);
+}
+
+async function detectSecurityVulnerabilities(files: any[]): Promise<any> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+
+  const prompt = `Scan these files for security vulnerabilities:
+
+**Files:** ${JSON.stringify(files?.map((f: any) => ({ path: f.path, content: f.content?.substring(0, 1000) })), null, 2)}
+
+**Check for:**
+- XSS vulnerabilities
+- SQL injection risks
+- Authentication/Authorization issues
+- Sensitive data exposure
+- CSRF vulnerabilities
+- Insecure dependencies
+- Hard-coded secrets
+- Input validation issues
+- API security issues
+
+**Output JSON:**
+{
+  "criticalIssues": [{"file": "...", "line": 0, "issue": "...", "severity": "critical", "fix": "..."}],
+  "warnings": [{"file": "...", "issue": "...", "severity": "warning"}],
+  "issuesFound": 0,
+  "securityScore": 0-100,
+  "recommendations": ["rec 1", "rec 2"]
+}`;
+
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: 'You are a security expert. Respond with JSON only.' },
+        { role: 'user', content: prompt }
+      ],
+      response_format: { type: "json_object" }
+    }),
+  });
+
+  const data = await response.json();
+  return JSON.parse(data.choices[0].message.content);
+}
+
+async function optimizePerformance(files: any[], analysis: any): Promise<any> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+
+  const prompt = `Analyze and optimize performance for these files:
+
+**Files:** ${JSON.stringify(files?.map((f: any) => ({ path: f.path, content: f.content?.substring(0, 1000) })), null, 2)}
+**Complexity:** ${analysis.complexity}
+
+**Optimize for:**
+- Bundle size reduction
+- Lazy loading opportunities
+- Memo/useMemo/useCallback usage
+- Unnecessary re-renders
+- API call optimization
+- Asset optimization
+- Code splitting
+- Memory leaks
+- Efficient algorithms
+
+**Output JSON:**
+{
+  "optimizationsApplied": 0,
+  "optimizedFiles": [{"path": "...", "content": "...", "improvements": ["..."]}],
+  "performanceGains": {"bundleSize": "-20%", "renderTime": "-30%"},
+  "recommendations": ["rec 1", "rec 2"],
+  "beforeScore": 0-100,
+  "afterScore": 0-100
+}`;
+
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: 'You are a performance optimization expert. Respond with JSON only.' },
+        { role: 'user', content: prompt }
+      ],
+      response_format: { type: "json_object" }
+    }),
+  });
+
+  const data = await response.json();
+  return JSON.parse(data.choices[0].message.content);
+}
+
+async function enforceBestPractices(files: any[]): Promise<any> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+
+  const prompt = `Enforce best practices on these files:
+
+**Files:** ${JSON.stringify(files?.map((f: any) => ({ path: f.path, content: f.content?.substring(0, 1000) })), null, 2)}
+
+**Enforce:**
+- TypeScript strict mode
+- Proper error handling
+- Accessibility (WCAG 2.1)
+- SEO optimization
+- Clean code principles
+- DRY (Don't Repeat Yourself)
+- SOLID principles
+- Proper naming conventions
+- Documentation/comments
+- Test coverage readiness
+- Component composition
+- State management patterns
+
+**Output JSON:**
+{
+  "practicesEnforced": ["practice 1", "practice 2"],
+  "enforcedFiles": [{"path": "...", "content": "...", "changes": ["..."]}],
+  "violations": [{"file": "...", "violation": "...", "fixed": true}],
+  "qualityScore": 0-100,
+  "recommendations": ["rec 1", "rec 2"]
+}`;
+
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: 'You are a code quality expert. Respond with JSON only.' },
+        { role: 'user', content: prompt }
+      ],
+      response_format: { type: "json_object" }
+    }),
+  });
+
+  const data = await response.json();
+  return JSON.parse(data.choices[0].message.content);
+}
+
+async function verifySolution(
+  files: any[], 
+  dependencies: any[],
+  securityScan: any,
+  performanceOpt: any,
+  bestPractices: any
+): Promise<any> {
   return {
-    codeQuality: 'high',
+    codeQuality: bestPractices.qualityScore > 80 ? 'excellent' : bestPractices.qualityScore > 60 ? 'good' : 'needs-improvement',
+    securityScore: securityScan.securityScore,
+    performanceScore: performanceOpt.afterScore,
+    qualityScore: bestPractices.qualityScore,
     dependenciesComplete: dependencies.filter(d => d.shouldInstall).length > 0,
-    filesGenerated: generation.files?.length || 0,
-    readyForProduction: true,
+    filesGenerated: files?.length || 0,
+    readyForProduction: securityScan.criticalIssues?.length === 0 && performanceOpt.afterScore > 70,
     recommendations: [
       'Test all functionality',
       'Review generated code',
-      'Verify dependency installations'
-    ]
+      ...securityScan.recommendations || [],
+      ...performanceOpt.recommendations || [],
+      ...bestPractices.recommendations || []
+    ],
+    summary: {
+      security: `${securityScan.criticalIssues?.length || 0} critical issues, ${securityScan.warnings?.length || 0} warnings`,
+      performance: `${performanceOpt.optimizationsApplied || 0} optimizations applied`,
+      quality: `${bestPractices.practicesEnforced?.length || 0} best practices enforced`
+    }
   };
 }
