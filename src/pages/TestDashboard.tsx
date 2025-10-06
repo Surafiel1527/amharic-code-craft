@@ -189,8 +189,30 @@ export default function TestDashboard() {
         updateTest('RLS Policy Enforcement', 'failed', 'RLS not properly enforced');
       }
 
-      // Test 8: Edge Function (placeholder - will implement if needed)
-      updateTest('Edge Function Call', 'passed', 'Manual test required', 50);
+      // Test 8: Edge Function Call
+      const edgeStart = Date.now();
+      try {
+        const { data: edgeData, error: edgeError } = await supabase.functions.invoke(
+          'platform-health-check',
+          {
+            body: { 
+              test: true,
+              timestamp: new Date().toISOString(),
+              userId: user.id
+            }
+          }
+        );
+
+        if (edgeError) {
+          updateTest('Edge Function Call', 'failed', edgeError.message);
+        } else if (edgeData && edgeData.status === 'healthy') {
+          updateTest('Edge Function Call', 'passed', undefined, Date.now() - edgeStart);
+        } else {
+          updateTest('Edge Function Call', 'failed', 'Invalid response from edge function');
+        }
+      } catch (edgeError: any) {
+        updateTest('Edge Function Call', 'failed', edgeError.message || 'Edge function invocation failed');
+      }
 
       toast.success("All tests completed!");
     } catch (error: any) {
