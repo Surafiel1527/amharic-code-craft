@@ -268,9 +268,13 @@ const Index = () => {
   };
 
   const handleQuickGenerate = async () => {
-    // Manual project creation - no AI generation
-    if (!projectTitle.trim()) {
-      toast.error("Please enter a project title");
+    if (!prompt.trim()) {
+      toast.error(t("toast.promptRequired"));
+      return;
+    }
+
+    if (!isOnline) {
+      toast.error(t("toast.offline"));
       return;
     }
 
@@ -279,29 +283,76 @@ const Index = () => {
       return;
     }
 
+    // Validate request
+    const validation = validateRequest(prompt);
+    if (!validation.valid) {
+      toast.error(validation.error || "Invalid request");
+      return;
+    }
+
+    const startTime = Date.now();
     setIsGenerating(true);
     
+    // Show progress toast
+    const progressToast = toast.loading("🚀 Mega Mind activated - analyzing your request...");
+    
     try {
-      // Create blank project for manual development
+      // Use mega-mind orchestrator with retry logic
+      const data = await retryWithBackoff(async () => {
+        const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
+          body: { 
+            request: prompt,
+            requestType: 'full-stack-generation',
+            context: {
+              userId: user.id,
+              timestamp: new Date().toISOString()
+            }
+          },
+        });
+
+        if (error) throw error;
+        return data;
+      }, {
+        maxRetries: 2,
+        initialDelay: 2000,
+        maxDelay: 8000,
+        backoffMultiplier: 2,
+        timeout: 300000 // 5 minutes
+      });
+
+      toast.dismiss(progressToast);
+      
+      // Log success metrics
+      await logMetrics(user.id, {
+        operation: 'quick_generate',
+        duration: Date.now() - startTime,
+        success: true,
+        metadata: { promptLength: prompt.length }
+      });
+
+      // Smart orchestrator returns structured data
+      const generatedHTML = data?.result?.generatedCode || data?.generatedCode || data?.html || '';
+      setGeneratedCode(generatedHTML);
+      
+      // Auto-save Quick generation and open in workspace
+      const title = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt;
       const { data: project, error: saveError } = await supabase
         .from("projects")
         .insert({
-          title: projectTitle,
-          prompt: prompt || "Manual project",
-          html_code: "<!-- Start building your project here -->",
+          title: title,
+          prompt: prompt,
+          html_code: generatedHTML,
           user_id: user.id,
         })
         .select()
         .single();
 
-      if (saveError) throw saveError;
-
-      if (project) {
+      if (!saveError && project) {
         // Create conversation for this project
         const { data: conversation, error: convError } = await supabase
           .from("conversations")
           .insert({
-            title: `Workspace: ${projectTitle}`,
+            title: `Workspace: ${title}`,
             user_id: user.id,
             project_id: project.id
           })
@@ -309,19 +360,47 @@ const Index = () => {
           .single();
 
         if (!convError && conversation) {
+          // Save user prompt as first message
+          await supabase.from("messages").insert({
+            conversation_id: conversation.id,
+            role: "user",
+            content: prompt
+          });
+
+          // Save AI response as second message
+          const aiResponse = data?.result?.explanation || 
+                           data?.explanation || 
+                           `I've created your ${title}. The application includes all the features you requested.`;
+          
           await supabase.from("messages").insert({
             conversation_id: conversation.id,
             role: "assistant",
-            content: `Project "${projectTitle}" created. You can now manually develop and deploy to Vercel.`
+            content: aiResponse
           });
         }
 
         toast.success("Project created! Opening workspace...");
+        // Redirect to workspace
         navigate(`/workspace/${project.id}`);
+      } else {
+        toast.success(t("toast.generated"));
       }
     } catch (error) {
-      console.error("Error creating project:", error);
-      toast.error("Failed to create project");
+      console.error("❌ Generation error:", error);
+      toast.dismiss(progressToast);
+      
+      // Log failure metrics
+      await logMetrics(user.id, {
+        operation: 'quick_generate',
+        duration: Date.now() - startTime,
+        success: false,
+        errorType: error instanceof Error ? error.message : 'unknown',
+        metadata: { promptLength: prompt.length }
+      });
+      
+      // Display user-friendly error
+      const errorMsg = formatErrorMessage(error);
+      toast.error(errorMsg);
     } finally {
       setIsGenerating(false);
     }
@@ -643,53 +722,72 @@ const Index = () => {
 
                 <TabsContent value="quick" className="space-y-4 mt-4">
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    {/* Main project creation area */}
+                    {/* Main generation area */}
                     <div className="lg:col-span-2 space-y-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-semibold">Create New Project</label>
-                        <p className="text-sm text-muted-foreground">
-                          Create a project manually and deploy it to Vercel when ready
-                        </p>
+                        <label className="text-sm font-semibold">{t("editor.placeholder")}</label>
                       </div>
                       
-                      <Input
-                        placeholder="Enter project title..."
-                        value={projectTitle}
-                        onChange={(e) => setProjectTitle(e.target.value)}
-                        className="text-base"
-                      />
-                      
                       <Textarea
-                        placeholder="Optional: Add a description or notes (optional)"
+                        placeholder={t("editor.placeholder")}
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
-                        className="min-h-[120px] resize-none"
+                        className="min-h-[200px] resize-none"
+                        dir="auto"
                       />
                       
-                      <Button
-                        onClick={handleQuickGenerate}
-                        disabled={isGenerating || !projectTitle.trim()}
-                        className="w-full"
-                      >
-                        {isGenerating ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Creating Project...
-                          </>
-                        ) : (
-                          <>
-                            <FolderOpen className="mr-2 h-4 w-4" />
-                            Create Project
-                          </>
-                        )}
-                      </Button>
-
-                      {generatedCode && (
-                        <Button variant="outline" onClick={handleDownload} className="gap-2">
-                          <Download className="h-4 w-4" />
-                          Download
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleQuickGenerate}
+                          disabled={isGenerating || !prompt.trim()}
+                          className="flex-1"
+                        >
+                          {isGenerating ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              {t("chat.generating")}
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="mr-2 h-4 w-4" />
+                              {t("chat.createWebsite")}
+                            </>
+                          )}
                         </Button>
-                      )}
+
+                        {generatedCode && (
+                          <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="icon">
+                                <Save className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>{t("chat.saveProject")}</DialogTitle>
+                                <DialogDescription>{t("chat.enterProjectName")}</DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 pt-4">
+                                <Input
+                                  placeholder={t("chat.projectName")}
+                                  value={projectTitle}
+                                  onChange={(e) => setProjectTitle(e.target.value)}
+                                />
+                                <Button onClick={handleSaveProject} disabled={isSaving} className="w-full">
+                                  {isSaving ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      {t("chat.saving")}
+                                    </>
+                                  ) : (
+                                    t("chat.save")
+                                  )}
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
                     </div>
 
                     {/* Quick History Panel */}
