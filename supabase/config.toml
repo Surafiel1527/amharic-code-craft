@@ -87,6 +87,9 @@ verify_jwt = false
 [functions.auto-performance-optimizer]
 verify_jwt = false
 
+[functions.self-learning-engine]
+verify_jwt = false
+
 [functions.fix-stuck-job]
 verify_jwt = false
 

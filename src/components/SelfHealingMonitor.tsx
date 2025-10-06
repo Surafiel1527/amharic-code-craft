@@ -49,6 +49,8 @@ export function SelfHealingMonitor() {
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [isLearning, setIsLearning] = useState(false);
+  const [learningStats, setLearningStats] = useState<any>(null);
   const { toast } = useToast();
   
   // Enable adaptive proactive monitoring
@@ -233,6 +235,35 @@ export function SelfHealingMonitor() {
     }
   };
 
+  const runSelfLearning = async () => {
+    setIsLearning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('self-learning-engine');
+
+      if (error) throw error;
+
+      if (data.learning) {
+        setLearningStats(data.learning);
+        
+        toast({
+          title: "🧠 Self-Learning Complete",
+          description: `${data.learning.newPatternsLearned} new patterns learned, ${data.learning.autoAppliedFixes} fixes auto-applied`,
+        });
+      }
+
+      loadStats();
+    } catch (error) {
+      console.error('Self-learning error:', error);
+      toast({
+        title: "Learning Failed",
+        description: "Could not run self-learning engine",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLearning(false);
+    }
+  };
+
   const getSuccessRate = (pattern: HealingPattern) => {
     const total = pattern.success_count + pattern.failure_count;
     if (total === 0) return 0;
@@ -284,8 +315,9 @@ export function SelfHealingMonitor() {
       </Card>
 
       <Tabs defaultValue="healing" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="healing">🧠 Self-Healing</TabsTrigger>
+          <TabsTrigger value="learning">📚 Learning</TabsTrigger>
           <TabsTrigger value="predictions">🔮 Predictions</TabsTrigger>
           <TabsTrigger value="optimization">⚡ Optimization</TabsTrigger>
         </TabsList>
@@ -411,6 +443,114 @@ export function SelfHealingMonitor() {
             </div>
           </CardContent>
         </Card>
+      </TabsContent>
+
+      <TabsContent value="learning" className="space-y-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-xl font-bold">Self-Improving Learning</h3>
+            <p className="text-sm text-muted-foreground">Learns from successes and builds confidence</p>
+          </div>
+          <Button onClick={runSelfLearning} disabled={isLearning} size="sm">
+            <Brain className="mr-2 h-4 w-4" />
+            {isLearning ? 'Learning...' : 'Run Learning'}
+          </Button>
+        </div>
+
+        {learningStats && (
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Patterns Analyzed</CardTitle>
+                <Brain className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{learningStats.patternsAnalyzed}</div>
+                <p className="text-xs text-muted-foreground">From successful fixes</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">New Patterns</CardTitle>
+                <Sparkles className="h-4 w-4 text-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{learningStats.newPatternsLearned}</div>
+                <p className="text-xs text-muted-foreground">Added to knowledge base</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Auto-Applied</CardTitle>
+                <Zap className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{learningStats.autoAppliedFixes}</div>
+                <p className="text-xs text-muted-foreground">High-confidence fixes</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Learning Capabilities</CardTitle>
+            <CardDescription>
+              Self-improving system that gets smarter over time
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Success Pattern Recognition</p>
+                  <p className="text-sm text-muted-foreground">Learns from fixes that work</p>
+                </div>
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Confidence Building</p>
+                  <p className="text-sm text-muted-foreground">Patterns gain confidence over time</p>
+                </div>
+                <TrendingUp className="h-5 w-5 text-blue-500" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Cross-Project Learning</p>
+                  <p className="text-sm text-muted-foreground">Shares patterns across projects</p>
+                </div>
+                <Activity className="h-5 w-5 text-purple-500 animate-pulse" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Auto-Apply High-Confidence</p>
+                  <p className="text-sm text-muted-foreground">Fixes applied automatically when confident</p>
+                </div>
+                <Sparkles className="h-5 w-5 text-yellow-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {learningStats && learningStats.crossProjectInsights > 0 && (
+          <Card className="border-2 border-purple-500/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-purple-500" />
+                Cross-Project Insights
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm">
+                Discovered <strong>{learningStats.crossProjectInsights}</strong> universal patterns 
+                that work across multiple projects. These are now available system-wide!
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </TabsContent>
 
       <TabsContent value="predictions" className="space-y-6">
