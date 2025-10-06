@@ -7,8 +7,12 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { EditModeProvider } from "@/contexts/EditModeContext";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import { initErrorTracking } from "@/lib/errorTracking";
 import App from "./App.tsx";
 import "./index.css";
+
+// Initialize enterprise error tracking
+initErrorTracking();
 
 // Initialize React Query client
 const queryClient = new QueryClient({
