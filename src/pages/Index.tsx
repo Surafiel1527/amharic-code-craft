@@ -653,20 +653,6 @@ const Index = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="p-6 hover:border-primary/50 transition-all hover-scale">
-              <Sparkles className="h-10 w-10 mb-4 text-primary" />
-              <h3 className="text-xl font-bold mb-2">AI Code Generation</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Describe your app and let AI generate, build, and deploy it automatically
-              </p>
-              <Link to="/prompt-to-production">
-                <Button className="w-full gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  Start Building
-                </Button>
-              </Link>
-            </Card>
-
-            <Card className="p-6 hover:border-primary/50 transition-all hover-scale">
               <FolderOpen className="h-10 w-10 mb-4 text-primary" />
               <h3 className="text-xl font-bold mb-2">My Projects</h3>
               <p className="text-sm text-muted-foreground mb-4">
@@ -676,6 +662,20 @@ const Index = () => {
                 <Button className="w-full gap-2">
                   <FolderOpen className="h-4 w-4" />
                   View Projects
+                </Button>
+              </Link>
+            </Card>
+
+            <Card className="p-6 hover:border-primary/50 transition-all hover-scale">
+              <Code className="h-10 w-10 mb-4 text-primary" />
+              <h3 className="text-xl font-bold mb-2">Deploy to Vercel</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Deploy your projects to Vercel with one click
+              </p>
+              <Link to="/deploy">
+                <Button className="w-full gap-2">
+                  <Code className="h-4 w-4" />
+                  Deploy Now
                 </Button>
               </Link>
             </Card>
