@@ -16,7 +16,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.smart-dependency-detector]
-verify_jwt = true
+verify_jwt = false
 
 [functions.sophisticated-code-analysis]
 verify_jwt = true
@@ -25,7 +25,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.auto-fix-engine]
-verify_jwt = true
+verify_jwt = false
 
 [functions.build-quality-gate]
 verify_jwt = true
@@ -37,9 +37,6 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.ai-code-builder]
-verify_jwt = false
-
-[functions.generate-website]
 verify_jwt = false
 
 [functions.chat-generate]
@@ -114,9 +111,6 @@ verify_jwt = true
 [functions.report-error]
 verify_jwt = false
 
-[functions.auto-fix-engine]
-verify_jwt = false
-
 [functions.apply-fix]
 verify_jwt = false
 
@@ -130,12 +124,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.generate-tests]
-verify_jwt = true
+verify_jwt = false
 
 [functions.learn-from-conversation]
-verify_jwt = true
-
-[functions.meta-improve]
 verify_jwt = true
 
 [functions.manage-preferences]
@@ -168,9 +159,6 @@ verify_jwt = false
 [functions.component-awareness]
 verify_jwt = false
 
-[functions.smart-orchestrator]
-verify_jwt = false
-
 [functions.model-selector]
 verify_jwt = false
 
@@ -193,7 +181,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.proactive-intelligence]
-verify_jwt = false
+verify_jwt = true
 
 [functions.knowledge-ingest]
 verify_jwt = false
@@ -207,14 +195,8 @@ verify_jwt = true
 [functions.intelligent-refactor]
 verify_jwt = true
 
-[functions.proactive-intelligence]
-verify_jwt = true
-
 [functions.react-component-generator]
 verify_jwt = true
-
-[functions.generate-tests]
-verify_jwt = false
 
 [functions.save-database-credentials]
 verify_jwt = true
@@ -282,9 +264,6 @@ verify_jwt = true
 [functions.mega-mind-orchestrator]
 verify_jwt = true
 
-[functions.smart-dependency-detector]
-verify_jwt = false
-
 [functions.package-complete-project]
 verify_jwt = true
 
@@ -316,15 +295,9 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.security-vulnerability-scanner]
-verify_jwt = true
+verify_jwt = false
 
 [functions.smart-orchestrator]
-verify_jwt = true
-
-[functions.learn-pattern]
-verify_jwt = true
-
-[functions.proactive-intelligence]
 verify_jwt = true
 
 [functions.terminal-executor]
@@ -336,9 +309,6 @@ verify_jwt = true
 [functions.marketplace-publish]
 verify_jwt = true
 
-[functions.self-learning-engine]
-verify_jwt = false
-
 [functions.plugin-security-scanner]
 verify_jwt = false
 
@@ -349,9 +319,6 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.performance-optimizer]
-verify_jwt = false
-
-[functions.security-vulnerability-scanner]
 verify_jwt = false
 
 [functions.automated-test-runner]
@@ -395,4 +362,3 @@ verify_jwt = true
 
 [functions.ai-package-suggester]
 verify_jwt = true
-
