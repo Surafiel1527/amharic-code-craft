@@ -651,7 +651,19 @@ const Index = () => {
       {/* Quick Access Features */}
       <section className="container mx-auto px-4 py-6 border-b border-border">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="p-6 hover:border-primary/50 transition-all hover-scale">
+              <Sparkles className="h-10 w-10 mb-4 text-primary" />
+              <h3 className="text-xl font-bold mb-2">AI Website Builder</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Describe your website and let AI build it for you instantly
+              </p>
+              <Button className="w-full gap-2" onClick={() => document.getElementById('prompt-input')?.focus()}>
+                <Sparkles className="h-4 w-4" />
+                Start Building
+              </Button>
+            </Card>
+
             <Card className="p-6 hover:border-primary/50 transition-all hover-scale">
               <FolderOpen className="h-10 w-10 mb-4 text-primary" />
               <h3 className="text-xl font-bold mb-2">My Projects</h3>
@@ -670,12 +682,12 @@ const Index = () => {
               <Code className="h-10 w-10 mb-4 text-primary" />
               <h3 className="text-xl font-bold mb-2">Deploy to Vercel</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Deploy your projects to Vercel with one click
+                Deploy your completed projects with one click
               </p>
               <Link to="/deploy">
-                <Button className="w-full gap-2">
+                <Button className="w-full gap-2" variant="outline">
                   <Code className="h-4 w-4" />
-                  Deploy Now
+                  Deploy
                 </Button>
               </Link>
             </Card>
@@ -725,11 +737,15 @@ const Index = () => {
                     {/* Main generation area */}
                     <div className="lg:col-span-2 space-y-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-semibold">{t("editor.placeholder")}</label>
+                        <label className="text-sm font-semibold">Describe Your Website</label>
+                        <p className="text-xs text-muted-foreground">
+                          Be specific about features, design, colors, and functionality you want
+                        </p>
                       </div>
                       
                       <Textarea
-                        placeholder={t("editor.placeholder")}
+                        id="prompt-input"
+                        placeholder="Example: Create a modern landing page for a coffee shop with a hero section, menu cards, contact form, and Instagram feed. Use warm brown tones and include animations."
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
                         className="min-h-[200px] resize-none"
@@ -741,16 +757,17 @@ const Index = () => {
                           onClick={handleQuickGenerate}
                           disabled={isGenerating || !prompt.trim()}
                           className="flex-1"
+                          size="lg"
                         >
                           {isGenerating ? (
                             <>
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              {t("chat.generating")}
+                              Generating Your Website...
                             </>
                           ) : (
                             <>
                               <Sparkles className="mr-2 h-4 w-4" />
-                              {t("chat.createWebsite")}
+                              Generate Website with AI
                             </>
                           )}
                         </Button>
