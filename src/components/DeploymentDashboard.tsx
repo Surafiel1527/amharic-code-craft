@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDeployment } from "@/hooks/useDeployment";
+import { DeploymentAnalysis } from "./DeploymentAnalysis";
+import { DeploymentHealth } from "./DeploymentHealth";
+import { DeploymentRollback } from "./DeploymentRollback";
 import { 
   Rocket, 
   CheckCircle2, 
@@ -13,11 +16,16 @@ import {
   ExternalLink, 
   Globe,
   Settings,
-  AlertCircle
+  AlertCircle,
+  Brain,
+  Activity,
+  Undo2
 } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface DeploymentDashboardProps {
   projectId: string;
@@ -36,7 +44,39 @@ export const DeploymentDashboard = ({
   const [newEnvKey, setNewEnvKey] = useState('');
   const [newEnvValue, setNewEnvValue] = useState('');
 
-  const handleDeploy = () => {
+  const handleDeploy = async () => {
+    // First run AI analysis
+    toast.info('Running AI pre-deployment analysis...');
+    
+    try {
+      const filesObject = projectFiles.reduce((acc, file) => {
+        acc[file.path] = file.content;
+        return acc;
+      }, {} as Record<string, string>);
+
+      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('ai-deployment-advisor', {
+        body: {
+          deploymentId: 'temp-' + Date.now(),
+          projectFiles: filesObject,
+          envVariables: envVars,
+        },
+      });
+
+      if (analysisError) {
+        console.error('Analysis error:', analysisError);
+        toast.warning('AI analysis unavailable, proceeding with deployment');
+      } else if (analysisData?.analysis?.criticalIssues > 0) {
+        toast.error(`Found ${analysisData.analysis.criticalIssues} critical issues. Review analysis before deploying.`);
+        return;
+      } else {
+        toast.success('Pre-deployment analysis passed!');
+      }
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      toast.warning('AI analysis failed, proceeding with deployment');
+    }
+
+    // Proceed with deployment
     deploy({
       projectId,
       projectName,
@@ -181,6 +221,18 @@ export const DeploymentDashboard = ({
             <Rocket className="h-4 w-4 mr-2" />
             Deploy
           </TabsTrigger>
+          <TabsTrigger value="analysis">
+            <Brain className="h-4 w-4 mr-2" />
+            AI Analysis
+          </TabsTrigger>
+          <TabsTrigger value="health">
+            <Activity className="h-4 w-4 mr-2" />
+            Health
+          </TabsTrigger>
+          <TabsTrigger value="rollback">
+            <Undo2 className="h-4 w-4 mr-2" />
+            Rollback
+          </TabsTrigger>
           <TabsTrigger value="settings">
             <Settings className="h-4 w-4 mr-2" />
             Settings
@@ -229,6 +281,54 @@ export const DeploymentDashboard = ({
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* AI Analysis Tab */}
+        <TabsContent value="analysis" className="space-y-4">
+          {latestDeployment ? (
+            <DeploymentAnalysis deploymentId={latestDeployment.id} />
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Brain className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+                <p className="text-lg font-medium">No Deployment Yet</p>
+                <p className="text-sm text-muted-foreground">Deploy your project to see AI analysis</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Health Tab */}
+        <TabsContent value="health" className="space-y-4">
+          {latestDeployment && latestDeployment.status === 'ready' ? (
+            <DeploymentHealth 
+              deploymentId={latestDeployment.id}
+              deploymentUrl={latestDeployment.deployment_url || undefined}
+            />
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Activity className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+                <p className="text-lg font-medium">No Active Deployment</p>
+                <p className="text-sm text-muted-foreground">Deploy your project to monitor health</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Rollback Tab */}
+        <TabsContent value="rollback" className="space-y-4">
+          {latestDeployment ? (
+            <DeploymentRollback deploymentId={latestDeployment.id} />
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Undo2 className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+                <p className="text-lg font-medium">No Deployment Yet</p>
+                <p className="text-sm text-muted-foreground">Deploy your project to enable rollback</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Settings Tab */}

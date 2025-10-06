@@ -2075,6 +2075,41 @@ export type Database = {
           },
         ]
       }
+      deployment_analytics: {
+        Row: {
+          deployment_id: string
+          id: string
+          measured_at: string
+          metadata: Json | null
+          metric_type: string
+          metric_value: number
+        }
+        Insert: {
+          deployment_id: string
+          id?: string
+          measured_at?: string
+          metadata?: Json | null
+          metric_type: string
+          metric_value: number
+        }
+        Update: {
+          deployment_id?: string
+          id?: string
+          measured_at?: string
+          metadata?: Json | null
+          metric_type?: string
+          metric_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployment_analytics_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "vercel_deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deployment_builds: {
         Row: {
           build_step: string
@@ -2163,6 +2198,187 @@ export type Database = {
           success_count?: number
         }
         Relationships: []
+      }
+      deployment_health_checks: {
+        Row: {
+          check_type: string
+          checked_at: string
+          deployment_id: string
+          error_details: Json | null
+          id: string
+          response_time_ms: number | null
+          status: string
+        }
+        Insert: {
+          check_type: string
+          checked_at?: string
+          deployment_id: string
+          error_details?: Json | null
+          id?: string
+          response_time_ms?: number | null
+          status?: string
+        }
+        Update: {
+          check_type?: string
+          checked_at?: string
+          deployment_id?: string
+          error_details?: Json | null
+          id?: string
+          response_time_ms?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployment_health_checks_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "vercel_deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deployment_learnings: {
+        Row: {
+          conditions: Json | null
+          confidence_score: number | null
+          created_at: string
+          id: string
+          impact_score: number | null
+          last_applied_at: string | null
+          learned_from_deployments: number | null
+          pattern_name: string
+          pattern_type: string
+          recommendation: string
+          success_rate: number | null
+          times_applied: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          conditions?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          impact_score?: number | null
+          last_applied_at?: string | null
+          learned_from_deployments?: number | null
+          pattern_name: string
+          pattern_type: string
+          recommendation: string
+          success_rate?: number | null
+          times_applied?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          conditions?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          impact_score?: number | null
+          last_applied_at?: string | null
+          learned_from_deployments?: number | null
+          pattern_name?: string
+          pattern_type?: string
+          recommendation?: string
+          success_rate?: number | null
+          times_applied?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      deployment_rollbacks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          from_deployment_id: string
+          id: string
+          metadata: Json | null
+          reason: string
+          rollback_status: string
+          to_deployment_id: string | null
+          triggered_by: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          from_deployment_id: string
+          id?: string
+          metadata?: Json | null
+          reason: string
+          rollback_status?: string
+          to_deployment_id?: string | null
+          triggered_by: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          from_deployment_id?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string
+          rollback_status?: string
+          to_deployment_id?: string | null
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployment_rollbacks_from_deployment_id_fkey"
+            columns: ["from_deployment_id"]
+            isOneToOne: false
+            referencedRelation: "vercel_deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployment_rollbacks_to_deployment_id_fkey"
+            columns: ["to_deployment_id"]
+            isOneToOne: false
+            referencedRelation: "vercel_deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deployment_validations: {
+        Row: {
+          auto_fixed: boolean | null
+          completed_at: string | null
+          created_at: string
+          deployment_id: string
+          id: string
+          issues: Json | null
+          recommendations: Json | null
+          status: string
+          validation_type: string
+        }
+        Insert: {
+          auto_fixed?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          deployment_id: string
+          id?: string
+          issues?: Json | null
+          recommendations?: Json | null
+          status?: string
+          validation_type: string
+        }
+        Update: {
+          auto_fixed?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          deployment_id?: string
+          id?: string
+          issues?: Json | null
+          recommendations?: Json | null
+          status?: string
+          validation_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployment_validations_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "vercel_deployments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       deployments: {
         Row: {
@@ -5536,6 +5752,23 @@ export type Database = {
         }
         Returns: undefined
       }
+      record_deployment_metric: {
+        Args: {
+          p_deployment_id: string
+          p_metadata?: Json
+          p_metric_type: string
+          p_metric_value: number
+        }
+        Returns: string
+      }
+      trigger_auto_rollback: {
+        Args: {
+          p_from_deployment_id: string
+          p_reason: string
+          p_triggered_by?: string
+        }
+        Returns: string
+      }
       update_deployment_status: {
         Args: {
           p_deployment_id: string
@@ -5543,6 +5776,15 @@ export type Database = {
           p_status: string
         }
         Returns: undefined
+      }
+      upsert_deployment_learning: {
+        Args: {
+          p_conditions?: Json
+          p_pattern_name: string
+          p_pattern_type: string
+          p_recommendation: string
+        }
+        Returns: string
       }
       verify_user_privacy: {
         Args: { check_user_id: string }
