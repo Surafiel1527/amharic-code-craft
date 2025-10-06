@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/utils/logger';
 
 interface Customization {
   id: string;
@@ -42,7 +43,7 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
             table: 'admin_customizations'
           },
           () => {
-            console.log('🔔 Realtime update received, reloading customizations');
+            logger.info('Realtime update received, reloading customizations');
             loadCustomizations();
           }
         )
@@ -65,7 +66,7 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
           .single();
 
         if (error) {
-          console.error('Error loading snapshot:', error);
+          logger.error('Error loading snapshot', error);
           throw error;
         }
 
@@ -104,7 +105,7 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error loading customizations:', error);
+        logger.error('Error loading customizations', error);
         throw error;
       }
       
@@ -120,7 +121,7 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
       
       setCustomizations(filteredData);
     } catch (error) {
-      console.error('Error loading customizations:', error);
+      logger.error('Error loading customizations', error);
     } finally {
       setLoading(false);
     }
@@ -254,7 +255,7 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
           latestMatch = custom;
         }
       } catch (e) {
-        console.error('Error parsing customization:', e);
+        logger.error('Error parsing customization', e);
       }
     });
 
@@ -300,7 +301,7 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
           });
         }
       } catch (e) {
-        console.error('Error parsing customization:', e);
+        logger.error('Error parsing customization', e);
       }
     });
 
@@ -324,7 +325,7 @@ export const useDynamicCustomizations = (previewMode = false, snapshotId?: strin
           });
         }
       } catch (e) {
-        console.error('Error parsing customization:', e);
+        logger.error('Error parsing customization', e);
       }
     });
 

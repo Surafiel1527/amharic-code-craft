@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logger } from '@/utils/logger';
 
 export interface CodeQualityScores {
   quality: number;
@@ -148,7 +149,7 @@ export function usePredictiveIntelligence(options: UsePredictiveIntelligenceOpti
       }
 
     } catch (error) {
-      console.error('Code analysis error:', error);
+      logger.error('Code analysis error', error);
       toast.error('Failed to analyze code');
     } finally {
       setIsAnalyzing(false);
@@ -176,7 +177,7 @@ export function usePredictiveIntelligence(options: UsePredictiveIntelligenceOpti
         status: p.status
       })) || []);
     } catch (error) {
-      console.error('Failed to fetch error predictions:', error);
+      logger.error('Failed to fetch error predictions', error);
     }
   }, []);
 
@@ -202,7 +203,7 @@ export function usePredictiveIntelligence(options: UsePredictiveIntelligenceOpti
         applied: s.applied
       })) || []);
     } catch (error) {
-      console.error('Failed to fetch refactoring suggestions:', error);
+      logger.error('Failed to fetch refactoring suggestions', error);
     }
   }, []);
 
@@ -226,7 +227,7 @@ export function usePredictiveIntelligence(options: UsePredictiveIntelligenceOpti
         estimatedImprovement: i.estimated_improvement
       })) || []);
     } catch (error) {
-      console.error('Failed to fetch performance insights:', error);
+      logger.error('Failed to fetch performance insights', error);
     }
   }, []);
 
@@ -251,7 +252,7 @@ export function usePredictiveIntelligence(options: UsePredictiveIntelligenceOpti
         createdAt: n.created_at
       })) || []);
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      logger.error('Failed to fetch notifications', error);
     }
   }, []);
 
@@ -266,7 +267,7 @@ export function usePredictiveIntelligence(options: UsePredictiveIntelligenceOpti
         n.id === notificationId ? { ...n, read: true } : n
       ));
     } catch (error) {
-      console.error('Failed to mark notification as read:', error);
+      logger.error('Failed to mark notification as read', error);
     }
   }, []);
 
@@ -283,7 +284,7 @@ export function usePredictiveIntelligence(options: UsePredictiveIntelligenceOpti
 
       toast.success('Refactoring applied successfully');
     } catch (error) {
-      console.error('Failed to apply refactoring:', error);
+      logger.error('Failed to apply refactoring', error);
       toast.error('Failed to apply refactoring');
     }
   }, []);
@@ -301,7 +302,7 @@ export function usePredictiveIntelligence(options: UsePredictiveIntelligenceOpti
       await fetchErrorPredictions();
       toast.success(confirmed ? 'Error confirmed' : 'Marked as false positive');
     } catch (error) {
-      console.error('Failed to update error prediction:', error);
+      logger.error('Failed to update error prediction', error);
       toast.error('Failed to update prediction');
     }
   }, [fetchErrorPredictions]);

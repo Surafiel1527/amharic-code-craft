@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logger } from "@/utils/logger";
 
 interface MissingPackage {
   name: string;
@@ -71,11 +72,11 @@ export function useAutoInstall(code: string, enabled: boolean = true) {
             action: {
               label: "Install All",
               onClick: () => autoInstallAll(missing)
-            }
-          });
+          }
+        });
         }
       } catch (error) {
-        console.error('Error detecting packages:', error);
+        logger.error('Error detecting packages', error);
       } finally {
         setIsScanning(false);
       }
@@ -106,7 +107,7 @@ export function useAutoInstall(code: string, enabled: boolean = true) {
           if (error) throw error;
           results.success.push(pkg.name);
         } catch (error) {
-          console.error(`Failed to install ${pkg.name}:`, error);
+          logger.error(`Failed to install ${pkg.name}`, error);
           results.failed.push(pkg.name);
         }
       }
@@ -125,7 +126,7 @@ export function useAutoInstall(code: string, enabled: boolean = true) {
 
       setMissingPackages([]);
     } catch (error) {
-      console.error('Auto-install error:', error);
+      logger.error('Auto-install error', error);
       toast.error("Failed to auto-install packages");
     } finally {
       setIsInstalling(false);

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/utils/logger";
 
 interface TrackGenerationParams {
   userPrompt: string;
@@ -52,7 +53,7 @@ export const useAITracking = () => {
       setGenerationId(data.id);
       return data.id;
     } catch (error) {
-      console.error('Error tracking generation:', error);
+      logger.error('Error tracking generation', error);
       return null;
     }
   };
@@ -83,7 +84,7 @@ export const useAITracking = () => {
 
       return data.id;
     } catch (error) {
-      console.error('Error tracking error:', error);
+      logger.error('Error tracking error', error);
       return null;
     }
   };
@@ -110,7 +111,7 @@ export const useAITracking = () => {
 
       return data.reflection;
     } catch (error) {
-      console.error('Error requesting reflection:', error);
+      logger.error('Error requesting reflection', error);
       return null;
     }
   };

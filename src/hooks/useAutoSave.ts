@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
+import { logger } from '@/utils/logger';
 
 interface UseAutoSaveOptions {
   delay?: number; // milliseconds
@@ -24,7 +25,7 @@ export function useAutoSave<T>(
       await onSave(data);
       previousDataRef.current = data;
     } catch (error) {
-      console.error('Auto-save failed:', error);
+      logger.error('Auto-save failed', error);
       toast.error('Auto-save failed');
     } finally {
       isSavingRef.current = false;

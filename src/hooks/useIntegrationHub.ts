@@ -4,6 +4,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logger } from '@/utils/logger';
 
 export function useIntegrationHub() {
   const [integrations, setIntegrations] = useState<any[]>([]);
@@ -25,7 +26,7 @@ export function useIntegrationHub() {
       if (error) throw error;
       toast.success(`${name} connected successfully`);
     } catch (error) {
-      console.error('Integration error:', error);
+      logger.error('Integration error', error);
       toast.error('Failed to connect integration');
     }
   }, []);

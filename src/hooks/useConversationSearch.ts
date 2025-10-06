@@ -7,6 +7,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Message } from './useUniversalAIChat';
+import { logger } from '@/utils/logger';
 
 export interface SearchResult {
   conversationId: string;
@@ -91,7 +92,7 @@ export function useConversationSearch(): ConversationSearchReturn {
         setResults(searchResults);
       }
     } catch (error) {
-      console.error('Search failed:', error);
+      logger.error('Search failed', error);
     } finally {
       setLoading(false);
     }
