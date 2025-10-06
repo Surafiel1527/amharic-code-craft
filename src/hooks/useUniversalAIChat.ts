@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { logger } from '@/utils/logger';
+import { retryWithBackoff, formatErrorMessage, logMetrics } from '@/utils/orchestrationHelpers';
 
 export interface Message {
   id: string;
@@ -275,42 +276,69 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
    * Routes the message to Smart Orchestrator
    */
   const routeToOrchestrator = useCallback(async (message: string, context: any): Promise<any> => {
-    logger.info('Routing to Smart Orchestrator');
+    logger.info('Routing to Mega Mind Orchestrator');
 
+    const startTime = Date.now();
     try {
-      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
-        body: {
-          request: message,
-          requestType: 'code-generation',
-          context: {
-            conversationId: projectId,
-            currentCode: context.currentCode,
-            conversationHistory: context.conversationHistory,
-            files: context.contextData,
-            selectedFiles,
-            autoRefine: true,
-            autoLearn: autoLearn
+      // Use retry logic for reliability
+      const data = await retryWithBackoff(async () => {
+        const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
+          body: {
+            request: message,
+            requestType: 'code-generation',
+            context: {
+              conversationId: projectId,
+              currentCode: context.currentCode,
+              conversationHistory: context.conversationHistory,
+              files: context.contextData,
+              selectedFiles,
+              autoRefine: true,
+              autoLearn: autoLearn
+            }
           }
+        });
+
+        if (error) {
+          console.error('❌ Mega-mind orchestrator error:', error);
+          throw error;
         }
+        
+        return data;
+      }, {
+        maxRetries: 2,
+        initialDelay: 2000,
+        maxDelay: 8000,
+        backoffMultiplier: 2,
+        timeout: 300000 // 5 minutes
       });
 
-      if (error) {
-        console.error('❌ Mega-mind orchestrator error:', error);
-        
-        // Handle specific error types with helpful messages
-        if (error.message?.includes("429") || error.status === 429) {
-          throw new Error("Rate limit exceeded. Please wait a moment before retrying.");
-        } else if (error.message?.includes("402") || error.status === 402) {
-          throw new Error("Credits required. Please add credits to your workspace.");
-        } else if (error.message?.includes("timeout")) {
-          throw new Error("Request timed out. Try breaking your request into smaller parts.");
-        }
-        throw error;
+      // Log success
+      const user = await supabase.auth.getUser();
+      if (user.data.user) {
+        await logMetrics(user.data.user.id, {
+          operation: 'orchestrator_call',
+          duration: Date.now() - startTime,
+          success: true,
+          metadata: { messageLength: message.length }
+        });
       }
-      
+
       return data;
     } catch (error) {
       logger.error('Mega-mind orchestrator failed', error);
+      
+      // Log failure
+      const user = await supabase.auth.getUser();
+      if (user.data.user) {
+        await logMetrics(user.data.user.id, {
+          operation: 'orchestrator_call',
+          duration: Date.now() - startTime,
+          success: false,
+          errorType: error instanceof Error ? error.message : 'unknown',
+          metadata: { messageLength: message.length }
+        });
+      }
+      
       throw error;
     }
   }, [projectId, selectedFiles, autoLearn]);
@@ -565,12 +593,12 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
     } catch (error) {
       console.error('Chat error:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Failed to process message';
+      const errorMsg = formatErrorMessage(error);
       
       // Handle specific error types
-      if (errorMsg.includes('rate_limit') || errorMsg.includes('429')) {
+      if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
         toast.error("Too many requests. Please wait a moment.");
-      } else if (errorMsg.includes('payment_required') || errorMsg.includes('402')) {
+      } else if (errorMsg.includes('payment') || errorMsg.includes('credits') || errorMsg.includes('402')) {
         toast.error("Credits needed. Please add credits to your workspace.");
       } else {
         toast.error(errorMsg);
@@ -583,7 +611,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: `❌ **Error**\n\n${errorMsg}\n\n**What to try:**\n• Simplify your request\n• Check file selections\n• Try again in a moment`,
+        content: `❌ **Error**\n\n${errorMsg}\n\n**What to try:**\n• Simplify your request\n• Check file selections\n• Try again in a moment\n• Break complex requests into smaller steps`,
         timestamp: new Date().toISOString()
       };
 

@@ -6,6 +6,7 @@ import { Loader2, Code, Eye } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { pollJobProgress, loadProgress, saveProgress, formatErrorMessage } from "@/utils/orchestrationHelpers";
 
 export default function TaskManagerOrchestration() {
   const { user } = useAuth();
@@ -39,83 +40,45 @@ export default function TaskManagerOrchestration() {
       console.log('🔒 Lock acquired, starting orchestration...');
       
       try {
-        // Check for existing running jobs first
-        const { data: existingJobs } = await supabase
-          .from('ai_generation_jobs')
-          .select('id, status')
-          .eq('user_id', user.id)
-          .eq('job_type', 'orchestration')
-          .in('status', ['queued', 'processing'])
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (existingJobs && existingJobs.length > 0) {
-          const existingJob = existingJobs[0];
-          console.log('✅ Found existing job:', existingJob.id);
-          setJobId(existingJob.id);
+        // Try to load previous progress first
+        const savedProgress = await loadProgress(user.id);
+        if (savedProgress && savedProgress.status !== 'completed' && savedProgress.status !== 'failed') {
+          console.log('✅ Resuming previous job:', savedProgress.jobId);
+          setJobId(savedProgress.jobId);
+          setStatus(savedProgress.currentStep);
+          setProgress(savedProgress.progress);
+          
           toast({
-            title: "Resuming Orchestration",
-            description: "Found existing job, resuming...",
+            title: "Resuming Work",
+            description: "Found previous orchestration, resuming...",
           });
           
-          // Start monitoring the existing job
-          const interval = setInterval(async () => {
-            if (isCancelled) {
-              clearInterval(interval);
-              return;
+          // Use the polling helper
+          await pollJobProgress(savedProgress.jobId, (progressData) => {
+            setStatus(progressData.currentStep);
+            setProgress(progressData.progress);
+            
+            if (progressData.outputData?.generatedCode || progressData.outputData?.html) {
+              setGeneratedCode(progressData.outputData.generatedCode || progressData.outputData.html);
             }
-
-            const { data: job } = await supabase
-              .from('ai_generation_jobs')
-              .select('status, progress, current_step, output_data')
-              .eq('id', existingJob.id)
-              .single();
-
-            if (job) {
-              setStatus(job.current_step || "Processing...");
-              setProgress(job.progress || 0);
-
-              if (job.output_data) {
-                const outputData = job.output_data as any;
-                if (outputData.generatedCode) {
-                  setGeneratedCode(outputData.generatedCode);
-                } else if (outputData.html) {
-                  setGeneratedCode(outputData.html);
-                }
-              }
-
-              if (job.status === 'completed') {
-                clearInterval(interval);
-                toast({
-                  title: "✅ Complete!",
-                  description: "Your task manager is ready!",
-                });
-                setTimeout(() => {
-                  window.location.href = '/';
-                }, 2000);
-              } else if (job.status === 'failed') {
-                clearInterval(interval);
-                toast({
-                  title: "Orchestration failed",
-                  description: "Please try again",
-                  variant: "destructive"
-                });
-              } else if (job.status === 'cancelled') {
-                clearInterval(interval);
-                setStatus("Job cancelled");
-                toast({
-                  title: "Cancelled",
-                  description: "Orchestration has been cancelled",
-                });
-                setTimeout(() => {
-                  window.location.href = '/';
-                }, 1500);
-              }
-            } else {
-              // Job not found, it might have been deleted
-              clearInterval(interval);
+          }, {
+            interval: 2000,
+            timeout: 600000, // 10 minutes
+            onComplete: (outputData) => {
+              toast({
+                title: "✅ Complete!",
+                description: "Your task manager is ready!",
+              });
+              setTimeout(() => window.location.href = '/', 2000);
+            },
+            onError: (error) => {
+              toast({
+                title: "Error",
+                description: formatErrorMessage(error),
+                variant: "destructive"
+              });
             }
-          }, 2000);
+          });
           
           return;
         }
@@ -165,27 +128,6 @@ Make it production-ready with proper error handling, loading states, and mobile 
 
         if (error) {
           console.error('❌ Failed to start orchestration:', error);
-          
-          // Provide specific error messages
-          if (error.message?.includes("429") || error.status === 429) {
-            toast({
-              title: "Rate Limit Exceeded",
-              description: "Too many requests. Please wait a moment and try again.",
-              variant: "destructive"
-            });
-          } else if (error.message?.includes("402") || error.status === 402) {
-            toast({
-              title: "Payment Required",
-              description: "Please add credits to your workspace to continue.",
-              variant: "destructive"
-            });
-          } else {
-            toast({
-              title: "Failed to Start",
-              description: error.message || "Please try again or contact support.",
-              variant: "destructive"
-            });
-          }
           throw error;
         }
 
@@ -193,79 +135,63 @@ Make it production-ready with proper error handling, loading states, and mobile 
           throw new Error("No job ID returned from orchestrator");
         }
 
+        // Save progress
+        await saveProgress(user.id, {
+          currentRequest: 'Task Manager Generation',
+          jobId: data.jobId,
+          progress: 0,
+          currentStep: 'Starting orchestration...'
+        });
+
         toast({
           title: "Orchestration Started!",
           description: "Building your task manager. Job ID: " + data.jobId,
         });
 
-        // Monitor progress and fetch generated code
-        if (data?.jobId) {
-          setJobId(data.jobId);
-          const interval = setInterval(async () => {
-            if (isCancelled) {
-              clearInterval(interval);
-              return;
-            }
-            const { data: job } = await supabase
-              .from('ai_generation_jobs')
-              .select('status, progress, current_step, output_data')
-              .eq('id', data.jobId)
-              .single();
+        setJobId(data.jobId);
+        
+        // Use polling helper for progress tracking
+        await pollJobProgress(data.jobId, (progressData) => {
+          setStatus(progressData.currentStep);
+          setProgress(progressData.progress);
+          
+          // Save progress for persistence
+          saveProgress(user.id, {
+            jobId: data.jobId,
+            progress: progressData.progress,
+            currentStep: progressData.currentStep
+          });
 
-            if (job) {
-              setStatus(job.current_step || "Processing...");
-              setProgress(job.progress || 0);
-
-              // Update generated code if available
-              if (job.output_data) {
-                const outputData = job.output_data as any;
-                if (outputData.generatedCode) {
-                  setGeneratedCode(outputData.generatedCode);
-                } else if (outputData.html) {
-                  setGeneratedCode(outputData.html);
-                }
-              }
-
-              if (job.status === 'completed') {
-                clearInterval(interval);
-                toast({
-                  title: "✅ Complete!",
-                  description: "Your task manager is ready!",
-                });
-                setTimeout(() => {
-                  window.location.href = '/';
-                }, 2000);
-              } else if (job.status === 'failed') {
-                clearInterval(interval);
-                toast({
-                  title: "Orchestration failed",
-                  description: "Please try again",
-                  variant: "destructive"
-                });
-              } else if (job.status === 'cancelled') {
-                clearInterval(interval);
-                setStatus("Job cancelled");
-                toast({
-                  title: "Cancelled",
-                  description: "Orchestration has been cancelled",
-                });
-                setTimeout(() => {
-                  window.location.href = '/';
-                }, 1500);
-              }
-            } else {
-              // Job not found, might have been deleted
-              clearInterval(interval);
-            }
-          }, 2000);
-        }
+          if (progressData.outputData?.generatedCode || progressData.outputData?.html) {
+            setGeneratedCode(progressData.outputData.generatedCode || progressData.outputData.html);
+          }
+        }, {
+          interval: 2000,
+          timeout: 600000, // 10 minutes
+          onComplete: (outputData) => {
+            toast({
+              title: "✅ Complete!",
+              description: "Your task manager is ready!",
+            });
+            setTimeout(() => window.location.href = '/', 2000);
+          },
+          onError: (error) => {
+            toast({
+              title: "Orchestration Failed",
+              description: formatErrorMessage(error),
+              variant: "destructive"
+            });
+          }
+        });
 
       } catch (error) {
         console.error('❌ Orchestration error:', error);
         isStartingRef.current = false; // Release lock on error
+        
+        const errorMsg = formatErrorMessage(error);
         toast({
           title: "Error",
-          description: error instanceof Error ? error.message : "Failed to start orchestration",
+          description: errorMsg,
           variant: "destructive"
         });
       }

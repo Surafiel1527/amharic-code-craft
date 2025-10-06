@@ -48,6 +48,7 @@ import { useDynamicCustomizations } from "@/hooks/useDynamicCustomizations";
 import { DynamicComponent } from "@/components/DynamicComponent";
 import { PreviewBanner } from "@/components/PreviewBanner";
 import { usePreviewMode } from "@/hooks/usePreviewMode";
+import { retryWithBackoff, validateRequest, formatErrorMessage, logMetrics } from "@/utils/orchestrationHelpers";
 
 interface Project {
   id: string;
@@ -282,43 +283,53 @@ const Index = () => {
       return;
     }
 
+    // Validate request
+    const validation = validateRequest(prompt);
+    if (!validation.valid) {
+      toast.error(validation.error || "Invalid request");
+      return;
+    }
+
+    const startTime = Date.now();
     setIsGenerating(true);
     
     // Show progress toast
-    const progressToast = toast.loading("🚀 Smart Orchestrator activated - analyzing your request...");
+    const progressToast = toast.loading("🚀 Mega Mind activated - analyzing your request...");
     
     try {
-      // Use mega-mind orchestrator for full-stack generation
-      const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
-        body: { 
-          request: prompt,
-          requestType: 'full-stack-generation',
-          context: {
-            userId: user.id,
-            timestamp: new Date().toISOString()
-          }
-        },
-      });
+      // Use mega-mind orchestrator with retry logic
+      const data = await retryWithBackoff(async () => {
+        const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
+          body: { 
+            request: prompt,
+            requestType: 'full-stack-generation',
+            context: {
+              userId: user.id,
+              timestamp: new Date().toISOString()
+            }
+          },
+        });
 
-      if (error) {
-        toast.dismiss(progressToast);
-        console.error('❌ Orchestration error:', error);
-        
-        // Handle specific error types
-        if (error.message?.includes("429") || error.status === 429) {
-          toast.error(t("toast.rateLimitTitle"), { description: t("toast.rateLimitDesc") });
-        } else if (error.message?.includes("402") || error.status === 402) {
-          toast.error(t("toast.paymentRequired"), { description: t("toast.paymentDesc") });
-        } else if (error.message?.includes("timeout")) {
-          toast.error("Request timed out", { description: "The operation took too long. Please try a simpler request." });
-        } else {
-          toast.error("Generation failed", { description: error.message || "Please try again or simplify your request." });
-        }
-        throw error;
-      }
+        if (error) throw error;
+        return data;
+      }, {
+        maxRetries: 2,
+        initialDelay: 2000,
+        maxDelay: 8000,
+        backoffMultiplier: 2,
+        timeout: 300000 // 5 minutes
+      });
 
       toast.dismiss(progressToast);
       
+      // Log success metrics
+      await logMetrics(user.id, {
+        operation: 'quick_generate',
+        duration: Date.now() - startTime,
+        success: true,
+        metadata: { promptLength: prompt.length }
+      });
+
       // Smart orchestrator returns structured data
       const generatedHTML = data?.result?.generatedCode || data?.generatedCode || data?.html || '';
       setGeneratedCode(generatedHTML);
@@ -375,7 +386,21 @@ const Index = () => {
         toast.success(t("toast.generated"));
       }
     } catch (error) {
-      console.error("Error generating website:", error);
+      console.error("❌ Generation error:", error);
+      toast.dismiss(progressToast);
+      
+      // Log failure metrics
+      await logMetrics(user.id, {
+        operation: 'quick_generate',
+        duration: Date.now() - startTime,
+        success: false,
+        errorType: error instanceof Error ? error.message : 'unknown',
+        metadata: { promptLength: prompt.length }
+      });
+      
+      // Display user-friendly error
+      const errorMsg = formatErrorMessage(error);
+      toast.error(errorMsg);
     } finally {
       setIsGenerating(false);
     }

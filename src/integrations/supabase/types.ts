@@ -3784,6 +3784,39 @@ export type Database = {
         }
         Relationships: []
       }
+      orchestration_metrics: {
+        Row: {
+          created_at: string | null
+          duration_ms: number
+          error_type: string | null
+          id: string
+          metadata: Json | null
+          operation: string
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration_ms: number
+          error_type?: string | null
+          id?: string
+          metadata?: Json | null
+          operation: string
+          success?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          duration_ms?: number
+          error_type?: string | null
+          id?: string
+          metadata?: Json | null
+          operation?: string
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       orchestration_runs: {
         Row: {
           completed_at: string | null
@@ -6463,6 +6496,47 @@ export type Database = {
         }
         Relationships: []
       }
+      user_orchestration_state: {
+        Row: {
+          created_at: string | null
+          current_job_id: string | null
+          current_step: string | null
+          id: string
+          last_request: string | null
+          progress: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_job_id?: string | null
+          current_step?: string | null
+          id?: string
+          last_request?: string | null
+          progress?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_job_id?: string | null
+          current_step?: string | null
+          id?: string
+          last_request?: string | null
+          progress?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_orchestration_state_current_job_id_fkey"
+            columns: ["current_job_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generation_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_preferences: {
         Row: {
           confidence_score: number | null
@@ -6873,6 +6947,10 @@ export type Database = {
         Returns: undefined
       }
       cleanup_expired_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cleanup_old_metrics: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }

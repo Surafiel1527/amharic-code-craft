@@ -52,6 +52,7 @@ import { UsageAnalyticsDashboard } from "@/components/UsageAnalyticsDashboard";
 import { PerformanceMonitor } from "@/components/PerformanceMonitor";
 import { PythonProjectViewer } from "@/components/PythonProjectViewer";
 import { LanguageCapabilities } from "@/components/LanguageCapabilities";
+import { retryWithBackoff, validateRequest, formatErrorMessage, logMetrics } from "@/utils/orchestrationHelpers";
 
 interface Message {
   role: 'user' | 'assistant';
