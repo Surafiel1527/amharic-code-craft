@@ -218,15 +218,19 @@ export type Database = {
           created_at: string
           current_step: string | null
           error_message: string | null
+          estimated_completion_at: string | null
           id: string
           input_data: Json
           job_type: string
           output_data: Json | null
+          phases: Json | null
+          priority: number | null
           progress: number | null
           project_id: string | null
           retry_count: number | null
           started_at: string | null
           status: string
+          stream_updates: Json | null
           total_steps: number | null
           updated_at: string
           user_id: string
@@ -238,15 +242,19 @@ export type Database = {
           created_at?: string
           current_step?: string | null
           error_message?: string | null
+          estimated_completion_at?: string | null
           id?: string
           input_data?: Json
           job_type: string
           output_data?: Json | null
+          phases?: Json | null
+          priority?: number | null
           progress?: number | null
           project_id?: string | null
           retry_count?: number | null
           started_at?: string | null
           status?: string
+          stream_updates?: Json | null
           total_steps?: number | null
           updated_at?: string
           user_id: string
@@ -258,15 +266,19 @@ export type Database = {
           created_at?: string
           current_step?: string | null
           error_message?: string | null
+          estimated_completion_at?: string | null
           id?: string
           input_data?: Json
           job_type?: string
           output_data?: Json | null
+          phases?: Json | null
+          priority?: number | null
           progress?: number | null
           project_id?: string | null
           retry_count?: number | null
           started_at?: string | null
           status?: string
+          stream_updates?: Json | null
           total_steps?: number | null
           updated_at?: string
           user_id?: string
@@ -6938,6 +6950,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_job_eta: {
+        Args: { p_job_id: string }
+        Returns: string
+      }
       calculate_uptime_percentage: {
         Args: { p_credential_id: string; p_hours?: number }
         Returns: number
@@ -6961,6 +6977,14 @@ export type Database = {
       get_error_rate: {
         Args: { time_window?: unknown }
         Returns: number
+      }
+      get_next_queued_job: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          job_id: string
+          priority: number
+          request_data: Json
+        }[]
       }
       get_package_stats: {
         Args: { p_user_id?: string }

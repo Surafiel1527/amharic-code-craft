@@ -1,10 +1,27 @@
 import { useState, useEffect } from "react";
-import { CheckCircle2, Loader2, Clock, ChevronDown, ChevronUp, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { 
+  CheckCircle2, 
+  Loader2, 
+  Clock, 
+  XCircle,
+  ChevronDown,
+  ChevronUp,
+  Zap,
+  Brain,
+  Code,
+  Sparkles
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,13 +33,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Phase {
   name: string;
-  duration: number;
-  result: any;
+  duration?: number;
+  result?: 'success' | 'error' | 'pending';
+  icon?: 'brain' | 'code' | 'sparkles' | 'zap';
+  timestamp?: string;
 }
 
 interface OrchestrationProgressProps {
@@ -31,39 +49,86 @@ interface OrchestrationProgressProps {
   totalDuration?: number;
   jobId?: string;
   onCancel?: () => void;
+  currentProgress?: number;
+  eta?: string;
+  streamingUpdates?: string[];
 }
 
-const phaseLabels: Record<string, string> = {
-  planning: "🎯 Architecture Planning",
-  impact_analysis: "🔍 Impact Analysis",
-  pattern_retrieval: "🧩 Pattern Retrieval",
-  generation: "⚡ Code Generation",
-  refinement: "✨ Quality Refinement",
-  learning: "🧠 Learning Patterns"
+const expectedPhases = [
+  { name: 'planning', label: '🎯 Architecture Planning' },
+  { name: 'impact_analysis', label: '🔍 Impact Analysis' },
+  { name: 'pattern_retrieval', label: '🧩 Pattern Retrieval' },
+  { name: 'generation', label: '⚡ Code Generation' },
+  { name: 'refinement', label: '✨ Quality Refinement' },
+  { name: 'learning', label: '🧠 Learning Patterns' }
+];
+
+const getPhaseIcon = (iconType?: string) => {
+  switch (iconType) {
+    case 'brain': return <Brain className="w-4 h-4" />;
+    case 'code': return <Code className="w-4 h-4" />;
+    case 'sparkles': return <Sparkles className="w-4 h-4" />;
+    case 'zap': return <Zap className="w-4 h-4" />;
+    default: return <Loader2 className="w-4 h-4 animate-spin" />;
+  }
 };
 
-export function OrchestrationProgress({ phases, isLoading, totalDuration, jobId, onCancel }: OrchestrationProgressProps) {
-  const expectedPhases = ['planning', 'impact_analysis', 'pattern_retrieval', 'generation', 'refinement', 'learning'];
-  const progress = (phases.length / expectedPhases.length) * 100;
-  const isComplete = !isLoading && progress === 100;
-  
-  // Auto-collapse 2 seconds after completion
+export const OrchestrationProgress = ({
+  phases,
+  isLoading,
+  totalDuration,
+  jobId,
+  onCancel,
+  currentProgress,
+  eta,
+  streamingUpdates = []
+}: OrchestrationProgressProps) => {
   const [isOpen, setIsOpen] = useState(true);
-  const [isCancelling, setIsCancelling] = useState(false);
+  const [realtimeProgress, setRealtimeProgress] = useState(currentProgress || 0);
   
+  const completedPhases = phases.filter(p => p.result === 'success').length;
+  const totalPhases = phases.length;
+  const progress = currentProgress || (totalPhases > 0 ? (completedPhases / totalPhases) * 100 : 0);
+  const isComplete = completedPhases === totalPhases && !isLoading;
+
+  // Realtime subscription for live progress updates
+  useEffect(() => {
+    if (!jobId) return;
+
+    const channel = supabase
+      .channel(`job-progress-${jobId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'ai_generation_jobs',
+          filter: `id=eq.${jobId}`
+        },
+        (payload) => {
+          const newData = payload.new as any;
+          setRealtimeProgress(newData.progress || 0);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [jobId]);
+
   useEffect(() => {
     if (isComplete) {
-      const timer = setTimeout(() => setIsOpen(false), 2000);
+      const timer = setTimeout(() => {
+        setIsOpen(false);
+      }, 3000);
       return () => clearTimeout(timer);
-    } else {
-      setIsOpen(true);
     }
   }, [isComplete]);
 
   const handleCancel = async () => {
     if (!jobId) return;
     
-    setIsCancelling(true);
     try {
       const { error } = await supabase
         .from('ai_generation_jobs')
@@ -75,119 +140,202 @@ export function OrchestrationProgress({ phases, isLoading, totalDuration, jobId,
 
       if (error) throw error;
 
-      toast({
-        title: "Orchestration Cancelled",
-        description: "The task generation has been stopped.",
-      });
-      
+      toast.success("Orchestration cancelled");
       onCancel?.();
     } catch (error) {
       console.error('Error cancelling job:', error);
-      toast({
-        title: "Error",
-        description: "Failed to cancel the orchestration. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCancelling(false);
+      toast.error("Failed to cancel orchestration");
     }
   };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card className="p-3 space-y-2 bg-muted/50">
-        <div className="flex items-center justify-between">
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent">
-              <h3 className="text-xs font-semibold flex items-center gap-1">
-                {isComplete ? (
-                  <CheckCircle2 className="w-3 h-3 text-green-500" />
-                ) : (
-                  <Loader2 className="w-3 h-3 animate-spin text-primary" />
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      className="w-full"
+    >
+      <Card className="p-4 border-2 border-primary/20 shadow-lg bg-gradient-to-br from-background to-muted/20">
+        <CollapsibleTrigger asChild>
+          <div className="flex items-center justify-between cursor-pointer">
+            <div className="flex items-center gap-3">
+              <motion.div 
+                className="relative"
+                animate={{ scale: isLoading ? [1, 1.1, 1] : 1 }}
+                transition={{ repeat: isLoading ? Infinity : 0, duration: 2 }}
+              >
+                {isLoading && (
+                  <div className="relative">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                    <motion.div
+                      className="absolute inset-0 rounded-full bg-primary/20"
+                      animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                    />
+                  </div>
                 )}
-                Smart Orchestration
-                {isOpen ? (
-                  <ChevronUp className="w-3 h-3 ml-1" />
-                ) : (
-                  <ChevronDown className="w-3 h-3 ml-1" />
+                {isComplete && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 200 }}
+                  >
+                    <CheckCircle2 className="w-5 h-5 text-success" />
+                  </motion.div>
                 )}
-              </h3>
-            </Button>
-          </CollapsibleTrigger>
-          <div className="flex items-center gap-2">
-            {isLoading && jobId && (
+              </motion.div>
+              <div>
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  {isComplete ? 'Generation Complete' : 'AI Mega Mind at Work'}
+                  <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {completedPhases} of {totalPhases} phases complete
+                  {eta && <span className="ml-2">• ETA: {eta}</span>}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant={isComplete ? "default" : "secondary"} className="font-mono">
+                {Math.round(realtimeProgress)}%
+              </Badge>
+              {isOpen ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </div>
+          </div>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent className="mt-4 space-y-3">
+          <div className="relative">
+            <Progress value={realtimeProgress} className="h-3" />
+            <motion.div
+              className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0"
+              style={{ width: `${realtimeProgress}%` }}
+              animate={{ x: ['-100%', '100%'] }}
+              transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+            />
+          </div>
+          
+          {/* Streaming Updates */}
+          {streamingUpdates.length > 0 && (
+            <div className="max-h-32 overflow-y-auto space-y-1 p-2 bg-muted/30 rounded-lg border border-primary/10">
+              <AnimatePresence>
+                {streamingUpdates.slice(-5).map((update, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="text-xs text-muted-foreground font-mono"
+                  >
+                    → {update}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+          
+          <div className="space-y-2">
+            {expectedPhases.map((phase, index) => {
+              const phaseData = phases.find(p => p.name === phase.name);
+              const status = phaseData?.result || 
+                (index < completedPhases ? 'success' : 'pending');
+              
+              return (
+                <motion.div
+                  key={phase.name}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      {status === 'success' && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring" }}
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-success" />
+                        </motion.div>
+                      )}
+                      {status === 'error' && (
+                        <XCircle className="w-4 h-4 text-destructive" />
+                      )}
+                      {status === 'pending' && index === completedPhases && isLoading && (
+                        <div className="relative">
+                          <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                          {getPhaseIcon(phaseData?.icon)}
+                        </div>
+                      )}
+                      {status === 'pending' && (index !== completedPhases || !isLoading) && (
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium">{phase.label}</span>
+                      {phaseData?.timestamp && (
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(phaseData.timestamp).toLocaleTimeString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {phaseData?.duration && (
+                    <Badge variant="outline" className="text-xs font-mono">
+                      {(phaseData.duration / 1000).toFixed(1)}s
+                    </Badge>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {isLoading && jobId && (
+            <div className="flex justify-end pt-2 border-t">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    disabled={isCancelling}
-                    className="h-5 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
-                    <XCircle className="w-3 h-3 mr-1" />
-                    Cancel
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Cancel Orchestration
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure you want to cancel?</AlertDialogTitle>
+                    <AlertDialogTitle>Cancel Orchestration?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will stop the orchestration process. All progress will be lost and you'll need to start over.
+                      This will stop the AI generation process. All progress will be lost.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>No, continue</AlertDialogCancel>
+                    <AlertDialogCancel>Continue</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleCancel}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      Yes, cancel it
+                      Cancel It
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            )}
-            {totalDuration && (
-              <Badge variant="outline" className="text-xs h-5">
-                <Clock className="w-3 h-3 mr-1" />
-                {(totalDuration / 1000).toFixed(2)}s
-              </Badge>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
 
-        <CollapsibleContent className="space-y-2">
-          <Progress value={progress} className="h-1.5" />
-
-          <div className="space-y-1.5">
-            {expectedPhases.map((phaseName) => {
-              const phase = phases.find(p => p.name === phaseName);
-              const isCompleted = !!phase;
-              const isCurrent = isLoading && phases.length > 0 && phases[phases.length - 1].name === phaseName;
-
-              return (
-                <div key={phaseName} className="flex items-center gap-2 text-xs">
-                  {isCompleted ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                  ) : isCurrent ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-primary shrink-0" />
-                  ) : (
-                    <div className="w-3.5 h-3.5 rounded-full border-2 border-muted shrink-0" />
-                  )}
-                  <span className={isCompleted || isCurrent ? "text-foreground font-medium" : "text-muted-foreground"}>
-                    {phaseLabels[phaseName]}
-                  </span>
-                  {phase && (
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      {(phase.duration / 1000).toFixed(2)}s
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          {totalDuration && (
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-2 border-t">
+              <Clock className="w-3 h-3" />
+              Total Duration: {(totalDuration / 1000).toFixed(2)}s
+            </div>
+          )}
         </CollapsibleContent>
       </Card>
     </Collapsible>
   );
-}
+};
