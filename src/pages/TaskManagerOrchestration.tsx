@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Code, Eye, MessageSquare } from "lucide-react";
+import { Code, Eye, MessageSquare, LogOut } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { UniversalChatInterface } from "@/components/UniversalChatInterface";
 
 export default function TaskManagerOrchestration() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("chat");
   const [generatedCode, setGeneratedCode] = useState("");
 
-  const handleCodeApply = async (code: string, filePath: string) => {
+  const handleCodeApply = async (code: string) => {
     setGeneratedCode(code);
     setActiveTab("preview");
   };
@@ -29,17 +29,30 @@ export default function TaskManagerOrchestration() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/5 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            🧠 Mega Mind Orchestrator
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            Build or improve your projects with universal AI intelligence
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/5">
+      {/* Header */}
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              🧠 Mega Mind
+            </h1>
+            <p className="text-sm text-muted-foreground">Universal AI Intelligence</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => window.location.href = '/'}>
+              Dashboard
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => signOut()}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
+      </header>
 
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto p-4 md:p-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="chat" className="gap-2">

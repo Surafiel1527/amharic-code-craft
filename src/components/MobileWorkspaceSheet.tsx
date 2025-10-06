@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Eye, FileCode, Monitor, Tablet, Smartphone, Download, X } from "lucide-react";
-import { ChatInterface } from "./ChatInterface";
+import { UniversalChatInterface } from "./UniversalChatInterface";
 import { toast } from "sonner";
 
 interface MobileWorkspaceSheetProps {
@@ -81,11 +81,25 @@ export function MobileWorkspaceSheet({
 
           <div className="flex-1 overflow-hidden">
             <TabsContent value="chat" className="h-full m-0 p-0">
-              <ChatInterface
+              <UniversalChatInterface
+                mode="panel"
+                height="h-full"
                 conversationId={conversationId}
-                onCodeGenerated={onCodeGenerated}
-                currentCode={currentCode}
+                projectFiles={currentCode ? [{
+                  file_path: 'current-file',
+                  file_content: currentCode
+                }] : []}
+                onCodeApply={async (code) => {
+                  onCodeGenerated(code);
+                }}
                 onConversationChange={onConversationChange}
+                persistMessages={true}
+                autoLearn={true}
+                autoApply={true}
+                showContext={false}
+                showHeader={false}
+                showFooter={true}
+                placeholder="Describe changes..."
               />
             </TabsContent>
 
