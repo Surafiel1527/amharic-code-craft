@@ -4479,45 +4479,6 @@ export type Database = {
           },
         ]
       }
-      platform_tests: {
-        Row: {
-          created_at: string | null
-          error_message: string | null
-          execution_time_ms: number | null
-          id: string
-          metadata: Json | null
-          status: string
-          test_category: string
-          test_name: string
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          error_message?: string | null
-          execution_time_ms?: number | null
-          id?: string
-          metadata?: Json | null
-          status: string
-          test_category: string
-          test_name: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          error_message?: string | null
-          execution_time_ms?: number | null
-          id?: string
-          metadata?: Json | null
-          status?: string
-          test_category?: string
-          test_name?: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       plugin_installations: {
         Row: {
           config: Json | null
@@ -5728,74 +5689,6 @@ export type Database = {
         }
         Relationships: []
       }
-      task_comments: {
-        Row: {
-          comment: string
-          created_at: string
-          id: string
-          task_id: string
-          user_id: string
-        }
-        Insert: {
-          comment: string
-          created_at?: string
-          id?: string
-          task_id: string
-          user_id: string
-        }
-        Update: {
-          comment?: string
-          created_at?: string
-          id?: string
-          task_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_comments_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      tasks: {
-        Row: {
-          created_at: string
-          description: string | null
-          due_date: string | null
-          id: string
-          priority: string
-          status: string
-          title: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          priority?: string
-          status?: string
-          title: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          due_date?: string | null
-          id?: string
-          priority?: string
-          status?: string
-          title?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       team_ai_sessions: {
         Row: {
           created_at: string
@@ -6205,33 +6098,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      test_data: {
-        Row: {
-          content: string | null
-          created_at: string | null
-          id: string
-          is_public: boolean | null
-          title: string
-          user_id: string | null
-        }
-        Insert: {
-          content?: string | null
-          created_at?: string | null
-          id?: string
-          is_public?: boolean | null
-          title: string
-          user_id?: string | null
-        }
-        Update: {
-          content?: string | null
-          created_at?: string | null
-          id?: string
-          is_public?: boolean | null
-          title?: string
-          user_id?: string | null
-        }
-        Relationships: []
       }
       test_generation_requests: {
         Row: {

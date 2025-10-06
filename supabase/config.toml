@@ -117,34 +117,3 @@ verify_jwt = true
 [functions.security-audit]
 verify_jwt = true
 
-# ============================================
-# AI CODE GENERATION
-# Autonomous code generation system
-# ============================================
-
-[functions.ai-code-generator]
-verify_jwt = true
-
-# ============================================
-# PLATFORM TESTING FUNCTIONS
-# Functions for testing platform capabilities
-# ============================================
-
-[functions.platform-health-check]
-verify_jwt = true
-
-# ============================================
-# VERCEL DEPLOYMENT FUNCTIONS
-# Vercel integration functions
-# ============================================
-
-[functions.vercel-connect]
-verify_jwt = true
-
-[functions.vercel-deploy]
-verify_jwt = true
-
-[functions.vercel-status]
-verify_jwt = true
-
-

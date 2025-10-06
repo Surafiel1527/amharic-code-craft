@@ -12,7 +12,6 @@ import NotFound from "./pages/NotFound";
 const Builder = lazy(() => import("./pages/Builder"));
 const Workspace = lazy(() => import("./pages/Workspace"));
 const Settings = lazy(() => import("./pages/Settings"));
-const TestDashboard = lazy(() => import("./pages/TestDashboard"));
 const Admin = lazy(() => import("./pages/Admin"));
 const SharedProject = lazy(() => import("./pages/SharedProject"));
 const Explore = lazy(() => import("./pages/Explore"));
@@ -30,8 +29,6 @@ const Marketplace = lazy(() => import("./pages/Marketplace"));
 const TaskManagerOrchestration = lazy(() => import("./pages/TaskManagerOrchestration"));
 const SelfHealingHub = lazy(() => import("./pages/SelfHealingHub"));
 const ActivityDemo = lazy(() => import("./pages/ActivityDemo"));
-const TaskManager = lazy(() => import("./pages/TaskManager"));
-const Generate = lazy(() => import("./pages/Generate"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -47,7 +44,6 @@ const App = () => {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/test-dashboard" element={<TestDashboard />} />
           <Route path="/builder" element={<Builder />} />
           <Route path="/workspace/:projectId" element={<Workspace />} />
           <Route path="/settings" element={<Settings />} />
@@ -68,8 +64,6 @@ const App = () => {
           <Route path="/task-manager-orchestration" element={<TaskManagerOrchestration />} />
           <Route path="/self-healing" element={<SelfHealingHub />} />
           <Route path="/activity-demo" element={<ActivityDemo />} />
-          <Route path="/tasks" element={<TaskManager />} />
-          <Route path="/generate" element={<Generate />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
