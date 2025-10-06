@@ -6,6 +6,9 @@ verify_jwt = true
 [functions.unified-healing-engine]
 verify_jwt = true
 
+[functions.unified-dependency-analyzer]
+verify_jwt = true
+
 [functions.smart-build-optimizer]
 verify_jwt = false
 

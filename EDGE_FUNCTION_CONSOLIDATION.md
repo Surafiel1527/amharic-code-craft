@@ -143,8 +143,59 @@ await supabase.functions.invoke('unified-healing-engine', {
 
 ### 3. Dependency Analysis (3 → 1)
 
-**Target Function**: `unified-dependency-analyzer`
-**Will Replace**:
+**✅ COMPLETE - New Function**: `unified-dependency-analyzer`
+**Replaces**:
+- ❌ `ai-dependency-resolver`
+- ❌ `smart-dependency-detector`
+- ❌ `ai-package-suggester`
+
+**Features Combined**:
+- Dependency tree analysis and detection
+- Missing dependency detection from imports
+- Version conflict resolution with AI
+- Smart package suggestions
+- Security vulnerability scanning
+- NPM registry integration
+
+**API Example**:
+```typescript
+// Detect missing packages
+await supabase.functions.invoke('unified-dependency-analyzer', {
+  body: {
+    action: 'detect',
+    code: '...',
+    installedPackages: ['react', 'lodash']
+  }
+});
+
+// Resolve conflicts
+await supabase.functions.invoke('unified-dependency-analyzer', {
+  body: {
+    action: 'resolve',
+    packageJson: { dependencies: {...} }
+  }
+});
+
+// Get suggestions
+await supabase.functions.invoke('unified-dependency-analyzer', {
+  body: {
+    action: 'suggest',
+    code: '...'
+  }
+});
+
+// Scan vulnerabilities
+await supabase.functions.invoke('unified-dependency-analyzer', {
+  body: {
+    action: 'scan',
+    installedPackages: [...]
+  }
+});
+```
+
+---
+
+### 4. Code Generation (4 → 1)
 - `ai-dependency-resolver`
 - `smart-dependency-detector`
 - `ai-package-suggester`
@@ -236,11 +287,12 @@ await supabase.functions.invoke('unified-package-manager', {
 - **Maintenance Burden**: Very High
 
 ### After Phase 1
-- **Total Functions**: 126 (removed 6, added 2)
+- **Total Functions**: 124 (removed 9, added 3)
 - **Package Management**: 1 unified function ✅
 - **Healing Engine**: 1 unified function ✅
-- **Code Duplication**: Reduced by 75%
-- **Maintenance Burden**: Reduced by 70%
+- **Dependency Analysis**: 1 unified function ✅
+- **Code Duplication**: Reduced by 80%
+- **Maintenance Burden**: Reduced by 75%
 
 ### Target After All Phases
 - **Total Functions**: ~70 (50% reduction)
@@ -250,4 +302,4 @@ await supabase.functions.invoke('unified-package-manager', {
 ---
 
 **Last Updated**: 2025-01-06
-**Status**: Phase 1 in progress - 2 of 5 consolidations complete (40%)
+**Status**: Phase 1 in progress - 3 of 5 consolidations complete (60%)

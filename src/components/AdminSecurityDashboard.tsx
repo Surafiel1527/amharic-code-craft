@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Shield, AlertTriangle, Activity, Key, Clock, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { logger } from "@/utils/logger";
 
 interface AuditLog {
   id: string;
@@ -97,7 +98,7 @@ export const AdminSecurityDashboard = () => {
         activeSessions: sessionsCount || 0,
       });
     } catch (error) {
-      console.error("Error fetching security data:", error);
+      logger.error("Error fetching security data", error);
       toast.error("Failed to load security data");
     } finally {
       setLoading(false);
@@ -120,7 +121,7 @@ export const AdminSecurityDashboard = () => {
       toast.success("Security event resolved");
       fetchSecurityData();
     } catch (error) {
-      console.error("Error resolving event:", error);
+      logger.error("Error resolving event", error);
       toast.error("Failed to resolve event");
     }
   };

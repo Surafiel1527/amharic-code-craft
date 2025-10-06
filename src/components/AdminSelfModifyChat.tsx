@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { logger } from '@/utils/logger';
 
 interface Message {
   id: string;
@@ -132,7 +133,7 @@ export default function AdminSelfModifyChat({ onCustomizationApplied }: AdminSel
       onCustomizationApplied?.();
 
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Error sending message', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to process request',
