@@ -21,15 +21,15 @@ interface JobIssue {
 async function detectJobIssues(supabaseClient: any): Promise<JobIssue[]> {
   const issues: JobIssue[] = [];
   
-  // Find stuck jobs (no update in 5+ minutes, progress < 100)
-  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  // Find stuck jobs (no update in 2+ minutes, progress < 100)
+  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
   
   const { data: stuckJobs } = await supabaseClient
     .from('ai_generation_jobs')
     .select('*')
     .eq('status', 'running')
     .lt('progress', 100)
-    .lt('updated_at', fiveMinutesAgo);
+    .lt('updated_at', twoMinutesAgo);
   
   if (stuckJobs) {
     for (const job of stuckJobs) {

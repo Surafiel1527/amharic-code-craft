@@ -786,16 +786,33 @@ Generate a comprehensive summary.`
       } catch (error: any) {
         console.error('Error in background task:', error);
         
-        // Mark job as failed
+        const errorMessage = error.message || 'Unknown error';
+        const currentStep = results.length > 0 ? results[results.length - 1].description : 'Unknown step';
+        const currentProgress = Math.round((results.length / steps.length) * 100);
+        
+        // Mark job as failed with detailed context
         if (localJobId) {
-          await supabaseClient
+          const { error: updateError } = await supabaseClient
             .from('ai_generation_jobs')
             .update({
               status: 'failed',
-              error_message: error.message,
-              completed_at: new Date().toISOString()
+              error_message: errorMessage,
+              completed_at: new Date().toISOString(),
+              output_data: {
+                results,
+                error_context: {
+                  step: currentStep,
+                  progress: currentProgress,
+                  timestamp: new Date().toISOString(),
+                  error: errorMessage
+                }
+              }
             })
             .eq('id', localJobId);
+            
+          if (updateError) {
+            console.error('Failed to update job status:', updateError);
+          }
           
           // Trigger Mega Mind self-healer to learn from this failure
           console.log('🧠 Triggering Mega Mind self-healer...');
@@ -806,8 +823,13 @@ Generate a comprehensive summary.`
               'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
             },
             body: JSON.stringify({
-              mode: 'auto',
-              jobId: localJobId
+              mode: 'specific',
+              jobId: localJobId,
+              errorContext: {
+                step: currentStep,
+                progress: currentProgress,
+                error: errorMessage
+              }
             })
           }).catch(healError => {
             console.error('Failed to trigger self-healer:', healError);

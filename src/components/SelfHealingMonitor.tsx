@@ -102,6 +102,65 @@ export function SelfHealingMonitor() {
     }
   };
 
+  const fixStuckJobs = async () => {
+    setIsHealing(true);
+    try {
+      // Get stuck jobs first
+      const { data: jobs } = await supabase
+        .from('ai_generation_jobs')
+        .select('id, status, progress, current_step, updated_at')
+        .eq('status', 'running')
+        .lt('progress', 100)
+        .lt('updated_at', new Date(Date.now() - 2 * 60 * 1000).toISOString());
+
+      if (!jobs || jobs.length === 0) {
+        toast({
+          title: "No Stuck Jobs",
+          description: "All jobs are running normally",
+        });
+        return;
+      }
+
+      toast({
+        title: "🔧 Fixing Stuck Jobs",
+        description: `Found ${jobs.length} stuck job(s), attempting to fix...`,
+      });
+
+      // Fix each stuck job
+      for (const job of jobs) {
+        try {
+          const { error } = await supabase.functions.invoke('fix-stuck-job', {
+            body: { jobId: job.id }
+          });
+          
+          if (error) {
+            console.error(`Failed to fix job ${job.id}:`, error);
+          } else {
+            console.log(`✅ Fixed job ${job.id}`);
+          }
+        } catch (err) {
+          console.error(`Error fixing job ${job.id}:`, err);
+        }
+      }
+
+      toast({
+        title: "✅ Jobs Fixed",
+        description: `Attempted to fix ${jobs.length} stuck job(s)`,
+      });
+
+      loadStats();
+    } catch (error) {
+      console.error('Error fixing stuck jobs:', error);
+      toast({
+        title: "Fix Failed",
+        description: "Could not fix stuck jobs",
+        variant: "destructive",
+      });
+    } finally {
+      setIsHealing(false);
+    }
+  };
+
   const getSuccessRate = (pattern: HealingPattern) => {
     const total = pattern.success_count + pattern.failure_count;
     if (total === 0) return 0;
@@ -120,10 +179,16 @@ export function SelfHealingMonitor() {
             </p>
           </div>
         </div>
-        <Button onClick={triggerSelfHealing} disabled={isHealing}>
-          <Zap className="mr-2 h-4 w-4" />
-          {isHealing ? 'Healing...' : 'Trigger Self-Heal'}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={fixStuckJobs} disabled={isHealing} variant="default">
+            <Zap className="mr-2 h-4 w-4" />
+            {isHealing ? 'Fixing...' : 'Fix Stuck Jobs'}
+          </Button>
+          <Button onClick={triggerSelfHealing} disabled={isHealing} variant="outline">
+            <Brain className="mr-2 h-4 w-4" />
+            {isHealing ? 'Healing...' : 'Auto-Heal All'}
+          </Button>
+        </div>
       </div>
 
       {stats && (
