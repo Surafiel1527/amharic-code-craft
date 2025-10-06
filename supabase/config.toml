@@ -15,6 +15,15 @@ verify_jwt = true
 [functions.unified-test-manager]
 verify_jwt = true
 
+[functions.unified-deployment-manager]
+verify_jwt = true
+
+[functions.unified-code-quality]
+verify_jwt = true
+
+[functions.unified-performance-optimizer]
+verify_jwt = true
+
 [functions.smart-build-optimizer]
 verify_jwt = false
 
