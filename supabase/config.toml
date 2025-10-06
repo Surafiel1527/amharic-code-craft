@@ -35,6 +35,9 @@ verify_jwt = false
 [functions.meta-self-improvement]
 verify_jwt = false
 
+[functions.process-job-queue]
+verify_jwt = false
+
 # ============================================
 # UNIFIED WORKER FUNCTIONS (20)
 # Enterprise-grade consolidated operations
