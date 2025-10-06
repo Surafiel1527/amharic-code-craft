@@ -126,3 +126,26 @@ verify_jwt = true
 [functions.smart-debugger]
 verify_jwt = true
 
+[functions.send-monitoring-alert]
+verify_jwt = false
+
+# ============================================
+# DEPLOYMENT & VERCEL INTEGRATION
+# Production deployment pipeline
+# ============================================
+
+[functions.vercel-connect]
+verify_jwt = true
+
+[functions.vercel-deploy]
+verify_jwt = true
+
+[functions.vercel-status]
+verify_jwt = true
+
+[functions.complete-vercel-pipeline]
+verify_jwt = true
+
+[functions.prompt-to-production]
+verify_jwt = true
+
