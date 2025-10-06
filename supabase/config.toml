@@ -362,3 +362,9 @@ verify_jwt = true
 
 [functions.ai-package-suggester]
 verify_jwt = true
+
+[functions.ai-package-auto-installer]
+verify_jwt = true
+
+[functions.package-auto-monitor]
+verify_jwt = false

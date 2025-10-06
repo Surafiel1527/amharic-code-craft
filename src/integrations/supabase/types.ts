@@ -3469,6 +3469,62 @@ export type Database = {
           },
         ]
       }
+      package_automation_rules: {
+        Row: {
+          actions: Json
+          conditions: Json
+          created_at: string
+          failure_count: number | null
+          id: string
+          is_active: boolean | null
+          priority: number | null
+          project_id: string | null
+          rule_name: string
+          rule_type: string
+          success_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actions?: Json
+          conditions?: Json
+          created_at?: string
+          failure_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          project_id?: string | null
+          rule_name: string
+          rule_type: string
+          success_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actions?: Json
+          conditions?: Json
+          created_at?: string
+          failure_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          project_id?: string | null
+          rule_name?: string
+          rule_type?: string
+          success_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_automation_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       package_dependency_tree: {
         Row: {
           created_at: string | null
@@ -3573,6 +3629,121 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      package_monitors: {
+        Row: {
+          auto_fix_enabled: boolean | null
+          check_interval_hours: number | null
+          created_at: string
+          findings_count: number | null
+          id: string
+          is_active: boolean | null
+          last_check_at: string | null
+          monitor_type: string
+          next_check_at: string | null
+          project_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_fix_enabled?: boolean | null
+          check_interval_hours?: number | null
+          created_at?: string
+          findings_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_check_at?: string | null
+          monitor_type: string
+          next_check_at?: string | null
+          project_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_fix_enabled?: boolean | null
+          check_interval_hours?: number | null
+          created_at?: string
+          findings_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_check_at?: string | null
+          monitor_type?: string
+          next_check_at?: string | null
+          project_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_monitors_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      package_operations: {
+        Row: {
+          changes_made: Json | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          from_version: string | null
+          id: string
+          operation_type: string
+          package_name: string
+          project_id: string | null
+          rollback_data: Json | null
+          started_at: string | null
+          status: string
+          to_version: string | null
+          triggered_by: string
+          user_id: string
+        }
+        Insert: {
+          changes_made?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          from_version?: string | null
+          id?: string
+          operation_type: string
+          package_name: string
+          project_id?: string | null
+          rollback_data?: Json | null
+          started_at?: string | null
+          status?: string
+          to_version?: string | null
+          triggered_by?: string
+          user_id: string
+        }
+        Update: {
+          changes_made?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          from_version?: string | null
+          id?: string
+          operation_type?: string
+          package_name?: string
+          project_id?: string | null
+          rollback_data?: Json | null
+          started_at?: string | null
+          status?: string
+          to_version?: string | null
+          triggered_by?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_operations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       package_security_scans: {
         Row: {

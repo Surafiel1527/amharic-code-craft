@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Package, Search, Zap, Download, CheckCircle, AlertTriangle, Trash2, RefreshCw, Shield } from "lucide-react";
 import { PackageSecurityDashboard } from "@/components/PackageSecurityDashboard";
 import { PackageUpdateManager } from "@/components/PackageUpdateManager";
+import { PackageAutomationDashboard } from "@/components/PackageAutomationDashboard";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAutoInstall } from "@/hooks/useAutoInstall";
@@ -291,7 +292,10 @@ import moment from 'moment';
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="installed">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="automation">
+                🤖 Automation
+              </TabsTrigger>
               <TabsTrigger value="installed">
                 Installed ({installedPackages.length})
               </TabsTrigger>
@@ -306,6 +310,10 @@ import moment from 'moment';
                 Updates
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="automation" className="space-y-4">
+              <PackageAutomationDashboard />
+            </TabsContent>
 
             <TabsContent value="installed" className="space-y-4">
               <ScrollArea className="h-[400px]">
