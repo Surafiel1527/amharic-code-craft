@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Brain, AlertTriangle, CheckCircle2, TrendingUp, Zap, Sparkles, Activity, Target } from "lucide-react";
+import { Brain, AlertTriangle, CheckCircle2, TrendingUp, Zap, Sparkles, Activity, Target, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useProactiveMonitoring } from "@/hooks/useProactiveMonitoring";
 
 interface HealingPattern {
   id: string;
@@ -49,6 +50,9 @@ export function SelfHealingMonitor() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const { toast } = useToast();
+  
+  // Enable adaptive proactive monitoring
+  const { lastCheck, healthStatus, issuesCount, schedule, isHealthy } = useProactiveMonitoring(true);
 
   useEffect(() => {
     loadStats();
@@ -236,12 +240,55 @@ export function SelfHealingMonitor() {
   };
 
   return (
-    <Tabs defaultValue="healing" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="healing">🧠 Self-Healing</TabsTrigger>
-        <TabsTrigger value="predictions">🔮 Predictions</TabsTrigger>
-        <TabsTrigger value="optimization">⚡ Optimization</TabsTrigger>
-      </TabsList>
+    <div className="space-y-6">
+      {/* Header */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-6 w-6 text-primary" />
+            SUPER Mega Mind Dashboard
+          </CardTitle>
+          <CardDescription>
+            Advanced self-healing, predictive analytics, and auto-optimization with adaptive monitoring
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      {/* Proactive Monitoring Status */}
+      <Card className="border-2 border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Proactive Monitoring
+            <Badge variant={isHealthy ? "default" : "destructive"} className="ml-auto">
+              {healthStatus}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Schedule Mode</p>
+              <p className="text-lg font-semibold">{schedule}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Issues Detected</p>
+              <p className="text-2xl font-bold">{issuesCount}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Last Check</p>
+              <p className="text-sm">{lastCheck ? lastCheck.toLocaleTimeString() : 'Initializing...'}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="healing" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="healing">🧠 Self-Healing</TabsTrigger>
+          <TabsTrigger value="predictions">🔮 Predictions</TabsTrigger>
+          <TabsTrigger value="optimization">⚡ Optimization</TabsTrigger>
+        </TabsList>
 
       <TabsContent value="healing" className="space-y-6">
         <div className="flex items-center justify-between">
@@ -480,5 +527,6 @@ export function SelfHealingMonitor() {
         </Card>
       </TabsContent>
     </Tabs>
+    </div>
   );
 }

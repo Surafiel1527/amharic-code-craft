@@ -13,17 +13,32 @@ interface MonitoringResult {
  * useProactiveMonitoring - Periodically checks system health
  * Runs proactive monitoring in the background
  */
-export const useProactiveMonitoring = (intervalMinutes: number = 60) => {
+export const useProactiveMonitoring = (enableAdaptive: boolean = true) => {
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
   const [healthStatus, setHealthStatus] = useState<string>('unknown');
   const [issuesCount, setIssuesCount] = useState<number>(0);
+  const [schedule, setSchedule] = useState<string>('adaptive');
 
   useEffect(() => {
-    logInfo('Proactive Monitoring: Initialized', { intervalMinutes });
+    logInfo('Proactive Monitoring: Initialized', { enableAdaptive });
+
+    const getIntervalMinutes = () => {
+      if (!enableAdaptive) return 5; // Default 5 minutes if not adaptive
+      
+      const hour = new Date().getHours();
+      // After midnight (00:00) until morning (06:00) = 30 minutes
+      // Active hours = 5 minutes
+      if (hour >= 0 && hour < 6) {
+        setSchedule('night-mode (30min)');
+        return 30;
+      }
+      setSchedule('active-mode (5min)');
+      return 5;
+    };
 
     const runMonitoring = async () => {
       try {
-        logInfo('Proactive Monitoring: Running system health check...');
+        logInfo('Proactive Monitoring: Running system health check...', { schedule });
 
         const { data, error } = await supabase.functions.invoke('proactive-monitor');
 
@@ -59,7 +74,7 @@ export const useProactiveMonitoring = (intervalMinutes: number = 60) => {
           severity: 'medium',
           filePath: 'hooks/useProactiveMonitoring.ts',
           functionName: 'runMonitoring',
-          context: { intervalMinutes }
+          context: { enableAdaptive, schedule }
         });
       }
     };
@@ -67,19 +82,36 @@ export const useProactiveMonitoring = (intervalMinutes: number = 60) => {
     // Run immediately on mount
     runMonitoring();
 
-    // Set up interval
-    const intervalId = setInterval(runMonitoring, intervalMinutes * 60 * 1000);
+    // Set up adaptive interval that recalculates every hour
+    let intervalId: NodeJS.Timeout;
+    
+    const setupInterval = () => {
+      const intervalMinutes = getIntervalMinutes();
+      logInfo('Proactive Monitoring: Setting interval', { intervalMinutes, schedule });
+      
+      intervalId = setInterval(runMonitoring, intervalMinutes * 60 * 1000);
+    };
+
+    setupInterval();
+
+    // Recalculate interval every hour to adapt to time changes
+    const hourlyCheckId = setInterval(() => {
+      clearInterval(intervalId);
+      setupInterval();
+    }, 60 * 60 * 1000); // Every hour
 
     return () => {
       logInfo('Proactive Monitoring: Cleaning up');
       clearInterval(intervalId);
+      clearInterval(hourlyCheckId);
     };
-  }, [intervalMinutes]);
+  }, [enableAdaptive]);
 
   return {
     lastCheck,
     healthStatus,
     issuesCount,
+    schedule,
     isHealthy: healthStatus === 'healthy'
   };
 };

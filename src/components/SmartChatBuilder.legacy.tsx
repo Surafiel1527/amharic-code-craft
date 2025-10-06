@@ -49,7 +49,7 @@ interface SmartChatBuilderProps {
 export const SmartChatBuilder = ({ onCodeGenerated, currentCode }: SmartChatBuilderProps) => {
   // Error monitoring
   useErrorMonitor();
-  const { healthStatus, issuesCount, isHealthy } = useProactiveMonitoring(60);
+  const { healthStatus, issuesCount, isHealthy } = useProactiveMonitoring(false);
   const { t } = useLanguage();
   
   const [messages, setMessages] = useState<Message[]>([]);
