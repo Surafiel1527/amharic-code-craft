@@ -1,5 +1,17 @@
 project_id = "xuncvfnvatgqshlivuep"
 
+[functions.smart-build-optimizer]
+verify_jwt = false
+
+[functions.predictive-alert-engine]
+verify_jwt = false
+
+[functions.deployment-orchestrator]
+verify_jwt = true
+
+[functions.smart-rollback-engine]
+verify_jwt = false
+
 [functions.real-code-analysis]
 verify_jwt = true
 

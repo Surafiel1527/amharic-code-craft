@@ -1,313 +1,372 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  Brain, 
-  TrendingUp, 
-  Zap, 
-  Target, 
-  Workflow,
-  Lightbulb,
-  BarChart3,
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
   Activity,
+  AlertTriangle,
+  Brain,
   Clock,
+  Package,
+  Rocket,
+  Shield,
+  TestTube,
+  TrendingUp,
+  Zap,
   CheckCircle2,
-  AlertCircle
+  XCircle
 } from "lucide-react";
+import { toast } from "sonner";
 
 export const EnterpriseProjectDashboard = () => {
-  const [orchestratorTask, setOrchestratorTask] = useState("");
-  const [orchestratorResult, setOrchestratorResult] = useState<any>(null);
-  const [isOrchestrating, setIsOrchestrating] = useState(false);
-  
-  const [proactiveMode, setProactiveMode] = useState("suggestions");
-  const [proactiveSuggestions, setProactiveSuggestions] = useState<any[]>([]);
-  const [isLoadingProactive, setIsLoadingProactive] = useState(false);
-  
-  const { toast } = useToast();
+  const [predictions, setPredictions] = useState<any[]>([]);
+  const [buildOptimizations, setBuildOptimizations] = useState<any[]>([]);
+  const [deployments, setDeployments] = useState<any[]>([]);
+  const [systemHealth, setSystemHealth] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const runSmartOrchestrator = async () => {
-    if (!orchestratorTask.trim()) {
-      toast({
-        title: "Task Required",
-        description: "Please describe the task to orchestrate",
-        variant: "destructive"
-      });
-      return;
-    }
+  useEffect(() => {
+    loadDashboardData();
+    
+    // Real-time updates
+    const channel = supabase
+      .channel('enterprise-dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'predictive_alerts' }, loadPredictions)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'build_optimizations' }, loadOptimizations)
+      .subscribe();
 
-    setIsOrchestrating(true);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const loadDashboardData = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('smart-orchestrator', {
-        body: { 
-          task: orchestratorTask,
-          context: { timestamp: new Date().toISOString() }
-        }
-      });
-
-      if (error) throw error;
-
-      setOrchestratorResult(data);
-      toast({
-        title: "✅ Orchestration Complete!",
-        description: `Completed ${data.total_steps} steps successfully`
-      });
-    } catch (error: any) {
-      console.error('Orchestration error:', error);
-      toast({
-        title: "Orchestration Failed",
-        description: error.message,
-        variant: "destructive"
-      });
+      await Promise.all([
+        loadPredictions(),
+        loadOptimizations(),
+        loadDeployments(),
+        loadSystemHealth()
+      ]);
     } finally {
-      setIsOrchestrating(false);
+      setLoading(false);
     }
   };
 
-  const getProactiveIntelligence = async () => {
-    setIsLoadingProactive(true);
+  const loadPredictions = async () => {
+    const { data } = await supabase
+      .from('predictive_alerts')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    setPredictions(data || []);
+  };
+
+  const loadOptimizations = async () => {
+    const { data } = await supabase
+      .from('build_optimizations')
+      .select('*')
+      .eq('auto_apply', true)
+      .order('confidence_score', { ascending: false })
+      .limit(5);
+
+    setBuildOptimizations(data || []);
+  };
+
+  const loadDeployments = async () => {
+    const { data } = await supabase
+      .from('deployment_pipelines')
+      .select('*')
+      .eq('is_active', true)
+      .order('last_run_at', { ascending: false })
+      .limit(5);
+
+    setDeployments(data || []);
+  };
+
+  const loadSystemHealth = async () => {
+    // Get various system metrics
+    const [jobs, errors, packages, tests] = await Promise.all([
+      supabase.from('ai_generation_jobs').select('status', { count: 'exact', head: true }),
+      supabase.from('detected_errors').select('severity', { count: 'exact', head: true }),
+      supabase.from('package_operations').select('status', { count: 'exact', head: true }),
+      supabase.from('test_runs').select('status', { count: 'exact', head: true })
+    ]);
+
+    setSystemHealth({
+      jobs: jobs.count || 0,
+      errors: errors.count || 0,
+      packages: packages.count || 0,
+      tests: tests.count || 0
+    });
+  };
+
+  const runPredictiveAnalysis = async () => {
+    toast.loading("Running predictive analysis...");
+    
     try {
-      const { data, error } = await supabase.functions.invoke('proactive-intelligence', {
-        body: { mode: proactiveMode }
-      });
-
-      if (error) throw error;
-
-      setProactiveSuggestions(data.suggestions);
-      toast({
-        title: "🧠 Intelligence Generated",
-        description: `${data.suggestions.length} proactive suggestions ready`
-      });
-    } catch (error: any) {
-      console.error('Proactive intelligence error:', error);
-      toast({
-        title: "Failed to Generate Intelligence",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoadingProactive(false);
+      await supabase.functions.invoke('predictive-alert-engine');
+      toast.success("Predictive analysis complete!");
+      loadPredictions();
+    } catch (error) {
+      toast.error("Failed to run analysis");
+      console.error(error);
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'destructive';
-      case 'medium': return 'default';
-      case 'low': return 'secondary';
-      default: return 'outline';
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'destructive';
+      case 'warning': return 'default';
+      default: return 'secondary';
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
-          <Brain className="h-6 w-6 text-white" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold">Enterprise Intelligence</h2>
-          <p className="text-muted-foreground">Advanced AI orchestration & proactive insights</p>
+  if (loading) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
         </div>
       </div>
+    );
+  }
 
-      <Tabs defaultValue="orchestrator" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="orchestrator" className="flex items-center gap-2">
-            <Workflow className="h-4 w-4" />
-            Smart Orchestrator
-          </TabsTrigger>
-          <TabsTrigger value="proactive" className="flex items-center gap-2">
-            <Lightbulb className="h-4 w-4" />
-            Proactive AI
-          </TabsTrigger>
+  return (
+    <div className="container mx-auto py-8 px-4 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold flex items-center gap-3">
+            <Brain className="h-10 w-10 text-primary" />
+            Enterprise Intelligence Hub
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Predictive analytics, smart builds, and autonomous deployments
+          </p>
+        </div>
+        <Button onClick={runPredictiveAnalysis} className="gap-2">
+          <Zap className="h-4 w-4" />
+          Run Prediction
+        </Button>
+      </div>
+
+      {/* System Health Overview */}
+      {systemHealth && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Jobs</p>
+                  <p className="text-2xl font-bold">{systemHealth.jobs}</p>
+                </div>
+                <Activity className="h-8 w-8 text-primary" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Errors</p>
+                  <p className="text-2xl font-bold">{systemHealth.errors}</p>
+                </div>
+                <AlertTriangle className="h-8 w-8 text-orange-500" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Packages</p>
+                  <p className="text-2xl font-bold">{systemHealth.packages}</p>
+                </div>
+                <Package className="h-8 w-8 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Test Runs</p>
+                  <p className="text-2xl font-bold">{systemHealth.tests}</p>
+                </div>
+                <TestTube className="h-8 w-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <Tabs defaultValue="predictions" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="predictions">Predictive Alerts</TabsTrigger>
+          <TabsTrigger value="builds">Smart Builds</TabsTrigger>
+          <TabsTrigger value="deployments">Deployments</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="orchestrator" className="space-y-4">
+        {/* Predictive Alerts */}
+        <TabsContent value="predictions" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Workflow className="h-5 w-5" />
-                Multi-Step AI Orchestrator
+                <AlertTriangle className="h-5 w-5" />
+                Predictive Failure Alerts
               </CardTitle>
               <CardDescription>
-                Describe a complex task and AI will break it down and execute it step-by-step
+                AI-predicted failures before they occur
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Textarea
-                  placeholder="E.g., 'Create a REST API with authentication, add unit tests, deploy to production, and generate documentation'"
-                  value={orchestratorTask}
-                  onChange={(e) => setOrchestratorTask(e.target.value)}
-                  rows={4}
-                />
-                <Button 
-                  onClick={runSmartOrchestrator}
-                  disabled={isOrchestrating}
-                  className="w-full"
-                >
-                  {isOrchestrating ? (
-                    <>
-                      <Clock className="h-4 w-4 mr-2 animate-spin" />
-                      Orchestrating...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-4 w-4 mr-2" />
-                      Orchestrate Task
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {orchestratorResult && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="text-center">
-                          <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                          <div className="text-2xl font-bold">{orchestratorResult.total_steps}</div>
-                          <div className="text-sm text-muted-foreground">Steps Completed</div>
+              {predictions.length === 0 ? (
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertDescription>
+                    No predicted failures. System is healthy!
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                predictions.map((pred) => (
+                  <Alert key={pred.id} variant={pred.severity === 'critical' ? 'destructive' : 'default'}>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold">{pred.alert_type}</span>
+                        <Badge variant={getSeverityColor(pred.severity) as any}>
+                          {pred.prediction_confidence}% confidence
+                        </Badge>
+                      </div>
+                      {pred.predicted_failure_time && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          Predicted: {new Date(pred.predicted_failure_time).toLocaleString()}
                         </div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="text-center">
-                          <Activity className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-                          <div className="text-2xl font-bold">{orchestratorResult.success_rate}%</div>
-                          <div className="text-sm text-muted-foreground">Success Rate</div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="text-center">
-                          <Clock className="h-8 w-8 text-purple-500 mx-auto mb-2" />
-                          <div className="text-2xl font-bold">{Math.floor(orchestratorResult.total_time / 60)}m</div>
-                          <div className="text-sm text-muted-foreground">Total Time</div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Execution Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ScrollArea className="h-[200px]">
-                        <div className="space-y-3">
-                          {orchestratorResult.results?.map((result: any, idx: number) => (
-                            <div key={idx} className="border rounded-lg p-3">
-                              <div className="flex items-start justify-between mb-2">
-                                <Badge variant="outline">Step {result.step_number}</Badge>
-                                <Badge>{result.action_type}</Badge>
-                              </div>
-                              <p className="font-medium mb-1">{result.description}</p>
-                              <p className="text-sm text-muted-foreground line-clamp-2">{result.output}</p>
-                            </div>
+                      )}
+                      <div className="mt-2">
+                        <p className="text-sm font-medium">Recommended Actions:</p>
+                        <ul className="text-sm list-disc list-inside">
+                          {(pred.recommended_actions || []).map((action: string, idx: number) => (
+                            <li key={idx}>{action}</li>
                           ))}
-                        </div>
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>AI Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm whitespace-pre-wrap">{orchestratorResult.summary}</p>
-                    </CardContent>
-                  </Card>
-                </div>
+                        </ul>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                ))
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="proactive" className="space-y-4">
+        {/* Smart Builds */}
+        <TabsContent value="builds" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Lightbulb className="h-5 w-5" />
-                Proactive AI Suggestions
+                <TrendingUp className="h-5 w-5" />
+                AI Build Optimizations
               </CardTitle>
               <CardDescription>
-                AI analyzes your patterns and proactively suggests optimizations
+                Learned optimizations ready to auto-apply
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Button 
-                  onClick={getProactiveIntelligence}
-                  disabled={isLoadingProactive}
-                  className="flex-1"
-                >
-                  {isLoadingProactive ? (
-                    <>
-                      <Brain className="h-4 w-4 mr-2 animate-pulse" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <TrendingUp className="h-4 w-4 mr-2" />
-                      Generate Intelligence
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {proactiveSuggestions.length > 0 && (
-                <ScrollArea className="h-[500px]">
-                  <div className="space-y-3">
-                    {proactiveSuggestions.map((suggestion: any, idx: number) => (
-                      <Card key={idx}>
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2">
-                              <Target className="h-5 w-5 text-primary" />
-                              <CardTitle className="text-lg">{suggestion.title}</CardTitle>
-                            </div>
-                            <Badge variant={getPriorityColor(suggestion.priority)}>
-                              {suggestion.priority}
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          <p className="text-sm">{suggestion.description}</p>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <BarChart3 className="h-4 w-4" />
-                              Impact: {suggestion.estimated_impact}
-                            </div>
-                            <Badge variant="outline">{suggestion.action_type}</Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </ScrollArea>
-              )}
-
-              {proactiveSuggestions.length === 0 && (
-                <Card className="border-dashed">
-                  <CardContent className="pt-6 text-center">
-                    <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">
-                      Click "Generate Intelligence" to get AI-powered suggestions based on your activity
+              {buildOptimizations.length === 0 ? (
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertDescription>
+                    No optimizations available yet. System is learning...
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                buildOptimizations.map((opt) => (
+                  <div key={opt.id} className="p-4 border rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold">{opt.optimization_name}</h4>
+                      <Badge variant="secondary">
+                        {opt.improvement_percentage}% faster
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Type: {opt.optimization_type} • Confidence: {opt.confidence_score}%
                     </p>
-                  </CardContent>
-                </Card>
+                    <p className="text-sm">
+                      Applied {opt.applied_count || 0} times • {opt.success_rate}% success rate
+                    </p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Deployments */}
+        <TabsContent value="deployments" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Rocket className="h-5 w-5" />
+                Active Deployment Pipelines
+              </CardTitle>
+              <CardDescription>
+                Automated deployment with health monitoring
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {deployments.length === 0 ? (
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertDescription>
+                    No active pipelines. Create one to enable auto-deployment.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                deployments.map((dep) => (
+                  <div key={dep.id} className="p-4 border rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold">{dep.pipeline_name}</h4>
+                      {dep.auto_deploy && (
+                        <Badge variant="secondary" className="gap-1">
+                          <Zap className="h-3 w-3" />
+                          Auto-Deploy
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex gap-4 text-sm">
+                      <span className="flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        {dep.success_count || 0} successes
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <XCircle className="h-3 w-3 text-red-500" />
+                        {dep.failure_count || 0} failures
+                      </span>
+                      {dep.auto_rollback && (
+                        <span className="flex items-center gap-1">
+                          <Shield className="h-3 w-3 text-blue-500" />
+                          Auto-rollback enabled
+                        </span>
+                      )}
+                    </div>
+                    {dep.last_run_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Last run: {new Date(dep.last_run_at).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                ))
               )}
             </CardContent>
           </Card>

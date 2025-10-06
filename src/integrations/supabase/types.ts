@@ -908,6 +908,65 @@ export type Database = {
           },
         ]
       }
+      auto_rollback_logs: {
+        Row: {
+          completed_at: string | null
+          deployment_id: string | null
+          duration_seconds: number | null
+          error_message: string | null
+          from_version: string | null
+          health_metrics_after: Json | null
+          health_metrics_before: Json | null
+          id: string
+          pipeline_id: string | null
+          rollback_strategy: string
+          success: boolean | null
+          to_version: string | null
+          trigger_reason: string
+          triggered_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          deployment_id?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          from_version?: string | null
+          health_metrics_after?: Json | null
+          health_metrics_before?: Json | null
+          id?: string
+          pipeline_id?: string | null
+          rollback_strategy: string
+          success?: boolean | null
+          to_version?: string | null
+          trigger_reason: string
+          triggered_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          deployment_id?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          from_version?: string | null
+          health_metrics_after?: Json | null
+          health_metrics_before?: Json | null
+          id?: string
+          pipeline_id?: string | null
+          rollback_strategy?: string
+          success?: boolean | null
+          to_version?: string | null
+          trigger_reason?: string
+          triggered_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_rollback_logs_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auto_snapshot_config: {
         Row: {
           created_at: string | null
@@ -932,6 +991,107 @@ export type Database = {
           interval_minutes?: number | null
           max_snapshots?: number | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      build_cache: {
+        Row: {
+          ai_recommendations: Json | null
+          build_time_ms: number | null
+          cache_data: Json
+          cache_hit_rate: number | null
+          cache_key: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          last_used_at: string | null
+          optimization_score: number | null
+          project_id: string | null
+        }
+        Insert: {
+          ai_recommendations?: Json | null
+          build_time_ms?: number | null
+          cache_data?: Json
+          cache_hit_rate?: number | null
+          cache_key: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          optimization_score?: number | null
+          project_id?: string | null
+        }
+        Update: {
+          ai_recommendations?: Json | null
+          build_time_ms?: number | null
+          cache_data?: Json
+          cache_hit_rate?: number | null
+          cache_key?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          optimization_score?: number | null
+          project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "build_cache_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      build_optimizations: {
+        Row: {
+          after_metrics: Json
+          applied_count: number | null
+          auto_apply: boolean | null
+          before_metrics: Json
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          improvement_percentage: number | null
+          last_applied_at: string | null
+          learned_from_projects: number | null
+          optimization_code: string | null
+          optimization_name: string
+          optimization_type: string
+          success_rate: number | null
+        }
+        Insert: {
+          after_metrics?: Json
+          applied_count?: number | null
+          auto_apply?: boolean | null
+          before_metrics?: Json
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          improvement_percentage?: number | null
+          last_applied_at?: string | null
+          learned_from_projects?: number | null
+          optimization_code?: string | null
+          optimization_name: string
+          optimization_type: string
+          success_rate?: number | null
+        }
+        Update: {
+          after_metrics?: Json
+          applied_count?: number | null
+          auto_apply?: boolean | null
+          before_metrics?: Json
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          improvement_percentage?: number | null
+          last_applied_at?: string | null
+          learned_from_projects?: number | null
+          optimization_code?: string | null
+          optimization_name?: string
+          optimization_type?: string
+          success_rate?: number | null
         }
         Relationships: []
       }
@@ -2375,6 +2535,127 @@ export type Database = {
         }
         Relationships: []
       }
+      deployment_pipelines: {
+        Row: {
+          auto_deploy: boolean | null
+          auto_rollback: boolean | null
+          created_at: string | null
+          failure_count: number | null
+          health_checks: Json | null
+          id: string
+          is_active: boolean | null
+          last_run_at: string | null
+          notifications: Json | null
+          pipeline_config: Json
+          pipeline_name: string
+          project_id: string | null
+          rollback_threshold: number | null
+          stages: Json
+          success_count: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auto_deploy?: boolean | null
+          auto_rollback?: boolean | null
+          created_at?: string | null
+          failure_count?: number | null
+          health_checks?: Json | null
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          notifications?: Json | null
+          pipeline_config?: Json
+          pipeline_name: string
+          project_id?: string | null
+          rollback_threshold?: number | null
+          stages?: Json
+          success_count?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auto_deploy?: boolean | null
+          auto_rollback?: boolean | null
+          created_at?: string | null
+          failure_count?: number | null
+          health_checks?: Json | null
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          notifications?: Json | null
+          pipeline_config?: Json
+          pipeline_name?: string
+          project_id?: string | null
+          rollback_threshold?: number | null
+          stages?: Json
+          success_count?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployment_pipelines_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deployment_predictions: {
+        Row: {
+          actual_result: string | null
+          confidence_score: number
+          created_at: string | null
+          estimated_duration_minutes: number | null
+          id: string
+          pipeline_id: string | null
+          prediction_accuracy: number | null
+          prediction_data: Json | null
+          prediction_type: string
+          recommended_changes: Json | null
+          risk_factors: Json | null
+          success_probability: number
+        }
+        Insert: {
+          actual_result?: string | null
+          confidence_score: number
+          created_at?: string | null
+          estimated_duration_minutes?: number | null
+          id?: string
+          pipeline_id?: string | null
+          prediction_accuracy?: number | null
+          prediction_data?: Json | null
+          prediction_type: string
+          recommended_changes?: Json | null
+          risk_factors?: Json | null
+          success_probability: number
+        }
+        Update: {
+          actual_result?: string | null
+          confidence_score?: number
+          created_at?: string | null
+          estimated_duration_minutes?: number | null
+          id?: string
+          pipeline_id?: string | null
+          prediction_accuracy?: number | null
+          prediction_data?: Json | null
+          prediction_type?: string
+          recommended_changes?: Json | null
+          risk_factors?: Json | null
+          success_probability?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployment_predictions_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "deployment_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deployment_rollbacks: {
         Row: {
           completed_at: string | null
@@ -3233,6 +3514,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      meta_improvement_queue: {
+        Row: {
+          applied_at: string | null
+          confidence_score: number | null
+          created_at: string | null
+          current_performance: Json
+          id: string
+          impact_analysis: Json | null
+          improvement_category: string
+          priority: string | null
+          proposed_changes: Json
+          status: string | null
+          target_performance: Json
+          test_results: Json | null
+        }
+        Insert: {
+          applied_at?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          current_performance?: Json
+          id?: string
+          impact_analysis?: Json | null
+          improvement_category: string
+          priority?: string | null
+          proposed_changes?: Json
+          status?: string | null
+          target_performance?: Json
+          test_results?: Json | null
+        }
+        Update: {
+          applied_at?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          current_performance?: Json
+          id?: string
+          impact_analysis?: Json | null
+          improvement_category?: string
+          priority?: string | null
+          proposed_changes?: Json
+          status?: string | null
+          target_performance?: Json
+          test_results?: Json | null
+        }
+        Relationships: []
       }
       model_performance: {
         Row: {
@@ -4153,6 +4479,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      predictive_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string | null
+          current_metrics: Json
+          id: string
+          metadata: Json | null
+          predicted_failure_time: string | null
+          prediction_confidence: number
+          recommended_actions: Json
+          resolved_at: string | null
+          severity: string
+          status: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string | null
+          current_metrics?: Json
+          id?: string
+          metadata?: Json | null
+          predicted_failure_time?: string | null
+          prediction_confidence?: number
+          recommended_actions?: Json
+          resolved_at?: string | null
+          severity: string
+          status?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string | null
+          current_metrics?: Json
+          id?: string
+          metadata?: Json | null
+          predicted_failure_time?: string | null
+          prediction_confidence?: number
+          recommended_actions?: Json
+          resolved_at?: string | null
+          severity?: string
+          status?: string | null
+        }
+        Relationships: []
       }
       premium_templates: {
         Row: {
@@ -5183,6 +5557,54 @@ export type Database = {
           reason?: string
           status?: string | null
           success_metric?: number | null
+        }
+        Relationships: []
+      }
+      system_predictions: {
+        Row: {
+          actual_outcome: string | null
+          confidence_score: number
+          created_at: string | null
+          failure_probability: number
+          id: string
+          predicted_for: string | null
+          prediction_data: Json
+          prediction_type: string
+          preventive_actions: Json
+          root_cause_analysis: Json
+          target_system: string
+          time_to_failure_hours: number | null
+          validated: boolean | null
+        }
+        Insert: {
+          actual_outcome?: string | null
+          confidence_score: number
+          created_at?: string | null
+          failure_probability: number
+          id?: string
+          predicted_for?: string | null
+          prediction_data?: Json
+          prediction_type: string
+          preventive_actions?: Json
+          root_cause_analysis?: Json
+          target_system: string
+          time_to_failure_hours?: number | null
+          validated?: boolean | null
+        }
+        Update: {
+          actual_outcome?: string | null
+          confidence_score?: number
+          created_at?: string | null
+          failure_probability?: number
+          id?: string
+          predicted_for?: string | null
+          prediction_data?: Json
+          prediction_type?: string
+          preventive_actions?: Json
+          root_cause_analysis?: Json
+          target_system?: string
+          time_to_failure_hours?: number | null
+          validated?: boolean | null
         }
         Relationships: []
       }
