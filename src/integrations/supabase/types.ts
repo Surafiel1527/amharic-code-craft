@@ -420,6 +420,54 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_package_suggestions: {
+        Row: {
+          accepted: boolean | null
+          alternatives: Json | null
+          created_at: string | null
+          id: string
+          maintenance_score: number | null
+          overall_score: number | null
+          popularity_score: number | null
+          project_id: string | null
+          reason: string
+          security_score: number | null
+          suggested_package: string
+          use_case: string
+          user_id: string | null
+        }
+        Insert: {
+          accepted?: boolean | null
+          alternatives?: Json | null
+          created_at?: string | null
+          id?: string
+          maintenance_score?: number | null
+          overall_score?: number | null
+          popularity_score?: number | null
+          project_id?: string | null
+          reason: string
+          security_score?: number | null
+          suggested_package: string
+          use_case: string
+          user_id?: string | null
+        }
+        Update: {
+          accepted?: boolean | null
+          alternatives?: Json | null
+          created_at?: string | null
+          id?: string
+          maintenance_score?: number | null
+          overall_score?: number | null
+          popularity_score?: number | null
+          project_id?: string | null
+          reason?: string
+          security_score?: number | null
+          suggested_package?: string
+          use_case?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_plugins: {
         Row: {
           config_schema: Json
@@ -2075,6 +2123,48 @@ export type Database = {
           },
         ]
       }
+      dependency_conflicts: {
+        Row: {
+          ai_confidence: number | null
+          conflict_reason: string
+          conflicting_with: string
+          created_at: string | null
+          id: string
+          package_name: string
+          resolution_suggestion: string | null
+          resolved: boolean | null
+          resolved_at: string | null
+          user_id: string | null
+          version_requested: string
+        }
+        Insert: {
+          ai_confidence?: number | null
+          conflict_reason: string
+          conflicting_with: string
+          created_at?: string | null
+          id?: string
+          package_name: string
+          resolution_suggestion?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          user_id?: string | null
+          version_requested: string
+        }
+        Update: {
+          ai_confidence?: number | null
+          conflict_reason?: string
+          conflicting_with?: string
+          created_at?: string | null
+          id?: string
+          package_name?: string
+          resolution_suggestion?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          user_id?: string | null
+          version_requested?: string
+        }
+        Relationships: []
+      }
       deployment_analytics: {
         Row: {
           deployment_id: string
@@ -3379,6 +3469,45 @@ export type Database = {
           },
         ]
       }
+      package_dependency_tree: {
+        Row: {
+          created_at: string | null
+          dependencies: Json | null
+          dev_dependencies: Json | null
+          id: string
+          package_name: string
+          peer_dependencies: Json | null
+          total_size_bytes: number | null
+          updated_at: string | null
+          user_id: string | null
+          version: string
+        }
+        Insert: {
+          created_at?: string | null
+          dependencies?: Json | null
+          dev_dependencies?: Json | null
+          id?: string
+          package_name: string
+          peer_dependencies?: Json | null
+          total_size_bytes?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          version: string
+        }
+        Update: {
+          created_at?: string | null
+          dependencies?: Json | null
+          dev_dependencies?: Json | null
+          id?: string
+          package_name?: string
+          peer_dependencies?: Json | null
+          total_size_bytes?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       package_install_logs: {
         Row: {
           action: string
@@ -3442,6 +3571,96 @@ export type Database = {
           packages?: Json
           success?: boolean
           user_id?: string
+        }
+        Relationships: []
+      }
+      package_security_scans: {
+        Row: {
+          created_at: string | null
+          critical_count: number | null
+          high_count: number | null
+          id: string
+          low_count: number | null
+          medium_count: number | null
+          package_name: string
+          scan_date: string | null
+          scan_status: string | null
+          user_id: string | null
+          version: string
+          vulnerabilities: Json | null
+          vulnerability_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          critical_count?: number | null
+          high_count?: number | null
+          id?: string
+          low_count?: number | null
+          medium_count?: number | null
+          package_name: string
+          scan_date?: string | null
+          scan_status?: string | null
+          user_id?: string | null
+          version: string
+          vulnerabilities?: Json | null
+          vulnerability_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          critical_count?: number | null
+          high_count?: number | null
+          id?: string
+          low_count?: number | null
+          medium_count?: number | null
+          package_name?: string
+          scan_date?: string | null
+          scan_status?: string | null
+          user_id?: string | null
+          version?: string
+          vulnerabilities?: Json | null
+          vulnerability_count?: number | null
+        }
+        Relationships: []
+      }
+      package_updates: {
+        Row: {
+          auto_update_approved: boolean | null
+          breaking_changes: boolean | null
+          changelog: string | null
+          created_at: string | null
+          current_version: string
+          id: string
+          installed_at: string | null
+          latest_version: string
+          package_name: string
+          update_type: string
+          user_id: string | null
+        }
+        Insert: {
+          auto_update_approved?: boolean | null
+          breaking_changes?: boolean | null
+          changelog?: string | null
+          created_at?: string | null
+          current_version: string
+          id?: string
+          installed_at?: string | null
+          latest_version: string
+          package_name: string
+          update_type: string
+          user_id?: string | null
+        }
+        Update: {
+          auto_update_approved?: boolean | null
+          breaking_changes?: boolean | null
+          changelog?: string | null
+          created_at?: string | null
+          current_version?: string
+          id?: string
+          installed_at?: string | null
+          latest_version?: string
+          package_name?: string
+          update_type?: string
+          user_id?: string | null
         }
         Relationships: []
       }

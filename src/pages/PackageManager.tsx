@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Package, Search, Zap, Download, CheckCircle, AlertTriangle, Trash2, RefreshCw } from "lucide-react";
+import { Package, Search, Zap, Download, CheckCircle, AlertTriangle, Trash2, RefreshCw, Shield } from "lucide-react";
+import { PackageSecurityDashboard } from "@/components/PackageSecurityDashboard";
+import { PackageUpdateManager } from "@/components/PackageUpdateManager";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAutoInstall } from "@/hooks/useAutoInstall";
@@ -289,12 +291,19 @@ import moment from 'moment';
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="installed">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="installed">
                 Installed ({installedPackages.length})
               </TabsTrigger>
               <TabsTrigger value="available">
                 Available ({availablePackages.length})
+              </TabsTrigger>
+              <TabsTrigger value="security">
+                <Shield className="h-4 w-4 mr-2" />
+                Security
+              </TabsTrigger>
+              <TabsTrigger value="updates">
+                Updates
               </TabsTrigger>
             </TabsList>
 
@@ -343,6 +352,14 @@ import moment from 'moment';
               <div className="text-center py-12 text-muted-foreground">
                 Search for packages to see available options
               </div>
+            </TabsContent>
+
+            <TabsContent value="security" className="space-y-4">
+              <PackageSecurityDashboard />
+            </TabsContent>
+
+            <TabsContent value="updates" className="space-y-4">
+              <PackageUpdateManager />
             </TabsContent>
           </Tabs>
         </CardContent>
