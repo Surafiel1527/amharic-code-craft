@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { request, requestType, context = {} } = await req.json();
+    const { request, requestType, context = {}, jobId } = await req.json();
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -29,22 +29,59 @@ serve(async (req) => {
     );
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    let userId: string;
+    
+    // Check if this is a service role call (from cron job)
+    if (token === serviceRoleKey) {
+      console.log('🔧 Service role authentication detected');
+      
+      if (!jobId) {
+        return new Response(
+          JSON.stringify({ error: 'jobId required for service role calls' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Get user_id from the job record
+      const { data: job, error: jobError } = await supabaseClient
+        .from('ai_generation_jobs')
+        .select('user_id')
+        .eq('id', jobId)
+        .single();
+      
+      if (jobError || !job) {
+        return new Response(
+          JSON.stringify({ error: 'Job not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      userId = job.user_id;
+      console.log('✅ Using user_id from job:', userId);
+    } else {
+      // Normal user JWT authentication
+      const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
 
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authorization' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid authorization' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      userId = user.id;
+      console.log('✅ User authenticated:', userId);
     }
 
-    console.log('🧠 Mega Mind Orchestrator - Starting:', { requestType, request: request.substring(0, 100) });
+    console.log('🧠 Mega Mind Orchestrator - Starting:', { requestType, request: request?.substring(0, 100) || 'No request text' });
 
     // Create orchestration record
     const { data: orchestration, error: orchError } = await supabaseClient
       .from('mega_mind_orchestrations')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         request_type: requestType,
         original_request: request,
         context,

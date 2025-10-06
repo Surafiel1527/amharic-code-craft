@@ -91,10 +91,13 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               jobId: job.id,
-              prompt: job.input_data?.prompt || 'Continue processing',
-              conversationId: job.conversation_id,
-              projectId: job.project_id,
-              resumeFromStep: job.completed_steps || 0
+              request: job.input_data?.prompt || 'Continue processing',
+              requestType: job.job_type || 'orchestration',
+              context: {
+                conversationId: job.conversation_id,
+                projectId: job.project_id,
+                resumeFromStep: job.completed_steps || 0
+              }
             }),
           }
         );
