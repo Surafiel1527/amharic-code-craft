@@ -67,7 +67,7 @@ serve(async (req) => {
     const { data: deployment, error: deploymentError } = await supabase
       .from('vercel_deployments')
       .insert({
-        project_id: projectId,
+        project_id: projectId || null,
         user_id: user.id,
         status: 'pending',
         environment: 'production',
@@ -75,8 +75,13 @@ serve(async (req) => {
       .select()
       .single();
 
-    if (deploymentError || !deployment) {
-      throw new Error('Failed to create deployment');
+    if (deploymentError) {
+      console.error('❌ Failed to create deployment record:', deploymentError);
+      throw new Error(`Failed to create deployment: ${deploymentError.message || JSON.stringify(deploymentError)}`);
+    }
+    
+    if (!deployment) {
+      throw new Error('Failed to create deployment: No deployment record returned');
     }
 
     const deploymentId = deployment.id;
