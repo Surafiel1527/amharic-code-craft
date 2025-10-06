@@ -254,8 +254,8 @@ export default function TestDashboard() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => navigate('/tasks')}>
-              Go to Task Manager →
+            <Button onClick={() => navigate('/autonomous-build')}>
+              Test Autonomous Build →
             </Button>
             <Button variant="outline" onClick={handleSignOut}>
               <LogOut className="mr-2 h-4 w-4" />
