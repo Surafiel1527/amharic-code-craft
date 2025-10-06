@@ -1,26 +1,23 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+// Textarea removed - no longer needed
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Loader2, Send, Save, ArrowLeft, Maximize2, Minimize2, 
-  History, Code2, Eye, MessageSquare, Sparkles, RotateCcw, Target, Download, Code, FileCode2, Rocket
+  Loader2, Save, ArrowLeft, Maximize2, Minimize2, 
+  History, Code2, Eye, Sparkles, RotateCcw, Download, Code, FileCode2, Rocket
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { DevicePreview } from "@/components/DevicePreview";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { VersionHistory } from "@/components/VersionHistory";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { PatternLearner } from "@/components/PatternLearner";
-import { OrchestrationProgress } from "@/components/OrchestrationProgress";
-import { ArchitecturePlanViewer } from "@/components/ArchitecturePlanViewer";
-import { QualityMetrics } from "@/components/QualityMetrics";
+// OrchestrationProgress, ArchitecturePlanViewer, QualityMetrics removed - handled by UniversalChatInterface
 import { FileTree } from "@/components/FileTree";
 import { CodeEditor } from "@/components/CodeEditor";
 import { ComponentTemplates } from "@/components/ComponentTemplates";
@@ -50,28 +47,11 @@ import { CodeReviewPanel } from "@/components/CodeReviewPanel";
 import { TemplatesGallery } from "@/components/TemplatesGallery";
 import { UsageAnalyticsDashboard } from "@/components/UsageAnalyticsDashboard";
 import { PerformanceMonitor } from "@/components/PerformanceMonitor";
-import { PythonProjectViewer } from "@/components/PythonProjectViewer";
+// PythonProjectViewer removed - handled by UniversalChatInterface
 import { LanguageCapabilities } from "@/components/LanguageCapabilities";
-import { retryWithBackoff, validateRequest, formatErrorMessage, logMetrics } from "@/utils/orchestrationHelpers";
+// orchestrationHelpers removed - no longer needed
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-  orchestrationData?: {
-    phases: any[];
-    plan?: any;
-    qualityMetrics?: any;
-    totalDuration?: number;
-  };
-  pythonProject?: {
-    projectName: string;
-    description: string;
-    framework: string;
-    files: Array<{ path: string; content: string }>;
-    setupInstructions: string[];
-  };
-}
+// Message interface removed - now handled by UniversalChatInterface
 
 interface Project {
   id: string;
@@ -89,20 +69,10 @@ export default function Workspace() {
   const { user, loading: authLoading } = useAuth();
   
   const [project, setProject] = useState<Project | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
-  const [thinkingMessage, setThinkingMessage] = useState<string>('');
-  const [currentOrchestration, setCurrentOrchestration] = useState<{
-    phases: any[];
-    plan?: any;
-    qualityMetrics?: any;
-    totalDuration?: number;
-  } | null>(null);
   
   // Multi-file system state
   const [projectFiles, setProjectFiles] = useState<any[]>([]);
@@ -112,13 +82,6 @@ export default function Workspace() {
   const [editorMode, setEditorMode] = useState<'single' | 'split'>('single');
   const [showMetrics, setShowMetrics] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
-  const [showMobileChat, setShowMobileChat] = useState(false);
-  
-  // Ref for auto-scrolling chat to bottom
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
 
   const handleRestoreVersion = async (htmlCode: string) => {
     if (!project) return;
@@ -183,7 +146,7 @@ export default function Workspace() {
       // Create or load conversation
       let convId: string | undefined;
       
-      // Try to get the first conversation for this project (with explicit typing)
+      // Try to get the first conversation for this project
       const { data: existingConvs } = await (supabase
         .from('conversations')
         .select('id') as any)
@@ -211,46 +174,13 @@ export default function Workspace() {
 
       if (convId) {
         setConversationId(convId);
-
-        // Load existing messages
-        const { data: existingMessages } = await (supabase
-          .from('messages')
-          .select('*') as any)
-          .eq('conversation_id', convId)
-          .order('created_at', { ascending: true });
-
-        if (existingMessages && existingMessages.length > 0) {
-          setMessages(existingMessages.map((msg: any) => ({
-            role: msg.role as 'user' | 'assistant',
-            content: msg.content,
-            timestamp: msg.created_at
-          })));
-        } else {
-          // Add initial context message only if no messages exist
-          const initialMsg = {
-            role: 'assistant' as const,
-            content: `Welcome to your workspace! I can help you enhance "${data.title}".\n\n✨ I can now work with:\n• React/TypeScript (live preview)\n• Python projects (download & run)\n• Mobile apps (Capacitor)\n\nWhat would you like to create or improve?`,
-            timestamp: new Date().toISOString()
-          };
-          setMessages([initialMsg]);
-          
-          // Save initial message
-          await supabase.from('messages').insert({
-            conversation_id: convId,
-            role: initialMsg.role,
-            content: initialMsg.content
-          });
-        }
       }
     };
 
     loadProject();
   }, [projectId, user, navigate]);
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isLoading]);
+  // Auto-scroll removed - handled by UniversalChatInterface
 
   // Load project files for multi-file mode
   useEffect(() => {
@@ -474,254 +404,7 @@ export default function Workspace() {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!input.trim() || isLoading || !project || !conversationId) return;
-
-    const userMessage: Message = {
-      role: 'user',
-      content: input,
-      timestamp: new Date().toISOString()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    const userInput = input;
-    setInput("");
-    setIsLoading(true);
-    setThinkingMessage('🧠 Reading your project...');
-
-    // Save user message to database
-    await supabase.from('messages').insert({
-      conversation_id: conversationId,
-      role: userMessage.role,
-      content: userMessage.content
-    });
-
-    try {
-      // Detect if this is conversational (not a code request)
-      const conversationalPatterns = /^(thank you|thanks|thx|ok|okay|great|awesome|nice|cool|got it|understood|yes|no|hi|hello|hey|bye|help|what|how|when|why|can you|could you|please|let's|discuss|proposal|question|tell me|explain|show me)[\s\?\!\.]*$/i;
-      const isConversational = conversationalPatterns.test(userInput.trim()) || 
-                               (userInput.trim().length < 50 && !userInput.match(/\b(create|build|add|make|generate|update|change|modify|fix|remove|delete)\b/i));
-
-      if (isConversational) {
-        setThinkingMessage('💭 Thinking about your message...');
-        // Handle conversational messages with simple AI chat
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          throw new Error('No active session. Please log in again.');
-        }
-
-        // Get recent conversation context (last 10 messages)
-        const conversationHistory = messages.slice(-10).map(m => ({
-          role: m.role,
-          content: m.content
-        }));
-
-        // Use a simple chat endpoint for conversation
-        const { data, error } = await supabase.functions.invoke('chat-generate', {
-          body: {
-            message: userInput,
-            conversationHistory,
-            currentCode: null, // Don't include code for casual chat
-            userId: user?.id // Include user ID for personalization
-          },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
-        });
-
-        if (error) throw error;
-
-        const assistantMessage: Message = {
-          role: 'assistant',
-          content: data.message || "I'm here to help! What would you like to work on?",
-          timestamp: new Date().toISOString()
-        };
-
-        setMessages(prev => [...prev, assistantMessage]);
-
-        // Save assistant message to database
-        await supabase.from('messages').insert({
-          conversation_id: conversationId,
-          role: assistantMessage.role,
-          content: assistantMessage.content
-        });
-
-        setIsLoading(false);
-        setThinkingMessage('');
-        return;
-      }
-
-      // For code requests, use the full orchestrator
-      setThinkingMessage('🔍 Analyzing your request...');
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('No active session. Please log in again.');
-      }
-
-      // Initialize orchestration tracking
-      setCurrentOrchestration({ phases: [] });
-      setThinkingMessage('📐 Planning the best approach...');
-
-      // Get conversation context for better understanding
-      const conversationHistory = messages.slice(-5).map(m => ({
-        role: m.role,
-        content: m.content
-      }));
-
-      setThinkingMessage('🚀 Working on your request...');
-      // Use mega-mind orchestrator for enhancement
-      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
-        body: {
-          request: userInput,
-          requestType: 'code-enhancement',
-          context: {
-            conversationId,
-            currentCode: project.html_code,
-            conversationHistory,
-            projectId: project.id
-          }
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
-
-      if (error) {
-        console.error('❌ Orchestration failed:', error);
-        
-        // Provide helpful error messages
-        if (error.message?.includes("429") || error.status === 429) {
-          throw new Error("Too many requests. Please wait a moment before trying again.");
-        } else if (error.message?.includes("402") || error.status === 402) {
-          throw new Error("Credits required. Please add credits to your workspace to continue.");
-        } else if (error.message?.includes("timeout")) {
-          throw new Error("Request timed out. Please try a simpler request or break it into smaller steps.");
-        }
-        throw error;
-      }
-
-      setThinkingMessage('✨ Finalizing...');
-      
-      // Check if this is a Python project response
-      const isPythonProject = data.projectType === 'python' || data.projectData;
-      
-      if (isPythonProject) {
-        // Handle Python project generation
-        const pythonMessage: Message = {
-          role: 'assistant',
-          content: data.message || `Python project "${data.projectData.projectName}" generated successfully! Download it below.`,
-          timestamp: new Date().toISOString(),
-          pythonProject: data.projectData
-        };
-
-        setMessages(prev => [...prev, pythonMessage]);
-        setThinkingMessage('');
-        
-        // Save assistant message to database
-        await supabase.from('messages').insert({
-          conversation_id: conversationId,
-          role: pythonMessage.role,
-          content: pythonMessage.content
-        });
-
-        toast.success(`🐍 Python project ready: ${data.projectData.projectName}`);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Handle regular React/web code generation
-      const finalCode = data.finalCode;
-      
-      // Update project with new code
-      setProject(prev => prev ? { ...prev, html_code: finalCode } : null);
-
-      // Store orchestration data
-      const orchestrationData = {
-        phases: data.phases || [],
-        plan: data.plan,
-        qualityMetrics: data.qualityMetrics,
-        totalDuration: data.totalDuration
-      };
-      setCurrentOrchestration(orchestrationData);
-
-      // Add assistant message with orchestration details
-      const phaseNames = data.phases?.map((p: any) => p.name).join(', ') || 'code generation';
-      const explanation = data.explanation || data.plan?.architecture_overview || 'Improvements applied successfully';
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: `✨ ${explanation}\n\n${data.phases?.length > 0 ? `**Work Done:** ${phaseNames}\n\n` : ''}**Duration:** ${data.totalDuration ? (data.totalDuration / 1000).toFixed(2) + 's' : 'N/A'}`,
-        timestamp: new Date().toISOString(),
-        orchestrationData
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-      setThinkingMessage('');
-
-      // Save assistant message to database
-      await supabase.from('messages').insert({
-        conversation_id: conversationId,
-        role: assistantMessage.role,
-        content: assistantMessage.content,
-        generated_code: finalCode
-      });
-
-      // Automatically learn from this successful interaction
-      if (finalCode && user) {
-        await supabase.functions.invoke('learn-from-conversation', {
-          body: {
-            conversationId,
-            messages: messages.slice(-5),
-            userRequest: userInput,
-            generatedResponse: finalCode
-          },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
-        }).catch(err => console.error('Learning failed (non-blocking):', err));
-      }
-
-      // Auto-save project and create version
-      const { data: versions } = await supabase
-        .from('project_versions')
-        .select('version_number')
-        .eq('project_id', project.id)
-        .order('version_number', { ascending: false })
-        .limit(1);
-
-      const nextVersion = (versions?.[0]?.version_number || 0) + 1;
-
-      await Promise.all([
-        supabase.from('projects').update({ 
-          html_code: finalCode,
-          updated_at: new Date().toISOString()
-        }).eq('id', project.id),
-        
-        supabase.from('project_versions').insert({
-          project_id: project.id,
-          version_number: nextVersion,
-          html_code: finalCode,
-          changes_summary: userInput.substring(0, 200)
-        })
-      ]);
-
-      toast.success("Project enhanced successfully");
-    } catch (error: any) {
-      console.error('Enhancement error:', error);
-      toast.error(error.message || "Failed to enhance project");
-      setThinkingMessage('');
-      
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date().toISOString()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // handleSendMessage removed - now handled by UniversalChatInterface
 
   if (!project) {
     return (
@@ -1116,196 +799,126 @@ export default function Workspace() {
             </div>
           </>
         ) : (
-          /* Single-File View (Original) */
+          /* Single-File View - Now uses UniversalChatInterface */
           <div className={`flex h-full ${isPreviewExpanded ? '' : 'lg:flex-row flex-col'} transition-all`}>
-          {/* Chat Panel - Fixed at bottom on mobile, side panel on desktop */}
-          <div className={`flex flex-col border-r bg-card/30 transition-all ${
-            isPreviewExpanded 
-              ? 'fixed bottom-0 left-0 right-0 h-20 border-t border-r-0 z-50' 
-              : 'lg:w-[480px] w-full md:relative fixed bottom-0 left-0 right-0 md:h-auto h-[50vh] z-40'
-          }`}>
-              {!isPreviewExpanded && (
-                <>
-                  <div className="p-4 border-b">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <MessageSquare className="w-4 h-4" />
-                      AI Assistant
-                      <Badge variant="secondary" className="ml-auto">
-                        <Sparkles className="w-3 h-3 mr-1" />
-                        Smart Mode
-                      </Badge>
-                    </div>
-                  </div>
-
-                   <ScrollArea className="flex-1 p-4">
-                    <div className="space-y-4">
-                      {messages.map((msg, idx) => (
-                        <div
-                          key={idx}
-                          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                        >
-                          {msg.role === 'assistant' && msg.pythonProject ? (
-                            // Python project response
-                            <div className="w-full max-w-full">
-                              <PythonProjectViewer 
-                                projectData={msg.pythonProject}
-                                message={msg.content}
-                              />
-                            </div>
-                          ) : (
-                            // Regular text message
-                            <div
-                              className={`max-w-[80%] rounded-lg p-3 ${
-                                msg.role === 'user'
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-muted'
-                              }`}
-                            >
-                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {isLoading && thinkingMessage && (
-                        <div className="flex justify-start">
-                          <div className="bg-muted/70 rounded-lg p-3 flex items-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                            <span className="text-sm italic text-muted-foreground">
-                              {thinkingMessage}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                      {isLoading && !thinkingMessage && (
-                        <div className="flex justify-start">
-                          <div className="bg-muted rounded-lg p-3">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          </div>
-                        </div>
-                      )}
-                      {/* Auto-scroll anchor */}
-                      <div ref={messagesEndRef} />
-                    </div>
-                  </ScrollArea>
-
-                  {currentOrchestration && currentOrchestration.phases.length > 0 && (
-                    <div className="px-4 pb-2">
-                      <OrchestrationProgress 
-                        phases={currentOrchestration.phases}
-                        isLoading={isLoading}
-                        totalDuration={currentOrchestration.totalDuration}
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-
-              <div className={`p-4 border-t bg-background shrink-0 ${isPreviewExpanded ? 'p-2' : ''}`}>
-                <div className="flex gap-2">
-                  <Textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder={isPreviewExpanded ? "Type to chat..." : "Describe what you want to add or improve..."}
-                    className="resize-none min-h-[60px]"
-                    rows={isPreviewExpanded ? 1 : 2}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={isLoading || !input.trim()}
-                    size="icon"
-                    className="shrink-0 h-[60px] w-[60px]"
-                  >
-                    {isLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <Send className="w-5 h-5" />
-                    )}
-                  </Button>
-                </div>
-                {!isPreviewExpanded && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Press Enter to send, Shift+Enter for new line
+            {/* Chat Panel */}
+            <div className={`flex flex-col border-r bg-card/30 transition-all ${
+              isPreviewExpanded 
+                ? 'fixed bottom-0 left-0 right-0 h-20 border-t border-r-0 z-50' 
+                : 'lg:w-[480px] w-full md:relative fixed bottom-0 left-0 right-0 md:h-auto h-[50vh] z-40'
+            }`}>
+              {isPreviewExpanded ? (
+                <div className="p-2">
+                  <p className="text-xs text-muted-foreground text-center">
+                    Exit fullscreen to access AI chat
                   </p>
-                )}
-              </div>
+                </div>
+              ) : (
+                <UniversalChatInterface
+                  mode="sidebar"
+                  height="h-full"
+                  conversationId={conversationId || undefined}
+                  projectId={projectId}
+                  selectedFiles={['main-project']}
+                  projectFiles={project ? [{
+                    file_path: 'main-project',
+                    file_content: project.html_code
+                  }] : []}
+                  onCodeApply={async (code) => {
+                    // Update project with new code
+                    setProject(prev => prev ? { ...prev, html_code: code } : null);
+                    
+                    // Auto-save to database
+                    if (project) {
+                      const { data: versions } = await supabase
+                        .from('project_versions')
+                        .select('version_number')
+                        .eq('project_id', project.id)
+                        .order('version_number', { ascending: false })
+                        .limit(1);
+
+                      const nextVersion = (versions?.[0]?.version_number || 0) + 1;
+
+                      await Promise.all([
+                        supabase.from('projects').update({ 
+                          html_code: code,
+                          updated_at: new Date().toISOString()
+                        }).eq('id', project.id),
+                        
+                        supabase.from('project_versions').insert({
+                          project_id: project.id,
+                          version_number: nextVersion,
+                          html_code: code,
+                          changes_summary: 'AI-generated update'
+                        })
+                      ]);
+
+                      toast.success("Project updated successfully");
+                    }
+                  }}
+                  persistMessages={true}
+                  autoLearn={true}
+                  autoApply={true}
+                  showContext={true}
+                  showHeader={true}
+                  showFooter={true}
+                  placeholder="Describe what you want to add or improve..."
+                />
+              )}
             </div>
 
-           {/* Preview Panel - Add bottom padding on mobile to account for fixed chat */}
-          <div className={`flex flex-col bg-background ${
-            isPreviewExpanded 
-              ? 'w-full' 
-              : 'flex-1 md:pb-0 pb-[50vh]' /* Add padding on mobile for fixed chat */
-          }`}>
-            {!isPreviewExpanded && (
-              <div className="p-4 border-b">
-                <Tabs defaultValue="preview" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="preview">
-                      <Eye className="w-4 h-4 mr-2" />
-                      Preview
-                    </TabsTrigger>
-                    <TabsTrigger value="code">
-                      <Code className="w-4 h-4 mr-2" />
-                      Code
-                    </TabsTrigger>
-                    <TabsTrigger value="plan" disabled={!currentOrchestration?.plan}>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Architecture
-                    </TabsTrigger>
-                    <TabsTrigger value="metrics" disabled={!currentOrchestration?.qualityMetrics}>
-                      <Target className="w-4 h-4 mr-2" />
-                      Quality
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="preview" className="mt-4">
-                    <DevicePreview generatedCode={project.html_code} />
-                  </TabsContent>
-                  <TabsContent value="code" className="mt-4">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold">Project Code</h3>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleDownloadCode}
-                          className="gap-2"
-                        >
-                          <Download className="h-4 w-4" />
-                          Download HTML
-                        </Button>
+            {/* Preview Panel */}
+            <div className={`flex flex-col bg-background ${
+              isPreviewExpanded 
+                ? 'w-full' 
+                : 'flex-1 md:pb-0 pb-[50vh]'
+            }`}>
+              {!isPreviewExpanded && (
+                <div className="p-4 border-b">
+                  <Tabs defaultValue="preview" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="preview">
+                        <Eye className="w-4 h-4 mr-2" />
+                        Preview
+                      </TabsTrigger>
+                      <TabsTrigger value="code">
+                        <Code className="w-4 h-4 mr-2" />
+                        Code
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="preview" className="mt-4">
+                      <DevicePreview generatedCode={project.html_code} />
+                    </TabsContent>
+                    <TabsContent value="code" className="mt-4">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold">Project Code</h3>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDownloadCode}
+                            className="gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download HTML
+                          </Button>
+                        </div>
+                        <ScrollArea className="h-[500px] border rounded-lg">
+                          <pre className="text-xs bg-muted p-4 overflow-x-auto">
+                            <code>{project.html_code}</code>
+                          </pre>
+                        </ScrollArea>
                       </div>
-                      <ScrollArea className="h-[500px] border rounded-lg">
-                        <pre className="text-xs bg-muted p-4 overflow-x-auto">
-                          <code>{project.html_code}</code>
-                        </pre>
-                      </ScrollArea>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="plan" className="mt-4">
-                    {currentOrchestration?.plan && (
-                      <ArchitecturePlanViewer plan={currentOrchestration.plan} />
-                    )}
-                  </TabsContent>
-                  <TabsContent value="metrics" className="mt-4">
-                    {currentOrchestration?.qualityMetrics && (
-                      <QualityMetrics metrics={currentOrchestration.qualityMetrics} />
-                    )}
-                  </TabsContent>
-                </Tabs>
-              </div>
-            )}
-            {isPreviewExpanded && (
-              <div className="flex-1 overflow-hidden p-0">
-                <DevicePreview generatedCode={project.html_code} />
-              </div>
-            )}
-          </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              )}
+              {isPreviewExpanded && (
+                <div className="flex-1 overflow-hidden p-0">
+                  <DevicePreview generatedCode={project.html_code} />
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
