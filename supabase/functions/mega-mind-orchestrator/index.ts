@@ -431,10 +431,30 @@ serve(async (req) => {
 
     const finalFiles = bestPractices.enforcedFiles || performanceOpt.optimizedFiles || selfCorrection.correctedFiles || generation.files;
     
+    // Format the generated code for frontend display
+    let generatedCode = '';
+    if (finalFiles && finalFiles.length > 0) {
+      // If it's a single HTML file, return just that
+      if (finalFiles.length === 1 && finalFiles[0].path.endsWith('.html')) {
+        generatedCode = finalFiles[0].content;
+      } else {
+        // Create a combined view of all files
+        generatedCode = finalFiles.map((file: any) => 
+          `// File: ${file.path}\n${file.description ? `// ${file.description}\n` : ''}${file.content}\n\n`
+        ).join('\n');
+      }
+    }
+    
     return new Response(
       JSON.stringify({
         success: true,
         orchestrationId,
+        generatedCode,
+        html: generatedCode,
+        result: {
+          generatedCode,
+          explanation: generation.instructions
+        },
         analysis,
         dependencies: dependencies.length > 0 ? {
           detected: dependencies.length,
@@ -610,24 +630,30 @@ async function generateSolution(request: string, requestType: string, analysis: 
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-  const prompt = `Generate the complete solution:
+  const prompt = `Generate the complete solution for this request. You MUST generate actual working code - never return placeholders or empty files.
 
 **Request:** ${request}
 **Analysis:** ${JSON.stringify(analysis, null, 2)}
 
-**Generate:**
-- Complete working code
-- All necessary files
-- Configuration files
-- README with instructions
+**CRITICAL RULES:**
+1. ALWAYS generate at least ONE working file with complete code
+2. For simple HTML websites: Generate a single index.html file with complete HTML/CSS/JS
+3. For React apps: Generate all necessary component files
+4. NEVER return empty files array or placeholder messages
+5. If the request seems complex, simplify it to a working MVP instead of refusing
+
+**For simple HTML websites, generate:**
+- Single index.html file with complete HTML, CSS (in <style>), and JS (in <script>)
+- Make it fully functional and beautiful
+- Include all requested features in the single file
 
 **Output JSON:**
 {
   "files": [
-    {"path": "src/App.tsx", "content": "...", "description": "..."}
+    {"path": "index.html", "content": "<!DOCTYPE html>...", "description": "Main HTML file"}
   ],
   "instructions": "How to use the generated code",
-  "nextSteps": ["step 1", "step 2"]
+  "nextSteps": ["Open index.html in browser", "Customize as needed"]
 }`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -637,9 +663,9 @@ async function generateSolution(request: string, requestType: string, analysis: 
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'google/gemini-2.5-pro',
       messages: [
-        { role: 'system', content: 'You are an expert code generator. Respond with JSON only.' },
+        { role: 'system', content: 'You are an expert code generator. You MUST generate actual working code files - NEVER return placeholders or empty arrays. Always provide complete, functional code. Respond with JSON only.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }
