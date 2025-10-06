@@ -579,8 +579,28 @@ async function generateSolution(request: string, requestType: string, analysis: 
     }),
   });
 
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('AI API Error:', response.status, errorText);
+    throw new Error(`AI API failed with status ${response.status}: ${errorText}`);
+  }
+
   const data = await response.json();
-  return JSON.parse(data.choices[0].message.content);
+  console.log('AI Response structure:', JSON.stringify(data, null, 2).substring(0, 500));
+  
+  if (!data.choices?.[0]?.message?.content) {
+    console.error('Invalid AI response structure:', data);
+    throw new Error('AI response missing expected data structure');
+  }
+
+  try {
+    const content = data.choices[0].message.content;
+    return JSON.parse(content);
+  } catch (parseError) {
+    console.error('Failed to parse AI response content:', parseError);
+    console.error('Content received:', data.choices[0].message.content?.substring(0, 500));
+    throw new Error(`Failed to parse AI response: ${parseError.message}`);
+  }
 }
 
 async function verifySolution(generation: any, dependencies: any[]): Promise<any> {
