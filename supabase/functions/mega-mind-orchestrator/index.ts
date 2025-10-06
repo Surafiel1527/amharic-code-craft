@@ -168,8 +168,23 @@ serve(async (req) => {
 
     const orchestrationId = orchestration.id;
 
+    // Update job progress if jobId is provided
+    const updateJobProgress = async (progress: number, currentStep?: string) => {
+      if (jobId) {
+        await supabaseClient
+          .from('ai_generation_jobs')
+          .update({
+            progress,
+            current_step: currentStep,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', jobId);
+      }
+    };
+
     // PHASE 1: Analyze the request
     console.log('📊 Phase 1: Analyzing request...');
+    await updateJobProgress(25, 'Analyzing request...');
     const analysis = await analyzeRequest(request, requestType, context);
     
     await supabaseClient
@@ -182,6 +197,7 @@ serve(async (req) => {
 
     // PHASE 2: Detect and install dependencies
     console.log('📦 Phase 2: Detecting dependencies...');
+    await updateJobProgress(40, 'Detecting dependencies...');
     const dependencies = await detectDependencies(analysis, context);
     
     if (dependencies.length > 0) {
@@ -269,6 +285,7 @@ serve(async (req) => {
 
     // PHASE 3: Generate code/solution
     console.log('⚡ Phase 3: Generating solution...');
+    await updateJobProgress(70, 'Generating solution...');
     const generation = await generateSolution(request, requestType, analysis, context);
     
     await supabaseClient
@@ -282,6 +299,7 @@ serve(async (req) => {
 
     // PHASE 4: Verify and optimize
     console.log('✅ Phase 4: Verifying solution...');
+    await updateJobProgress(90, 'Verifying solution...');
     const verification = await verifySolution(generation, dependencies);
     
     await supabaseClient
@@ -294,6 +312,30 @@ serve(async (req) => {
       .eq('id', orchestrationId);
 
     console.log('🎉 Mega Mind orchestration completed successfully!');
+
+    // Mark job as completed
+    if (jobId) {
+      await supabaseClient
+        .from('ai_generation_jobs')
+        .update({
+          status: 'completed',
+          progress: 100,
+          current_step: 'Completed',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          output_data: {
+            orchestrationId,
+            dependencies: dependencies.length > 0 ? {
+              detected: dependencies.length,
+              installed: dependencies.filter(d => d.shouldInstall).length,
+              list: dependencies
+            } : null,
+            generation,
+            verification
+          }
+        })
+        .eq('id', jobId);
+    }
 
     // Audit log completion
     await supabaseClient
@@ -333,6 +375,30 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ Error in mega-mind-orchestrator:', error);
     
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Update job as failed
+    try {
+      const { jobId } = await req.json().catch(() => ({}));
+      if (jobId) {
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+        
+        await supabaseClient
+          .from('ai_generation_jobs')
+          .update({
+            status: 'failed',
+            error_message: errorMessage,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', jobId);
+      }
+    } catch (jobUpdateError) {
+      console.error('Failed to update job status:', jobUpdateError);
+    }
+    
     // Audit log error
     try {
       const authHeader = req.headers.get('Authorization');
@@ -349,7 +415,7 @@ serve(async (req) => {
             resource_type: 'ai_generation',
             severity: 'error',
             metadata: {
-              error: error instanceof Error ? error.message : 'Unknown error'
+              error: errorMessage
             }
           });
       }
@@ -360,7 +426,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: 'An error occurred during processing. Please try again.'
+        error: errorMessage
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
