@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Brain, AlertTriangle, CheckCircle2, TrendingUp, Zap, Sparkles, Activity, Target, Clock } from "lucide-react";
+import { Brain, AlertTriangle, CheckCircle2, TrendingUp, Zap, Sparkles, Activity, Target, Clock, Lightbulb } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
@@ -53,6 +53,8 @@ export function SelfHealingMonitor() {
   const [learningStats, setLearningStats] = useState<any>(null);
   const [isMetaImproving, setIsMetaImproving] = useState(false);
   const [metaStats, setMetaStats] = useState<any>(null);
+  const [isReasoning, setIsReasoning] = useState(false);
+  const [reasoningStats, setReasoningStats] = useState<any>(null);
   const { toast } = useToast();
   
   // Enable adaptive proactive monitoring
@@ -295,6 +297,39 @@ export function SelfHealingMonitor() {
     }
   };
 
+  const runAdvancedReasoning = async () => {
+    setIsReasoning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('advanced-reasoning-engine');
+
+      if (error) throw error;
+
+      if (data) {
+        setReasoningStats({
+          analyzedCount: data.analyzed_count || 0,
+          highConfidenceCount: data.high_confidence_count || 0,
+          results: data.results || [],
+        });
+        
+        toast({
+          title: "🧠 Advanced Reasoning Complete",
+          description: `Analyzed ${data.analyzed_count} complex errors, ${data.high_confidence_count} high-confidence solutions found`,
+        });
+      }
+
+      loadStats();
+    } catch (error) {
+      console.error('Advanced reasoning error:', error);
+      toast({
+        title: "Reasoning Failed",
+        description: "Could not run advanced reasoning analysis",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReasoning(false);
+    }
+  };
+
   const getSuccessRate = (pattern: HealingPattern) => {
     const total = pattern.success_count + pattern.failure_count;
     if (total === 0) return 0;
@@ -346,10 +381,11 @@ export function SelfHealingMonitor() {
       </Card>
 
       <Tabs defaultValue="healing" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="healing">🧠 Self-Healing</TabsTrigger>
           <TabsTrigger value="learning">📚 Learning</TabsTrigger>
           <TabsTrigger value="meta">🎯 Meta</TabsTrigger>
+          <TabsTrigger value="reasoning">💡 Reasoning</TabsTrigger>
           <TabsTrigger value="predictions">🔮 Predictions</TabsTrigger>
           <TabsTrigger value="optimization">⚡ Optimization</TabsTrigger>
         </TabsList>
@@ -688,6 +724,127 @@ export function SelfHealingMonitor() {
                 Recalibrated <strong>{metaStats.confidenceBoost}</strong> patterns based on actual performance.
                 The system is now more accurate at predicting fix success!
               </p>
+            </CardContent>
+          </Card>
+        )}
+      </TabsContent>
+
+      <TabsContent value="reasoning" className="space-y-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-xl font-bold">Advanced Reasoning</h3>
+            <p className="text-sm text-muted-foreground">Deep analytical reasoning for complex errors</p>
+          </div>
+          <Button onClick={runAdvancedReasoning} disabled={isReasoning} size="sm">
+            <Lightbulb className="mr-2 h-4 w-4" />
+            {isReasoning ? 'Analyzing...' : 'Run Reasoning'}
+          </Button>
+        </div>
+
+        {reasoningStats && (
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Errors Analyzed</CardTitle>
+                <Brain className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reasoningStats.analyzedCount}</div>
+                <p className="text-xs text-muted-foreground">Complex errors reviewed</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">High Confidence</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reasoningStats.highConfidenceCount}</div>
+                <p className="text-xs text-muted-foreground">Solutions found</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Avg Confidence</CardTitle>
+                <TrendingUp className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {reasoningStats.results.length > 0 
+                    ? (reasoningStats.results.reduce((sum: number, r: any) => sum + r.confidence, 0) / reasoningStats.results.length * 100).toFixed(1)
+                    : 0}%
+                </div>
+                <p className="text-xs text-muted-foreground">Solution confidence</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Advanced Reasoning Capabilities</CardTitle>
+            <CardDescription>
+              Powered by Gemini 2.5 Pro for deep analytical thinking
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Root Cause Analysis</p>
+                  <p className="text-sm text-muted-foreground">Deep analysis of fundamental issues</p>
+                </div>
+                <Lightbulb className="h-5 w-5 text-yellow-500" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Multi-Solution Evaluation</p>
+                  <p className="text-sm text-muted-foreground">Compares multiple approaches with trade-offs</p>
+                </div>
+                <Activity className="h-5 w-5 text-blue-500 animate-pulse" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Side-Effect Prediction</p>
+                  <p className="text-sm text-muted-foreground">Anticipates potential issues before applying fixes</p>
+                </div>
+                <Target className="h-5 w-5 text-orange-500" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Preventive Measures</p>
+                  <p className="text-sm text-muted-foreground">Suggests long-term solutions to prevent recurrence</p>
+                </div>
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {reasoningStats && reasoningStats.results.length > 0 && (
+          <Card className="border-2 border-blue-500/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5 text-blue-500 animate-pulse" />
+                Recent Reasoning Results
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {reasoningStats.results.slice(0, 3).map((result: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Error #{result.error_id}</p>
+                      <p className="text-xs text-muted-foreground truncate">{result.recommended}</p>
+                    </div>
+                    <Badge variant={result.confidence >= 0.85 ? "default" : "secondary"}>
+                      {(result.confidence * 100).toFixed(0)}%
+                    </Badge>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}

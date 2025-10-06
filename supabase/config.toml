@@ -363,6 +363,9 @@ verify_jwt = false
 [functions.meta-self-improvement]
 verify_jwt = false
 
+[functions.advanced-reasoning-engine]
+verify_jwt = false
+
 [functions.stream-code-generation]
 verify_jwt = false
 
