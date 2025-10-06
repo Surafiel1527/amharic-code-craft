@@ -733,10 +733,6 @@ const Index = () => {
                 <span className="text-sm">{t("shortcuts.copyCode")}</span>
                 <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + K</kbd>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-border">
-                <span className="text-sm">{t("shortcuts.aiFeatures")}</span>
-                <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + B</kbd>
-              </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-sm">{t("shortcuts.show")}</span>
                 <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + /</kbd>
