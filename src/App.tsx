@@ -15,20 +15,13 @@ const Admin = lazy(() => import("./pages/Admin"));
 const SharedProject = lazy(() => import("./pages/SharedProject"));
 const Explore = lazy(() => import("./pages/Explore"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
-const AISystemTest = lazy(() => import("./pages/AISystemTest"));
-const AISystemDashboard = lazy(() => import("./pages/AISystemDashboard"));
 const DatabaseManager = lazy(() => import("./pages/DatabaseManager"));
 const Deploy = lazy(() => import("./pages/Deploy"));
 const QualityHub = lazy(() => import("./pages/QualityHub"));
-const LivePreview = lazy(() => import("./pages/LivePreview"));
 const PackageManager = lazy(() => import("./pages/PackageManager"));
 const TestingHub = lazy(() => import("./pages/TestingHub"));
-const AITrainingDashboard = lazy(() => import("./pages/AITrainingDashboard"));
 const Marketplace = lazy(() => import("./pages/Marketplace"));
-const SelfHealingHub = lazy(() => import("./pages/SelfHealingHub"));
-const ActivityDemo = lazy(() => import("./pages/ActivityDemo"));
 const ProjectsDashboard = lazy(() => import("./pages/ProjectsDashboard"));
-const EnterpriseHub = lazy(() => import("./pages/EnterpriseHub"));
 const PromptToProduction = lazy(() => import("./pages/PromptToProduction"));
 
 const LoadingFallback = () => (
@@ -51,20 +44,13 @@ const App = () => {
           <Route path="/explore" element={<Explore />} />
           <Route path="/profile/:userId" element={<UserProfile />} />
           <Route path="/shared/:shareToken" element={<SharedProject />} />
-          <Route path="/ai-test" element={<AISystemTest />} />
-          <Route path="/ai-system" element={<AISystemDashboard />} />
           <Route path="/database-manager" element={<DatabaseManager />} />
           <Route path="/deploy/:projectId" element={<Deploy />} />
           <Route path="/quality-hub" element={<QualityHub />} />
-          <Route path="/live-preview" element={<LivePreview />} />
           <Route path="/package-manager" element={<PackageManager />} />
           <Route path="/testing" element={<TestingHub />} />
-          <Route path="/ai-training" element={<AITrainingDashboard />} />
           <Route path="/marketplace" element={<Marketplace />} />
-          <Route path="/self-healing" element={<SelfHealingHub />} />
-          <Route path="/activity-demo" element={<ActivityDemo />} />
           <Route path="/projects" element={<ProjectsDashboard />} />
-          <Route path="/enterprise-hub" element={<EnterpriseHub />} />
           <Route path="/prompt-to-production" element={<PromptToProduction />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

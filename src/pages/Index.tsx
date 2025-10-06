@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code, Maximize2, Minimize2, Brain, Eye, Package, FolderOpen } from "lucide-react";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code, Maximize2, Minimize2, FolderOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -589,14 +589,6 @@ const Index = () => {
                   <Keyboard className="h-4 w-4" />
                 </Button>
                 <ThemeToggle />
-                <Button variant="outline" size="sm" onClick={() => navigate("/quality-hub")} className="gap-2 hover-scale">
-                  <Shield className="h-4 w-4" />
-                  <span className="hidden lg:inline">Quality</span>
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => navigate("/ai-system")} className="gap-2 hover-scale">
-                  <Brain className="h-4 w-4" />
-                  <span className="hidden lg:inline">AI System</span>
-                </Button>
                 <Button variant="outline" size="sm" onClick={() => navigate("/settings")} className="gap-2 hover-scale">
                   <Settings className="h-4 w-4" />
                   <span className="hidden lg:inline">{t("header.settings")}</span>
@@ -656,19 +648,15 @@ const Index = () => {
         </section>
       )}
 
-      {/* Phase 5B Features - Live Preview & Package Manager */}
+      {/* Quick Access Features */}
       <section className="container mx-auto px-4 py-6 border-b border-border">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2 text-muted-foreground">
-            <Zap className="h-4 w-4 text-yellow-500" />
-            Phase 5B Features
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="p-6 hover:border-primary/50 transition-all">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="p-6 hover:border-primary/50 transition-all hover-scale">
               <Sparkles className="h-10 w-10 mb-4 text-primary" />
-              <h3 className="text-xl font-bold mb-2">Prompt to Production</h3>
+              <h3 className="text-xl font-bold mb-2">AI Code Generation</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Describe what you want to build and deploy it automatically with AI
+                Describe your app and let AI generate, build, and deploy it automatically
               </p>
               <Link to="/prompt-to-production">
                 <Button className="w-full gap-2">
@@ -678,30 +666,16 @@ const Index = () => {
               </Link>
             </Card>
 
-            <Card className="p-6 hover:border-primary/50 transition-all">
-              <Eye className="h-10 w-10 mb-4 text-primary" />
-              <h3 className="text-xl font-bold mb-2">Live Preview</h3>
+            <Card className="p-6 hover:border-primary/50 transition-all hover-scale">
+              <FolderOpen className="h-10 w-10 mb-4 text-primary" />
+              <h3 className="text-xl font-bold mb-2">My Projects</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Real-time preview with hot reload and responsive device testing
+                View and manage all your projects in one place
               </p>
-              <Link to="/live-preview">
+              <Link to="/projects">
                 <Button className="w-full gap-2">
-                  <Eye className="h-4 w-4" />
-                  Open Live Preview
-                </Button>
-              </Link>
-            </Card>
-
-            <Card className="p-6 hover:border-primary/50 transition-all">
-              <Package className="h-10 w-10 mb-4 text-primary" />
-              <h3 className="text-xl font-bold mb-2">Package Manager</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Lightning-fast npm package installation and dependency management
-              </p>
-              <Link to="/package-manager">
-                <Button className="w-full gap-2">
-                  <Package className="h-4 w-4" />
-                  Manage Packages
+                  <FolderOpen className="h-4 w-4" />
+                  View Projects
                 </Button>
               </Link>
             </Card>
