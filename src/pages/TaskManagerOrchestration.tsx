@@ -13,6 +13,8 @@ export default function TaskManagerOrchestration() {
   const [progress, setProgress] = useState(0);
   const [generatedCode, setGeneratedCode] = useState("");
   const [activeTab, setActiveTab] = useState("progress");
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [isCancelled, setIsCancelled] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -79,7 +81,12 @@ Make it production-ready with proper error handling, loading states, and mobile 
 
         // Monitor progress and fetch generated code
         if (data?.jobId) {
+          setJobId(data.jobId);
           const interval = setInterval(async () => {
+            if (isCancelled) {
+              clearInterval(interval);
+              return;
+            }
             const { data: job } = await supabase
               .from('ai_generation_jobs')
               .select('status, progress, current_step, output_data')
@@ -132,14 +139,47 @@ Make it production-ready with proper error handling, loading states, and mobile 
     };
 
     startOrchestration();
-  }, [user]);
+  }, [user, isCancelled]);
+
+  const handleCancel = async () => {
+    if (!jobId) return;
+    
+    setIsCancelled(true);
+    try {
+      await supabase
+        .from('ai_generation_jobs')
+        .update({ status: 'cancelled' })
+        .eq('id', jobId);
+      
+      toast({
+        title: "Cancelled",
+        description: "Orchestration has been cancelled",
+      });
+      
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
+    } catch (error) {
+      console.error('Cancel error:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 p-4">
       <div className="container mx-auto max-w-7xl">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold">Building Your Task Manager</h1>
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold">Building Your Task Manager</h1>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleCancel}
+                disabled={isCancelled || progress >= 100}
+              >
+                {isCancelled ? "Cancelling..." : "Cancel"}
+              </Button>
+            </div>
             <TabsList>
               <TabsTrigger value="progress">
                 <Loader2 className="h-4 w-4 mr-2" />
