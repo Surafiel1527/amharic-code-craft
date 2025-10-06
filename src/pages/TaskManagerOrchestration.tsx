@@ -85,14 +85,27 @@ export default function TaskManagerOrchestration() {
                 setTimeout(() => {
                   window.location.href = '/';
                 }, 2000);
-              } else if (job.status === 'failed' || job.status === 'cancelled') {
+              } else if (job.status === 'failed') {
                 clearInterval(interval);
                 toast({
-                  title: "Orchestration " + job.status,
+                  title: "Orchestration failed",
                   description: "Please try again",
                   variant: "destructive"
                 });
+              } else if (job.status === 'cancelled') {
+                clearInterval(interval);
+                setStatus("Job cancelled");
+                toast({
+                  title: "Cancelled",
+                  description: "Orchestration has been cancelled",
+                });
+                setTimeout(() => {
+                  window.location.href = '/';
+                }, 1500);
               }
+            } else {
+              // Job not found, it might have been deleted
+              clearInterval(interval);
             }
           }, 2000);
           
@@ -188,14 +201,27 @@ Make it production-ready with proper error handling, loading states, and mobile 
                 setTimeout(() => {
                   window.location.href = '/';
                 }, 2000);
-              } else if (job.status === 'failed' || job.status === 'cancelled') {
+              } else if (job.status === 'failed') {
                 clearInterval(interval);
                 toast({
-                  title: "Orchestration " + job.status,
+                  title: "Orchestration failed",
                   description: "Please try again",
                   variant: "destructive"
                 });
+              } else if (job.status === 'cancelled') {
+                clearInterval(interval);
+                setStatus("Job cancelled");
+                toast({
+                  title: "Cancelled",
+                  description: "Orchestration has been cancelled",
+                });
+                setTimeout(() => {
+                  window.location.href = '/';
+                }, 1500);
               }
+            } else {
+              // Job not found, might have been deleted
+              clearInterval(interval);
             }
           }, 2000);
         }

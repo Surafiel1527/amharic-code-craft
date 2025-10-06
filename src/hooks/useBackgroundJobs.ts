@@ -18,7 +18,7 @@ export function useBackgroundJobs(userId?: string) {
         .from('ai_generation_jobs')
         .select('*')
         .eq('user_id', userId)
-        .in('status', ['queued', 'running'])
+        .in('status', ['queued', 'processing'])
         .order('created_at', { ascending: false });
 
       if (active) {
@@ -60,12 +60,12 @@ export function useBackgroundJobs(userId?: string) {
               description: `${job.job_type} finished successfully`,
               duration: 8000
             });
-          } else if (job.status === 'failed') {
+          } else if (job.status === 'cancelled') {
             setActiveJobs(prev => prev.filter(j => j.id !== job.id));
             
-            toast.error('Job Failed', {
-              description: job.error_message || 'An error occurred',
-              duration: 10000
+            toast.info('Job Cancelled', {
+              description: 'The background job was cancelled',
+              duration: 5000
             });
           } else if (job.status === 'running') {
             setActiveJobs(prev => {
