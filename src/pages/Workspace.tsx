@@ -47,6 +47,7 @@ import { CodeReviewPanel } from "@/components/CodeReviewPanel";
 import { TemplatesGallery } from "@/components/TemplatesGallery";
 import { UsageAnalyticsDashboard } from "@/components/UsageAnalyticsDashboard";
 import { PerformanceMonitor } from "@/components/PerformanceMonitor";
+import { AICodeReview } from "@/components/AICodeReview";
 // PythonProjectViewer removed - handled by UniversalChatInterface
 import { LanguageCapabilities } from "@/components/LanguageCapabilities";
 // orchestrationHelpers removed - no longer needed
@@ -780,7 +781,16 @@ export default function Workspace() {
                   </TabsContent>
 
                   <TabsContent value="review" className="h-[calc(100vh-200px)] overflow-auto">
-                    <CodeReviewPanel projectId={projectId} />
+                    <div className="space-y-4">
+                      {selectedFiles[0] && projectFiles.find(f => f.file_path === selectedFiles[0]) && (
+                        <AICodeReview
+                          code={projectFiles.find(f => f.file_path === selectedFiles[0])!.file_content}
+                          filePath={selectedFiles[0]}
+                          language="typescript"
+                        />
+                      )}
+                      <CodeReviewPanel projectId={projectId} />
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="gallery" className="h-[calc(100vh-200px)] overflow-auto">

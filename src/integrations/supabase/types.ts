@@ -1312,6 +1312,145 @@ export type Database = {
           },
         ]
       }
+      code_review_learnings: {
+        Row: {
+          acceptance_rate: number | null
+          confidence_score: number | null
+          created_at: string
+          id: string
+          last_suggested_at: string
+          pattern_description: string
+          pattern_type: string
+          suggestion_id: string | null
+          times_accepted: number | null
+          times_suggested: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          acceptance_rate?: number | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          last_suggested_at?: string
+          pattern_description: string
+          pattern_type: string
+          suggestion_id?: string | null
+          times_accepted?: number | null
+          times_suggested?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          acceptance_rate?: number | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          last_suggested_at?: string
+          pattern_description?: string
+          pattern_type?: string
+          suggestion_id?: string | null
+          times_accepted?: number | null
+          times_suggested?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_review_learnings_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "code_review_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      code_review_sessions: {
+        Row: {
+          code_content: string
+          completed_at: string | null
+          created_at: string
+          file_path: string
+          id: string
+          language: string
+          user_id: string
+        }
+        Insert: {
+          code_content: string
+          completed_at?: string | null
+          created_at?: string
+          file_path: string
+          id?: string
+          language?: string
+          user_id: string
+        }
+        Update: {
+          code_content?: string
+          completed_at?: string | null
+          created_at?: string
+          file_path?: string
+          id?: string
+          language?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      code_review_suggestions: {
+        Row: {
+          accepted: boolean | null
+          accepted_at: string | null
+          created_at: string
+          current_code: string
+          description: string
+          explanation: string
+          id: string
+          line_number: number
+          session_id: string
+          severity: string
+          suggested_fix: string
+          suggestion_type: string
+          title: string
+        }
+        Insert: {
+          accepted?: boolean | null
+          accepted_at?: string | null
+          created_at?: string
+          current_code: string
+          description: string
+          explanation: string
+          id?: string
+          line_number: number
+          session_id: string
+          severity: string
+          suggested_fix: string
+          suggestion_type: string
+          title: string
+        }
+        Update: {
+          accepted?: boolean | null
+          accepted_at?: string | null
+          created_at?: string
+          current_code?: string
+          description?: string
+          explanation?: string
+          id?: string
+          line_number?: number
+          session_id?: string
+          severity?: string
+          suggested_fix?: string
+          suggestion_type?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_review_suggestions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "code_review_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       code_reviews: {
         Row: {
           code_length: number
@@ -4479,6 +4618,45 @@ export type Database = {
           },
         ]
       }
+      platform_tests: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          execution_time_ms: number | null
+          id: string
+          metadata: Json | null
+          status: string
+          test_category: string
+          test_name: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          metadata?: Json | null
+          status: string
+          test_category: string
+          test_name: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          metadata?: Json | null
+          status?: string
+          test_category?: string
+          test_name?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       plugin_installations: {
         Row: {
           config: Json | null
@@ -5689,6 +5867,74 @@ export type Database = {
         }
         Relationships: []
       }
+      task_comments: {
+        Row: {
+          comment: string
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       team_ai_sessions: {
         Row: {
           created_at: string
@@ -6098,6 +6344,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      test_data: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          is_public: boolean | null
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_public?: boolean | null
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_public?: boolean | null
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       test_generation_requests: {
         Row: {
