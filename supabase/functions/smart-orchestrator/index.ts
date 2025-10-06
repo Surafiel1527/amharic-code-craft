@@ -295,18 +295,27 @@ serve(async (req) => {
 
   try {
     const { task, context = {}, projectId, conversationId, userId } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
+    // Validate required parameters
+    if (!task || typeof task !== 'string') {
+      throw new Error('Task parameter is required and must be a string');
+    }
+    
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
     console.log('🚀 Super Mastermind Orchestrator activated:', task);
 
-    // Initialize Supabase for real-time broadcasts and state persistence
+    // Initialize Supabase with service role for edge function operations
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       {
         global: {
           headers: {
@@ -370,30 +379,44 @@ serve(async (req) => {
       }
     };
 
-    // Define background task
+    // Define background task - capture all variables to prevent undefined errors
     const processTask = async () => {
+      // Create local copies to ensure closure captures them properly
+      const localTask = task;
+      const localContext = context;
+      const localUserId = userId;
+      const localConversationId = conversationId;
+      const localProjectId = projectId;
+      const localJobId = jobId;
+      
       try {
+        console.log('🔄 Background task started with task:', localTask?.substring(0, 50));
+        
+        if (!localTask) {
+          throw new Error('Task is undefined in background process');
+        }
+        
         await broadcastStatus('thinking', 'Loading project intelligence...', 3);
         
         // Load project memory and context
-        const projectContext = await loadProjectContext(supabaseClient, userId, conversationId, projectId);
+        const projectContext = await loadProjectContext(supabaseClient, localUserId, localConversationId, localProjectId);
         console.log(`📊 Project size: ${projectContext.projectSize}, Learnings: ${projectContext.learnings.length}, Patterns: ${projectContext.patterns.length}`);
         
         await broadcastStatus('analyzing', 'Detecting backend requirements...', 8);
         
         // Detect database and backend needs
-        const dbNeeds = detectDatabaseNeeds(task, { ...context, ...projectContext });
+        const dbNeeds = detectDatabaseNeeds(localTask, { ...localContext, ...projectContext });
         console.log('🔍 Database needs:', dbNeeds);
         
         // Generate database migration if needed
         let migrationResult = null;
         if (dbNeeds.requiresDatabase) {
           await broadcastStatus('analyzing', 'Generating database schema and migrations...', 12);
-          const migrationSQL = await generateDatabaseMigration(supabaseClient, task, dbNeeds, LOVABLE_API_KEY);
+          const migrationSQL = await generateDatabaseMigration(supabaseClient, localTask, dbNeeds, LOVABLE_API_KEY);
           
           if (migrationSQL) {
             await broadcastStatus('analyzing', 'Preparing database migration...', 15);
-            migrationResult = await prepareDatabaseMigration(supabaseClient, migrationSQL, jobId!);
+            migrationResult = await prepareDatabaseMigration(supabaseClient, migrationSQL, localJobId!);
             
             if (!migrationResult.success) {
               console.warn('⚠️ Migration prep failed, continuing without DB changes');
@@ -408,7 +431,7 @@ serve(async (req) => {
         
         // Build enhanced context with project intelligence
         const enhancedContext = {
-          ...context,
+          ...localContext,
           projectSize: projectContext.projectSize,
           previousPatterns: projectContext.patterns.slice(0, 5).map((p: any) => ({
             name: p.pattern_name,
@@ -453,7 +476,7 @@ Return a JSON array of steps.`
         },
         {
           role: 'user',
-          content: `Task: ${task}
+          content: `Task: ${localTask}
 
 Project Context:
 - Size: ${projectContext.projectSize}
@@ -576,7 +599,7 @@ Generate complete, production-ready implementation.`
             completed_steps: i + 1,
             output_data: { results: completedSteps }
           })
-          .eq('id', jobId);
+          .eq('id', localJobId);
         console.log(`💾 Checkpoint: Saved progress at step ${i + 1}`);
       }
       
@@ -636,7 +659,7 @@ Be specific and technical. Include counts of tables, functions, components creat
         },
         {
           role: 'user',
-          content: `Original task: ${task}
+          content: `Original task: ${localTask}
 
 Execution summary:
 - Total steps: ${executionPlan.length}
@@ -662,7 +685,7 @@ Generate a comprehensive summary.`
     console.log('🎉 Orchestration completed successfully!');
 
     // Mark job as completed with full details
-    if (jobId) {
+    if (localJobId) {
       await supabaseClient
         .from('ai_generation_jobs')
         .update({
@@ -695,17 +718,17 @@ Generate a comprehensive summary.`
             }
           }
         })
-        .eq('id', jobId);
+        .eq('id', localJobId);
     }
     
     // Store cross-project pattern for future reuse
-    if (userId && completedSteps.length > 3) {
+    if (localUserId && completedSteps.length > 3) {
       try {
         await supabaseClient
           .from('cross_project_patterns')
           .insert({
-            user_id: userId,
-            pattern_name: task.substring(0, 100),
+            user_id: localUserId,
+            pattern_name: localTask.substring(0, 100),
             pattern_type: 'full_orchestration',
             pattern_code: JSON.stringify({ steps: executionPlan.map((s: any) => s.description) }),
             success_rate: 100,
@@ -734,7 +757,7 @@ Generate a comprehensive summary.`
         console.error('Error in background task:', error);
         
         // Mark job as failed
-        if (jobId) {
+        if (localJobId) {
           await supabaseClient
             .from('ai_generation_jobs')
             .update({
@@ -742,7 +765,7 @@ Generate a comprehensive summary.`
               error_message: error.message,
               completed_at: new Date().toISOString()
             })
-            .eq('id', jobId);
+            .eq('id', localJobId);
         }
         
         throw error;
