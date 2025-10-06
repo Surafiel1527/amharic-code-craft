@@ -63,12 +63,6 @@ export function UnifiedMegaMindHub() {
         .from('deployment_pipelines')
         .select('*', { count: 'exact', head: true });
 
-      // Get predictive alerts
-      const { data: alerts } = await supabase
-        .from('predictive_alerts')
-        .select('*', { count: 'exact', head: true })
-        .eq('resolved', false);
-
       // Get build optimizations
       const { data: optimizations } = await supabase
         .from('build_optimizations')
@@ -83,7 +77,7 @@ export function UnifiedMegaMindHub() {
         totalPackages: packages?.length || 0,
         activeDeployments: deployments?.length || 0,
         healthScore: 95,
-        predictiveAlerts: alerts?.length || 0,
+        predictiveAlerts: 0, // Placeholder until table is created
         buildOptimizations: optimizations?.length || 0,
         autoRollbacks: rollbacks?.length || 0
       });
