@@ -15,17 +15,21 @@ export default function TaskManagerOrchestration() {
   const [activeTab, setActiveTab] = useState("progress");
   const [jobId, setJobId] = useState<string | null>(null);
   const [isCancelled, setIsCancelled] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
 
   useEffect(() => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to continue",
-        variant: "destructive"
-      });
+    if (!user || hasStarted) {
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to continue",
+          variant: "destructive"
+        });
+      }
       return;
     }
 
+    setHasStarted(true);
     const startOrchestration = async () => {
       try {
         setStatus("🚀 Starting orchestration...");
@@ -139,7 +143,7 @@ Make it production-ready with proper error handling, loading states, and mobile 
     };
 
     startOrchestration();
-  }, [user, isCancelled]);
+  }, [user, hasStarted]);
 
   const handleCancel = async () => {
     if (!jobId) return;
