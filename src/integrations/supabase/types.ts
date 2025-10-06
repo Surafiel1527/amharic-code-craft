@@ -1006,6 +1006,36 @@ export type Database = {
         }
         Relationships: []
       }
+      build_artifacts: {
+        Row: {
+          created_at: string | null
+          deployment_id: string
+          file_hash: string | null
+          file_path: string
+          file_size: number | null
+          id: string
+          storage_path: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          deployment_id: string
+          file_hash?: string | null
+          file_path: string
+          file_size?: number | null
+          id?: string
+          storage_path?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          deployment_id?: string
+          file_hash?: string | null
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          storage_path?: string | null
+        }
+        Relationships: []
+      }
       build_cache: {
         Row: {
           ai_recommendations: Json | null
@@ -2588,6 +2618,39 @@ export type Database = {
           },
         ]
       }
+      deployment_checks: {
+        Row: {
+          check_name: string
+          check_type: string
+          created_at: string | null
+          deployment_id: string
+          details: Json | null
+          id: string
+          message: string | null
+          passed: boolean
+        }
+        Insert: {
+          check_name: string
+          check_type: string
+          created_at?: string | null
+          deployment_id: string
+          details?: Json | null
+          id?: string
+          message?: string | null
+          passed: boolean
+        }
+        Update: {
+          check_name?: string
+          check_type?: string
+          created_at?: string | null
+          deployment_id?: string
+          details?: Json | null
+          id?: string
+          message?: string | null
+          passed?: boolean
+        }
+        Relationships: []
+      }
       deployment_error_patterns: {
         Row: {
           created_at: string
@@ -2719,6 +2782,51 @@ export type Database = {
           success_rate?: number | null
           times_applied?: number | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      deployment_pipeline_stages: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          deployment_id: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          output_logs: string | null
+          stage_name: string
+          stage_order: number
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          deployment_id: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          output_logs?: string | null
+          stage_name: string
+          stage_order: number
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          deployment_id?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          output_logs?: string | null
+          stage_name?: string
+          stage_order?: number
+          started_at?: string | null
+          status?: string
         }
         Relationships: []
       }
