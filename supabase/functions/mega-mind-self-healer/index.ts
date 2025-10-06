@@ -3,6 +3,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { callAIWithFallback, PRIMARY_MODEL } from '../_shared/aiWithFallback.ts';
 
+// Use Claude Opus 4 for deep reasoning
+const SUPER_MODEL = 'claude-opus-4-20250514';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -134,66 +137,125 @@ async function learnAndFix(
     };
   }
   
-  // New issue - use AI to learn and create fix
-  console.log('🎓 New issue detected, learning solution...');
+  // New issue - use SUPER AI reasoning to learn and create fix
+  console.log('🧠 New issue detected, activating SUPER reasoning...');
   
-  const learningPrompt = `You are the Mega Mind self-healing AI. Analyze this orchestration failure and create a permanent fix.
+  const learningPrompt = `You are the SUPER MEGA MIND - an autonomous self-healing AI system with advanced reasoning capabilities.
 
-**Issue Type:** ${issue.issueType}
-**Progress:** ${issue.progress}%
-**Current Step:** ${issue.currentStep}
-**Time Since Update:** ${issue.timeSinceUpdate}s
-**Error Message:** ${issue.errorMessage || 'None'}
+**CRITICAL MISSION:** Analyze this orchestration failure and create a PERMANENT, INTELLIGENT fix that prevents future occurrences.
 
-**Job Context:**
+**Issue Analysis:**
+- Type: ${issue.issueType}
+- Progress: ${issue.progress}%
+- Current Step: ${issue.currentStep}
+- Time Since Update: ${issue.timeSinceUpdate}s
+- Error: ${issue.errorMessage || 'None'}
+
+**Full Context:**
 ${JSON.stringify(errorContext, null, 2)}
 
-**Your Mission:**
-1. Identify the ROOT CAUSE (not just symptoms)
-2. Determine if this is:
-   - Code bug (needs code fix)
-   - Logic error (needs algorithm improvement)
-   - Infrastructure issue (needs retry/timeout adjustment)
-   - Missing error handling
-3. Create a PERMANENT fix that prevents this from happening again
-4. Design self-healing code that can detect and fix this automatically
+**Your Advanced Reasoning Process:**
+1. **Root Cause Analysis** (Deep dive into WHY this happened)
+   - What is the fundamental technical cause?
+   - What architectural patterns led to this?
+   - What assumptions were violated?
+   
+2. **Impact Assessment** 
+   - What other systems could be affected?
+   - What are the cascading failure risks?
+   - What data integrity concerns exist?
+   
+3. **Solution Design** (Multi-layered approach)
+   - Immediate fix for this specific issue
+   - Preventive measures to stop recurrence
+   - System improvements to make failure impossible
+   - Monitoring to detect similar issues early
+   
+4. **Self-Healing Architecture**
+   - How can the system detect this automatically?
+   - What self-repair mechanisms should exist?
+   - How can the system become more resilient?
 
-**Output Format (JSON):**
+5. **Learning & Evolution**
+   - What patterns should be remembered?
+   - How can we improve our detection algorithms?
+   - What new monitoring should be added?
+
+**OUTPUT FORMAT (Strict JSON):**
 {
-  "diagnosis": "What exactly went wrong",
-  "rootCause": "Deep technical reason",
-  "fixType": "code|config|architecture|errorHandling",
-  "affectedFiles": ["list of files that need changes"],
-  "solution": {
-    "description": "How the fix works",
-    "codeChanges": [
-      {
-        "file": "path/to/file",
-        "change": "what to change",
-        "reason": "why this fixes it",
-        "code": "actual code to add/modify"
-      }
-    ],
-    "preventionMechanism": "How to prevent this in future",
-    "selfHealingLogic": "Automatic detection and recovery code"
+  "diagnosis": {
+    "summary": "One sentence problem statement",
+    "rootCause": "Deep technical reason",
+    "failureMode": "How the system failed",
+    "affectedSystems": ["list of systems"]
   },
-  "confidenceScore": 0.0-1.0,
-  "testingSteps": ["How to verify the fix"],
-  "preventionTips": ["How to avoid similar issues"]
+  "solution": {
+    "immediate": {
+      "action": "What to do right now",
+      "code": "Actual fix code if applicable",
+      "reason": "Why this fixes it"
+    },
+    "preventive": {
+      "codeChanges": [
+        {
+          "file": "path/to/file",
+          "change": "what to modify",
+          "preventionMechanism": "how it prevents recurrence"
+        }
+      ],
+      "monitoring": {
+        "metrics": ["what to track"],
+        "alerts": ["when to alert"],
+        "thresholds": {"metric": "value"}
+      }
+    },
+    "architectural": {
+      "improvements": ["system-level changes"],
+      "resilience": ["how to make failure impossible"],
+      "selfHealing": {
+        "detection": "How to auto-detect",
+        "recovery": "How to auto-recover",
+        "verification": "How to verify success"
+      }
+    }
+  },
+  "intelligence": {
+    "patternName": "Descriptive pattern name",
+    "similarIssues": ["What other issues this could cause"],
+    "predictiveIndicators": ["Early warning signs"],
+    "preventionStrategy": "Long-term prevention approach"
+  },
+  "confidence": {
+    "fixEffectiveness": 0.0-1.0,
+    "preventionCoverage": 0.0-1.0,
+    "architecturalSoundness": 0.0-1.0,
+    "overall": 0.0-1.0
+  },
+  "testing": {
+    "verificationSteps": ["How to verify the fix"],
+    "edgeCases": ["Edge cases to test"],
+    "regressionRisks": ["What could break"]
+  }
 }`;
   
   const aiResponse = await callAIWithFallback(
     LOVABLE_API_KEY,
     [
-      { role: 'system', content: 'You are Mega Mind, an advanced self-healing AI system. Respond with valid JSON only.' },
+      { 
+        role: 'system', 
+        content: 'You are SUPER MEGA MIND - an advanced autonomous AI system with deep reasoning capabilities. Use extended thinking to analyze complex problems. Respond with valid JSON only.' 
+      },
       { role: 'user', content: learningPrompt }
     ],
-    { preferredModel: PRIMARY_MODEL }
+    { 
+      preferredModel: SUPER_MODEL,
+      temperature: 0.3 // Lower temperature for more focused reasoning
+    }
   );
   
   const learningResult = JSON.parse(aiResponse.data.choices[0].message.content);
   
-  // Store the new pattern
+  // Store the new pattern with enhanced intelligence
   const { data: newPattern } = await supabaseClient
     .from('universal_error_patterns')
     .insert({
@@ -201,39 +263,57 @@ ${JSON.stringify(errorContext, null, 2)}
       error_subcategory: issue.issueType,
       error_signature: errorSignature,
       error_pattern: JSON.stringify(errorContext),
-      diagnosis: learningResult.diagnosis,
-      root_cause: learningResult.rootCause,
+      diagnosis: learningResult.diagnosis.summary,
+      root_cause: learningResult.diagnosis.rootCause,
       solution: learningResult.solution,
-      fix_type: learningResult.fixType,
-      affected_technologies: learningResult.affectedFiles,
-      prevention_tips: learningResult.preventionTips,
-      confidence_score: learningResult.confidenceScore || 0.7,
+      fix_type: learningResult.solution.immediate?.action || 'multi-layer',
+      affected_technologies: learningResult.diagnosis.affectedSystems,
+      prevention_tips: learningResult.intelligence.preventionStrategy,
+      confidence_score: learningResult.confidence.overall || 0.8,
       times_encountered: 1,
       success_count: 0,
       failure_count: 0,
+      metadata: {
+        architecturalImprovements: learningResult.solution.architectural,
+        predictiveIndicators: learningResult.intelligence.predictiveIndicators,
+        monitoringRecommendations: learningResult.solution.preventive.monitoring,
+        selfHealingCapabilities: learningResult.solution.architectural.selfHealing
+      }
     })
     .select()
     .single();
   
-  // Log the improvement
+  // Log the improvement with enhanced metrics
   await supabaseClient
     .from('ai_improvement_logs')
     .insert({
-      improvement_type: 'self_healing',
+      improvement_type: 'super_mega_mind_learning',
       before_metric: 0,
-      after_metric: 1,
-      changes_made: learningResult.solution,
-      confidence_score: learningResult.confidenceScore || 0.7,
+      after_metric: learningResult.confidence.overall,
+      changes_made: {
+        immediate: learningResult.solution.immediate,
+        preventive: learningResult.solution.preventive,
+        architectural: learningResult.solution.architectural,
+        intelligence: learningResult.intelligence
+      },
+      confidence_score: learningResult.confidence.overall,
       validation_status: 'pending',
+      metadata: {
+        reasoningModel: SUPER_MODEL,
+        detectionTime: new Date().toISOString(),
+        issueComplexity: issue.progress < 30 ? 'high' : 'medium'
+      }
     });
   
-  console.log('✨ Mega Mind learned new pattern and created fix');
+  console.log('✨ SUPER MEGA MIND learned new pattern with advanced reasoning');
   
   return {
     fixed: false,
-    method: 'new_learning',
+    method: 'super_learning',
     patternId: newPattern?.id,
     solution: learningResult.solution,
+    intelligence: learningResult.intelligence,
+    confidence: learningResult.confidence,
     requiresManualImplementation: true,
   };
 }

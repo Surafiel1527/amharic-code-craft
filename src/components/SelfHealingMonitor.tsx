@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Brain, AlertTriangle, CheckCircle2, TrendingUp, Zap } from "lucide-react";
+import { Brain, AlertTriangle, CheckCircle2, TrendingUp, Zap, Sparkles, Activity, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface HealingPattern {
   id: string;
@@ -25,10 +27,27 @@ interface SelfHealingStats {
   recentHeals: number;
 }
 
+interface Prediction {
+  type: string;
+  probability: number;
+  timeframe: string;
+  affectedSystems: string[];
+}
+
+interface SystemHealth {
+  overall: number;
+  trend: string;
+  riskLevel: string;
+}
+
 export function SelfHealingMonitor() {
   const [stats, setStats] = useState<SelfHealingStats | null>(null);
   const [recentPatterns, setRecentPatterns] = useState<HealingPattern[]>([]);
   const [isHealing, setIsHealing] = useState(false);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -105,7 +124,6 @@ export function SelfHealingMonitor() {
   const fixStuckJobs = async () => {
     setIsHealing(true);
     try {
-      // Get stuck jobs first
       const { data: jobs } = await supabase
         .from('ai_generation_jobs')
         .select('id, status, progress, current_step, updated_at')
@@ -126,7 +144,6 @@ export function SelfHealingMonitor() {
         description: `Found ${jobs.length} stuck job(s), attempting to fix...`,
       });
 
-      // Fix each stuck job
       for (const job of jobs) {
         try {
           const { error } = await supabase.functions.invoke('fix-stuck-job', {
@@ -135,8 +152,6 @@ export function SelfHealingMonitor() {
           
           if (error) {
             console.error(`Failed to fix job ${job.id}:`, error);
-          } else {
-            console.log(`✅ Fixed job ${job.id}`);
           }
         } catch (err) {
           console.error(`Error fixing job ${job.id}:`, err);
@@ -161,6 +176,59 @@ export function SelfHealingMonitor() {
     }
   };
 
+  const runPredictiveAnalysis = async () => {
+    setIsAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('super-predictive-analyzer');
+
+      if (error) throw error;
+
+      if (data.analysis) {
+        setPredictions(data.analysis.predictions || []);
+        setSystemHealth(data.analysis.systemHealth);
+        
+        toast({
+          title: "🔮 Predictive Analysis Complete",
+          description: `System Health: ${data.analysis.systemHealth.overall}% - ${data.analysis.predictions.length} predictions made`,
+        });
+      }
+    } catch (error) {
+      console.error('Predictive analysis error:', error);
+      toast({
+        title: "Analysis Failed",
+        description: "Could not run predictive analysis",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const runPerformanceOptimization = async () => {
+    setIsOptimizing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-performance-optimizer');
+
+      if (error) throw error;
+
+      toast({
+        title: "⚡ Performance Optimized",
+        description: `${data.autoApplied || 0} optimizations auto-applied`,
+      });
+
+      loadStats();
+    } catch (error) {
+      console.error('Performance optimization error:', error);
+      toast({
+        title: "Optimization Failed",
+        description: "Could not optimize performance",
+        variant: "destructive",
+      });
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
   const getSuccessRate = (pattern: HealingPattern) => {
     const total = pattern.success_count + pattern.failure_count;
     if (total === 0) return 0;
@@ -168,127 +236,249 @@ export function SelfHealingMonitor() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Brain className="h-8 w-8 text-primary" />
-          <div>
-            <h2 className="text-2xl font-bold">Mega Mind Self-Healing</h2>
-            <p className="text-sm text-muted-foreground">
-              Continuously learning and improving from errors
-            </p>
+    <Tabs defaultValue="healing" className="space-y-6">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="healing">🧠 Self-Healing</TabsTrigger>
+        <TabsTrigger value="predictions">🔮 Predictions</TabsTrigger>
+        <TabsTrigger value="optimization">⚡ Optimization</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="healing" className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Brain className="h-8 w-8 text-primary animate-pulse" />
+            <div>
+              <h2 className="text-2xl font-bold">SUPER Mega Mind</h2>
+              <p className="text-sm text-muted-foreground">
+                Advanced AI reasoning with Claude Opus 4
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={fixStuckJobs} disabled={isHealing} variant="default" size="sm">
+              <Zap className="mr-2 h-4 w-4" />
+              {isHealing ? 'Fixing...' : 'Fix Stuck'}
+            </Button>
+            <Button onClick={triggerSelfHealing} disabled={isHealing} variant="outline" size="sm">
+              <Sparkles className="mr-2 h-4 w-4" />
+              {isHealing ? 'Healing...' : 'Auto-Heal'}
+            </Button>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={fixStuckJobs} disabled={isHealing} variant="default">
-            <Zap className="mr-2 h-4 w-4" />
-            {isHealing ? 'Fixing...' : 'Fix Stuck Jobs'}
-          </Button>
-          <Button onClick={triggerSelfHealing} disabled={isHealing} variant="outline">
-            <Brain className="mr-2 h-4 w-4" />
-            {isHealing ? 'Healing...' : 'Auto-Heal All'}
-          </Button>
-        </div>
-      </div>
 
-      {stats && (
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Learned Patterns</CardTitle>
-              <Brain className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalPatterns}</div>
-              <p className="text-xs text-muted-foreground">Error patterns learned</p>
-            </CardContent>
-          </Card>
+        {stats && (
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Learned Patterns</CardTitle>
+                <Brain className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalPatterns}</div>
+                <p className="text-xs text-muted-foreground">Error patterns learned</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Successful Heals</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.successfulHeals}</div>
-              <p className="text-xs text-muted-foreground">Automatically fixed</p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Successful Heals</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.successfulHeals}</div>
+                <p className="text-xs text-muted-foreground">Automatically fixed</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Confidence</CardTitle>
-              <TrendingUp className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{Math.round(stats.averageConfidence * 100)}%</div>
-              <p className="text-xs text-muted-foreground">Solution accuracy</p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Avg Confidence</CardTitle>
+                <TrendingUp className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{Math.round(stats.averageConfidence * 100)}%</div>
+                <p className="text-xs text-muted-foreground">Solution accuracy</p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Patterns</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-yellow-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.recentHeals}</div>
-              <p className="text-xs text-muted-foreground">Recently used</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Patterns</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.recentHeals}</div>
+                <p className="text-xs text-muted-foreground">Recently used</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Learned Patterns</CardTitle>
-          <CardDescription>
-            Self-healing patterns that Mega Mind has learned
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {recentPatterns.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No patterns learned yet. Mega Mind is standing by.
-              </p>
-            ) : (
-              recentPatterns.map((pattern) => (
-                <div
-                  key={pattern.id}
-                  className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{pattern.error_category}</Badge>
-                      {pattern.error_subcategory && (
-                        <Badge variant="secondary">{pattern.error_subcategory}</Badge>
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Learned Patterns</CardTitle>
+            <CardDescription>
+              Self-healing patterns that SUPER Mega Mind has learned
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentPatterns.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No patterns learned yet. SUPER Mega Mind is standing by.
+                </p>
+              ) : (
+                recentPatterns.map((pattern) => (
+                  <div
+                    key={pattern.id}
+                    className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{pattern.error_category}</Badge>
+                        {pattern.error_subcategory && (
+                          <Badge variant="secondary">{pattern.error_subcategory}</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium">
+                        {typeof pattern.diagnosis === 'string' 
+                          ? pattern.diagnosis 
+                          : JSON.stringify(pattern.diagnosis)}
+                      </p>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span>Used {pattern.times_encountered} times</span>
+                        <span>Success rate: {getSuccessRate(pattern)}%</span>
+                        <span>Confidence: {Math.round(pattern.confidence_score * 100)}%</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      {getSuccessRate(pattern) > 80 ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <AlertTriangle className="h-5 w-5 text-yellow-500" />
                       )}
                     </div>
-                    <p className="text-sm font-medium">
-                      {typeof pattern.diagnosis === 'string' 
-                        ? pattern.diagnosis 
-                        : JSON.stringify(pattern.diagnosis)}
-                    </p>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span>Used {pattern.times_encountered} times</span>
-                      <span>Success rate: {getSuccessRate(pattern)}%</span>
-                      <span>Confidence: {Math.round(pattern.confidence_score * 100)}%</span>
-                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    {getSuccessRate(pattern) > 80 ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="predictions" className="space-y-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-xl font-bold">Predictive Analytics</h3>
+            <p className="text-sm text-muted-foreground">AI-powered failure prediction</p>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+          <Button onClick={runPredictiveAnalysis} disabled={isAnalyzing} size="sm">
+            <Target className="mr-2 h-4 w-4" />
+            {isAnalyzing ? 'Analyzing...' : 'Run Analysis'}
+          </Button>
+        </div>
+
+        {systemHealth && (
+          <Card className="border-2 border-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>System Health</span>
+                <Badge variant={systemHealth.riskLevel === 'low' ? 'default' : 'destructive'}>
+                  {systemHealth.riskLevel.toUpperCase()}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Overall Health</span>
+                  <span className="font-bold">{systemHealth.overall}%</span>
+                </div>
+                <Progress value={systemHealth.overall} className="h-3" />
+                <p className="text-xs text-muted-foreground">
+                  Trend: <strong>{systemHealth.trend}</strong>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {predictions.length > 0 ? (
+          <div className="grid gap-4">
+            {predictions.map((prediction, idx) => (
+              <Card key={idx} className="border-l-4 border-l-yellow-500">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center justify-between">
+                    <span className="capitalize">{prediction.type} Prediction</span>
+                    <Badge variant="outline">
+                      {(prediction.probability * 100).toFixed(0)}% likely
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-sm"><strong>Timeframe:</strong> {prediction.timeframe}</p>
+                  <p className="text-sm"><strong>Affected:</strong> {prediction.affectedSystems.join(', ')}</p>
+                  <Progress value={prediction.probability * 100} className="h-2" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No predictions yet. Run analysis to see forecasts.</p>
+            </CardContent>
+          </Card>
+        )}
+      </TabsContent>
+
+      <TabsContent value="optimization" className="space-y-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-xl font-bold">Performance Optimization</h3>
+            <p className="text-sm text-muted-foreground">Automatic performance improvements</p>
+          </div>
+          <Button onClick={runPerformanceOptimization} disabled={isOptimizing} size="sm">
+            <Sparkles className="mr-2 h-4 w-4" />
+            {isOptimizing ? 'Optimizing...' : 'Auto-Optimize'}
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Auto-Optimization Engine</CardTitle>
+            <CardDescription>
+              SUPER Mega Mind continuously analyzes performance and applies safe optimizations
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Performance Monitoring</p>
+                  <p className="text-sm text-muted-foreground">Real-time job execution analysis</p>
+                </div>
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Bottleneck Detection</p>
+                  <p className="text-sm text-muted-foreground">Identifying slow operations</p>
+                </div>
+                <Activity className="h-5 w-5 text-blue-500 animate-pulse" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Auto-Apply Optimizations</p>
+                  <p className="text-sm text-muted-foreground">Safe improvements applied automatically</p>
+                </div>
+                <Sparkles className="h-5 w-5 text-yellow-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   );
 }

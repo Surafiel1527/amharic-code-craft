@@ -81,6 +81,12 @@ verify_jwt = false
 [functions.mega-mind-self-healer]
 verify_jwt = false
 
+[functions.super-predictive-analyzer]
+verify_jwt = false
+
+[functions.auto-performance-optimizer]
+verify_jwt = false
+
 [functions.fix-stuck-job]
 verify_jwt = false
 
