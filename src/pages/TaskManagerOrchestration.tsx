@@ -2,10 +2,11 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Code, Eye } from "lucide-react";
+import { Loader2, Code, Eye, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useRealtimeOrchestration } from "@/hooks/useRealtimeOrchestration";
 import { loadProgress, saveProgress, formatErrorMessage } from "@/utils/orchestrationHelpers";
 import { OrchestrationProgress } from "@/components/OrchestrationProgress";
@@ -18,6 +19,8 @@ export default function TaskManagerOrchestration() {
   const [activeTab, setActiveTab] = useState("progress");
   const [jobId, setJobId] = useState<string | null>(null);
   const [phases, setPhases] = useState<any[]>([]);
+  const [streamUpdates, setStreamUpdates] = useState<string[]>([]);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const isStartingRef = useRef(false);
 
   // Real-time progress tracking with automatic fallback
@@ -27,6 +30,7 @@ export default function TaskManagerOrchestration() {
       setStatus(update.current_step);
       setProgress(update.progress);
       setPhases(update.phases || []);
+      setStreamUpdates(update.stream_updates || []);
       
       if (update.output_data?.generatedCode || update.output_data?.html) {
         setGeneratedCode(update.output_data.generatedCode || update.output_data.html);
@@ -145,8 +149,17 @@ Make it production-ready with proper error handling, loading states, and mobile 
         });
 
         toast({
-          title: "Orchestration Started!",
-          description: "Building your task manager",
+          title: "🧠 Mega Mind activated - analyzing your request...",
+          description: "Click to cancel if needed",
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowCancelDialog(true)}
+            >
+              Cancel
+            </Button>
+          ),
         });
 
         setJobId(data.jobId);
@@ -165,7 +178,7 @@ Make it production-ready with proper error handling, loading states, and mobile 
     startOrchestration();
   }, [user]);
 
-  const handleCancel = async () => {
+  const handleCancelConfirm = async () => {
     if (!jobId) return;
     
     try {
@@ -179,6 +192,7 @@ Make it production-ready with proper error handling, loading states, and mobile 
         description: "Orchestration has been cancelled",
       });
       
+      setShowCancelDialog(false);
       setTimeout(() => window.location.href = '/', 1500);
     } catch (error) {
       console.error('Cancel error:', error);
@@ -187,6 +201,26 @@ Make it production-ready with proper error handling, loading states, and mobile 
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 p-4">
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-destructive" />
+              Are you sure you want to cancel?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will stop the current project generation. All progress will be lost and you'll need to start over.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, continue building</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelConfirm} className="bg-destructive hover:bg-destructive/90">
+              Yes, cancel project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="container mx-auto max-w-7xl">
         {phases.length > 0 && (
           <div className="mb-4">
@@ -194,7 +228,7 @@ Make it production-ready with proper error handling, loading states, and mobile 
               phases={phases}
               isLoading={progress < 100}
               jobId={jobId}
-              onCancel={handleCancel}
+              onCancel={() => setShowCancelDialog(true)}
               currentProgress={progress}
             />
           </div>
@@ -236,6 +270,20 @@ Make it production-ready with proper error handling, loading states, and mobile 
                     {Math.round(progress)}% Complete
                   </p>
                 </div>
+
+                {/* Live Stream Updates */}
+                {streamUpdates.length > 0 && (
+                  <div className="mt-6 space-y-2">
+                    <h3 className="text-sm font-semibold text-muted-foreground">Live Progress:</h3>
+                    <div className="bg-muted/50 rounded-lg p-4 max-h-64 overflow-y-auto space-y-2">
+                      {streamUpdates.map((update, i) => (
+                        <div key={i} className="text-xs text-left font-mono animate-in fade-in slide-in-from-bottom-2 duration-200">
+                          {update}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
           </TabsContent>
