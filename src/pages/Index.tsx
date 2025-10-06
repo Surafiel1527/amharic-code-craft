@@ -592,6 +592,10 @@ const Index = () => {
                   <Brain className="h-4 w-4" />
                   <span className="hidden lg:inline">AI System</span>
                 </Button>
+                <Button variant="default" size="sm" onClick={() => navigate("/generate")} className="gap-2 hover-scale bg-gradient-to-r from-primary to-primary/80">
+                  <Sparkles className="h-4 w-4" />
+                  <span className="hidden lg:inline">AI Generator</span>
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => navigate("/task-manager-orchestration")} className="gap-2 hover-scale bg-primary/10">
                   <Zap className="h-4 w-4" />
                   <span className="hidden lg:inline">Build Task Manager</span>

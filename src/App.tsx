@@ -31,7 +31,7 @@ const TaskManagerOrchestration = lazy(() => import("./pages/TaskManagerOrchestra
 const SelfHealingHub = lazy(() => import("./pages/SelfHealingHub"));
 const ActivityDemo = lazy(() => import("./pages/ActivityDemo"));
 const TaskManager = lazy(() => import("./pages/TaskManager"));
-const AutonomousBuildTest = lazy(() => import("./pages/AutonomousBuildTest"));
+const Generate = lazy(() => import("./pages/Generate"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -69,7 +69,7 @@ const App = () => {
           <Route path="/self-healing" element={<SelfHealingHub />} />
           <Route path="/activity-demo" element={<ActivityDemo />} />
           <Route path="/tasks" element={<TaskManager />} />
-          <Route path="/autonomous-build" element={<AutonomousBuildTest />} />
+          <Route path="/generate" element={<Generate />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

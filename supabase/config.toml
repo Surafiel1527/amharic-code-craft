@@ -118,6 +118,14 @@ verify_jwt = true
 verify_jwt = true
 
 # ============================================
+# AI CODE GENERATION
+# Autonomous code generation system
+# ============================================
+
+[functions.ai-code-generator]
+verify_jwt = true
+
+# ============================================
 # PLATFORM TESTING FUNCTIONS
 # Functions for testing platform capabilities
 # ============================================
