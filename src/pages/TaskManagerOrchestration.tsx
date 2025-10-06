@@ -1,29 +1,32 @@
-import { useEffect, useState, useRef } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Code, Eye, AlertCircle } from "lucide-react";
+import { Code, Eye, Send } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useRealtimeOrchestration } from "@/hooks/useRealtimeOrchestration";
-import { loadProgress, saveProgress, formatErrorMessage } from "@/utils/orchestrationHelpers";
+import { formatErrorMessage } from "@/utils/orchestrationHelpers";
 import { OrchestrationProgress } from "@/components/OrchestrationProgress";
 
 export default function TaskManagerOrchestration() {
   const { user } = useAuth();
-  const [status, setStatus] = useState("Initializing...");
+  const [status, setStatus] = useState("Ready to start");
   const [progress, setProgress] = useState(0);
   const [generatedCode, setGeneratedCode] = useState("");
-  const [activeTab, setActiveTab] = useState("progress");
+  const [activeTab, setActiveTab] = useState("chat");
   const [jobId, setJobId] = useState<string | null>(null);
   const [phases, setPhases] = useState<any[]>([]);
   const [streamUpdates, setStreamUpdates] = useState<string[]>([]);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const isStartingRef = useRef(false);
+  const [userInput, setUserInput] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
 
-  // Real-time progress tracking with automatic fallback
+  // Real-time progress tracking
   const { jobData } = useRealtimeOrchestration({
     jobId,
     onProgress: (update) => {
@@ -35,23 +38,24 @@ export default function TaskManagerOrchestration() {
       if (update.output_data?.generatedCode || update.output_data?.html) {
         setGeneratedCode(update.output_data.generatedCode || update.output_data.html);
       }
-
-      if (user) {
-        saveProgress(user.id, {
-          jobId: update.id,
-          progress: update.progress,
-          currentStep: update.current_step
-        });
-      }
     },
     onComplete: (data) => {
+      setIsProcessing(false);
+      setChatHistory(prev => [...prev, {
+        role: 'assistant',
+        content: `✅ Complete! Your project has been ${jobId ? 'updated' : 'created'} successfully.`
+      }]);
       toast({
         title: "✅ Complete!",
-        description: "Your task manager is ready!",
+        description: "Your project is ready!",
       });
-      setTimeout(() => window.location.href = '/', 2000);
     },
     onError: (error) => {
+      setIsProcessing(false);
+      setChatHistory(prev => [...prev, {
+        role: 'assistant',
+        content: `❌ Error: ${formatErrorMessage(error)}`
+      }]);
       toast({
         title: "Error",
         description: formatErrorMessage(error),
@@ -61,122 +65,66 @@ export default function TaskManagerOrchestration() {
     enablePollingFallback: true
   });
 
-  useEffect(() => {
-    if (!user) {
+  const handleSendMessage = async () => {
+    if (!user || !userInput.trim() || isProcessing) return;
+
+    const message = userInput.trim();
+    setUserInput("");
+    setChatHistory(prev => [...prev, { role: 'user', content: message }]);
+    setIsProcessing(true);
+    setActiveTab("progress");
+    setStatus("🧠 Mega Mind activated - analyzing your request...");
+    setProgress(5);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
+        body: {
+          request: message,
+          requestType: 'code-generation',
+          context: {
+            userId: user.id,
+            conversationHistory: chatHistory,
+            timestamp: new Date().toISOString(),
+            existingCode: generatedCode,
+            autoRefine: true,
+            autoLearn: true
+          }
+        }
+      });
+
+      if (error) throw error;
+      if (!data?.jobId) throw new Error("No job ID returned");
+
+      setJobId(data.jobId);
+      setStatus("Processing your request...");
+      
       toast({
-        title: "Authentication Required",
-        description: "Please sign in to continue",
+        title: "🧠 Mega Mind Working",
+        description: "Building your project...",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowCancelDialog(true)}
+          >
+            Cancel
+          </Button>
+        ),
+      });
+    } catch (error: any) {
+      console.error("❌ Failed:", error);
+      setIsProcessing(false);
+      setChatHistory(prev => [...prev, {
+        role: 'assistant',
+        content: `❌ Error: ${formatErrorMessage(error)}`
+      }]);
+      toast({
+        title: "Failed",
+        description: formatErrorMessage(error),
         variant: "destructive"
       });
-      return;
     }
-
-    if (isStartingRef.current) {
-      console.log('❌ Already starting, skipping...');
-      return;
-    }
-
-    const startOrchestration = async () => {
-      isStartingRef.current = true;
-      console.log('🔒 Starting orchestration...');
-      
-      try {
-        const savedProgress = await loadProgress(user.id);
-        if (savedProgress && savedProgress.status !== 'completed' && savedProgress.status !== 'failed') {
-          console.log('✅ Resuming previous job:', savedProgress.jobId);
-          setJobId(savedProgress.jobId);
-          setStatus(savedProgress.currentStep);
-          setProgress(savedProgress.progress);
-          
-          toast({
-            title: "Resuming Work",
-            description: "Found previous orchestration, resuming...",
-          });
-          return;
-        }
-
-        console.log('🚀 Creating new orchestration...');
-        setStatus("🚀 Starting orchestration...");
-        
-        const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
-          body: {
-            request: `Build a complete AI-powered task manager with the following features:
-
-DATABASE & AUTH:
-- User authentication (signup/login with email/password)
-- Tasks table with: title, description, priority (low/medium/high), status (todo/in-progress/done), due_date, category, tags, created_at
-- User profiles with username and avatar
-- Task comments/notes for collaboration
-- Full RLS security policies
-
-AI FEATURES:
-- Smart task suggestions based on user's task history
-- Auto-categorization of tasks when user types naturally (e.g., "buy groceries" → auto-tagged as "shopping")
-- AI chat interface where users can say "add task to buy milk tomorrow" and it creates the task automatically
-- Priority recommendations based on urgency keywords
-
-UI COMPONENTS:
-- Modern dashboard with:
-  * Task statistics (completed, pending, overdue)
-  * Quick add task form
-  * Task list with filtering (by status, priority, category)
-  * Drag-and-drop to change task status
-  * Search and sort functionality
-- AI chat panel (floating button bottom-right)
-- Clean, professional design with smooth animations
-
-REAL-TIME:
-- Live task updates when tasks are added/completed
-- Real-time task count updates in dashboard
-
-Make it production-ready with proper error handling, loading states, and mobile responsive design`,
-            requestType: 'full-stack-generation',
-            context: {
-              userId: user.id,
-              timestamp: new Date().toISOString()
-            }
-          }
-        });
-
-        if (error) throw error;
-        if (!data?.jobId) throw new Error("No job ID returned");
-
-        await saveProgress(user.id, {
-          currentRequest: 'Task Manager Generation',
-          jobId: data.jobId,
-          progress: 0,
-          currentStep: 'Starting orchestration...'
-        });
-
-        toast({
-          title: "🧠 Mega Mind activated - analyzing your request...",
-          description: "Click to cancel if needed",
-          action: (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowCancelDialog(true)}
-            >
-              Cancel
-            </Button>
-          ),
-        });
-
-        setJobId(data.jobId);
-      } catch (error) {
-        console.error('❌ Orchestration error:', error);
-        toast({
-          title: "Error",
-          description: formatErrorMessage(error),
-          variant: "destructive"
-        });
-      } finally {
-        isStartingRef.current = false;
-      }
-    };
-
-    startOrchestration();
-  }, [user]);
+  };
 
   const handleCancelConfirm = async () => {
     if (!jobId) return;
@@ -189,127 +137,173 @@ Make it production-ready with proper error handling, loading states, and mobile 
       
       toast({
         title: "Cancelled",
-        description: "Orchestration has been cancelled",
+        description: "Job has been cancelled",
       });
       
       setShowCancelDialog(false);
-      setTimeout(() => window.location.href = '/', 1500);
+      setIsProcessing(false);
+      setJobId(null);
     } catch (error) {
-      console.error('Cancel error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel job",
+        variant: "destructive"
+      });
     }
   };
 
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="p-8 max-w-md w-full text-center">
+          <h2 className="text-2xl font-bold mb-2">Authentication Required</h2>
+          <p className="text-muted-foreground mb-4">Please sign in to continue</p>
+          <Button onClick={() => window.location.href = '/auth'}>Sign In</Button>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 p-4">
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              Are you sure you want to cancel?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will stop the current project generation. All progress will be lost and you'll need to start over.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>No, continue building</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCancelConfirm} className="bg-destructive hover:bg-destructive/90">
-              Yes, cancel project
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/5 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            🧠 Mega Mind Orchestrator
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            Build or improve your projects with AI intelligence
+          </p>
+        </div>
 
-      <div className="container mx-auto max-w-7xl">
-        {phases.length > 0 && (
-          <div className="mb-4">
-            <OrchestrationProgress
-              phases={phases}
-              isLoading={progress < 100}
-              jobId={jobId}
-              onCancel={() => setShowCancelDialog(true)}
-              currentProgress={progress}
-            />
-          </div>
-        )}
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold">Building Your Task Manager</h1>
-            <TabsList>
-              <TabsTrigger value="progress">
-                <Loader2 className="h-4 w-4 mr-2" />
-                Progress
-              </TabsTrigger>
-              <TabsTrigger value="preview" disabled={!generatedCode}>
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </TabsTrigger>
-              <TabsTrigger value="code" disabled={!generatedCode}>
-                <Code className="h-4 w-4 mr-2" />
-                Code
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="chat" className="gap-2">
+              <Send className="w-4 h-4" />
+              Chat
+            </TabsTrigger>
+            <TabsTrigger value="progress" className="gap-2">
+              <Code className="w-4 h-4" />
+              Progress
+            </TabsTrigger>
+            <TabsTrigger value="preview" className="gap-2">
+              <Eye className="w-4 h-4" />
+              Preview
+            </TabsTrigger>
+          </TabsList>
 
-          <TabsContent value="progress" className="mt-0">
-            <Card className="p-8 space-y-6">
-              <div className="text-center space-y-4">
-                <Loader2 className="h-16 w-16 animate-spin text-primary mx-auto" />
-                <p className="text-lg text-muted-foreground">{status}</p>
-                
-                <div className="space-y-2">
-                  <div className="w-full bg-secondary rounded-full h-4 overflow-hidden">
-                    <div 
-                      className="bg-primary h-full transition-all duration-500 ease-out"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  <p className="text-sm font-mono text-muted-foreground">
-                    {Math.round(progress)}% Complete
-                  </p>
-                </div>
-
-                {/* Live Stream Updates */}
-                {streamUpdates.length > 0 && (
-                  <div className="mt-6 space-y-2">
-                    <h3 className="text-sm font-semibold text-muted-foreground">Live Progress:</h3>
-                    <div className="bg-muted/50 rounded-lg p-4 max-h-64 overflow-y-auto space-y-2">
-                      {streamUpdates.map((update, i) => (
-                        <div key={i} className="text-xs text-left font-mono animate-in fade-in slide-in-from-bottom-2 duration-200">
-                          {update}
-                        </div>
-                      ))}
+          <TabsContent value="chat" className="space-y-4">
+            <Card className="p-6">
+              <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
+                {chatHistory.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="text-lg font-medium mb-2">👋 Welcome to Mega Mind!</p>
+                    <p className="text-sm">Tell me what you want to build or improve...</p>
+                    <div className="mt-4 text-left space-y-2 max-w-md mx-auto">
+                      <p className="text-xs font-medium">Examples:</p>
+                      <ul className="text-xs space-y-1 text-muted-foreground">
+                        <li>• "Build a todo app with authentication"</li>
+                        <li>• "Improve my coffee shop website's colors"</li>
+                        <li>• "Add a contact form to my existing site"</li>
+                      </ul>
                     </div>
                   </div>
+                ) : (
+                  chatHistory.map((msg, i) => (
+                    <div key={i} className={`p-4 rounded-lg ${msg.role === 'user' ? 'bg-primary/10 ml-8' : 'bg-secondary mr-8'}`}>
+                      <p className="text-sm font-medium mb-1">{msg.role === 'user' ? '👤 You' : '🧠 Mega Mind'}</p>
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                  ))
                 )}
               </div>
-            </Card>
-          </TabsContent>
 
-          <TabsContent value="preview" className="mt-0">
-            <Card className="p-4">
-              <div className="bg-white rounded-lg border-2 border-border overflow-hidden">
-                <iframe
-                  srcDoc={generatedCode}
-                  className="w-full h-[600px]"
-                  title="Generated Task Manager Preview"
-                  sandbox="allow-scripts allow-same-origin"
+              <div className="flex gap-2">
+                <Textarea
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder="Describe what you want to build or improve..."
+                  className="min-h-[100px]"
+                  disabled={isProcessing}
                 />
+                <Button 
+                  onClick={handleSendMessage} 
+                  disabled={!userInput.trim() || isProcessing}
+                  size="lg"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
               </div>
             </Card>
           </TabsContent>
 
-          <TabsContent value="code" className="mt-0">
-            <Card className="p-4">
-              <pre className="bg-secondary p-4 rounded-lg overflow-x-auto">
-                <code className="text-sm">{generatedCode}</code>
-              </pre>
+          <TabsContent value="progress" className="space-y-4">
+            {!isProcessing && chatHistory.length === 0 ? (
+              <Card className="p-12 text-center">
+                <p className="text-muted-foreground">Start a conversation in the Chat tab to see progress here</p>
+              </Card>
+            ) : (
+              <>
+                <Card className="p-4 mb-4">
+                  <p className="text-sm text-muted-foreground">{status}</p>
+                </Card>
+                
+                <OrchestrationProgress 
+                  phases={phases}
+                  isLoading={isProcessing}
+                  jobId={jobId || undefined}
+                  currentProgress={progress}
+                  streamingUpdates={streamUpdates}
+                  onCancel={() => setShowCancelDialog(true)}
+                />
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="preview">
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Code className="w-5 h-5" />
+                  Generated Code
+                </h3>
+              </div>
+              {generatedCode ? (
+                <pre className="bg-secondary p-4 rounded-lg overflow-x-auto text-sm">
+                  <code>{generatedCode}</code>
+                </pre>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">
+                  Send a message to start generating code
+                </p>
+              )}
             </Card>
           </TabsContent>
         </Tabs>
       </div>
+
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Generation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel? All progress will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, Continue</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelConfirm}>
+              Yes, Cancel
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
