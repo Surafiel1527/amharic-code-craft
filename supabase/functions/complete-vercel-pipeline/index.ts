@@ -100,7 +100,7 @@ serve(async (req) => {
           
           // Auto-create package.json if missing
           if (!files['package.json']) {
-            console.log('📝 Creating default package.json...');
+            console.log('📝 Creating default package.json with full stack...');
             files['package.json'] = JSON.stringify({
               name: projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
               version: '1.0.0',
@@ -112,14 +112,157 @@ serve(async (req) => {
               },
               dependencies: {
                 'react': '^18.3.1',
-                'react-dom': '^18.3.1'
+                'react-dom': '^18.3.1',
+                'react-router-dom': '^6.30.1',
+                '@radix-ui/react-slot': '^1.2.3',
+                'class-variance-authority': '^0.7.1',
+                'clsx': '^2.1.1',
+                'lucide-react': '^0.462.0',
+                'tailwind-merge': '^2.6.0'
               },
               devDependencies: {
                 '@vitejs/plugin-react': '^4.3.4',
-                'vite': '^5.4.11'
+                'vite': '^5.4.11',
+                'tailwindcss': '^3.4.17',
+                'autoprefixer': '^10.4.20',
+                'postcss': '^8.4.49',
+                '@types/react': '^18.3.18',
+                '@types/react-dom': '^18.3.5',
+                'typescript': '^5.7.3'
               }
             }, null, 2);
             checks[1].passed = true;
+          }
+          
+          // Auto-create tailwind.config.js if missing
+          if (!files['tailwind.config.js'] && !files['tailwind.config.ts']) {
+            console.log('📝 Creating Tailwind config...');
+            files['tailwind.config.js'] = `/** @type {import('tailwindcss').Config} */
+export default {
+  darkMode: ["class"],
+  content: [
+    './pages/**/*.{ts,tsx,js,jsx}',
+    './components/**/*.{ts,tsx,js,jsx}',
+    './app/**/*.{ts,tsx,js,jsx}',
+    './src/**/*.{ts,tsx,js,jsx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+    },
+  },
+  plugins: [],
+}`;
+          }
+          
+          // Auto-create postcss.config.js if missing
+          if (!files['postcss.config.js']) {
+            console.log('📝 Creating PostCSS config...');
+            files['postcss.config.js'] = `export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}`;
+          }
+          
+          // Ensure index.css includes Tailwind directives
+          if (files['src/index.css'] && !files['src/index.css'].includes('@tailwind')) {
+            console.log('📝 Adding Tailwind directives to index.css...');
+            const tailwindDirectives = `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+`;
+            files['src/index.css'] = tailwindDirectives + files['src/index.css'];
+          } else if (!files['src/index.css']) {
+            console.log('📝 Creating index.css with Tailwind...');
+            files['src/index.css'] = `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --primary: 271 91% 65%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 142 76% 36%;
+    --accent-foreground: 210 40% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 271 91% 65%;
+    --radius: 0.75rem;
+  }
+  
+  .dark {
+    --background: 220 25% 8%;
+    --foreground: 210 40% 98%;
+    --primary: 271 91% 65%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 142 76% 36%;
+    --accent-foreground: 210 40% 98%;
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 271 91% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}`;
           }
 
           for (const check of checks) {
