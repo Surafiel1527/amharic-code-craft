@@ -9,6 +9,12 @@ verify_jwt = true
 [functions.unified-dependency-analyzer]
 verify_jwt = true
 
+[functions.unified-code-generator]
+verify_jwt = true
+
+[functions.unified-test-manager]
+verify_jwt = true
+
 [functions.smart-build-optimizer]
 verify_jwt = false
 

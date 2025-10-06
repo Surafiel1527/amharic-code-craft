@@ -81,7 +81,7 @@ const Auth = () => {
         setFullName("");
       }
     } catch (error: any) {
-      console.error("Signup error:", error);
+      logger.error("Signup error", error);
       toast.error(error?.message || "Sign up failed. Please try again.");
     } finally {
       setIsLoading(false);
@@ -115,7 +115,7 @@ const Auth = () => {
       toast.success("Signed in successfully!");
       navigate("/");
     } catch (error) {
-      console.error("Signin error:", error);
+      logger.error("Signin error", error);
       toast.error("Sign in failed. Please try again.");
     } finally {
       setIsLoading(false);

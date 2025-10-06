@@ -73,7 +73,7 @@ export default function AdminCustomizationsList() {
         setCustomizations(data);
       }
     } catch (error) {
-      console.error('Error loading customizations:', error);
+      logger.error('Error loading customizations', error);
       toast({
         title: 'Error',
         description: 'Failed to load customizations',
@@ -98,7 +98,7 @@ export default function AdminCustomizationsList() {
       // Copy to clipboard
       await navigator.clipboard.writeText(prompt);
     } catch (error) {
-      console.error('Error reapplying customization:', error);
+      logger.error('Error reapplying customization', error);
       toast({
         title: 'Error',
         description: 'Failed to copy prompt',
@@ -131,7 +131,7 @@ export default function AdminCustomizationsList() {
 
       loadCustomizations();
     } catch (error) {
-      console.error('Error approving customization:', error);
+      logger.error('Error approving customization', error);
       toast({
         title: 'Error',
         description: 'Failed to approve customization',
@@ -185,7 +185,7 @@ export default function AdminCustomizationsList() {
 
       loadCustomizations();
     } catch (error: any) {
-      console.error('Error rejecting customization:', error);
+      logger.error('Error rejecting customization', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to reject customization',
@@ -226,7 +226,7 @@ export default function AdminCustomizationsList() {
 
       loadCustomizations();
     } catch (error) {
-      console.error('Error clearing duplicates:', error);
+      logger.error('Error clearing duplicates', error);
       toast({
         title: 'Error',
         description: 'Failed to clear old customizations',

@@ -169,7 +169,7 @@ function AdminContent() {
         totalConversations: conversationsCount || 0,
       });
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      logger.error('Error fetching dashboard data', error);
       toast.error(t("toast.dataFetchError"));
     } finally {
       setLoading(false);
@@ -185,7 +185,7 @@ function AdminContent() {
       if (error) throw error;
       toast.success(t("toast.roleUpdated"));
     } catch (error) {
-      console.error('Error updating role:', error);
+      logger.error('Error updating role', error);
       toast.error(t("toast.roleUpdateError"));
     }
   };

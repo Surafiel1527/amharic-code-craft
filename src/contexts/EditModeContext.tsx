@@ -44,7 +44,7 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
       // Close the inspector panel after successful modification
       setSelectedComponent(null);
     } catch (error) {
-      console.error('Error in createModification:', error);
+      logger.error('Error in createModification', error);
       toast.error('Failed to create modification');
     }
   };
