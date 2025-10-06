@@ -1,5 +1,8 @@
 project_id = "xuncvfnvatgqshlivuep"
 
+[functions.unified-package-manager]
+verify_jwt = true
+
 [functions.smart-build-optimizer]
 verify_jwt = false
 

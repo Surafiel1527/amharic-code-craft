@@ -6,6 +6,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/utils/logger';
 
 export interface AIMetrics {
   totalRequests: number;
@@ -135,7 +136,7 @@ export function useAIAnalytics(timeRange: '24h' | '7d' | '30d' = '24h'): AIAnaly
   }) => {
     // Note: Analytics tracking will be implemented with proper schema migration
     // For now, we focus on reading existing analytics data
-    console.log('AI Request tracked:', data);
+    logger.info('AI Request tracked', data);
     
     // Refresh metrics to show any new data
     await refresh();

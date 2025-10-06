@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { logger } from "@/utils/logger";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ const Auth = () => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        console.log('✅ Auth page: User already logged in, redirecting to home');
+        logger.info('User already logged in, redirecting to home');
         navigate("/");
       }
     };

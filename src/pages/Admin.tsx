@@ -8,6 +8,7 @@ import { useDynamicCustomizations } from "@/hooks/useDynamicCustomizations";
 import { DynamicSlot } from "@/components/DynamicSlot";
 import { DynamicComponent } from "@/components/DynamicComponent";
 import { DynamicContainer } from "@/components/DynamicContainer";
+import { logger } from "@/utils/logger";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -74,7 +75,7 @@ function AdminContent() {
   
   // Debug preview mode changes
   useEffect(() => {
-    console.log('📱 Preview Mode Changed:', previewMode, 'Snapshot:', previewSnapshotId);
+    logger.debug('Preview mode changed', { previewMode, previewSnapshotId });
   }, [previewMode, previewSnapshotId]);
   
   const { getDynamicStyles, getDynamicInlineStyles, isVisible, customizations } = useDynamicCustomizations(previewMode, previewSnapshotId, '/admin');
@@ -212,9 +213,9 @@ function AdminContent() {
   }
 
   // Get dynamic inline styles for AdminPage component
-  console.log('🔍 Admin.tsx checking for dynamic styles...');
+  logger.debug('Checking for dynamic styles');
   const dynamicInlineStyles = getDynamicInlineStyles('AdminPage');
-  console.log('🎨 Admin.tsx received inline styles:', dynamicInlineStyles);
+  logger.debug('Received inline styles', { styles: dynamicInlineStyles });
   
   // Fallback gradient
   const defaultGradient = 'linear-gradient(to bottom right, hsl(138, 76%, 97%), hsl(141, 84%, 93%), hsl(141, 79%, 85%))';
