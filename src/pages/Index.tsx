@@ -288,13 +288,13 @@ const Index = () => {
     const progressToast = toast.loading("🚀 Smart Orchestrator activated - analyzing your request...");
     
     try {
-      // Use smart orchestrator for full-stack generation
-      const { data, error } = await supabase.functions.invoke("smart-orchestrator", {
+      // Use mega-mind orchestrator for full-stack generation
+      const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
         body: { 
-          task: prompt,
-          userId: user.id,
+          request: prompt,
+          requestType: 'full-stack-generation',
           context: {
-            requestType: 'full-stack-generation',
+            userId: user.id,
             timestamp: new Date().toISOString()
           }
         },
@@ -302,12 +302,17 @@ const Index = () => {
 
       if (error) {
         toast.dismiss(progressToast);
-        if (error.message.includes("429")) {
+        console.error('❌ Orchestration error:', error);
+        
+        // Handle specific error types
+        if (error.message?.includes("429") || error.status === 429) {
           toast.error(t("toast.rateLimitTitle"), { description: t("toast.rateLimitDesc") });
-        } else if (error.message.includes("402")) {
+        } else if (error.message?.includes("402") || error.status === 402) {
           toast.error(t("toast.paymentRequired"), { description: t("toast.paymentDesc") });
+        } else if (error.message?.includes("timeout")) {
+          toast.error("Request timed out", { description: "The operation took too long. Please try a simpler request." });
         } else {
-          toast.error("Error occurred. Please try again.");
+          toast.error("Generation failed", { description: error.message || "Please try again or simplify your request." });
         }
         throw error;
       }

@@ -123,9 +123,9 @@ export default function TaskManagerOrchestration() {
         console.log('🚀 No existing jobs, creating new orchestration...');
         setStatus("🚀 Starting orchestration...");
         
-        const { data, error } = await supabase.functions.invoke("smart-orchestrator", {
+        const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
           body: {
-            task: `Build a complete AI-powered task manager with the following features:
+            request: `Build a complete AI-powered task manager with the following features:
 
 DATABASE & AUTH:
 - User authentication (signup/login with email/password)
@@ -155,21 +155,47 @@ REAL-TIME:
 - Real-time task count updates in dashboard
 
 Make it production-ready with proper error handling, loading states, and mobile responsive design`,
-            userId: user.id,
+            requestType: 'full-stack-generation',
             context: {
-              requestType: 'full-stack-generation',
+              userId: user.id,
               timestamp: new Date().toISOString()
             }
           }
         });
 
         if (error) {
+          console.error('❌ Failed to start orchestration:', error);
+          
+          // Provide specific error messages
+          if (error.message?.includes("429") || error.status === 429) {
+            toast({
+              title: "Rate Limit Exceeded",
+              description: "Too many requests. Please wait a moment and try again.",
+              variant: "destructive"
+            });
+          } else if (error.message?.includes("402") || error.status === 402) {
+            toast({
+              title: "Payment Required",
+              description: "Please add credits to your workspace to continue.",
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Failed to Start",
+              description: error.message || "Please try again or contact support.",
+              variant: "destructive"
+            });
+          }
           throw error;
+        }
+
+        if (!data?.jobId) {
+          throw new Error("No job ID returned from orchestrator");
         }
 
         toast({
           title: "Orchestration Started!",
-          description: "Building your task manager in the background. Job ID: " + data?.jobId,
+          description: "Building your task manager. Job ID: " + data.jobId,
         });
 
         // Monitor progress and fetch generated code

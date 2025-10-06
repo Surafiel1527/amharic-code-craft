@@ -278,25 +278,39 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
     logger.info('Routing to Smart Orchestrator');
 
     try {
-      const { data, error } = await supabase.functions.invoke('smart-orchestrator', {
+      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
         body: {
-          userRequest: message,
-          conversationId: projectId,
-          currentCode: context.currentCode,
-          conversationHistory: context.conversationHistory,
-          autoRefine: true,
-          autoLearn: autoLearn,
+          request: message,
+          requestType: 'code-generation',
           context: {
+            conversationId: projectId,
+            currentCode: context.currentCode,
+            conversationHistory: context.conversationHistory,
             files: context.contextData,
-            selectedFiles
+            selectedFiles,
+            autoRefine: true,
+            autoLearn: autoLearn
           }
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Mega-mind orchestrator error:', error);
+        
+        // Handle specific error types with helpful messages
+        if (error.message?.includes("429") || error.status === 429) {
+          throw new Error("Rate limit exceeded. Please wait a moment before retrying.");
+        } else if (error.message?.includes("402") || error.status === 402) {
+          throw new Error("Credits required. Please add credits to your workspace.");
+        } else if (error.message?.includes("timeout")) {
+          throw new Error("Request timed out. Try breaking your request into smaller parts.");
+        }
+        throw error;
+      }
+      
       return data;
     } catch (error) {
-      console.error('Smart orchestrator failed:', error);
+      logger.error('Mega-mind orchestrator failed', error);
       throw error;
     }
   }, [projectId, selectedFiles, autoLearn]);

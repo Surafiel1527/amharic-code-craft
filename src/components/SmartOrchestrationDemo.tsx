@@ -45,31 +45,51 @@ export const SmartOrchestrationDemo = () => {
         setProgress(prev => Math.min(prev + 5, 90));
       }, 500);
 
-      const { data, error } = await supabase.functions.invoke('smart-orchestrator', {
+      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
         body: {
-          userRequest,
-          conversationId: 'demo-' + Date.now(),
-          currentCode: '',
-          autoRefine,
-          autoLearn
+          request: userRequest,
+          requestType: 'demo',
+          context: {
+            conversationId: 'demo-' + Date.now(),
+            currentCode: '',
+            autoRefine,
+            autoLearn
+          }
         }
       });
 
       clearInterval(progressInterval);
       setProgress(100);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Orchestration error:', error);
+        
+        // Provide specific error messages
+        if (error.message?.includes("429") || error.status === 429) {
+          toast.error("Rate Limit", { description: "Too many requests. Please wait a moment." });
+        } else if (error.message?.includes("402") || error.status === 402) {
+          toast.error("Credits Required", { description: "Please add credits to continue." });
+        } else {
+          toast.error("Orchestration Failed", { description: error.message || "Please try again." });
+        }
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error("No data returned from orchestrator");
+      }
 
       setResults(data);
       
-      const phasesCount = data.phases.length;
-      const totalTime = (data.totalDuration / 1000).toFixed(2);
+      const phasesCount = data.phases?.length || 0;
+      const totalTime = data.totalDuration ? (data.totalDuration / 1000).toFixed(2) : 'N/A';
       
       toast.success(`✨ Orchestration complete! ${phasesCount} phases in ${totalTime}s`);
 
     } catch (error: any) {
-      console.error('Orchestration error:', error);
-      toast.error('Error: ' + error.message);
+      console.error('❌ Orchestration error:', error);
+      const errorMsg = error.message || 'Unknown error occurred';
+      toast.error('Failed', { description: errorMsg });
     } finally {
       setLoading(false);
     }

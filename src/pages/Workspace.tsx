@@ -570,22 +570,36 @@ export default function Workspace() {
       }));
 
       setThinkingMessage('🚀 Working on your request...');
-      // Use smart orchestrator for enhancement
-      const { data, error } = await supabase.functions.invoke('smart-orchestrator', {
+      // Use mega-mind orchestrator for enhancement
+      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
         body: {
-          userRequest: userInput,
-          conversationId,
-          currentCode: project.html_code,
-          conversationHistory, // Pass context
-          autoRefine: true,
-          autoLearn: true
+          request: userInput,
+          requestType: 'code-enhancement',
+          context: {
+            conversationId,
+            currentCode: project.html_code,
+            conversationHistory,
+            projectId: project.id
+          }
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Orchestration failed:', error);
+        
+        // Provide helpful error messages
+        if (error.message?.includes("429") || error.status === 429) {
+          throw new Error("Too many requests. Please wait a moment before trying again.");
+        } else if (error.message?.includes("402") || error.status === 402) {
+          throw new Error("Credits required. Please add credits to your workspace to continue.");
+        } else if (error.message?.includes("timeout")) {
+          throw new Error("Request timed out. Please try a simpler request or break it into smaller steps.");
+        }
+        throw error;
+      }
 
       setThinkingMessage('✨ Finalizing...');
       
