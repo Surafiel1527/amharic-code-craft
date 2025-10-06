@@ -48,6 +48,7 @@ import { TemplatesGallery } from "@/components/TemplatesGallery";
 import { UsageAnalyticsDashboard } from "@/components/UsageAnalyticsDashboard";
 import { PerformanceMonitor } from "@/components/PerformanceMonitor";
 import { AICodeReview } from "@/components/AICodeReview";
+import { SmartDebugger } from "@/components/SmartDebugger";
 // PythonProjectViewer removed - handled by UniversalChatInterface
 import { LanguageCapabilities } from "@/components/LanguageCapabilities";
 // orchestrationHelpers removed - no longer needed
@@ -618,7 +619,7 @@ export default function Workspace() {
               {/* Right Sidebar - Enhanced with Phase 2 Features */}
               <div className="w-96">
                 <Tabs defaultValue="templates">
-                  <TabsList className="w-full grid grid-cols-3 lg:grid-cols-16">
+                  <TabsList className="w-full grid grid-cols-3 lg:grid-cols-17">
                     <TabsTrigger value="templates">Templates</TabsTrigger>
                     <TabsTrigger value="metrics">Metrics</TabsTrigger>
                     <TabsTrigger value="deps">Deps</TabsTrigger>
@@ -633,6 +634,7 @@ export default function Workspace() {
                     <TabsTrigger value="languages">Languages</TabsTrigger>
                     <TabsTrigger value="collab">Collab</TabsTrigger>
                     <TabsTrigger value="review">Review</TabsTrigger>
+                    <TabsTrigger value="debug">Debug</TabsTrigger>
                     <TabsTrigger value="gallery">Gallery</TabsTrigger>
                     <TabsTrigger value="analytics">Analytics</TabsTrigger>
                     <TabsTrigger value="perf">Performance</TabsTrigger>
@@ -791,6 +793,13 @@ export default function Workspace() {
                       )}
                       <CodeReviewPanel projectId={projectId} />
                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="debug" className="h-[calc(100vh-200px)] overflow-auto">
+                    <SmartDebugger
+                      projectId={projectId}
+                      code={selectedFiles[0] && projectFiles.find(f => f.file_path === selectedFiles[0])?.file_content}
+                    />
                   </TabsContent>
 
                   <TabsContent value="gallery" className="h-[calc(100vh-200px)] overflow-auto">
