@@ -29,6 +29,7 @@ const Marketplace = lazy(() => import("./pages/Marketplace"));
 const TaskManagerOrchestration = lazy(() => import("./pages/TaskManagerOrchestration"));
 const SelfHealingHub = lazy(() => import("./pages/SelfHealingHub"));
 const ActivityDemo = lazy(() => import("./pages/ActivityDemo"));
+const ProjectsDashboard = lazy(() => import("./pages/ProjectsDashboard"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -64,6 +65,7 @@ const App = () => {
           <Route path="/task-manager-orchestration" element={<TaskManagerOrchestration />} />
           <Route path="/self-healing" element={<SelfHealingHub />} />
           <Route path="/activity-demo" element={<ActivityDemo />} />
+          <Route path="/projects" element={<ProjectsDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
