@@ -83,46 +83,6 @@ export function SelfHealingMonitor() {
   }, []);
 
   const loadStats = async () => {
-
-  // Auto-refresh autonomous stats
-  useEffect(() => {
-    const fetchAutonomousStats = async () => {
-      try {
-        const result = await supabase
-          .from('ai_improvement_logs')
-          .select('changes_made, applied_at')
-          .eq('operation_type', 'autonomous_healing_cycle')
-          .order('applied_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (result.error) {
-          console.error('Error fetching autonomous stats:', result.error);
-          return;
-        }
-
-        const data = result.data;
-        if (data?.changes_made && typeof data.changes_made === 'object') {
-          const changes = data.changes_made as Record<string, any>;
-          setAutonomousStats({
-            cycles_run: Number(changes.cycles_run) || 0,
-            errors_detected: Number(changes.errors_detected) || 0,
-            fixes_applied: Number(changes.fixes_applied) || 0,
-            patterns_learned: Number(changes.patterns_learned) || 0,
-            last_run: data.applied_at || new Date().toISOString(),
-          });
-        }
-      } catch (err) {
-        console.error('Exception fetching autonomous stats:', err);
-      }
-    };
-
-    fetchAutonomousStats();
-    const interval = setInterval(fetchAutonomousStats, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadStats = async () => {
     const { data: patterns } = await supabase
       .from('universal_error_patterns')
       .select('confidence_score, success_count, failure_count, times_encountered');
@@ -516,7 +476,7 @@ export function SelfHealingMonitor() {
             <div>
               <h2 className="text-2xl font-bold">SUPER Mega Mind</h2>
               <p className="text-sm text-muted-foreground">
-                Advanced AI reasoning with Claude Opus 4
+                Advanced AI reasoning with Gemini 2.5 Pro
               </p>
             </div>
           </div>
