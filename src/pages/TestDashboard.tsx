@@ -253,10 +253,15 @@ export default function TestDashboard() {
               Testing commercial readiness of all features
             </p>
           </div>
-          <Button variant="outline" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => navigate('/tasks')}>
+              Go to Task Manager →
+            </Button>
+            <Button variant="outline" onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
