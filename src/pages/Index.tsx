@@ -663,7 +663,21 @@ const Index = () => {
             <Zap className="h-4 w-4 text-yellow-500" />
             Phase 5B Features
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="p-6 hover:border-primary/50 transition-all">
+              <Sparkles className="h-10 w-10 mb-4 text-primary" />
+              <h3 className="text-xl font-bold mb-2">Prompt to Production</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Describe what you want to build and deploy it automatically with AI
+              </p>
+              <Link to="/prompt-to-production">
+                <Button className="w-full gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Start Building
+                </Button>
+              </Link>
+            </Card>
+
             <Card className="p-6 hover:border-primary/50 transition-all">
               <Eye className="h-10 w-10 mb-4 text-primary" />
               <h3 className="text-xl font-bold mb-2">Live Preview</h3>

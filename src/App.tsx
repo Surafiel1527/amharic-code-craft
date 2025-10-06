@@ -29,6 +29,7 @@ const SelfHealingHub = lazy(() => import("./pages/SelfHealingHub"));
 const ActivityDemo = lazy(() => import("./pages/ActivityDemo"));
 const ProjectsDashboard = lazy(() => import("./pages/ProjectsDashboard"));
 const EnterpriseHub = lazy(() => import("./pages/EnterpriseHub"));
+const PromptToProduction = lazy(() => import("./pages/PromptToProduction"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -64,6 +65,7 @@ const App = () => {
           <Route path="/activity-demo" element={<ActivityDemo />} />
           <Route path="/projects" element={<ProjectsDashboard />} />
           <Route path="/enterprise-hub" element={<EnterpriseHub />} />
+          <Route path="/prompt-to-production" element={<PromptToProduction />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
