@@ -185,7 +185,9 @@ serve(async (req) => {
     // PHASE 1: Analyze the request
     console.log('📊 Phase 1: Analyzing request...');
     await updateJobProgress(25, 'Analyzing request...');
-    const analysis = await analyzeRequest(request, requestType, context);
+    const analysis = await analyzeRequest(sanitizedRequest, requestType, context);
+    
+    console.log('📋 Analysis result:', JSON.stringify(analysis, null, 2));
     
     await supabaseClient
       .from('mega_mind_orchestrations')
@@ -194,6 +196,70 @@ serve(async (req) => {
         status: 'installing-deps'
       })
       .eq('id', orchestrationId);
+
+    // Check if this is a simple website request - if so, use simplified flow
+    const isSimpleWebsite = analysis.complexity === 'simple' && 
+                           analysis.requestType === 'simple-website' &&
+                           !analysis.requiredTechnologies?.some((tech: string) => 
+                             tech.toLowerCase().includes('react') || 
+                             tech.toLowerCase().includes('node') ||
+                             tech.toLowerCase().includes('backend') ||
+                             tech.toLowerCase().includes('database')
+                           );
+
+    if (isSimpleWebsite) {
+      console.log('🎯 Detected simple website request - using fast path');
+      await updateJobProgress(50, 'Generating simple website...');
+      
+      // For simple websites, just generate and return immediately
+      const generation = await generateSimpleWebsite(sanitizedRequest, analysis);
+      
+      await supabaseClient
+        .from('mega_mind_orchestrations')
+        .update({ 
+          generation_phase: generation,
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', orchestrationId);
+
+      if (jobId) {
+        await supabaseClient
+          .from('ai_generation_jobs')
+          .update({
+            status: 'completed',
+            progress: 100,
+            current_step: 'Completed',
+            completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            output_data: {
+              orchestrationId,
+              generatedCode: generation.html,
+              html: generation.html,
+              generation,
+              instructions: generation.instructions
+            }
+          })
+          .eq('id', jobId);
+      }
+
+      console.log('✅ Simple website generated successfully!');
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          orchestrationId,
+          generatedCode: generation.html,
+          html: generation.html,
+          result: {
+            generatedCode: generation.html,
+            explanation: generation.instructions
+          },
+          message: '✨ Website generated successfully!'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // PHASE 2: Detect and install dependencies
     console.log('📦 Phase 2: Detecting dependencies...');
@@ -537,21 +603,35 @@ async function analyzeRequest(request: string, requestType: string, context: any
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-  const prompt = `Analyze this ${requestType} request and identify what needs to be done:
+  const prompt = `Analyze this request and determine if it's a simple website or complex full-stack app:
 
 **Request:** ${request}
 **Type:** ${requestType}
 **Context:** ${JSON.stringify(context, null, 2)}
 
+**Classification Rules:**
+1. "simple-website" = Single HTML file, basic CSS/JS, no backend, no frameworks
+2. "full-stack-app" = React/Node/Database, multiple files, complex architecture
+
+**Examples of simple-website:**
+- "Create a landing page for a coffee shop"
+- "Build a portfolio website"
+- "Make a simple contact form page"
+
+**Examples of full-stack-app:**
+- "Build a todo app with user authentication"
+- "Create an e-commerce platform"
+- "Make a social media dashboard"
+
 **Output JSON:**
 {
-  "requestType": "${requestType}",
+  "requestType": "simple-website" or "full-stack-app",
   "mainGoal": "what the user wants to achieve",
   "subTasks": ["task 1", "task 2"],
-  "requiredTechnologies": ["react", "typescript", etc],
+  "requiredTechnologies": ["html", "css", "javascript"] or ["react", "typescript", "node", etc],
   "complexity": "simple|moderate|complex",
-  "estimatedFiles": 5,
-  "architecturalApproach": "description"
+  "estimatedFiles": 1 for simple, 5+ for complex,
+  "architecturalApproach": "single HTML file" or "multi-file React app"
 }`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -564,6 +644,63 @@ async function analyzeRequest(request: string, requestType: string, context: any
       model: 'google/gemini-2.5-flash',
       messages: [
         { role: 'system', content: 'You are an expert software architect. Respond with JSON only.' },
+        { role: 'user', content: prompt }
+      ],
+      response_format: { type: "json_object" }
+    }),
+  });
+
+  const data = await response.json();
+  const analysis = JSON.parse(data.choices[0].message.content);
+  
+  // Force simple classification for basic website keywords
+  const simpleKeywords = ['landing page', 'portfolio', 'simple website', 'single page', 'contact form', 'about page', 'homepage'];
+  const requestLower = request.toLowerCase();
+  const hasSimpleKeyword = simpleKeywords.some(keyword => requestLower.includes(keyword));
+  
+  if (hasSimpleKeyword && !requestLower.includes('backend') && !requestLower.includes('database') && !requestLower.includes('api')) {
+    analysis.requestType = 'simple-website';
+    analysis.complexity = 'simple';
+    analysis.estimatedFiles = 1;
+    analysis.requiredTechnologies = ['html', 'css', 'javascript'];
+  }
+  
+  return analysis;
+}
+
+async function generateSimpleWebsite(request: string, analysis: any): Promise<any> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+
+  const prompt = `Generate a complete, beautiful, fully functional single-page website for this request:
+
+**Request:** ${request}
+**Goal:** ${analysis.mainGoal}
+
+**Requirements:**
+1. Generate ONE complete HTML file with embedded CSS and JavaScript
+2. Make it modern, beautiful, and fully responsive
+3. Include all requested features
+4. Use modern CSS (flexbox, grid, animations)
+5. Add smooth interactions and animations
+6. Make it production-ready
+
+**Output JSON:**
+{
+  "html": "<!DOCTYPE html><html>... complete HTML with CSS and JS ...",
+  "instructions": "Brief description of what was created and how to use it"
+}`;
+
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-pro',
+      messages: [
+        { role: 'system', content: 'You are an expert web developer. Generate complete, beautiful, production-ready HTML. Respond with JSON only.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }
