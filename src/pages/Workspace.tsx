@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -112,6 +112,12 @@ export default function Workspace() {
   const [showMetrics, setShowMetrics] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [showMobileChat, setShowMobileChat] = useState(false);
+  
+  // Ref for auto-scrolling chat to bottom
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const handleRestoreVersion = async (htmlCode: string) => {
     if (!project) return;
@@ -239,6 +245,11 @@ export default function Workspace() {
 
     loadProject();
   }, [projectId, user, navigate]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading]);
 
   // Load project files for multi-file mode
   useEffect(() => {
@@ -707,70 +718,7 @@ export default function Workspace() {
 
   return (
     <div className="h-screen bg-background flex flex-col">
-      {/* Floating Chat Button & Mobile Chat Sheet */}
-      <Sheet open={showMobileChat} onOpenChange={setShowMobileChat}>
-        <SheetTrigger asChild>
-          <Button
-            className="fixed bottom-6 right-6 z-50 md:hidden rounded-full h-14 w-14 shadow-lg"
-            size="icon"
-          >
-            <MessageSquare className="h-6 w-6" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="bottom" className="h-[90vh] p-0">
-          <SheetHeader className="p-4 border-b">
-            <SheetTitle>Chat Assistant</SheetTitle>
-          </SheetHeader>
-          <div className="h-[calc(90vh-60px)]">
-            <UniversalChatInterface
-              mode="panel"
-              height="h-full"
-              projectId={projectId}
-              selectedFiles={selectedFiles}
-              projectFiles={projectFiles}
-              onCodeApply={async (code, filePath) => {
-                try {
-                  const fileExists = projectFiles.some(f => f.file_path === filePath);
-                  
-                  if (!fileExists) {
-                    // Create new file with content directly
-                    const { error } = await supabase
-                      .from('project_files')
-                      .insert({
-                        project_id: projectId,
-                        file_path: filePath,
-                        file_content: code,
-                        file_type: filePath.split('.').pop() || 'json',
-                        created_by: user?.id
-                      });
-
-                    if (error) throw error;
-                    
-                    // Reload files
-                    const { data } = await supabase
-                      .from('project_files')
-                      .select('*')
-                      .eq('project_id', projectId);
-                    
-                    if (data) setProjectFiles(data);
-                  } else {
-                    // Update existing file
-                    setSelectedFiles([filePath]);
-                    await handleSaveFile(code);
-                  }
-                } catch (error) {
-                  console.error('Apply code error:', error);
-                  throw error; // Re-throw to be caught by the chat component
-                }
-              }}
-              autoLearn={true}
-              autoApply={true}
-              showContext={true}
-              persistMessages={true}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Mobile Chat - Fixed at Bottom (Removed separate floating button) */}
       
       <PatternLearner />
       {/* Header */}
@@ -1155,11 +1103,11 @@ export default function Workspace() {
         ) : (
           /* Single-File View (Original) */
           <div className={`flex h-full ${isPreviewExpanded ? '' : 'lg:flex-row flex-col'} transition-all`}>
-          {/* Chat Panel - Collapsible at bottom when preview expanded */}
+          {/* Chat Panel - Fixed at bottom on mobile, side panel on desktop */}
           <div className={`flex flex-col border-r bg-card/30 transition-all ${
             isPreviewExpanded 
               ? 'fixed bottom-0 left-0 right-0 h-20 border-t border-r-0 z-50' 
-              : 'lg:w-[480px] w-full'
+              : 'lg:w-[480px] w-full md:relative fixed bottom-0 left-0 right-0 md:h-auto h-[50vh] z-40'
           }`}>
               {!isPreviewExpanded && (
                 <>
@@ -1174,7 +1122,7 @@ export default function Workspace() {
                     </div>
                   </div>
 
-                  <ScrollArea className="flex-1 p-4">
+                   <ScrollArea className="flex-1 p-4">
                     <div className="space-y-4">
                       {messages.map((msg, idx) => (
                         <div
@@ -1220,6 +1168,8 @@ export default function Workspace() {
                           </div>
                         </div>
                       )}
+                      {/* Auto-scroll anchor */}
+                      <div ref={messagesEndRef} />
                     </div>
                   </ScrollArea>
 
@@ -1271,8 +1221,12 @@ export default function Workspace() {
               </div>
             </div>
 
-          {/* Preview Panel */}
-          <div className={`flex flex-col bg-background ${isPreviewExpanded ? 'w-full' : 'flex-1'}`}>
+           {/* Preview Panel - Add bottom padding on mobile to account for fixed chat */}
+          <div className={`flex flex-col bg-background ${
+            isPreviewExpanded 
+              ? 'w-full' 
+              : 'flex-1 md:pb-0 pb-[50vh]' /* Add padding on mobile for fixed chat */
+          }`}>
             {!isPreviewExpanded && (
               <div className="p-4 border-b">
                 <Tabs defaultValue="preview" className="w-full">
