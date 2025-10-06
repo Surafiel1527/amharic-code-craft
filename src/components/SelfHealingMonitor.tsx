@@ -55,6 +55,8 @@ export function SelfHealingMonitor() {
   const [metaStats, setMetaStats] = useState<any>(null);
   const [isReasoning, setIsReasoning] = useState(false);
   const [reasoningStats, setReasoningStats] = useState<any>(null);
+  const [isOptimizingContext, setIsOptimizingContext] = useState(false);
+  const [contextualStats, setContextualStats] = useState<any>(null);
   const { toast } = useToast();
   
   // Enable adaptive proactive monitoring
@@ -330,6 +332,40 @@ export function SelfHealingMonitor() {
     }
   };
 
+  const runContextualOptimization = async () => {
+    setIsOptimizingContext(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('contextual-auto-optimizer');
+
+      if (error) throw error;
+
+      if (data) {
+        setContextualStats({
+          context: data.context,
+          recommendations: data.recommendations,
+          optimizationsApplied: data.optimizations_applied,
+          appliedOptimizations: data.applied_optimizations,
+        });
+        
+        toast({
+          title: "🎯 Contextual Optimization Complete",
+          description: `Applied ${data.optimizations_applied} context-aware optimizations`,
+        });
+      }
+
+      loadStats();
+    } catch (error) {
+      console.error('Contextual optimization error:', error);
+      toast({
+        title: "Optimization Failed",
+        description: "Could not run contextual optimization",
+        variant: "destructive",
+      });
+    } finally {
+      setIsOptimizingContext(false);
+    }
+  };
+
   const getSuccessRate = (pattern: HealingPattern) => {
     const total = pattern.success_count + pattern.failure_count;
     if (total === 0) return 0;
@@ -381,11 +417,12 @@ export function SelfHealingMonitor() {
       </Card>
 
       <Tabs defaultValue="healing" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="healing">🧠 Self-Healing</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-7">
+          <TabsTrigger value="healing">🧠 Healing</TabsTrigger>
           <TabsTrigger value="learning">📚 Learning</TabsTrigger>
           <TabsTrigger value="meta">🎯 Meta</TabsTrigger>
           <TabsTrigger value="reasoning">💡 Reasoning</TabsTrigger>
+          <TabsTrigger value="contextual">🌍 Contextual</TabsTrigger>
           <TabsTrigger value="predictions">🔮 Predictions</TabsTrigger>
           <TabsTrigger value="optimization">⚡ Optimization</TabsTrigger>
         </TabsList>
@@ -848,6 +885,146 @@ export function SelfHealingMonitor() {
             </CardContent>
           </Card>
         )}
+      </TabsContent>
+
+      <TabsContent value="contextual" className="space-y-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-xl font-bold">Contextual Auto-Optimization</h3>
+            <p className="text-sm text-muted-foreground">Adapts strategies based on time, load, and system state</p>
+          </div>
+          <Button onClick={runContextualOptimization} disabled={isOptimizingContext} size="sm">
+            <Target className="mr-2 h-4 w-4" />
+            {isOptimizingContext ? 'Optimizing...' : 'Run Contextual'}
+          </Button>
+        </div>
+
+        {contextualStats && (
+          <>
+            <Card className="border-2 border-primary/20">
+              <CardHeader>
+                <CardTitle>Current Context</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Time Context</p>
+                    <p className="font-medium">
+                      {contextualStats.context.isBusinessHours ? 'Business Hours' : 'Off Hours'}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">System Load</p>
+                    <Badge variant={contextualStats.context.systemLoad === 'high' ? 'destructive' : 'default'}>
+                      {contextualStats.context.systemLoad}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Error Rate (24h)</p>
+                    <p className="font-medium">{contextualStats.context.errorRate}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Fix Success</p>
+                    <p className="font-medium">{(contextualStats.context.fixSuccessRate * 100).toFixed(0)}%</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {contextualStats.recommendations && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>AI Recommendations</span>
+                    <Badge>
+                      {(contextualStats.recommendations.confidence * 100).toFixed(0)}% confident
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription>{contextualStats.recommendations.reasoning}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Strategy</p>
+                        <Badge variant="outline" className="capitalize">
+                          {contextualStats.recommendations.aggressiveness}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Auto-Apply Threshold</p>
+                        <p className="text-lg font-bold">
+                          {(contextualStats.recommendations.auto_apply_threshold * 100).toFixed(0)}%
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Monitoring Frequency</p>
+                        <p className="text-lg font-bold">
+                          {contextualStats.recommendations.monitoring_frequency_minutes}min
+                        </p>
+                      </div>
+                    </div>
+
+                    {contextualStats.appliedOptimizations.length > 0 && (
+                      <div className="pt-4 border-t">
+                        <p className="text-sm font-medium mb-2">Applied Optimizations:</p>
+                        <div className="space-y-2">
+                          {contextualStats.appliedOptimizations.map((opt: string, idx: number) => (
+                            <div key={idx} className="flex items-center gap-2 text-sm">
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                              <span>{opt}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Contextual Optimization Features</CardTitle>
+            <CardDescription>
+              System automatically adapts to different contexts for optimal performance
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Time-Aware Strategies</p>
+                  <p className="text-sm text-muted-foreground">Different approaches for business hours vs off-hours</p>
+                </div>
+                <Clock className="h-5 w-5 text-blue-500" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Load-Based Aggressiveness</p>
+                  <p className="text-sm text-muted-foreground">Adapts fix aggressiveness based on system load</p>
+                </div>
+                <Activity className="h-5 w-5 text-orange-500 animate-pulse" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Dynamic Thresholds</p>
+                  <p className="text-sm text-muted-foreground">Adjusts confidence thresholds based on context</p>
+                </div>
+                <Target className="h-5 w-5 text-green-500" />
+              </div>
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="font-medium">Preventive Actions</p>
+                  <p className="text-sm text-muted-foreground">Proactively prevents issues based on patterns</p>
+                </div>
+                <Sparkles className="h-5 w-5 text-yellow-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </TabsContent>
 
       <TabsContent value="predictions" className="space-y-6">

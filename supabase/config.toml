@@ -366,6 +366,9 @@ verify_jwt = false
 [functions.advanced-reasoning-engine]
 verify_jwt = false
 
+[functions.contextual-auto-optimizer]
+verify_jwt = false
+
 [functions.stream-code-generation]
 verify_jwt = false
 
