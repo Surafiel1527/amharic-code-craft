@@ -6,16 +6,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Copy, Check, Clock, LogOut, Settings, Download, Shield, Layers, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code, Maximize2, Minimize2, FolderOpen } from "lucide-react";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code, Maximize2, Minimize2, FolderOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { UniversalChatInterface } from "@/components/UniversalChatInterface";
 import { ConversationSidebar } from "@/components/ConversationSidebar";
 import { ProjectsGrid } from "@/components/ProjectsGrid";
 import { TemplatesBrowser } from "@/components/TemplatesBrowser";
+import { ImageGenerator } from "@/components/ImageGenerator";
+import { CodeAnalysis } from "@/components/CodeAnalysis";
 import { VersionHistory } from "@/components/VersionHistory";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DevicePreview } from "@/components/DevicePreview";
+import { DesignToCode } from "@/components/DesignToCode";
+import { AccessibilityChecker } from "@/components/AccessibilityChecker";
+import { SEOOptimizer } from "@/components/SEOOptimizer";
 import { FeaturedGallery } from "@/components/FeaturedGallery";
 import { ExportOptions } from "@/components/ExportOptions";
 import { ComponentLibrary } from "@/components/ComponentLibrary";
@@ -42,6 +48,7 @@ import { useDynamicCustomizations } from "@/hooks/useDynamicCustomizations";
 import { DynamicComponent } from "@/components/DynamicComponent";
 import { PreviewBanner } from "@/components/PreviewBanner";
 import { usePreviewMode } from "@/hooks/usePreviewMode";
+import { retryWithBackoff, validateRequest, formatErrorMessage, logMetrics } from "@/utils/orchestrationHelpers";
 
 interface Project {
   id: string;
@@ -94,17 +101,20 @@ const Index = () => {
       emoji: "🎨"
     },
   ];
-  const [mode, setMode] = useState<"quick">("quick");
+  const [mode, setMode] = useState<"quick" | "chat">("quick");
   const [prompt, setPrompt] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [projectTitle, setProjectTitle] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [recentProjects, setRecentProjects] = useState<Project[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeTab, setActiveTab] = useState<"quick" | "templates">("quick");
+  const [activeConversation, setActiveConversation] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"quick" | "templates" | "images">("quick");
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [showAIFeatures, setShowAIFeatures] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
@@ -157,6 +167,16 @@ const Index = () => {
       description: t("shortcuts.newProject"),
     },
     {
+      key: "s",
+      ctrl: true,
+      handler: () => {
+        if (generatedCode) {
+          setSaveDialogOpen(true);
+        }
+      },
+      description: t("shortcuts.saveProject"),
+    },
+    {
       key: "k",
       ctrl: true,
       handler: () => {
@@ -165,6 +185,16 @@ const Index = () => {
         }
       },
       description: t("shortcuts.copyCode"),
+    },
+    {
+      key: "b",
+      ctrl: true,
+      handler: () => {
+        if (generatedCode) {
+          setShowAIFeatures(!showAIFeatures);
+        }
+      },
+      description: t("shortcuts.aiFeatures"),
     },
     {
       key: "/",
@@ -298,8 +328,42 @@ const Index = () => {
   };
 
   const handleSaveProject = async () => {
-    // Simplified - projects are auto-saved when created
-    toast.success(t("toast.saved"));
+    if (!projectTitle.trim()) {
+      toast.error(t("toast.promptRequired"));
+      return;
+    }
+
+    if (!generatedCode) {
+      toast.error(t("toast.noCode"));
+      return;
+    }
+
+    if (!user) {
+      toast.error(t("toast.loginRequired"));
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from("projects").insert({
+        title: projectTitle,
+        prompt: prompt,
+        html_code: generatedCode,
+        user_id: user.id,
+      });
+
+      if (error) throw error;
+
+      toast.success(t("toast.saved"));
+      setSaveDialogOpen(false);
+      setProjectTitle("");
+      fetchRecentProjects();
+    } catch (error) {
+      console.error("Error saving project:", error);
+      toast.error("Failed to save project");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const loadProject = (project: Project) => {
@@ -336,8 +400,28 @@ const Index = () => {
   };
 
   const createNewConversation = async () => {
-    // Simplified - no longer needed
-    toast.info("Create new project instead");
+    if (!user) {
+      toast.error(t("toast.loginRequired"));
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("conversations")
+        .insert({ title: t("projects.new"), user_id: user.id })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setActiveConversation(data.id);
+      setGeneratedCode("");
+      fetchConversations();
+      toast.success(t("toast.conversationCreated"));
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      toast.error("Failed to create conversation");
+    }
   };
 
   const handleCodeGenerated = (code: string) => {
@@ -345,7 +429,7 @@ const Index = () => {
   };
 
   const handleConversationChange = (id: string) => {
-    // Simplified - no longer needed
+    setActiveConversation(id);
     fetchConversations();
   };
 
@@ -459,23 +543,103 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Example Prompts */}
+      {mode === "quick" && (
+        <section className="container mx-auto px-4 py-6 border-b border-border">
+          <div className="max-w-7xl mx-auto">
+            <h2 className="text-sm font-semibold mb-3 flex items-center gap-2 text-muted-foreground">
+              <Sparkles className="h-4 w-4" />
+              {t("examples.title")}
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {EXAMPLE_PROMPTS.map((example, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50 transition-all text-xs hover-scale animate-fade-in"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                  onClick={() => useExamplePrompt(t(example.promptKey))}
+                >
+                  <span className="text-2xl">{example.emoji}</span>
+                  <span className="text-center">{t(example.titleKey)}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Quick Access Features */}
+      <section className="container mx-auto px-4 py-6 border-b border-border">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="p-6 hover:border-primary/50 transition-all hover-scale">
+              <Sparkles className="h-10 w-10 mb-4 text-primary" />
+              <h3 className="text-xl font-bold mb-2">AI Code Generation</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Describe your app and let AI generate, build, and deploy it automatically
+              </p>
+              <Link to="/prompt-to-production">
+                <Button className="w-full gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Start Building
+                </Button>
+              </Link>
+            </Card>
+
+            <Card className="p-6 hover:border-primary/50 transition-all hover-scale">
+              <FolderOpen className="h-10 w-10 mb-4 text-primary" />
+              <h3 className="text-xl font-bold mb-2">My Projects</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                View and manage all your projects in one place
+              </p>
+              <Link to="/projects">
+                <Button className="w-full gap-2">
+                  <FolderOpen className="h-4 w-4" />
+                  View Projects
+                </Button>
+              </Link>
+            </Card>
+          </div>
+        </div>
+      </section>
+
       {/* Main Content */}
       <section className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
-        <div className="grid lg:grid-cols-[300px_1fr_2fr] gap-4 max-w-full mx-auto">
+        <div className={`grid ${isPreviewExpanded ? 'lg:grid-cols-1' : showAIFeatures ? 'lg:grid-cols-[1fr_2fr_350px]' : 'lg:grid-cols-[300px_1fr_2fr]'} gap-4 max-w-full mx-auto`}>
+          {/* Sidebar - Conversations List - Hidden on Mobile */}
+          {mode === "chat" && !isPreviewExpanded && (
+            <Card className="hidden lg:block p-4 space-y-4 h-[calc(100vh-350px)] flex-col">
+              <h3 className="font-semibold text-sm">{t("chat.conversations")}</h3>
+              <ConversationSidebar
+                conversations={conversations}
+                activeConversation={activeConversation}
+                onConversationSelect={setActiveConversation}
+                onNewConversation={createNewConversation}
+                onConversationsChange={fetchConversations}
+              />
+            </Card>
+          )}
+
           {/* Editor Panel */}
           {!isPreviewExpanded && (
-          <Card className="p-6 space-y-4 bg-card border-border shadow-lg lg:col-span-2">
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "quick" | "templates")}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="quick" className="gap-2">
-                  <FolderOpen className="h-4 w-4" />
-                  {t("tabs.quick")}
-                </TabsTrigger>
-                <TabsTrigger value="templates" className="gap-2">
-                  <Layers className="h-4 w-4" />
-                  {t("tabs.templates")}
-                </TabsTrigger>
-              </TabsList>
+          <Card className={`p-6 space-y-4 bg-card border-border shadow-lg ${mode === "chat" ? "" : "lg:col-span-2"}`}>
+            {mode === "quick" ? (
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "quick" | "templates" | "images")}>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="quick" className="gap-2">
+                    <Zap className="h-4 w-4" />
+                    {t("tabs.quick")}
+                  </TabsTrigger>
+                  <TabsTrigger value="templates" className="gap-2">
+                    <Layers className="h-4 w-4" />
+                    {t("tabs.templates")}
+                  </TabsTrigger>
+                  <TabsTrigger value="images" className="gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    {t("tabs.images")}
+                  </TabsTrigger>
+                </TabsList>
 
                 <TabsContent value="quick" className="space-y-4 mt-4">
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -580,7 +744,45 @@ const Index = () => {
                     }}
                   />
                 </TabsContent>
+
+                <TabsContent value="images" className="mt-4">
+                  <ImageGenerator
+                    onImageGenerated={(imageUrl) => {
+                      // Image generated successfully
+                      console.log('Image generated:', imageUrl);
+                    }}
+                  />
+                </TabsContent>
               </Tabs>
+            ) : (
+              <Tabs value={mode} onValueChange={(v) => setMode(v as "quick" | "chat")}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="quick" className="gap-2">
+                    <Zap className="h-4 w-4" />
+                    {t("tabs.quickMode")}
+                  </TabsTrigger>
+                  <TabsTrigger value="chat" className="gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    {t("tabs.chatMode")}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="chat" className="mt-4 h-[calc(100vh-400px)]">
+                  <UniversalChatInterface
+                    mode="panel"
+                    height="h-full"
+                    conversationId={activeConversation}
+                    persistMessages={true}
+                    autoLearn={true}
+                    autoApply={false}
+                    onCodeApply={async (code) => {
+                      handleCodeGenerated(code);
+                    }}
+                    placeholder="Ask me anything about your project..."
+                  />
+                </TabsContent>
+              </Tabs>
+            )}
           </Card>
           )}
 
@@ -605,6 +807,17 @@ const Index = () => {
                       <Maximize2 className="h-3 w-3" />
                     )}
                   </Button>
+                  {!isPreviewExpanded && (
+                  <Button
+                    variant={showAIFeatures ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowAIFeatures(!showAIFeatures)}
+                    className="gap-2"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    AI
+                  </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={copyCode} className="gap-2">
                     {copied ? (
                       <>
@@ -628,6 +841,160 @@ const Index = () => {
 
             <DevicePreview generatedCode={generatedCode} />
           </Card>
+
+          {/* AI Features Panel */}
+          {showAIFeatures && generatedCode && !isPreviewExpanded && (
+            <div className="space-y-4">
+              <Tabs defaultValue="analysis" className="w-full">
+                <TabsList className="grid w-full grid-cols-6 lg:grid-cols-15">
+                  <TabsTrigger value="analysis" className="text-xs">{t("aiFeatures.analysis")}</TabsTrigger>
+                  <TabsTrigger value="assistant" className="text-xs">{t("aiFeatures.assistant")}</TabsTrigger>
+                  <TabsTrigger value="versions" className="text-xs">{t("aiFeatures.versions")}</TabsTrigger>
+                  <TabsTrigger value="design" className="text-xs">{t("aiFeatures.design")}</TabsTrigger>
+                  <TabsTrigger value="a11y" className="text-xs">{t("aiFeatures.accessibility")}</TabsTrigger>
+                  <TabsTrigger value="seo" className="text-xs">{t("aiFeatures.seo")}</TabsTrigger>
+                  <TabsTrigger value="export" className="text-xs">{t("aiFeatures.export")}</TabsTrigger>
+                  <TabsTrigger value="components" className="text-xs">{t("aiFeatures.components")}</TabsTrigger>
+                  <TabsTrigger value="api" className="text-xs">{t("aiFeatures.api")}</TabsTrigger>
+                  <TabsTrigger value="analytics" className="text-xs">{t("aiFeatures.analytics")}</TabsTrigger>
+                  <TabsTrigger value="security" className="text-xs">{t("aiFeatures.security")}</TabsTrigger>
+                  <TabsTrigger value="privacy" className="text-xs">{t("aiFeatures.privacy")}</TabsTrigger>
+                  <TabsTrigger value="marketplace" className="text-xs">{t("aiFeatures.marketplace")}</TabsTrigger>
+                  <TabsTrigger value="teams" className="text-xs">{t("aiFeatures.teams")}</TabsTrigger>
+                  <TabsTrigger value="apikeys" className="text-xs">{t("aiFeatures.apikeys")}</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="analysis" className="mt-4">
+                  <CodeAnalysis
+                    code={generatedCode}
+                    projectId={currentProjectId || undefined}
+                    onOptimize={(optimizedCode) => {
+                      setGeneratedCode(optimizedCode);
+                      toast.success(t("chat.codeOptimized"));
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="assistant" className="mt-4">
+                  <UniversalChatInterface
+                    mode="panel"
+                    height="h-[500px]"
+                    projectId={currentProjectId}
+                    projectFiles={generatedCode ? [{
+                      file_path: 'current-project.html',
+                      file_content: generatedCode
+                    }] : []}
+                    autoLearn={true}
+                    autoApply={false}
+                    persistMessages={true}
+                    placeholder="Ask me anything about this project..."
+                    onCodeApply={async (optimizedCode) => {
+                      setGeneratedCode(optimizedCode);
+                      toast.success(t("chat.codeOptimized"));
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="versions" className="mt-4">
+                  {currentProjectId ? (
+                    <VersionHistory
+                      projectId={currentProjectId}
+                      onRestore={(code) => {
+                        setGeneratedCode(code);
+                        toast.success("ስሪት ተመልሷል!");
+                      }}
+                    />
+                  ) : (
+                    <Card className="p-8 text-center text-muted-foreground">
+                      <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>ፕሮጀክትን በመጀመሪያ ያስቀምጡ</p>
+                    </Card>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="design" className="mt-4">
+                  <DesignToCode
+                    onCodeGenerated={(code) => {
+                      setGeneratedCode(code);
+                      toast.success("ኮድ ከዲዛይን ተፈጠረ!");
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="a11y" className="mt-4">
+                  <AccessibilityChecker
+                    code={generatedCode}
+                    onCodeFixed={(fixedCode) => {
+                      setGeneratedCode(fixedCode);
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="seo" className="mt-4">
+                  <SEOOptimizer
+                    code={generatedCode}
+                    onCodeOptimized={(optimizedCode) => {
+                      setGeneratedCode(optimizedCode);
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="export" className="mt-4">
+                  <ExportOptions
+                    htmlCode={generatedCode}
+                    projectTitle={projectTitle}
+                  />
+                </TabsContent>
+
+                <TabsContent value="components" className="mt-4">
+                  <ComponentLibrary />
+                </TabsContent>
+
+                <TabsContent value="api" className="mt-4">
+                  <APIIntegration />
+                </TabsContent>
+
+                <TabsContent value="analytics" className="mt-4">
+                  {currentProjectId ? (
+                    <ProjectAnalytics projectId={currentProjectId} />
+                  ) : (
+                    <Card className="p-8 text-center text-muted-foreground">
+                      <p>ፕሮጀክትን በመጀመሪያ ያስቀምጡ</p>
+                    </Card>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="security" className="mt-4">
+                  <SecurityScanner code={generatedCode} />
+                </TabsContent>
+
+                <TabsContent value="privacy" className="mt-4">
+                  {currentProjectId ? (
+                    <PrivacySettings 
+                      projectId={currentProjectId}
+                      onUpdate={fetchRecentProjects}
+                    />
+                  ) : (
+                    <Card className="p-8 text-center text-muted-foreground">
+                      <p>ፕሮጀክትን በመጀመሪያ ያስቀምጡ</p>
+                    </Card>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="marketplace" className="mt-4">
+                  <PremiumTemplates />
+                </TabsContent>
+
+                <TabsContent value="teams" className="mt-4">
+                  <TeamWorkspaces />
+                </TabsContent>
+
+                <TabsContent value="apikeys" className="mt-4">
+                  <APIAccessManager />
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
         </div>
       </section>
 
@@ -732,6 +1099,10 @@ const Index = () => {
               <div className="flex justify-between items-center py-2 border-b border-border">
                 <span className="text-sm">{t("shortcuts.copyCode")}</span>
                 <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + K</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-sm">{t("shortcuts.aiFeatures")}</span>
+                <kbd className="px-2 py-1 text-xs bg-muted rounded">Ctrl + B</kbd>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-sm">{t("shortcuts.show")}</span>
