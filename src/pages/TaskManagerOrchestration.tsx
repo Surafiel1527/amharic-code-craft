@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -15,7 +15,7 @@ export default function TaskManagerOrchestration() {
   const [activeTab, setActiveTab] = useState("progress");
   const [jobId, setJobId] = useState<string | null>(null);
   const [isCancelled, setIsCancelled] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false);
+  const isStartingRef = useRef(false);
 
   useEffect(() => {
     if (!user) {
@@ -27,14 +27,18 @@ export default function TaskManagerOrchestration() {
       return;
     }
 
-    if (hasStarted) {
+    // Prevent multiple simultaneous starts using ref (survives re-renders)
+    if (isStartingRef.current) {
+      console.log('❌ Already starting, skipping...');
       return;
     }
 
     const startOrchestration = async () => {
+      // Set lock immediately before any async operations
+      isStartingRef.current = true;
+      console.log('🔒 Lock acquired, starting orchestration...');
+      
       try {
-        setHasStarted(true);
-        
         // Check for existing running jobs first
         const { data: existingJobs } = await supabase
           .from('ai_generation_jobs')
@@ -47,6 +51,7 @@ export default function TaskManagerOrchestration() {
 
         if (existingJobs && existingJobs.length > 0) {
           const existingJob = existingJobs[0];
+          console.log('✅ Found existing job:', existingJob.id);
           setJobId(existingJob.id);
           toast({
             title: "Resuming Orchestration",
@@ -115,6 +120,7 @@ export default function TaskManagerOrchestration() {
           return;
         }
 
+        console.log('🚀 No existing jobs, creating new orchestration...');
         setStatus("🚀 Starting orchestration...");
         
         const { data, error } = await supabase.functions.invoke("smart-orchestrator", {
@@ -229,7 +235,8 @@ Make it production-ready with proper error handling, loading states, and mobile 
         }
 
       } catch (error) {
-        console.error('Orchestration error:', error);
+        console.error('❌ Orchestration error:', error);
+        isStartingRef.current = false; // Release lock on error
         toast({
           title: "Error",
           description: error instanceof Error ? error.message : "Failed to start orchestration",
@@ -239,7 +246,7 @@ Make it production-ready with proper error handling, loading states, and mobile 
     };
 
     startOrchestration();
-  }, [user, hasStarted]);
+  }, [user]);
 
   const handleCancel = async () => {
     if (!jobId) return;
