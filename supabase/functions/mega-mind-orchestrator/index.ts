@@ -362,6 +362,24 @@ serve(async (req) => {
     console.log('📊 Phase 1: Analyzing request...');
     await updateJobProgress(20, 'Analyzing request...');
     await broadcast('generation:phase', { phase: 'analyzing', progress: 20, message: 'Analyzing your requirements...' });
+    
+    // Check for known patterns before analysis
+    try {
+      const { data: patterns } = await supabaseClient
+        .from('pattern_recognition_cache')
+        .select('*')
+        .eq('pattern_type', requestType)
+        .order('success_rate', { ascending: false })
+        .limit(5);
+      
+      if (patterns && patterns.length > 0) {
+        console.log(`🧠 Found ${patterns.length} similar patterns in cache`);
+        context.knownPatterns = patterns;
+      }
+    } catch (error) {
+      console.log('⚠️ Pattern lookup failed:', error);
+    }
+    
     const analysis = await analyzeRequest(sanitizedRequest, requestType, context);
     
     console.log('📋 Analysis result:', JSON.stringify(analysis, null, 2));
@@ -606,6 +624,31 @@ serve(async (req) => {
       timestamp: new Date().toISOString()
     });
 
+    // Learn from successful generation
+    try {
+      console.log('🧠 Learning pattern from successful generation...');
+      const patternSignature = `${requestType}_${analysis.mainGoal?.substring(0, 50) || 'general'}`;
+      
+      await supabaseClient.functions.invoke('pattern-recognizer', {
+        body: {
+          conversationId,
+          codeContext: sanitizedRequest,
+          errorType: `success_${requestType}`,
+          patternSignature,
+          success: true,
+          metadata: {
+            filesGenerated: generation.files?.length || 0,
+            hasBackend: analysis.backendRequirements?.needsDatabase || false,
+            complexity: analysis.estimatedComplexity || 'medium',
+            userSupabaseConnection: userSupabaseConnection?.project_name || 'platform'
+          }
+        }
+      });
+      console.log('✅ Pattern learned successfully');
+    } catch (error) {
+      console.log('⚠️ Pattern learning failed (non-critical):', error);
+    }
+
     // Mark job as completed
     if (jobId) {
       await supabaseClient
@@ -746,6 +789,34 @@ serve(async (req) => {
     console.error('❌ Error in mega-mind-orchestrator:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Learn from error pattern
+    try {
+      const { request, conversationId, requestType } = await req.json().catch(() => ({}));
+      
+      console.log('🧠 Learning from error pattern...');
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+      
+      await supabaseClient.functions.invoke('pattern-recognizer', {
+        body: {
+          conversationId,
+          codeContext: request || 'unknown',
+          errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
+          patternSignature: `error_${requestType || 'general'}_${errorMessage.substring(0, 50)}`,
+          success: false,
+          metadata: {
+            errorMessage,
+            stack: error instanceof Error ? error.stack : undefined
+          }
+        }
+      });
+      console.log('✅ Error pattern learned');
+    } catch (patternError) {
+      console.log('⚠️ Pattern learning from error failed:', patternError);
+    }
     
     // Update job as failed
     try {
