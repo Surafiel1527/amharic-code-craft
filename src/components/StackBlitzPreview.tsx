@@ -2,14 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import sdk from '@stackblitz/sdk';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ExternalLink } from 'lucide-react';
+import { Loader2, ExternalLink, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface StackBlitzPreviewProps {
   files: Array<{
     path: string;
     content: string;
-    type: string;
+    type?: string;
   }>;
   projectName: string;
 }
@@ -19,28 +20,73 @@ export function StackBlitzPreview({ files, projectName }: StackBlitzPreviewProps
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projectUrl, setProjectUrl] = useState<string | null>(null);
+  const [installingPackages, setInstallingPackages] = useState(false);
 
   useEffect(() => {
-    if (!containerRef.current || files.length === 0) return;
+    if (!containerRef.current || files.length === 0) {
+      setError('No files to display');
+      setLoading(false);
+      return;
+    }
 
     const embedProject = async () => {
       try {
         setLoading(true);
         setError(null);
 
+        // Validate files
+        if (!files.some(f => f.path.includes('App.tsx') || f.path.includes('App.jsx'))) {
+          setError('Project must contain an App component');
+          setLoading(false);
+          return;
+        }
+
         // Convert files array to StackBlitz format
         const stackBlitzFiles: Record<string, string> = {};
         
         files.forEach(file => {
-          // Remove leading slash if present
-          const path = file.path.startsWith('/') ? file.path.slice(1) : file.path;
+          // Remove leading slash and normalize path
+          let path = file.path.startsWith('/') ? file.path.slice(1) : file.path;
+          // Ensure src directory structure
+          if (!path.startsWith('src/') && !path.startsWith('public/') && !['package.json', 'vite.config.ts', 'tsconfig.json', 'index.html'].includes(path)) {
+            path = `src/${path}`;
+          }
           stackBlitzFiles[path] = file.content;
+        });
+
+        // Extract dependencies from files (look for imports)
+        const detectedDeps = new Set<string>();
+        const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
+        
+        files.forEach(file => {
+          let match;
+          while ((match = importRegex.exec(file.content)) !== null) {
+            const pkg = match[1];
+            // Only add external packages (not relative imports)
+            if (!pkg.startsWith('.') && !pkg.startsWith('/')) {
+              const pkgName = pkg.startsWith('@') ? pkg.split('/').slice(0, 2).join('/') : pkg.split('/')[0];
+              detectedDeps.add(pkgName);
+            }
+          }
         });
 
         // Add package.json if not present
         if (!stackBlitzFiles['package.json']) {
+          const dependencies: Record<string, string> = {
+            react: '^18.3.1',
+            'react-dom': '^18.3.1'
+          };
+
+          // Add detected dependencies with latest versions
+          detectedDeps.forEach(dep => {
+            if (dep === 'lucide-react') dependencies[dep] = '^0.462.0';
+            else if (dep === 'zustand') dependencies[dep] = '^5.0.8';
+            else if (dep === 'framer-motion') dependencies[dep] = '^12.23.22';
+            else if (!dependencies[dep]) dependencies[dep] = 'latest';
+          });
+
           stackBlitzFiles['package.json'] = JSON.stringify({
-            name: projectName.toLowerCase().replace(/\s+/g, '-'),
+            name: projectName.toLowerCase().replace(/\s+/g, '-').substring(0, 50),
             version: '0.0.0',
             private: true,
             type: 'module',
@@ -49,10 +95,7 @@ export function StackBlitzPreview({ files, projectName }: StackBlitzPreviewProps
               build: 'tsc && vite build',
               preview: 'vite preview'
             },
-            dependencies: {
-              react: '^18.3.1',
-              'react-dom': '^18.3.1'
-            },
+            dependencies,
             devDependencies: {
               '@types/react': '^18.3.1',
               '@types/react-dom': '^18.3.1',
@@ -97,6 +140,35 @@ export default defineConfig({
           }, null, 2);
         }
 
+        // Add main.tsx entry point if not present
+        if (!stackBlitzFiles['src/main.tsx']) {
+          stackBlitzFiles['src/main.tsx'] = `import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App.tsx'
+import './index.css'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)`;
+        }
+
+        // Add basic index.css if not present
+        if (!stackBlitzFiles['src/index.css']) {
+          stackBlitzFiles['src/index.css'] = `* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}`;
+        }
+
         // Add index.html if not present
         if (!stackBlitzFiles['index.html']) {
           stackBlitzFiles['index.html'] = `<!DOCTYPE html>
@@ -114,12 +186,16 @@ export default defineConfig({
 </html>`;
         }
 
-        // Embed the project
+        setInstallingPackages(true);
+
+        // Embed the project with proper configuration
+        const projectId = `${projectName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+        
         const vm = await sdk.embedProject(
           containerRef.current,
           {
             title: projectName,
-            description: `Generated by AI - ${new Date().toLocaleDateString()}`,
+            description: `AI-generated React project - ${new Date().toLocaleDateString()}`,
             template: 'node',
             files: stackBlitzFiles,
             settings: {
@@ -131,23 +207,30 @@ export default defineConfig({
             }
           },
           {
-            openFile: 'src/App.tsx',
+            openFile: Object.keys(stackBlitzFiles).find(f => f.includes('App.tsx')) || 'src/App.tsx',
             view: 'preview',
             height: 600,
             hideNavigation: false,
-            forceEmbedLayout: true
+            forceEmbedLayout: true,
+            clickToLoad: false
           }
         );
 
-        // Get the project URL
-        const url = await vm.getFsSnapshot();
-        setProjectUrl(`https://stackblitz.com/edit/${projectName.toLowerCase().replace(/\s+/g, '-')}`);
+        // Generate proper StackBlitz URL
+        setProjectUrl(`https://stackblitz.com/edit/${projectId}`);
         
-        setLoading(false);
+        // Wait a bit for packages to install
+        setTimeout(() => {
+          setInstallingPackages(false);
+          setLoading(false);
+        }, 3000);
+        
       } catch (err) {
         console.error('StackBlitz embed error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load preview');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load preview';
+        setError(`Preview error: ${errorMessage}. Your files are still saved and can be downloaded.`);
         setLoading(false);
+        setInstallingPackages(false);
       }
     };
 
@@ -157,49 +240,73 @@ export default defineConfig({
   if (error) {
     return (
       <Card className="p-6">
-        <div className="text-center space-y-4">
-          <Badge variant="destructive">Preview Error</Badge>
-          <p className="text-sm text-muted-foreground">{error}</p>
-          <p className="text-xs text-muted-foreground">
-            The project files are still saved. You can view them in the file list above.
-          </p>
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="ml-2">
+            <div className="space-y-2">
+              <p className="font-semibold">Preview Error</p>
+              <p className="text-sm">{error}</p>
+              <p className="text-xs opacity-75">
+                Your project files are still saved and available in the file browser above. You can download them as a ZIP file.
+              </p>
+            </div>
+          </AlertDescription>
+        </Alert>
       </Card>
     );
   }
 
   return (
     <Card className="overflow-hidden">
-      <div className="bg-muted/50 px-4 py-2 border-b flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="bg-muted/50 px-4 py-2 border-b flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="bg-background">
-            Live Preview with Real npm Install
+            <span className="hidden sm:inline">Live Preview with Real npm Install</span>
+            <span className="sm:hidden">Live Preview</span>
           </Badge>
-          {loading && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
+          {installingPackages && (
+            <Badge variant="secondary" className="animate-pulse">
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
               Installing packages...
-            </div>
+            </Badge>
+          )}
+          {!loading && !installingPackages && (
+            <Badge variant="secondary" className="bg-green-500/10 text-green-600 dark:text-green-400">
+              ✓ Ready
+            </Badge>
           )}
         </div>
-        {projectUrl && (
+        {projectUrl && !loading && (
           <Button
             variant="ghost"
             size="sm"
             asChild
           >
-            <a href={projectUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Open in StackBlitz
+            <a href={projectUrl} target="_blank" rel="noopener noreferrer" className="gap-2">
+              <ExternalLink className="h-4 w-4" />
+              <span className="hidden sm:inline">Open in StackBlitz</span>
+              <span className="sm:hidden">Open</span>
             </a>
           </Button>
         )}
       </div>
       <div 
         ref={containerRef} 
-        className="w-full"
+        className="w-full relative"
         style={{ minHeight: '600px' }}
-      />
+      >
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
+            <div className="text-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Setting up your development environment...</p>
+                <p className="text-xs text-muted-foreground">This may take a few moments</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </Card>
   );
 }
