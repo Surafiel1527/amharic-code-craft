@@ -284,10 +284,10 @@ const Index = () => {
     }
 
     setIsGenerating(true);
-    const progressToast = toast.loading("🎨 AI is creating your website...");
+    const progressToast = toast.loading("🎨 AI is creating your React components...");
     
     try {
-      // Use mega-mind-orchestrator for intelligent website generation
+      // Use mega-mind-orchestrator for intelligent React component generation
       const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
         body: { 
           request: prompt,
@@ -303,14 +303,19 @@ const Index = () => {
 
       toast.dismiss(progressToast);
       
-      // Extract generated HTML
-      const generatedHTML = data?.html || data?.generatedCode || data?.result?.generatedCode || '';
+      // Extract generated files
+      const generatedFiles = data?.generation?.files || [];
       
-      if (!generatedHTML) {
-        throw new Error("No website was generated");
+      if (!generatedFiles || generatedFiles.length === 0) {
+        throw new Error("No components were generated");
       }
 
-      setGeneratedCode(generatedHTML);
+      // Format files for display
+      const filesDisplay = generatedFiles.map((file: any) => 
+        `// File: ${file.path}\n${file.description ? `// ${file.description}\n` : ''}${file.content}\n\n`
+      ).join('\n');
+
+      setGeneratedCode(filesDisplay);
       
       // Auto-save and open in workspace
       const title = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt;
@@ -319,14 +324,14 @@ const Index = () => {
         .insert({
           title: title,
           prompt: prompt,
-          html_code: generatedHTML,
+          html_code: JSON.stringify(generatedFiles), // Store as JSON array of files
           user_id: user.id,
         })
         .select()
         .single();
 
       if (!saveError && project) {
-        toast.success("Website created! Opening workspace...");
+        toast.success(`Generated ${generatedFiles.length} React component${generatedFiles.length > 1 ? 's' : ''}! Opening workspace...`);
         navigate(`/workspace/${project.id}`);
       } else {
         toast.error("Failed to save project");
@@ -335,7 +340,7 @@ const Index = () => {
       console.error("Generation error:", error);
       toast.dismiss(progressToast);
       
-      const errorMsg = error instanceof Error ? error.message : "Failed to generate website";
+      const errorMsg = error instanceof Error ? error.message : "Failed to generate components";
       toast.error(errorMsg);
     } finally {
       setIsGenerating(false);

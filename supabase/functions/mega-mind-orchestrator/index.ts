@@ -200,69 +200,9 @@ serve(async (req) => {
       })
       .eq('id', orchestrationId);
 
-    // Check if this is a simple website request - if so, use fast path
-    const isSimpleWebsite = analysis.complexity === 'simple' && 
-                           analysis.requestType === 'simple-website' &&
-                           !analysis.requiredTechnologies?.some((tech: string) => 
-                             tech.toLowerCase().includes('react') || 
-                             tech.toLowerCase().includes('node') ||
-                             tech.toLowerCase().includes('backend') ||
-                             tech.toLowerCase().includes('database')
-                           );
-
-    if (isSimpleWebsite) {
-      console.log('🎯 Simple website detected - using FAST PATH (skipping 6 AI calls)');
-      await updateJobProgress(50, 'Generating website...');
-      
-      const generation = await generateSimpleWebsite(sanitizedRequest, analysis);
-      
-      await supabaseClient
-        .from('mega_mind_orchestrations')
-        .update({ 
-          generation_phase: generation,
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', orchestrationId);
-
-      if (jobId) {
-        await supabaseClient
-          .from('ai_generation_jobs')
-          .update({
-            status: 'completed',
-            progress: 100,
-            current_step: 'Completed',
-            completed_at: new Date().toISOString(),
-            output_data: {
-              orchestrationId,
-              generatedCode: generation.html,
-              html: generation.html,
-              instructions: generation.instructions
-            }
-          })
-          .eq('id', jobId);
-      }
-
-      console.log('✅ Simple website generated in FAST PATH!');
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          orchestrationId,
-          generatedCode: generation.html,
-          html: generation.html,
-          result: {
-            generatedCode: generation.html,
-            explanation: generation.instructions
-          },
-          message: '✨ Website generated successfully!'
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // For complex apps, continue with full pipeline with dependency detection
-    console.log('🚀 Complex app detected - using OPTIMIZED PIPELINE with dependency tracking');
+    // Always generate React components (this is a React project)
+    console.log('🚀 Generating React components for Lovable project...');
+    await updateJobProgress(50, 'Generating React components...');
     
     // PHASE 2: Generate solution
     console.log('⚡ Phase 2: Generating solution...');
@@ -523,40 +463,29 @@ async function analyzeRequest(request: string, requestType: string, context: any
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-  const prompt = `Analyze this request and determine the best architecture:
+  const prompt = `Analyze this request for a Lovable React/TypeScript project:
 
 **Request:** ${request}
 **Type:** ${requestType}
 
-**DEFAULT: Generate single-page HTML websites with embedded CSS/JS for most requests**
-
-**Classification Rules:**
-1. "simple-website" = DEFAULT - Landing pages, portfolios, info sites, marketing pages
-2. "full-stack-app" = Only for complex apps requiring React components, state management, or backend
-
-**When to use simple-website (HTML/CSS/JS in one file):**
-- Landing pages, portfolios, business websites
-- Marketing pages, product pages
-- Information/content sites
-- Single-page applications that don't need React
-- Anything that can work as a beautiful static page
-
-**When to use full-stack-app (React/TypeScript):**
-- Complex dashboards with many interactive components
-- Apps explicitly requesting React or complex state management
-- Multi-step forms with complex validation
-- Real-time collaborative tools
-- Apps requiring authentication and database
+**PROJECT CONTEXT:**
+- This is a React + TypeScript + Tailwind CSS + Vite project (Lovable platform)
+- Generate React components (.tsx files) that work within this existing project
+- Use existing design system with semantic tokens (not direct colors)
+- Use shadcn/ui components when appropriate
 
 **Output JSON:**
 {
-  "requestType": "simple-website" (default) or "full-stack-app" (only if truly complex),
+  "requestType": "react-component",
   "mainGoal": "what the user wants to achieve",
   "subTasks": ["task 1", "task 2"],
-  "requiredTechnologies": ["html", "css", "javascript"] (for simple) or ["react", "typescript"] (for complex),
-  "complexity": "simple" (default) | "moderate" | "complex",
-  "estimatedFiles": 1 (for HTML) or 5+ (for React),
-  "architecturalApproach": "Single HTML file with Tailwind CDN" or "React app"
+  "requiredComponents": ["Component1", "Component2"],
+  "requiredTechnologies": ["react", "typescript", "tailwind"],
+  "complexity": "simple" | "moderate" | "complex",
+  "estimatedFiles": 1-5,
+  "needsRouting": true|false,
+  "needsState": true|false,
+  "needsAPI": true|false
 }`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -568,7 +497,7 @@ async function analyzeRequest(request: string, requestType: string, context: any
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert software architect. Default to simple HTML websites unless the request is truly complex. Respond with JSON only.' },
+        { role: 'system', content: 'You are an expert React architect specializing in Lovable projects. Respond with JSON only.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }
@@ -576,80 +505,60 @@ async function analyzeRequest(request: string, requestType: string, context: any
   });
 
   const data = await response.json();
-  const analysis = JSON.parse(data.choices[0].message.content);
-  
-  // Check if request needs React or can be simple HTML
-  const requestLower = request.toLowerCase();
-  const needsReact = requestLower.includes('react') || 
-                     requestLower.includes('dashboard') ||
-                     requestLower.includes('real-time') ||
-                     requestLower.includes('authentication') ||
-                     requestLower.includes('database') ||
-                     analysis.complexity === 'complex';
-  
-  if (needsReact) {
-    // Use React for complex apps
-    analysis.requestType = 'full-stack-app';
-    if (!analysis.requiredTechnologies || analysis.requiredTechnologies.length === 0) {
-      analysis.requiredTechnologies = ['react', 'typescript', 'tailwind'];
-    }
-    if (!analysis.estimatedFiles || analysis.estimatedFiles < 3) {
-      analysis.estimatedFiles = 5;
-    }
-  } else {
-    // Default to simple HTML website
-    analysis.requestType = 'simple-website';
-    analysis.complexity = 'simple';
-    analysis.estimatedFiles = 1;
-    analysis.requiredTechnologies = ['html', 'css', 'javascript'];
-  }
-  
-  return analysis;
+  return JSON.parse(data.choices[0].message.content);
 }
 
 async function generateSimpleWebsite(request: string, analysis: any): Promise<any> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-  const prompt = `Generate a complete, production-ready website for this request:
+  // This is now a React component generator, not HTML generator
+  const prompt = `Generate React components for this Lovable project:
 
 **Request:** ${request}
 **Goal:** ${analysis.mainGoal}
+**Components Needed:** ${JSON.stringify(analysis.requiredComponents || [])}
 
 **CRITICAL REQUIREMENTS:**
-1. Create ONE complete HTML file with ALL code embedded (CSS in <style>, JS in <script>)
-2. Use Tailwind CSS via CDN: <script src="https://cdn.tailwindcss.com"></script>
-3. Make it modern, beautiful, fully responsive, and production-ready
-4. Include ALL requested features and sections
-5. Add smooth animations and interactions
-6. Use modern design principles (proper spacing, typography, color schemes)
-7. Include placeholder images from picsum.photos or unsplash.com
-8. Make it mobile-first responsive
+1. Generate React .tsx components that work in an existing Lovable project
+2. Use TypeScript with proper types
+3. Use Tailwind CSS with SEMANTIC TOKENS (bg-background, text-foreground, etc.) - NO direct colors
+4. Use shadcn/ui components: Button, Card, Input, etc. from "@/components/ui/"
+5. Make components fully responsive and production-ready
+6. Add proper imports and exports
+7. Follow React best practices (hooks, composition, etc.)
 
-**Structure:**
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>[Relevant Title]</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    /* Custom CSS for animations and special effects */
-  </style>
-</head>
-<body>
-  <!-- Complete website with navigation, hero, sections, footer -->
-  <script>
-    // Interactive JavaScript
-  </script>
-</body>
-</html>
+**Available shadcn/ui components:**
+- Button, Card, Input, Label, Textarea
+- Dialog, Sheet, Popover, DropdownMenu
+- Toast (use useToast from "@/hooks/use-toast")
+- And many more from "@/components/ui/"
+
+**Example structure:**
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+
+export function MyComponent() {
+  return (
+    <div className="container mx-auto p-6">
+      <Card className="p-6">
+        <h1 className="text-2xl font-bold">Title</h1>
+        <Button>Click me</Button>
+      </Card>
+    </div>
+  );
+}
 
 **Output JSON:**
 {
-  "html": "<!DOCTYPE html><html>... COMPLETE HTML with embedded CSS and JS ...",
-  "instructions": "Description of features and how to customize"
+  "files": [
+    {
+      "path": "src/pages/MyPage.tsx",
+      "content": "// Full React component code",
+      "description": "Main page component"
+    }
+  ],
+  "instructions": "How to use and integrate these components"
 }`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -661,7 +570,7 @@ async function generateSimpleWebsite(request: string, analysis: any): Promise<an
     body: JSON.stringify({
       model: 'google/gemini-2.5-pro',
       messages: [
-        { role: 'system', content: 'You are an expert web developer specializing in beautiful, modern websites. You MUST generate a complete, single HTML file with all CSS and JavaScript embedded. Use Tailwind CSS via CDN. Make it production-ready and stunning. Respond with JSON only.' },
+        { role: 'system', content: 'You are an expert React developer for Lovable projects. Generate production-ready React/TypeScript components using shadcn/ui and semantic Tailwind tokens. NEVER use direct colors like text-white or bg-blue-500. Respond with JSON only.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }
@@ -669,7 +578,14 @@ async function generateSimpleWebsite(request: string, analysis: any): Promise<an
   });
 
   const data = await response.json();
-  return JSON.parse(data.choices[0].message.content);
+  const result = JSON.parse(data.choices[0].message.content);
+  
+  // Ensure files array exists
+  if (!result.files || !Array.isArray(result.files)) {
+    result.files = [];
+  }
+  
+  return result;
 }
 
 async function detectDependencies(analysis: any, context: any): Promise<any[]> {
@@ -728,30 +644,42 @@ async function generateSolution(request: string, requestType: string, analysis: 
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-  const prompt = `Generate the complete solution for this request. You MUST generate actual working code - never return placeholders or empty files.
+  const prompt = `Generate React/TypeScript components for this Lovable project.
 
 **Request:** ${request}
 **Analysis:** ${JSON.stringify(analysis, null, 2)}
 
-**CRITICAL RULES:**
-1. ALWAYS generate at least ONE working file with complete code
-2. For simple HTML websites: Generate a single index.html file with complete HTML/CSS/JS
-3. For React apps: Generate all necessary component files
-4. NEVER return empty files array or placeholder messages
-5. If the request seems complex, simplify it to a working MVP instead of refusing
+**PROJECT STRUCTURE:**
+- src/pages/ - Page components (routes)
+- src/components/ - Reusable components
+- src/hooks/ - Custom React hooks
+- src/lib/ - Utility functions
 
-**For simple HTML websites, generate:**
-- Single index.html file with complete HTML, CSS (in <style>), and JS (in <script>)
-- Make it fully functional and beautiful
-- Include all requested features in the single file
+**CRITICAL REQUIREMENTS:**
+1. Generate production-ready React .tsx files
+2. Use TypeScript with proper types
+3. Use semantic Tailwind tokens: bg-background, text-foreground, border, etc.
+4. Import shadcn/ui components from "@/components/ui/"
+5. Use proper React patterns (hooks, composition, props)
+6. Make components responsive and accessible
+7. NEVER use direct colors (no bg-white, text-blue-500, etc.)
 
-**Output JSON:**
+**Available imports:**
+- UI: "@/components/ui/button", "@/components/ui/card", etc.
+- Hooks: "@/hooks/use-toast", "react", "react-router-dom"
+- Utils: "@/lib/utils" for cn() className helper
+
+**Example:**
 {
   "files": [
-    {"path": "index.html", "content": "<!DOCTYPE html>...", "description": "Main HTML file"}
+    {
+      "path": "src/pages/Dashboard.tsx",
+      "content": "import { Button } from '@/components/ui/button';\\n\\nexport default function Dashboard() {\\n  return <div className='container'>...</div>;\\n}",
+      "description": "Dashboard page"
+    }
   ],
-  "instructions": "How to use the generated code",
-  "nextSteps": ["Open index.html in browser", "Customize as needed"]
+  "instructions": "Add route to App.tsx: <Route path='/dashboard' element={<Dashboard />} />",
+  "nextSteps": ["Test the components", "Add routing"]
 }`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -763,7 +691,7 @@ async function generateSolution(request: string, requestType: string, analysis: 
     body: JSON.stringify({
       model: 'google/gemini-2.5-pro',
       messages: [
-        { role: 'system', content: 'You are an expert code generator. You MUST generate actual working code files - NEVER return placeholders or empty arrays. Always provide complete, functional code. Respond with JSON only.' },
+        { role: 'system', content: 'You are a Lovable React expert. Generate clean, production-ready React/TypeScript components using shadcn/ui and semantic Tailwind classes. NEVER use direct colors. Respond with JSON only.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }
