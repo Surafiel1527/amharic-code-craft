@@ -5,6 +5,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { unifiedFunctions } from "@/lib/unifiedFunctions";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 /**
@@ -21,7 +22,23 @@ export const useAIChat = () => {
 
 export const useCodeGeneration = () => {
   return useMutation({
-    mutationFn: unifiedFunctions.aiWorkers.generateCode,
+    mutationFn: async (params: { prompt: string; language?: string; context?: any }) => {
+      // Route to new react-generation system
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase.functions.invoke('unified-code-operations', {
+        body: {
+          operation: 'react-generation',
+          prompt: params.prompt,
+          context: params.context,
+          user_id: user.id
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    },
     onError: (error: any) => {
       toast.error("Code generation failed: " + (error?.message || "Unknown error"));
     },

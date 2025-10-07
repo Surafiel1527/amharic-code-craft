@@ -37,8 +37,6 @@ serve(async (req) => {
         result = await handleTestRunner(params, supabase);
         break;
       case 'component_generation':
-        result = await handleComponentGeneration(params, supabase);
-        break;
       case 'react-generation':
         result = await handleReactGeneration(params, supabase);
         break;
@@ -184,30 +182,6 @@ async function handleTestRunner(params: any, supabase: any) {
   };
 
   return { results };
-}
-
-async function handleComponentGeneration(params: any, supabase: any) {
-  const { componentType, requirements } = params;
-
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        { role: 'system', content: 'You are a React component expert. Generate clean, reusable components.' },
-        { role: 'user', content: `Generate a ${componentType} component with these requirements:\n${requirements}` }
-      ]
-    })
-  });
-
-  const data = await response.json();
-  return { component: data.choices[0].message.content };
 }
 
 async function handleReactGeneration(params: any, supabase: any) {

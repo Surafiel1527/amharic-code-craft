@@ -87,8 +87,11 @@ export const codeOps = {
   runTests: (params: { testSuite: any; projectId?: string }) =>
     invokeUnifiedFunction("unified-code-operations", "test_runner", params),
 
-  generateComponent: (params: { componentType: string; requirements: string }) =>
-    invokeUnifiedFunction("unified-code-operations", "component_generation", params),
+  generateComponent: (params: { componentType: string; requirements: string }) => {
+    // Legacy support - route to react-generation
+    const prompt = `Generate a ${params.componentType} component with these requirements:\n${params.requirements}`;
+    return invokeUnifiedFunction("unified-code-operations", "react-generation", { prompt });
+  },
 };
 
 /**
