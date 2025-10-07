@@ -94,17 +94,26 @@ export const WebTerminal = () => {
       }
 
       if (currentCommand === 'help') {
-        const helpText = `Available commands:
-  - clear: Clear the terminal
-  - history: Show command history
-  - help: Show this help message
+        const helpText = `🚀 Mega Mind Terminal - Available Commands:
+
+Built-in:
+  clear           - Clear terminal
+  history         - Show command history
+  help            - Show this help
   
-  Allowed system commands:
-  - File operations: ls, pwd, cat, mkdir, rm, cp, mv, touch
-  - Package managers: npm, pip, pip3
-  - Development: node, python, python3, deno, bun
-  - Version control: git
-  - Utilities: curl, wget, grep, find, wc, head, tail, echo`;
+Package Management (via unified-package-manager):
+  npm install     - Detect & show dependencies
+  npm list        - List installed packages
+  npm outdated    - Check for updates
+  
+Code Execution (via code-executor):
+  node script.js  - Execute JavaScript
+  Any JS code     - Run directly in Deno sandbox
+  
+Examples:
+  > console.log("Hello World")
+  > npm install
+  > const x = [1,2,3]; x.map(n => n * 2)`;
         
         setOutputs(prev => [...prev, {
           id: (Date.now() + 1).toString(),
@@ -116,20 +125,59 @@ export const WebTerminal = () => {
         return;
       }
 
-      // Execute via edge function
-      const { data, error } = await supabase.functions.invoke('terminal-executor', {
-        body: { command: currentCommand }
+      // Handle npm commands via unified-package-manager
+      if (currentCommand.startsWith('npm ')) {
+        const npmCmd = currentCommand.substring(4).trim();
+        let operation = 'auto_detect';
+        
+        if (npmCmd === 'list' || npmCmd === 'ls') {
+          operation = 'list_installed';
+        } else if (npmCmd === 'outdated') {
+          operation = 'check_updates';
+        } else if (npmCmd.startsWith('install')) {
+          setOutputs(prev => [...prev, {
+            id: (Date.now() + 1).toString(),
+            type: 'output',
+            content: '🔍 Analyzing codebase for dependencies...',
+            timestamp: new Date()
+          }]);
+        }
+
+        const { data, error } = await supabase.functions.invoke('unified-package-manager', {
+          body: { operation }
+        });
+
+        if (error) throw error;
+
+        const output = JSON.stringify(data, null, 2);
+        setOutputs(prev => [...prev, {
+          id: (Date.now() + 2).toString(),
+          type: 'output',
+          content: output,
+          timestamp: new Date()
+        }]);
+        setIsExecuting(false);
+        inputRef.current?.focus();
+        return;
+      }
+
+      // Execute JavaScript/TypeScript code via code-executor
+      const { data, error } = await supabase.functions.invoke('code-executor', {
+        body: {
+          code: currentCommand,
+          language: 'javascript'
+        }
       });
 
       if (error) throw error;
 
+      const output = data.success ? data.output : data.error;
       setOutputs(prev => [...prev, {
         id: (Date.now() + 1).toString(),
-        type: data.exitCode === 0 ? 'output' : 'error',
-        content: data.output,
+        type: data.success ? 'output' : 'error',
+        content: output || 'Command executed successfully',
         timestamp: new Date(),
-        exitCode: data.exitCode,
-        executionTime: data.executionTime
+        executionTime: data.memoryUsed ? undefined : Date.now() - parseInt(commandId)
       }]);
 
     } catch (error: any) {

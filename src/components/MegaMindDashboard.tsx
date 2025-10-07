@@ -14,6 +14,7 @@ import PythonDevelopmentHub from "./PythonDevelopmentHub";
 import SuperMegaMindHub from "./SuperMegaMindHub";
 import { EnterpriseProjectDashboard } from "./EnterpriseProjectDashboard";
 import { WebTerminal } from "./WebTerminal";
+import EnhancedDevEnvironment from "./EnhancedDevEnvironment";
 
 export const MegaMindDashboard = () => {
   const [request, setRequest] = useState("");
@@ -86,8 +87,12 @@ export const MegaMindDashboard = () => {
         </Button>
       </div>
 
-      <Tabs defaultValue="orchestrator" className="w-full">
-        <TabsList className="grid w-full grid-cols-8">
+      <Tabs defaultValue="dev-env" className="w-full">
+        <TabsList className="grid w-full grid-cols-7">
+          <TabsTrigger value="dev-env">
+            <Zap className="w-4 h-4 mr-2" />
+            Dev Environment
+          </TabsTrigger>
           <TabsTrigger value="orchestrator">Orchestrator</TabsTrigger>
           <TabsTrigger value="terminal">
             <Code className="w-4 h-4 mr-2" />
@@ -110,14 +115,14 @@ export const MegaMindDashboard = () => {
             Beyond
           </TabsTrigger>
           <TabsTrigger value="installer">
-            <Zap className="w-4 h-4 mr-2" />
+            <Package className="w-4 h-4 mr-2" />
             Installer
           </TabsTrigger>
-          <TabsTrigger value="packager">
-            <Download className="w-4 h-4 mr-2" />
-            Packager
-          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="dev-env" className="space-y-4">
+          <EnhancedDevEnvironment />
+        </TabsContent>
 
         <TabsContent value="orchestrator" className="space-y-4">
           <Card className="p-6">
@@ -312,10 +317,6 @@ export const MegaMindDashboard = () => {
 
         <TabsContent value="installer" className="space-y-4">
           <InstantPackageInstaller />
-        </TabsContent>
-
-        <TabsContent value="packager" className="space-y-4">
-          <CompleteProjectPackager />
         </TabsContent>
       </Tabs>
     </div>
