@@ -269,72 +269,48 @@ const Index = () => {
 
   const handleQuickGenerate = async () => {
     if (!prompt.trim()) {
-      toast.error(t("toast.promptRequired"));
+      toast.error("Please describe the website you want to create");
       return;
     }
 
     if (!isOnline) {
-      toast.error(t("toast.offline"));
+      toast.error("You're offline. Please check your internet connection.");
       return;
     }
 
     if (!user) {
-      toast.error(t("toast.loginRequired"));
-      return;
-    }
-
-    // Validate request
-    const validation = validateRequest(prompt);
-    if (!validation.valid) {
-      toast.error(validation.error || "Invalid request");
+      toast.error("Please sign in to generate websites");
       return;
     }
 
     const startTime = Date.now();
     setIsGenerating(true);
     
-    // Show progress toast
-    const progressToast = toast.loading("🚀 Mega Mind activated - analyzing your request...");
+    const progressToast = toast.loading("🎨 AI is designing your website...");
     
     try {
-      // Use mega-mind orchestrator with retry logic
-      const data = await retryWithBackoff(async () => {
-        const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
-          body: { 
-            request: prompt,
-            requestType: 'full-stack-generation',
-            context: {
-              userId: user.id,
-              timestamp: new Date().toISOString()
-            }
-          },
-        });
-
-        if (error) throw error;
-        return data;
-      }, {
-        maxRetries: 2,
-        initialDelay: 2000,
-        maxDelay: 8000,
-        backoffMultiplier: 2,
-        timeout: 300000 // 5 minutes
+      // Generate website HTML using AI
+      const { data, error } = await supabase.functions.invoke("generate-website", {
+        body: { 
+          prompt: prompt,
+          userId: user.id
+        },
       });
+
+      if (error) throw error;
 
       toast.dismiss(progressToast);
       
-      // Log success metrics
-      await logMetrics(user.id, {
-        operation: 'quick_generate',
-        duration: Date.now() - startTime,
-        success: true,
-        metadata: { promptLength: prompt.length }
-      });
+      // Extract generated HTML
+      const generatedHTML = data?.html || data?.code || '';
+      
+      if (!generatedHTML) {
+        throw new Error("No HTML was generated");
+      }
 
-      // Smart orchestrator returns structured data
-      const generatedHTML = data?.result?.generatedCode || data?.generatedCode || data?.html || '';
       setGeneratedCode(generatedHTML);
       
-      // Auto-save Quick generation and open in workspace
+      // Auto-save and open in workspace
       const title = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt;
       const { data: project, error: saveError } = await supabase
         .from("projects")
@@ -348,58 +324,16 @@ const Index = () => {
         .single();
 
       if (!saveError && project) {
-        // Create conversation for this project
-        const { data: conversation, error: convError } = await supabase
-          .from("conversations")
-          .insert({
-            title: `Workspace: ${title}`,
-            user_id: user.id,
-            project_id: project.id
-          })
-          .select()
-          .single();
-
-        if (!convError && conversation) {
-          // Save user prompt as first message
-          await supabase.from("messages").insert({
-            conversation_id: conversation.id,
-            role: "user",
-            content: prompt
-          });
-
-          // Save AI response as second message
-          const aiResponse = data?.result?.explanation || 
-                           data?.explanation || 
-                           `I've created your ${title}. The application includes all the features you requested.`;
-          
-          await supabase.from("messages").insert({
-            conversation_id: conversation.id,
-            role: "assistant",
-            content: aiResponse
-          });
-        }
-
-        toast.success("Project created! Opening workspace...");
-        // Redirect to workspace
+        toast.success("Website created! Opening workspace...");
         navigate(`/workspace/${project.id}`);
       } else {
-        toast.success(t("toast.generated"));
+        toast.error("Failed to save project");
       }
     } catch (error) {
-      console.error("❌ Generation error:", error);
+      console.error("Generation error:", error);
       toast.dismiss(progressToast);
       
-      // Log failure metrics
-      await logMetrics(user.id, {
-        operation: 'quick_generate',
-        duration: Date.now() - startTime,
-        success: false,
-        errorType: error instanceof Error ? error.message : 'unknown',
-        metadata: { promptLength: prompt.length }
-      });
-      
-      // Display user-friendly error
-      const errorMsg = formatErrorMessage(error);
+      const errorMsg = error instanceof Error ? error.message : "Failed to generate website";
       toast.error(errorMsg);
     } finally {
       setIsGenerating(false);
