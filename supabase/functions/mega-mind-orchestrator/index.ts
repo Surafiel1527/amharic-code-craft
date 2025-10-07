@@ -64,28 +64,86 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
     
-    // Create and subscribe to broadcast channel once
-    let broadcastChannel: any = null;
-    if (projectId) {
-      broadcastChannel = supabaseClient.channel(`project-${projectId}`, {
+    // Create broadcast channels for real-time status updates
+    let statusChannel: any = null;
+    let codeChannel: any = null;
+    
+    if (projectId || context.conversationId) {
+      const channelId = projectId || context.conversationId;
+      
+      // AI status updates channel
+      statusChannel = supabaseClient.channel(`ai-status-${channelId}`, {
         config: { broadcast: { ack: false } }
       });
-      await broadcastChannel.subscribe();
-      console.log(`📡 Subscribed to channel: project-${projectId}`);
+      await statusChannel.subscribe();
+      console.log(`📡 Subscribed to status channel: ai-status-${channelId}`);
+      
+      // Code preview updates channel
+      codeChannel = supabaseClient.channel(`preview-${channelId}`, {
+        config: { broadcast: { ack: false } }
+      });
+      await codeChannel.subscribe();
+      console.log(`📡 Subscribed to preview channel: preview-${channelId}`);
     }
     
-    // Broadcast function for real-time updates
+    // Broadcast function for real-time AI status updates
     const broadcast = async (eventType: string, data: any) => {
-      if (!broadcastChannel) return;
+      if (!statusChannel) return;
+      
       try {
-        await broadcastChannel.send({
+        // Map generation events to AI status types
+        let status = 'idle';
+        let message = data.message || '';
+        
+        if (eventType.includes('thinking') || data.status === 'thinking') {
+          status = 'thinking';
+        } else if (eventType.includes('reading') || data.status === 'reading') {
+          status = 'reading';
+        } else if (eventType.includes('editing') || data.status === 'editing') {
+          status = 'editing';
+        } else if (eventType.includes('fixing') || data.status === 'fixing') {
+          status = 'fixing';
+        } else if (eventType.includes('analyzing') || data.status === 'analyzing') {
+          status = 'analyzing';
+        } else if (eventType.includes('generating') || data.status === 'generating') {
+          status = 'generating';
+        }
+        
+        await statusChannel.send({
           type: 'broadcast',
-          event: eventType,
-          payload: { ...data, timestamp: new Date().toISOString() }
+          event: 'status-update',
+          payload: { 
+            status,
+            message,
+            progress: data.progress,
+            errors: data.errors,
+            timestamp: new Date().toISOString() 
+          }
         });
-        console.log(`📤 Broadcast sent: ${eventType}`, data);
+        console.log(`📤 Status broadcast: ${status} - ${message}`);
       } catch (e) {
-        console.error('Broadcast error:', e);
+        console.error('Status broadcast error:', e);
+      }
+    };
+    
+    // Broadcast code updates
+    const broadcastCode = async (component: string, code: string, status: string = 'complete') => {
+      if (!codeChannel) return;
+      
+      try {
+        await codeChannel.send({
+          type: 'broadcast',
+          event: 'code-update',
+          payload: {
+            component,
+            code,
+            status,
+            timestamp: new Date().toISOString()
+          }
+        });
+        console.log(`📤 Code broadcast: ${component}`);
+      } catch (e) {
+        console.error('Code broadcast error:', e);
       }
     };
 
@@ -203,7 +261,7 @@ serve(async (req) => {
     if (conversationId) {
       console.log('💬 Inserting user message into conversation:', conversationId);
       const { error: msgError } = await supabaseClient
-        .from('assistant_messages')
+        .from('messages')
         .insert({
           conversation_id: conversationId,
           role: 'user',
@@ -465,11 +523,12 @@ serve(async (req) => {
       const assistantMessage = `I've generated your ${analysis.outputType === 'html-website' ? 'HTML website' : 'React components'} with ${generation.files?.length || 0} file(s). ${generation.instructions || 'Your project is ready to view!'}`;
       
       const { error: assistantMsgError } = await supabaseClient
-        .from('assistant_messages')
+        .from('messages')
         .insert({
           conversation_id: conversationId,
           role: 'assistant',
           content: assistantMessage,
+          generated_code: generatedCode,
           metadata: { 
             orchestrationId, 
             filesGenerated: generation.files?.length || 0,
@@ -486,11 +545,18 @@ serve(async (req) => {
 
     // Final broadcast with completion status
     await broadcast('generation:complete', {
+      status: 'idle',
       message: 'Generation complete! ✨',
+      progress: 100,
       orchestrationId,
       filesGenerated: generation.files?.length || 0,
       outputType: analysis.outputType
     });
+    
+    // Broadcast code update for preview
+    if (generatedCode) {
+      await broadcastCode('main-project', generatedCode, 'complete');
+    }
 
     return new Response(
       JSON.stringify({
@@ -622,7 +688,7 @@ async function generateSimpleWebsite(request: string, analysis: any, broadcast: 
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-  await broadcast('generation:status', { status: 'thinking', message: 'Analyzing your website requirements...', progress: 10 });
+  await broadcast('generation:thinking', { status: 'thinking', message: 'Analyzing your website requirements...', progress: 10 });
 
   const prompt = `Generate a COMPLETE, BEAUTIFUL, PRODUCTION-READY HTML/CSS/JavaScript website based on this EXACT request:
 
@@ -666,7 +732,7 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
   "instructions": "Website is ready to use"
 }`;
 
-  await broadcast('generation:status', { status: 'reading', message: 'Understanding design requirements...', progress: 30 });
+  await broadcast('generation:reading', { status: 'reading', message: 'Understanding design requirements...', progress: 30 });
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
@@ -686,7 +752,7 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     }),
   });
 
-  await broadcast('generation:status', { status: 'generating', message: 'Creating your beautiful website...', progress: 60 });
+  await broadcast('generation:generating', { status: 'generating', message: 'Creating your beautiful website...', progress: 60 });
 
   if (!response.ok) {
     let errorText = 'Unknown error';
@@ -738,7 +804,7 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     throw new Error(`Failed to parse AI response: ${errorMsg}`);
   }
   
-  await broadcast('generation:status', { status: 'editing', message: 'Polishing design and responsiveness...', progress: 85 });
+  await broadcast('generation:editing', { status: 'editing', message: 'Polishing design and responsiveness...', progress: 85 });
   
   // Ensure files array exists
   if (!result.files || !Array.isArray(result.files)) {
@@ -813,11 +879,11 @@ async function generateSolution(request: string, requestType: string, analysis: 
   }
   
   // Broadcast thinking status for React apps
-  await broadcast('generation:status', { status: 'thinking', message: 'Planning component architecture...', progress: 15 });
+  await broadcast('generation:thinking', { status: 'thinking', message: 'Planning component architecture...', progress: 15 });
 
   // Default: Generate React components
   console.log('⚛️ Generating React components...');
-  await broadcast('generation:status', { status: 'reading', message: 'Analyzing code requirements...', progress: 35 });
+  await broadcast('generation:reading', { status: 'reading', message: 'Analyzing code requirements...', progress: 35 });
   
   const prompt = `Generate React/TypeScript components for this Lovable project.
 
@@ -873,7 +939,7 @@ async function generateSolution(request: string, requestType: string, analysis: 
     }),
   });
 
-  await broadcast('generation:status', { status: 'generating', message: 'Writing component code...', progress: 65 });
+  await broadcast('generation:generating', { status: 'generating', message: 'Writing component code...', progress: 65 });
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -881,7 +947,7 @@ async function generateSolution(request: string, requestType: string, analysis: 
     throw new Error(`AI API failed with status ${response.status}: ${errorText}`);
   }
   
-  await broadcast('generation:status', { status: 'editing', message: 'Optimizing and formatting code...', progress: 90 });
+  await broadcast('generation:editing', { status: 'editing', message: 'Optimizing and formatting code...', progress: 90 });
 
   // Read response as text first to handle potential parsing issues
   const responseText = await response.text();
