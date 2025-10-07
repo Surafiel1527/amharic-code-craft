@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code, Maximize2, Minimize2, FolderOpen } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Copy, Check, Save, Clock, Sparkles, MessageSquare, Zap, LogOut, Settings, Download, Shield, Layers, Image as ImageIcon, TrendingUp, Keyboard, Database, DollarSign, Users, Key, Code, Maximize2, Minimize2, FolderOpen, FileText, Code2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -121,6 +122,7 @@ const Index = () => {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [quickHistory, setQuickHistory] = useState<Project[]>([]);
+  const [framework, setFramework] = useState<"react" | "html" | "vue">("react");
 
   // PWA install prompt
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -686,11 +688,42 @@ const Index = () => {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     {/* Main generation area */}
                     <div className="lg:col-span-2 space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold">Describe Your Website</label>
-                        <p className="text-xs text-muted-foreground">
-                          Be specific about features, design, colors, and functionality you want
-                        </p>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold">Framework</label>
+                          <Select value={framework} onValueChange={(v: any) => setFramework(v)} disabled={isGenerating}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="react">
+                                <div className="flex items-center gap-2">
+                                  <Code2 className="w-4 h-4" />
+                                  React + TypeScript
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="html">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="w-4 h-4" />
+                                  HTML + CSS + JS
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="vue">
+                                <div className="flex items-center gap-2">
+                                  <Code2 className="w-4 h-4" />
+                                  Vue 3 + TypeScript
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold">Describe Your Website</label>
+                          <p className="text-xs text-muted-foreground">
+                            Be specific about features, design, colors, and functionality you want
+                          </p>
+                        </div>
                       </div>
                       
                       <Textarea
@@ -712,12 +745,12 @@ const Index = () => {
                           {isGenerating ? (
                             <>
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Generating Your Website...
+                              Generating {framework.toUpperCase()} Project...
                             </>
                           ) : (
                             <>
                               <Sparkles className="mr-2 h-4 w-4" />
-                              Generate Website with AI
+                              Generate {framework.toUpperCase()} Project
                             </>
                           )}
                         </Button>
