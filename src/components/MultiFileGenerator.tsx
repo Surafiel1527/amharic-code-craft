@@ -7,6 +7,7 @@ import { Loader2, FileCode2, Package, Folder, CheckCircle2 } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { StackBlitzPreview } from "./StackBlitzPreview";
 
 interface MultiFileGeneratorProps {
   projectId: string;
@@ -159,6 +160,13 @@ export function MultiFileGenerator({ projectId, conversationId, onFilesGenerated
             </div>
           )}
         </Card>
+      )}
+
+      {result && result.files && result.files.length > 0 && (
+        <StackBlitzPreview 
+          files={result.files}
+          projectName={request.slice(0, 50) || "Generated Project"}
+        />
       )}
     </div>
   );
