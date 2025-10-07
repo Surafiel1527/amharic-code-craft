@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,14 +12,30 @@ interface ConnectSupabaseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConnected?: () => void;
+  editConnection?: { id: string; project_name: string; supabase_url: string; supabase_anon_key?: string } | null;
 }
 
-export function ConnectSupabaseDialog({ open, onOpenChange, onConnected }: ConnectSupabaseDialogProps) {
+export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editConnection }: ConnectSupabaseDialogProps) {
   const [projectName, setProjectName] = useState("");
   const [supabaseUrl, setSupabaseUrl] = useState("");
   const [anonKey, setAnonKey] = useState("");
   const [serviceRoleKey, setServiceRoleKey] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editConnection) {
+      setProjectName(editConnection.project_name);
+      setSupabaseUrl(editConnection.supabase_url);
+      setAnonKey(editConnection.supabase_anon_key || "");
+      setServiceRoleKey("");
+    } else {
+      setProjectName("");
+      setSupabaseUrl("");
+      setAnonKey("");
+      setServiceRoleKey("");
+    }
+  }, [editConnection]);
 
   const handleConnect = async () => {
     if (!projectName.trim() || !supabaseUrl.trim() || !anonKey.trim()) {
@@ -39,20 +55,37 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected }: Conne
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const { error } = await supabase
-        .from("user_supabase_connections")
-        .insert({
-          user_id: user.id,
-          project_name: projectName.trim(),
-          supabase_url: supabaseUrl.trim(),
-          supabase_anon_key: anonKey.trim(),
-          supabase_service_role_key: serviceRoleKey.trim() || null,
-          is_active: true
-        });
+      if (editConnection) {
+        // Update existing connection
+        const { error } = await supabase
+          .from("user_supabase_connections")
+          .update({
+            project_name: projectName.trim(),
+            supabase_url: supabaseUrl.trim(),
+            supabase_anon_key: anonKey.trim(),
+            supabase_service_role_key: serviceRoleKey.trim() || null,
+          })
+          .eq("id", editConnection.id);
 
-      if (error) throw error;
+        if (error) throw error;
+        toast.success("Supabase project updated successfully!");
+      } else {
+        // Create new connection
+        const { error } = await supabase
+          .from("user_supabase_connections")
+          .insert({
+            user_id: user.id,
+            project_name: projectName.trim(),
+            supabase_url: supabaseUrl.trim(),
+            supabase_anon_key: anonKey.trim(),
+            supabase_service_role_key: serviceRoleKey.trim() || null,
+            is_active: true
+          });
 
-      toast.success("Supabase project connected successfully!");
+        if (error) throw error;
+        toast.success("Supabase project connected successfully!");
+      }
+
       onOpenChange(false);
       onConnected?.();
 
@@ -66,7 +99,7 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected }: Conne
       if (error.message.includes("unique")) {
         toast.error("A project with this name already exists");
       } else {
-        toast.error("Failed to connect Supabase project");
+        toast.error(`Failed to ${editConnection ? 'update' : 'connect'} Supabase project`);
       }
     } finally {
       setIsSubmitting(false);
@@ -79,10 +112,13 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected }: Conne
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Database className="w-5 h-5" />
-            Connect Your Supabase Project
+            {editConnection ? 'Edit Supabase Project' : 'Connect Your Supabase Project'}
           </DialogTitle>
           <DialogDescription>
-            Connect your own Supabase project to have full control over your generated website's backend.
+            {editConnection 
+              ? 'Update your Supabase project connection details.'
+              : 'Connect your own Supabase project to have full control over your generated website\'s backend.'
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -172,7 +208,7 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected }: Conne
               onClick={handleConnect}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Connecting..." : "Connect Project"}
+              {isSubmitting ? (editConnection ? "Updating..." : "Connecting...") : (editConnection ? "Update Project" : "Connect Project")}
             </Button>
           </div>
         </div>

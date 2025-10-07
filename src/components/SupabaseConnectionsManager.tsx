@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Database, Plus, Trash2, ExternalLink, CheckCircle2 } from "lucide-react";
+import { Database, Plus, Trash2, ExternalLink, CheckCircle2, Pencil } from "lucide-react";
 import { ConnectSupabaseDialog } from "./ConnectSupabaseDialog";
 import {
   AlertDialog,
@@ -21,6 +21,7 @@ interface SupabaseConnection {
   id: string;
   project_name: string;
   supabase_url: string;
+  supabase_anon_key?: string;
   is_active: boolean;
   created_at: string;
 }
@@ -29,13 +30,14 @@ export function SupabaseConnectionsManager() {
   const [connections, setConnections] = useState<SupabaseConnection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
+  const [editingConnection, setEditingConnection] = useState<SupabaseConnection | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const loadConnections = async () => {
     try {
       const { data, error } = await supabase
         .from("user_supabase_connections")
-        .select("id, project_name, supabase_url, is_active, created_at")
+        .select("id, project_name, supabase_url, supabase_anon_key, is_active, created_at")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -177,6 +179,13 @@ export function SupabaseConnectionsManager() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={() => setEditingConnection(connection)}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => setDeleteConfirm(connection.id)}
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />
@@ -190,9 +199,13 @@ export function SupabaseConnectionsManager() {
       </Card>
 
       <ConnectSupabaseDialog
-        open={showConnectDialog}
-        onOpenChange={setShowConnectDialog}
+        open={showConnectDialog || !!editingConnection}
+        onOpenChange={(open) => {
+          setShowConnectDialog(open);
+          if (!open) setEditingConnection(null);
+        }}
         onConnected={loadConnections}
+        editConnection={editingConnection}
       />
 
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
