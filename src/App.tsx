@@ -22,6 +22,7 @@ const PackageManager = lazy(() => import("./pages/PackageManager"));
 const TestingHub = lazy(() => import("./pages/TestingHub"));
 const Marketplace = lazy(() => import("./pages/Marketplace"));
 const ProjectsDashboard = lazy(() => import("./pages/ProjectsDashboard"));
+const ReactGenerationHub = lazy(() => import("./components/ReactGenerationHub"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -50,6 +51,7 @@ const App = () => {
           <Route path="/testing" element={<TestingHub />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/projects" element={<ProjectsDashboard />} />
+          <Route path="/generate" element={<ReactGenerationHub />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

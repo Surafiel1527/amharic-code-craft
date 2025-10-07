@@ -39,6 +39,9 @@ serve(async (req) => {
       case 'component_generation':
         result = await handleComponentGeneration(params, supabase);
         break;
+      case 'react-generation':
+        result = await handleReactGeneration(params, supabase);
+        break;
       default:
         throw new Error(`Unknown operation: ${operation}`);
     }
@@ -206,3 +209,67 @@ async function handleComponentGeneration(params: any, supabase: any) {
   const data = await response.json();
   return { component: data.choices[0].message.content };
 }
+
+async function handleReactGeneration(params: any, supabase: any) {
+  const { prompt, context } = params;
+
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+
+  const systemPrompt = `You are an expert React developer. Generate complete, production-ready React components.
+
+IMPORTANT: Return ONLY a JSON object with this structure:
+{
+  "entry_point": "ComponentName.tsx",
+  "files": [
+    {
+      "path": "ComponentName.tsx",
+      "code": "// Full component code here",
+      "type": "component"
+    }
+  ]
+}
+
+Guidelines:
+- Use TypeScript and functional components
+- Include proper imports (React, lucide-react for icons, etc.)
+- Use Tailwind CSS for styling
+- Follow best practices (hooks, clean code, accessibility)
+- Generate multiple files if needed (components, hooks, utils)
+- Make components responsive and reusable`;
+
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+    })
+  });
+
+  const data = await response.json();
+  const content = data.choices[0].message.content;
+  
+  // Parse the JSON response
+  try {
+    const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
+    return parsed;
+  } catch (e) {
+    // Fallback: create a single file from the response
+    return {
+      entry_point: 'GeneratedComponent.tsx',
+      files: [{
+        path: 'GeneratedComponent.tsx',
+        code: content,
+        type: 'component'
+      }]
+    };
+  }
+}
+
