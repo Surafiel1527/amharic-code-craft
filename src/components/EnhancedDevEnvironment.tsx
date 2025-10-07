@@ -38,46 +38,56 @@ export default function EnhancedDevEnvironment() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">🚀 Mega Mind Dev Environment</h1>
-            <p className="text-muted-foreground mt-1">
-              Full-stack development with AI orchestration
-            </p>
-          </div>
-          <Button onClick={checkSystemHealth} variant="outline">
-            Check Health
-          </Button>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg">
+              <Terminal className="h-5 w-5 text-white" />
+            </div>
+            Mega Mind Dev Environment
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Complete development platform with AI-powered code generation, execution, and package management
+          </p>
         </div>
+        <Button onClick={checkSystemHealth} variant="outline" className="gap-2">
+          <CheckCircle className="h-4 w-4" />
+          Health Check
+        </Button>
+      </div>
 
-        {/* System Status */}
-        <Card className="p-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            <Badge variant={systemStatus.terminal ? "default" : "destructive"}>
-              <Terminal className="w-3 h-3 mr-1" />
-              Terminal
-            </Badge>
-            <Badge variant={systemStatus.codeExecution ? "default" : "destructive"}>
-              <Code className="w-3 h-3 mr-1" />
-              Code Executor
-            </Badge>
-            <Badge variant={systemStatus.packageManager ? "default" : "destructive"}>
-              <Package className="w-3 h-3 mr-1" />
-              Package Manager
-            </Badge>
-            <Badge variant={systemStatus.aiOrchestrator ? "default" : "destructive"}>
-              {systemStatus.aiOrchestrator ? (
-                <CheckCircle className="w-3 h-3 mr-1" />
-              ) : (
-                <AlertCircle className="w-3 h-3 mr-1" />
-              )}
-              AI Orchestrator
+      {/* System Status */}
+      <Card className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-medium">System Status:</span>
+          <Badge variant={systemStatus.terminal ? "default" : "destructive"} className="gap-1">
+            <Terminal className="w-3 h-3" />
+            Terminal
+          </Badge>
+          <Badge variant={systemStatus.codeExecution ? "default" : "destructive"} className="gap-1">
+            <Code className="w-3 h-3" />
+            Code Executor
+          </Badge>
+          <Badge variant={systemStatus.packageManager ? "default" : "destructive"} className="gap-1">
+            <Package className="w-3 h-3" />
+            Package Manager
+          </Badge>
+          <Badge variant={systemStatus.aiOrchestrator ? "default" : "destructive"} className="gap-1">
+            {systemStatus.aiOrchestrator ? (
+              <CheckCircle className="w-3 h-3" />
+            ) : (
+              <AlertCircle className="w-3 h-3" />
+            )}
+            AI Orchestrator
+          </Badge>
+          <div className="ml-auto">
+            <Badge variant="outline" className="gap-1">
+              {Object.values(systemStatus).filter(Boolean).length}/{Object.keys(systemStatus).length} Active
             </Badge>
           </div>
-        </Card>
+        </div>
+      </Card>
 
         {/* Main Interface */}
         <Tabs defaultValue="generator" className="w-full">
@@ -167,7 +177,6 @@ export default function EnhancedDevEnvironment() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
     </div>
   );
 }
