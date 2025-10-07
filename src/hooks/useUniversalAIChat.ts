@@ -81,6 +81,7 @@ export interface UniversalAIChatReturn {
 export function useUniversalAIChat(options: UniversalAIChatOptions = {}): UniversalAIChatReturn {
   const {
     projectId,
+    conversationId: externalConversationId,
     contextFiles = [],
     selectedFiles = [],
     onCodeApply,
@@ -89,7 +90,6 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
     autoLearn = true,
     autoApply = true,
     persistMessages = false,
-    conversationId: externalConversationId,
     onConversationChange,
     enableStreaming = false,
     enableTools = false,
@@ -103,6 +103,13 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   const [progress, setProgress] = useState<number>(0);
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastUserMessageRef = useRef<string>('');
+  
+  // Update conversation ID when external one changes
+  useEffect(() => {
+    if (externalConversationId && externalConversationId !== conversationId) {
+      setConversationId(externalConversationId);
+    }
+  }, [externalConversationId]);
 
   /**
    * Load conversation messages from database
@@ -288,9 +295,10 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
           body: {
             request: message,
-            requestType: 'code-generation',
+            requestType: 'code-update',
             context: {
-              conversationId: projectId,
+              conversationId: conversationId || projectId,
+              projectId: projectId,
               currentCode: context.currentCode,
               conversationHistory: context.conversationHistory,
               files: context.contextData,
@@ -446,17 +454,31 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
           ).join('\n\n');
       }
     } else if (routedTo === 'orchestrator' && data) {
-      // Handle orchestrator response
-      if (data.finalCode && typeof data.finalCode === 'string') {
-        const filePath = selectedFiles.length === 1 ? selectedFiles[0] : 'generated-file';
-        await applyCodeFix(data.finalCode, filePath, metadata);
+      // Handle orchestrator response - check for generatedCode, html, or finalCode
+      const code = data.generatedCode || data.html || data.finalCode;
+      
+      if (code && typeof code === 'string') {
+        const filePath = selectedFiles.length === 1 ? selectedFiles[0] : 'main-project';
+        await applyCodeFix(code, filePath, metadata);
 
-        content = `${data.explanation || data.message || 'Code generated successfully'}\n\n` +
-          `Applied to: \`${filePath}\``;
+        content = `✨ **Updated Successfully!**\n\n${data.message || data.explanation || 'Your changes have been applied.'}\n\nApplied to: \`${filePath}\``;
 
         codeBlock = {
-          language: 'typescript',
-          code: data.finalCode,
+          language: filePath.endsWith('.html') ? 'html' : 'typescript',
+          code: code,
+          filePath
+        };
+      } else if (data.result?.generatedCode) {
+        // Handle nested result structure
+        const code = data.result.generatedCode;
+        const filePath = selectedFiles.length === 1 ? selectedFiles[0] : 'main-project';
+        await applyCodeFix(code, filePath, metadata);
+
+        content = `✨ **Updated Successfully!**\n\n${data.result.explanation || data.message || 'Your changes have been applied.'}\n\nApplied to: \`${filePath}\``;
+
+        codeBlock = {
+          language: filePath.endsWith('.html') ? 'html' : 'typescript',
+          code: code,
           filePath
         };
       } else {

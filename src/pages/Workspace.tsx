@@ -173,6 +173,25 @@ export default function Workspace() {
           .single();
         
         convId = newConv?.id;
+        
+        // Insert the original prompt as the first message
+        if (convId && data.prompt) {
+          await supabase.from('messages').insert({
+            conversation_id: convId,
+            role: 'user',
+            content: data.prompt,
+            metadata: { isOriginalPrompt: true }
+          });
+          
+          // Insert a system message showing the project was created
+          await supabase.from('messages').insert({
+            conversation_id: convId,
+            role: 'assistant',
+            content: `✨ I've created your project: **${data.title}**\n\nYour website is ready! You can now make changes by describing what you want to update.`,
+            generated_code: data.html_code,
+            metadata: { isInitialGeneration: true }
+          });
+        }
       }
 
       if (convId) {
