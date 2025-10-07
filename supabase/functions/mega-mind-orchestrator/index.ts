@@ -234,7 +234,7 @@ serve(async (req) => {
     // PHASE 2: Generate solution
     console.log('⚡ Phase 2: Generating solution...');
     await updateJobProgress(40, 'Generating solution...');
-    const generation = await generateSolution(request, requestType, analysis, context);
+    const generation = await generateSolution(request, requestType, analysis, context, supabaseClient, orchestrationId, broadcast);
     
     await supabaseClient
       .from('mega_mind_orchestrations')
@@ -563,30 +563,35 @@ async function analyzeRequest(request: string, requestType: string, context: any
   return JSON.parse(data.choices[0].message.content);
 }
 
-async function generateSimpleWebsite(request: string, analysis: any): Promise<any> {
+async function generateSimpleWebsite(request: string, analysis: any, broadcast: any): Promise<any> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-  const prompt = `Generate a COMPLETE, BEAUTIFUL, PRODUCTION-READY HTML/CSS/JavaScript website:
+  await broadcast('generation:status', { status: 'thinking', message: 'Analyzing your website requirements...', progress: 10 });
 
-**Request:** ${request}
+  const prompt = `Generate a COMPLETE, BEAUTIFUL, PRODUCTION-READY HTML/CSS/JavaScript website based on this EXACT request:
+
+**Request:** "${request}"
 **Goal:** ${analysis.mainGoal}
 **Sections:** ${JSON.stringify(analysis.requiredSections || [])}
+
+CRITICAL: Use the content and theme from the request above. DO NOT use placeholder text like "A Creative Developer" or generic content. Generate REAL, RELEVANT content that matches the user's request.
 
 **CRITICAL REQUIREMENTS - MODERN BEAUTIFUL DESIGN:**
 1. Generate ONE complete HTML file with embedded CSS and JavaScript
 2. Use modern, clean design with proper spacing and typography
-3. Beautiful color scheme with gradients and smooth animations
+3. Beautiful color scheme with gradients and smooth animations that match the request theme
 4. Fully responsive (mobile-first approach)
 5. Smooth scroll navigation with working anchor links
 6. Professional hover effects and transitions
 7. Modern CSS Grid and Flexbox layouts
-8. Attractive hero section with call-to-action
+8. Attractive hero section with call-to-action based on the request
 9. Clean, readable fonts (Google Fonts)
 10. Professional portfolio-quality design
+11. IMPORTANT: All text content must be relevant to the user's request - NO generic placeholder text
 
 **DESIGN GUIDELINES:**
-- Use a cohesive color palette (e.g., blues, purples, or modern dark theme)
+- Use a cohesive color palette that matches the request theme
 - Add subtle gradients and shadows for depth
 - Include smooth transitions on all interactive elements
 - Use modern CSS variables for consistency
@@ -600,11 +605,13 @@ async function generateSimpleWebsite(request: string, analysis: any): Promise<an
     {
       "path": "index.html",
       "content": "<!-- COMPLETE HTML with embedded CSS and JS -->",
-      "description": "Beautiful portfolio website"
+      "description": "Website description"
     }
   ],
   "instructions": "Website is ready to use"
 }`;
+
+  await broadcast('generation:status', { status: 'reading', message: 'Understanding design requirements...', progress: 30 });
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
@@ -615,15 +622,19 @@ async function generateSimpleWebsite(request: string, analysis: any): Promise<an
     body: JSON.stringify({
       model: 'google/gemini-2.5-pro',
       messages: [
-        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE, BEAUTIFUL, PRODUCTION-READY HTML/CSS/JavaScript websites. Include modern design, smooth animations, and responsive layouts. Output as JSON only.' },
+        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE, BEAUTIFUL, PRODUCTION-READY HTML/CSS/JavaScript websites with REAL content based on user requests. NEVER use generic placeholder text. Include modern design, smooth animations, and responsive layouts. Output as JSON only.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }
     }),
   });
 
+  await broadcast('generation:status', { status: 'generating', message: 'Creating your beautiful website...', progress: 60 });
+
   const data = await response.json();
   const result = JSON.parse(data.choices[0].message.content);
+  
+  await broadcast('generation:status', { status: 'editing', message: 'Polishing design and responsiveness...', progress: 85 });
   
   // Ensure files array exists
   if (!result.files || !Array.isArray(result.files)) {
@@ -685,7 +696,7 @@ async function detectDependencies(analysis: any, context: any): Promise<any[]> {
   return result.dependencies || result || [];
 }
 
-async function generateSolution(request: string, requestType: string, analysis: any, context: any): Promise<any> {
+async function generateSolution(request: string, requestType: string, analysis: any, context: any, supabase: any, conversationId: string, broadcast: any): Promise<any> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
@@ -694,11 +705,16 @@ async function generateSolution(request: string, requestType: string, analysis: 
   
   if (outputType === 'html-website') {
     console.log('🌐 Generating HTML/CSS/JS website...');
-    return await generateSimpleWebsite(request, analysis);
+    return await generateSimpleWebsite(request, analysis, broadcast);
   }
+  
+  // Broadcast thinking status for React apps
+  await broadcast('generation:status', { status: 'thinking', message: 'Planning component architecture...', progress: 15 });
 
   // Default: Generate React components
   console.log('⚛️ Generating React components...');
+  await broadcast('generation:status', { status: 'reading', message: 'Analyzing code requirements...', progress: 35 });
+  
   const prompt = `Generate React/TypeScript components for this Lovable project.
 
 **Request:** ${request}
@@ -753,11 +769,15 @@ async function generateSolution(request: string, requestType: string, analysis: 
     }),
   });
 
+  await broadcast('generation:status', { status: 'generating', message: 'Writing component code...', progress: 65 });
+
   if (!response.ok) {
     const errorText = await response.text();
     console.error('AI API Error:', response.status, errorText);
     throw new Error(`AI API failed with status ${response.status}: ${errorText}`);
   }
+  
+  await broadcast('generation:status', { status: 'editing', message: 'Optimizing and formatting code...', progress: 90 });
 
   // Read response as text first to handle potential parsing issues
   const responseText = await response.text();
