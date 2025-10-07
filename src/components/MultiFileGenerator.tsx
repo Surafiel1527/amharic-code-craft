@@ -249,6 +249,7 @@ export function MultiFileGenerator({ projectId, conversationId, onFilesGenerated
           <StackBlitzPreview 
             files={result.files}
             projectName={request.slice(0, 50) || "Generated Project"}
+            framework={framework}
           />
           
           <div className="flex gap-2">

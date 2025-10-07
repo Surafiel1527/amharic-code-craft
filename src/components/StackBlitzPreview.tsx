@@ -13,9 +13,10 @@ interface StackBlitzPreviewProps {
     type?: string;
   }>;
   projectName: string;
+  framework?: 'react' | 'html' | 'vue';
 }
 
-export function StackBlitzPreview({ files, projectName }: StackBlitzPreviewProps) {
+export function StackBlitzPreview({ files, projectName, framework = 'react' }: StackBlitzPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,9 +35,19 @@ export function StackBlitzPreview({ files, projectName }: StackBlitzPreviewProps
         setLoading(true);
         setError(null);
 
-        // Validate files
-        if (!files.some(f => f.path.includes('App.tsx') || f.path.includes('App.jsx'))) {
-          setError('Project must contain an App component');
+        // Validate files based on framework
+        if (framework === 'html' && !files.some(f => f.path.includes('.html'))) {
+          setError('HTML project must contain at least one HTML file');
+          setLoading(false);
+          return;
+        }
+        if (framework === 'vue' && !files.some(f => f.path.includes('.vue'))) {
+          setError('Vue project must contain at least one Vue component');
+          setLoading(false);
+          return;
+        }
+        if (framework === 'react' && !files.some(f => f.path.includes('App.tsx') || f.path.includes('App.jsx'))) {
+          setError('React project must contain an App component');
           setLoading(false);
           return;
         }
@@ -47,11 +58,17 @@ export function StackBlitzPreview({ files, projectName }: StackBlitzPreviewProps
         files.forEach(file => {
           // Remove leading slash and normalize path
           let path = file.path.startsWith('/') ? file.path.slice(1) : file.path;
-          // Ensure src directory structure
-          if (!path.startsWith('src/') && !path.startsWith('public/') && !['package.json', 'vite.config.ts', 'tsconfig.json', 'index.html'].includes(path)) {
-            path = `src/${path}`;
+          
+          // For HTML projects, keep flat structure
+          if (framework === 'html') {
+            stackBlitzFiles[path] = file.content;
+          } else {
+            // For React/Vue, ensure src directory structure
+            if (!path.startsWith('src/') && !path.startsWith('public/') && !['package.json', 'vite.config.ts', 'vite.config.js', 'tsconfig.json', 'index.html'].includes(path)) {
+              path = `src/${path}`;
+            }
+            stackBlitzFiles[path] = file.content;
           }
-          stackBlitzFiles[path] = file.content;
         });
 
         // Extract dependencies from files (look for imports)
@@ -70,12 +87,24 @@ export function StackBlitzPreview({ files, projectName }: StackBlitzPreviewProps
           }
         });
 
-        // Add package.json if not present
-        if (!stackBlitzFiles['package.json']) {
-          const dependencies: Record<string, string> = {
-            react: '^18.3.1',
-            'react-dom': '^18.3.1'
-          };
+        // Add package.json if not present (skip for HTML projects)
+        if (!stackBlitzFiles['package.json'] && framework !== 'html') {
+          const dependencies: Record<string, string> = {};
+          const devDependencies: Record<string, string> = {};
+
+          if (framework === 'react') {
+            dependencies.react = '^18.3.1';
+            dependencies['react-dom'] = '^18.3.1';
+            devDependencies['@types/react'] = '^18.3.1';
+            devDependencies['@types/react-dom'] = '^18.3.1';
+            devDependencies['@vitejs/plugin-react'] = '^4.3.1';
+            devDependencies.typescript = '^5.6.3';
+          } else if (framework === 'vue') {
+            dependencies.vue = '^3.4.0';
+            devDependencies['@vitejs/plugin-vue'] = '^5.0.0';
+            devDependencies.typescript = '^5.6.3';
+            devDependencies['vue-tsc'] = '^1.8.27';
+          }
 
           // Add detected dependencies with latest versions
           detectedDeps.forEach(dep => {
@@ -85,40 +114,52 @@ export function StackBlitzPreview({ files, projectName }: StackBlitzPreviewProps
             else if (!dependencies[dep]) dependencies[dep] = 'latest';
           });
 
+          devDependencies.vite = '^6.0.3';
+
+          const scripts: Record<string, string> = {
+            dev: 'vite',
+            preview: 'vite preview'
+          };
+
+          if (framework === 'react') {
+            scripts.build = 'tsc && vite build';
+          } else if (framework === 'vue') {
+            scripts.build = 'vue-tsc && vite build';
+          }
+
           stackBlitzFiles['package.json'] = JSON.stringify({
             name: projectName.toLowerCase().replace(/\s+/g, '-').substring(0, 50),
             version: '0.0.0',
             private: true,
             type: 'module',
-            scripts: {
-              dev: 'vite',
-              build: 'tsc && vite build',
-              preview: 'vite preview'
-            },
+            scripts,
             dependencies,
-            devDependencies: {
-              '@types/react': '^18.3.1',
-              '@types/react-dom': '^18.3.1',
-              '@vitejs/plugin-react': '^4.3.1',
-              typescript: '^5.6.3',
-              vite: '^6.0.3'
-            }
+            devDependencies
           }, null, 2);
         }
 
-        // Add vite.config.ts if not present
-        if (!stackBlitzFiles['vite.config.ts']) {
-          stackBlitzFiles['vite.config.ts'] = `import { defineConfig } from 'vite'
+        // Add vite config if not present (skip for HTML projects)
+        if (framework !== 'html' && !stackBlitzFiles['vite.config.ts'] && !stackBlitzFiles['vite.config.js']) {
+          if (framework === 'react') {
+            stackBlitzFiles['vite.config.ts'] = `import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
 })`;
+          } else if (framework === 'vue') {
+            stackBlitzFiles['vite.config.ts'] = `import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+
+export default defineConfig({
+  plugins: [vue()],
+})`;
+          }
         }
 
-        // Add tsconfig.json if not present
-        if (!stackBlitzFiles['tsconfig.json']) {
-          stackBlitzFiles['tsconfig.json'] = JSON.stringify({
+        // Add tsconfig.json if not present (skip for HTML projects)
+        if (framework !== 'html' && !stackBlitzFiles['tsconfig.json']) {
+          const tsConfig: any = {
             compilerOptions: {
               target: 'ES2020',
               useDefineForClassFields: true,
@@ -130,18 +171,25 @@ export default defineConfig({
               resolveJsonModule: true,
               isolatedModules: true,
               noEmit: true,
-              jsx: 'react-jsx',
               strict: true,
               noUnusedLocals: true,
               noUnusedParameters: true,
               noFallthroughCasesInSwitch: true
             },
             include: ['src']
-          }, null, 2);
+          };
+
+          if (framework === 'react') {
+            tsConfig.compilerOptions.jsx = 'react-jsx';
+          } else if (framework === 'vue') {
+            tsConfig.compilerOptions.jsx = 'preserve';
+          }
+
+          stackBlitzFiles['tsconfig.json'] = JSON.stringify(tsConfig, null, 2);
         }
 
-        // Add main.tsx entry point if not present
-        if (!stackBlitzFiles['src/main.tsx']) {
+        // Add entry point if not present (skip for HTML projects)
+        if (framework === 'react' && !stackBlitzFiles['src/main.tsx']) {
           stackBlitzFiles['src/main.tsx'] = `import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
@@ -152,11 +200,18 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 )`;
+        } else if (framework === 'vue' && !stackBlitzFiles['src/main.ts']) {
+          stackBlitzFiles['src/main.ts'] = `import { createApp } from 'vue'
+import App from './App.vue'
+import './style.css'
+
+createApp(App).mount('#app')`;
         }
 
-        // Add basic index.css if not present
-        if (!stackBlitzFiles['src/index.css']) {
-          stackBlitzFiles['src/index.css'] = `* {
+        // Add basic CSS if not present
+        const cssFile = framework === 'vue' ? 'src/style.css' : 'src/index.css';
+        if (framework !== 'html' && !stackBlitzFiles[cssFile]) {
+          stackBlitzFiles[cssFile] = `* {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -171,7 +226,26 @@ body {
 
         // Add index.html if not present
         if (!stackBlitzFiles['index.html']) {
-          stackBlitzFiles['index.html'] = `<!DOCTYPE html>
+          if (framework === 'html') {
+            // For HTML projects, use the first HTML file or create a basic one
+            const htmlFile = files.find(f => f.path.endsWith('.html'));
+            if (!htmlFile) {
+              stackBlitzFiles['index.html'] = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${projectName}</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h1>Welcome to ${projectName}</h1>
+    <script src="script.js"></script>
+  </body>
+</html>`;
+            }
+          } else if (framework === 'react') {
+            stackBlitzFiles['index.html'] = `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -184,6 +258,21 @@ body {
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>`;
+          } else if (framework === 'vue') {
+            stackBlitzFiles['index.html'] = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${projectName}</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>`;
+          }
         }
 
         setInstallingPackages(true);
@@ -191,23 +280,39 @@ body {
         // Embed the project with proper configuration
         const stackBlitzProjectId = `${projectName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
         
+        // Determine template and open file based on framework
+        const template = framework === 'html' ? 'html' : 'node';
+        let openFile = 'index.html';
+        
+        if (framework === 'react') {
+          openFile = 'src/App.tsx';
+        } else if (framework === 'vue') {
+          openFile = 'src/App.vue';
+        }
+        
+        const projectConfig: any = {
+          title: projectName,
+          description: `AI-generated ${framework.toUpperCase()} project - ${new Date().toLocaleDateString()}`,
+          template,
+          files: stackBlitzFiles
+        };
+
+        // Only add settings for non-HTML projects
+        if (framework !== 'html') {
+          projectConfig.settings = {
+            compile: {
+              trigger: 'auto',
+              action: 'hmr',
+              clearConsole: false
+            }
+          };
+        }
+        
         const vm = await sdk.embedProject(
           containerRef.current,
+          projectConfig,
           {
-            title: projectName,
-            description: `AI-generated React project - ${new Date().toLocaleDateString()}`,
-            template: 'node',
-            files: stackBlitzFiles,
-            settings: {
-              compile: {
-                trigger: 'auto',
-                action: 'hmr',
-                clearConsole: false
-              }
-            }
-          },
-          {
-            openFile: 'src/App.tsx',
+            openFile,
             view: 'preview',
             height: 600,
             hideNavigation: false,
