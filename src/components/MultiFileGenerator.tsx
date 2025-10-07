@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -16,6 +17,7 @@ interface MultiFileGeneratorProps {
 }
 
 export function MultiFileGenerator({ projectId, conversationId, onFilesGenerated }: MultiFileGeneratorProps) {
+  const navigate = useNavigate();
   const [request, setRequest] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -49,6 +51,12 @@ export function MultiFileGenerator({ projectId, conversationId, onFilesGenerated
       setResult(data);
       toast.success(`Generated ${data.files.length} files successfully!`);
       onFilesGenerated();
+      
+      // Redirect to workspace after a short delay to show the preview
+      setTimeout(() => {
+        navigate(`/workspace/${projectId}`);
+        toast.success("Opening workspace with your generated files...");
+      }, 2000);
     } catch (error: any) {
       console.error('Generation error:', error);
       toast.error(error.message || 'Failed to generate files');

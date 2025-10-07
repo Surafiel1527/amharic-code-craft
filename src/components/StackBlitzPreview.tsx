@@ -189,7 +189,7 @@ body {
         setInstallingPackages(true);
 
         // Embed the project with proper configuration
-        const projectId = `${projectName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+        const stackBlitzProjectId = `${projectName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
         
         const vm = await sdk.embedProject(
           containerRef.current,
@@ -207,23 +207,29 @@ body {
             }
           },
           {
-            openFile: Object.keys(stackBlitzFiles).find(f => f.includes('App.tsx')) || 'src/App.tsx',
+            openFile: 'src/App.tsx',
             view: 'preview',
             height: 600,
             hideNavigation: false,
             forceEmbedLayout: true,
-            clickToLoad: false
+            clickToLoad: false,
+            showSidebar: false
           }
         );
 
         // Generate proper StackBlitz URL
-        setProjectUrl(`https://stackblitz.com/edit/${projectId}`);
+        const actualUrl = await vm.getFsSnapshot();
+        setProjectUrl(`https://stackblitz.com/edit/${stackBlitzProjectId}`);
         
-        // Wait a bit for packages to install
+        // Wait for packages to install and app to compile
         setTimeout(() => {
           setInstallingPackages(false);
+        }, 2000);
+        
+        // Wait a bit longer before marking as fully loaded
+        setTimeout(() => {
           setLoading(false);
-        }, 3000);
+        }, 4000);
         
       } catch (err) {
         console.error('StackBlitz embed error:', err);
