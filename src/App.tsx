@@ -45,6 +45,7 @@ const App = () => {
           <Route path="/shared/:shareToken" element={<SharedProject />} />
           <Route path="/database-manager" element={<DatabaseManager />} />
           <Route path="/deploy/:projectId" element={<Deploy />} />
+          <Route path="/deploy" element={<Deploy />} />
           <Route path="/quality-hub" element={<QualityHub />} />
           <Route path="/package-manager" element={<PackageManager />} />
           <Route path="/testing" element={<TestingHub />} />
