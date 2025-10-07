@@ -180,6 +180,37 @@ export default function Workspace() {
     };
 
     loadProject();
+
+    // Subscribe to real-time updates for this project
+    const channel = supabase
+      .channel(`project-${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'projects',
+          filter: `id=eq.${projectId}`
+        },
+        (payload) => {
+          console.log('Project updated:', payload);
+          const updatedProject = payload.new as Project;
+          
+          // Update project state with new data
+          setProject(updatedProject);
+          
+          // Show notification if html_code was updated (generation completed)
+          if (updatedProject.html_code && updatedProject.title && !updatedProject.title.includes('[Generating...]')) {
+            toast.success('✅ Project generation completed!');
+          }
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [projectId, user, navigate]);
 
   // Auto-scroll removed - handled by UniversalChatInterface
