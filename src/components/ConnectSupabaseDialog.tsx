@@ -121,12 +121,12 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected }: Conne
               <Label htmlFor="supabase-url">Supabase Project URL *</Label>
               <Input
                 id="supabase-url"
-                placeholder="https://xxxxx.supabase.co"
+                placeholder="https://[your-project-id].supabase.co"
                 value={supabaseUrl}
                 onChange={(e) => setSupabaseUrl(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Find this in your Supabase project settings → API → Project URL
+                Format: https://[your-project-id].supabase.co - Find your project ID in Settings → General → Reference ID, or check your browser's address bar
               </p>
             </div>
 
