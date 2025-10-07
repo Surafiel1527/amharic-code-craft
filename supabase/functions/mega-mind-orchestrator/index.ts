@@ -50,21 +50,6 @@ serve(async (req) => {
     
     // Extract projectId from context if available
     const projectId = context.projectId || null;
-    
-    // Broadcast function for real-time updates
-    const broadcast = async (eventType: string, data: any) => {
-      if (!projectId) return;
-      try {
-        await supabaseClient.channel(`project-${projectId}`)
-          .send({
-            type: 'broadcast',
-            event: eventType,
-            payload: { ...data, timestamp: new Date().toISOString() }
-          });
-      } catch (e) {
-        console.error('Broadcast error:', e);
-      }
-    };
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -78,6 +63,21 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+    
+    // Broadcast function for real-time updates (defined AFTER supabaseClient)
+    const broadcast = async (eventType: string, data: any) => {
+      if (!projectId) return;
+      try {
+        await supabaseClient.channel(`project-${projectId}`)
+          .send({
+            type: 'broadcast',
+            event: eventType,
+            payload: { ...data, timestamp: new Date().toISOString() }
+          });
+      } catch (e) {
+        console.error('Broadcast error:', e);
+      }
+    };
 
     const token = authHeader.replace('Bearer ', '');
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
