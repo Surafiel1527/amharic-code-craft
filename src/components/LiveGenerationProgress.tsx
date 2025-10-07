@@ -24,32 +24,58 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
-    const channel = supabase
-      .channel(`project-${projectId}`)
-      .on('broadcast', { event: 'generation:phase' }, ({ payload }) => {
-        setUpdates(prev => [...prev, payload]);
-        setCurrentPhase(payload.phase);
-        setProgress(payload.progress);
+    console.log('🔌 LiveGenerationProgress subscribing to:', `ai-status-${projectId}`);
+    
+    const statusChannel = supabase
+      .channel(`ai-status-${projectId}`)
+      .on('broadcast', { event: 'status-update' }, ({ payload }) => {
+        console.log('📥 Status update received:', payload);
+        
+        // Map AI status to phases
+        const phaseMap: { [key: string]: string } = {
+          'thinking': 'analyzing',
+          'reading': 'analyzing', 
+          'analyzing': 'analyzing',
+          'generating': 'generating',
+          'editing': 'finalizing',
+          'fixing': 'finalizing',
+          'idle': 'complete'
+        };
+        
+        const phase = phaseMap[payload.status] || 'generating';
+        const progress = payload.progress || 0;
+        
+        setUpdates(prev => [...prev, {
+          phase,
+          progress,
+          message: payload.message || '',
+          timestamp: payload.timestamp || new Date().toISOString()
+        }]);
+        
+        setCurrentPhase(phase);
+        setProgress(progress);
+        
+        // If we hit 100% or status is idle, mark complete
+        if (progress >= 100 || payload.status === 'idle') {
+          setIsComplete(true);
+          setTimeout(() => {
+            onComplete?.();
+          }, 1500);
+        }
       })
-      .on('broadcast', { event: 'generation:complete' }, ({ payload }) => {
-        setUpdates(prev => [...prev, { ...payload, phase: 'complete' }]);
-        setProgress(100);
-        setIsComplete(true);
-        // Small delay to ensure database propagation
-        setTimeout(() => {
-          onComplete?.();
-        }, 1500);
-      })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Channel subscription status:', status);
+      });
 
-    // Timeout fallback: if stuck for >60 seconds, reload anyway
+    // Timeout fallback: if stuck for >45 seconds, reload anyway
     const timeout = setTimeout(() => {
-      console.log('Generation timeout - checking project status');
+      console.log('⏰ Generation timeout - checking project status');
       onComplete?.();
-    }, 60000);
+    }, 45000);
 
     return () => {
-      supabase.removeChannel(channel);
+      console.log('🔌 Unsubscribing from status channel');
+      supabase.removeChannel(statusChannel);
       clearTimeout(timeout);
     };
   }, [projectId, onComplete]);

@@ -159,6 +159,32 @@ export default function Workspace() {
       
       if (existingConvs && existingConvs.length > 0) {
         convId = existingConvs[0].id;
+        
+        // Check if conversation already has messages
+        const { data: existingMsgs, count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('conversation_id', convId);
+        
+        // If no messages exist, add the original prompt
+        if (count === 0 && data.prompt) {
+          console.log('💬 Adding original prompt to existing conversation');
+          await supabase.from('messages').insert([
+            {
+              conversation_id: convId,
+              role: 'user',
+              content: data.prompt,
+              metadata: { isOriginalPrompt: true }
+            },
+            {
+              conversation_id: convId,
+              role: 'assistant',
+              content: `✨ I've created your project: **${data.title}**\n\nYour website is ready! You can now make changes by describing what you want to update.`,
+              generated_code: data.html_code,
+              metadata: { isInitialGeneration: true }
+            }
+          ]);
+        }
       }
 
       if (!convId) {
@@ -176,21 +202,22 @@ export default function Workspace() {
         
         // Insert the original prompt as the first message
         if (convId && data.prompt) {
-          await supabase.from('messages').insert({
-            conversation_id: convId,
-            role: 'user',
-            content: data.prompt,
-            metadata: { isOriginalPrompt: true }
-          });
-          
-          // Insert a system message showing the project was created
-          await supabase.from('messages').insert({
-            conversation_id: convId,
-            role: 'assistant',
-            content: `✨ I've created your project: **${data.title}**\n\nYour website is ready! You can now make changes by describing what you want to update.`,
-            generated_code: data.html_code,
-            metadata: { isInitialGeneration: true }
-          });
+          console.log('💬 Adding original prompt to new conversation');
+          await supabase.from('messages').insert([
+            {
+              conversation_id: convId,
+              role: 'user',
+              content: data.prompt,
+              metadata: { isOriginalPrompt: true }
+            },
+            {
+              conversation_id: convId,
+              role: 'assistant',
+              content: `✨ I've created your project: **${data.title}**\n\nYour website is ready! You can now make changes by describing what you want to update.`,
+              generated_code: data.html_code,
+              metadata: { isInitialGeneration: true }
+            }
+          ]);
         }
       }
 
