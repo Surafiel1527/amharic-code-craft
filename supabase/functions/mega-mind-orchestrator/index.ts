@@ -366,9 +366,23 @@ serve(async (req) => {
     // CRITICAL: Update project in database BEFORE broadcasting completion
     if (projectId) {
       console.log(`📝 Updating project ${projectId} with generated code`);
+      
+      // First get the current title to clean it
+      const { data: currentProject } = await supabaseClient
+        .from('projects')
+        .select('title')
+        .eq('id', projectId)
+        .single();
+      
+      let cleanTitle = currentProject?.title || 'Generated Project';
+      if (cleanTitle.startsWith('[Generating...] ')) {
+        cleanTitle = cleanTitle.replace('[Generating...] ', '');
+      }
+      
       const { error: projectUpdateError } = await supabaseClient
         .from('projects')
         .update({ 
+          title: cleanTitle,
           html_code: generatedCode,
           updated_at: new Date().toISOString()
         })
