@@ -195,6 +195,28 @@ serve(async (req) => {
     }
 
     const orchestrationId = orchestration.id;
+    const conversationId = context.conversationId || null;
+    
+    console.log('📝 Orchestration created:', { orchestrationId, conversationId, projectId });
+
+    // Insert user message into conversation if conversationId exists
+    if (conversationId) {
+      console.log('💬 Inserting user message into conversation:', conversationId);
+      const { error: msgError } = await supabaseClient
+        .from('assistant_messages')
+        .insert({
+          conversation_id: conversationId,
+          role: 'user',
+          content: sanitizedRequest,
+          metadata: { requestType, orchestrationId }
+        });
+      
+      if (msgError) {
+        console.warn('⚠️ Failed to insert user message:', msgError);
+      } else {
+        console.log('✅ User message inserted successfully');
+      }
+    }
 
     // Update job progress if jobId is provided
     const updateJobProgress = async (progress: number, currentStep?: string) => {
@@ -437,6 +459,39 @@ serve(async (req) => {
         if (error) console.warn('Failed to log audit:', error);
       });
 
+    // Insert assistant message into conversation if conversationId exists
+    if (conversationId) {
+      console.log('💬 Inserting assistant response into conversation:', conversationId);
+      const assistantMessage = `I've generated your ${analysis.outputType === 'html-website' ? 'HTML website' : 'React components'} with ${generation.files?.length || 0} file(s). ${generation.instructions || 'Your project is ready to view!'}`;
+      
+      const { error: assistantMsgError } = await supabaseClient
+        .from('assistant_messages')
+        .insert({
+          conversation_id: conversationId,
+          role: 'assistant',
+          content: assistantMessage,
+          metadata: { 
+            orchestrationId, 
+            filesGenerated: generation.files?.length || 0,
+            outputType: analysis.outputType
+          }
+        });
+      
+      if (assistantMsgError) {
+        console.warn('⚠️ Failed to insert assistant message:', assistantMsgError);
+      } else {
+        console.log('✅ Assistant message inserted successfully');
+      }
+    }
+
+    // Final broadcast with completion status
+    await broadcast('generation:complete', {
+      message: 'Generation complete! ✨',
+      orchestrationId,
+      filesGenerated: generation.files?.length || 0,
+      outputType: analysis.outputType
+    });
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -620,27 +675,53 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-pro',
+      model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE, BEAUTIFUL, PRODUCTION-READY HTML/CSS/JavaScript websites with REAL content based on user requests. NEVER use generic placeholder text. Include modern design, smooth animations, and responsive layouts. Output as JSON only.' },
+        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE, BEAUTIFUL, PRODUCTION-READY HTML/CSS/JavaScript websites with REAL content based on user requests. NEVER use generic placeholder text. Include modern design, smooth animations, and responsive layouts. Output ONLY valid JSON with no markdown formatting.' },
         { role: 'user', content: prompt }
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+      max_tokens: 4000
     }),
   });
 
   await broadcast('generation:status', { status: 'generating', message: 'Creating your beautiful website...', progress: 60 });
 
   if (!response.ok) {
-    const errorText = await response.text();
+    let errorText = 'Unknown error';
+    try {
+      errorText = await response.text();
+    } catch (e) {
+      console.error('Failed to read error response:', e);
+    }
     console.error('❌ AI API Error:', response.status, errorText);
+    await broadcast('generation:error', { 
+      message: `AI service error: ${response.status}`, 
+      details: errorText 
+    });
     throw new Error(`AI API returned ${response.status}: ${errorText}`);
   }
 
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch (jsonError) {
+    console.error('❌ Failed to parse response as JSON:', jsonError);
+    const errorMsg = jsonError instanceof Error ? jsonError.message : 'Unknown JSON error';
+    await broadcast('generation:error', { 
+      message: 'Failed to parse AI response', 
+      details: errorMsg 
+    });
+    throw new Error(`Failed to parse AI response: ${errorMsg}`);
+  }
   
   if (!data.choices || !data.choices[0] || !data.choices[0].message) {
     console.error('❌ Invalid AI response structure:', JSON.stringify(data));
+    await broadcast('generation:error', { 
+      message: 'Invalid response structure from AI', 
+      details: JSON.stringify(data) 
+    });
     throw new Error('Invalid response from AI API');
   }
 
