@@ -329,10 +329,14 @@ const Index = () => {
 
       if (saveError) {
         console.error("Save error:", saveError);
+        toast.error("Failed to save project to history");
+      } else {
+        // Refresh the projects list so it shows in My Projects
+        fetchRecentProjects();
+        toast.success(`✅ Generated ${generatedFiles.length} React component${generatedFiles.length > 1 ? 's' : ''} and saved to My Projects!`);
       }
 
       setCurrentProjectId(project?.id || null);
-      toast.success(`✅ Generated ${generatedFiles.length} React component${generatedFiles.length > 1 ? 's' : ''}!`);
     } catch (error) {
       console.error("Generation error:", error);
       toast.dismiss(progressToast);
