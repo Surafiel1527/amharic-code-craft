@@ -189,23 +189,11 @@ async function handleReactGeneration(params: any, supabase: any) {
 
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
-  const systemPrompt = `You are an expert React developer. Generate complete, production-ready React components.
-
-IMPORTANT: Return ONLY a JSON object with this structure:
-{
-  "entry_point": "ComponentName.tsx",
-  "files": [
-    {
-      "path": "ComponentName.tsx",
-      "code": "// Full component code here",
-      "type": "component"
-    }
-  ]
-}
+  const systemPrompt = `You are an expert React developer. Generate complete, production-ready React components using tool calling.
 
 Guidelines:
 - Use TypeScript and functional components
-- Include proper imports (React, lucide-react for icons, etc.)
+- Include proper imports (React, lucide-react for icons)
 - Use Tailwind CSS for styling
 - Follow best practices (hooks, clean code, accessibility)
 - Generate multiple files if needed (components, hooks, utils)
@@ -223,24 +211,61 @@ Guidelines:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.7,
+      tools: [{
+        type: 'function',
+        function: {
+          name: 'generate_react_components',
+          description: 'Generate React component files',
+          parameters: {
+            type: 'object',
+            properties: {
+              entry_point: {
+                type: 'string',
+                description: 'Main component filename (e.g., App.tsx)'
+              },
+              files: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    path: { type: 'string', description: 'File path' },
+                    code: { type: 'string', description: 'Complete file code' },
+                    type: { type: 'string', enum: ['component', 'hook', 'util', 'style', 'config'] }
+                  },
+                  required: ['path', 'code', 'type'],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ['entry_point', 'files'],
+            additionalProperties: false
+          }
+        }
+      }],
+      tool_choice: { type: 'function', function: { name: 'generate_react_components' } }
     })
   });
 
   const data = await response.json();
-  const content = data.choices[0].message.content;
   
-  // Parse the JSON response
+  // Extract structured output from tool call
   try {
-    const parsed = JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
-    return parsed;
+    const toolCall = data.choices[0].message.tool_calls?.[0];
+    if (toolCall?.function?.arguments) {
+      const parsed = typeof toolCall.function.arguments === 'string' 
+        ? JSON.parse(toolCall.function.arguments)
+        : toolCall.function.arguments;
+      return parsed;
+    }
+    throw new Error('No tool call found');
   } catch (e) {
-    // Fallback: create a single file from the response
+    console.error('Failed to parse tool call:', e);
+    // Fallback
     return {
-      entry_point: 'GeneratedComponent.tsx',
+      entry_point: 'App.tsx',
       files: [{
-        path: 'GeneratedComponent.tsx',
-        code: content,
+        path: 'App.tsx',
+        code: `export default function App() {\n  return <div className="p-4">Error: ${e.message}</div>;\n}`,
         type: 'component'
       }]
     };
