@@ -25,7 +25,7 @@ const Auth = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         logger.info('User already logged in, redirecting to home');
-        navigate("/");
+        window.location.href = "/";
       }
     };
     checkAuth();
@@ -73,7 +73,8 @@ const Auth = () => {
       // Auto-confirm is enabled, so user should be logged in immediately
       if (data.user && data.session) {
         toast.success("Account created successfully!");
-        navigate("/");
+        // Force immediate navigation
+        window.location.href = "/";
       } else {
         toast.success("Account created. Please sign in.");
         setEmail("");
@@ -113,7 +114,8 @@ const Auth = () => {
       }
 
       toast.success("Signed in successfully!");
-      navigate("/");
+      // Force immediate navigation with page reload to ensure clean state
+      window.location.href = "/";
     } catch (error) {
       logger.error("Signin error", error);
       toast.error("Sign in failed. Please try again.");
