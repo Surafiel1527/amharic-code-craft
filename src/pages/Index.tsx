@@ -892,17 +892,19 @@ const Index = () => {
               )}
             </div>
 
-            <DevicePreview generatedCode={generatedCode} />
-            
-            {/* Generated Project Viewer - Shows file tree for React projects */}
+            {/* Render React Project Viewer OR HTML Preview */}
             {generatedCode && (() => {
               try {
                 const parsedFiles = JSON.parse(generatedCode);
                 if (Array.isArray(parsedFiles) && parsedFiles.length > 0 && parsedFiles[0].path) {
+                  // It's a React multi-file project - show file browser
                   return <GeneratedProjectViewer files={parsedFiles} projectTitle={projectTitle} />;
                 }
-              } catch {}
-              return null;
+              } catch {
+                // It's HTML code - show device preview
+                return <DevicePreview generatedCode={generatedCode} />;
+              }
+              return <DevicePreview generatedCode={generatedCode} />;
             })()}
           </Card>
 
