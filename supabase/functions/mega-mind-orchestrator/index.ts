@@ -360,6 +360,26 @@ serve(async (req) => {
       })
       .eq('id', orchestrationId);
 
+    // PHASE 2.5: Generate backend if needed
+    let backendGeneration: any = null;
+    if (analysis.backendRequirements?.needsDatabase || analysis.backendRequirements?.needsAuth || analysis.backendRequirements?.needsEdgeFunctions) {
+      console.log('🗄️ Generating backend infrastructure...');
+      await updateJobProgress(50, 'Setting up database and backend...');
+      await broadcast('generation:phase', { phase: 'generating', progress: 50, message: 'Creating database and backend...' });
+      
+      backendGeneration = await generateBackend(request, analysis, context, supabaseClient, userId, broadcast);
+      
+      await supabaseClient
+        .from('mega_mind_orchestrations')
+        .update({ 
+          backend_phase: backendGeneration,
+          status: 'detecting_dependencies'
+        })
+        .eq('id', orchestrationId);
+        
+      console.log('✅ Backend infrastructure generated');
+    }
+
     // PHASE 3: Detect and track dependencies from generated code
     console.log('📦 Phase 3: Detecting dependencies...');
     await updateJobProgress(60, 'Detecting dependencies...');
@@ -555,7 +575,28 @@ serve(async (req) => {
     // Insert assistant message into conversation if conversationId exists
     if (conversationId) {
       console.log('💬 Inserting assistant response into conversation:', conversationId);
-      const assistantMessage = `I've generated your ${analysis.outputType === 'html-website' ? 'HTML website' : 'React components'} with ${generation.files?.length || 0} file(s). ${generation.instructions || 'Your project is ready to view!'}`;
+      
+      let assistantMessage = `I've generated your ${analysis.outputType === 'html-website' ? 'HTML website' : 'React components'} with ${generation.files?.length || 0} file(s).`;
+      
+      // Add backend information if generated
+      if (backendGeneration) {
+        const backendParts = [];
+        if (backendGeneration.database) {
+          backendParts.push(`database with ${backendGeneration.database.tables?.length || 0} tables`);
+        }
+        if (backendGeneration.edgeFunctions?.length) {
+          backendParts.push(`${backendGeneration.edgeFunctions.length} backend functions`);
+        }
+        if (backendGeneration.authentication) {
+          backendParts.push('authentication system');
+        }
+        
+        if (backendParts.length > 0) {
+          assistantMessage += ` Including ${backendParts.join(', ')}.`;
+        }
+      }
+      
+      assistantMessage += ` ${generation.instructions || 'Your project is ready to view!'}`;
       
       const { error: assistantMsgError } = await supabaseClient
         .from('messages')
@@ -567,7 +608,8 @@ serve(async (req) => {
           metadata: { 
             orchestrationId, 
             filesGenerated: generation.files?.length || 0,
-            outputType: analysis.outputType
+            outputType: analysis.outputType,
+            hasBackend: !!backendGeneration
           }
         });
       
@@ -608,6 +650,7 @@ serve(async (req) => {
         },
         analysis,
         generation,
+        backend: backendGeneration,
         quickVerification,
         filesGenerated: generation.files?.length || 0,
         outputType: analysis.outputType,
@@ -709,6 +752,12 @@ async function analyzeRequest(request: string, requestType: string, context: any
    - Creating new React application
    - Keywords: "react app", "dashboard", "component", "interactive app"
 
+**DETECT BACKEND REQUIREMENTS:**
+- Needs Database: user data, persistent storage, forms with save, listings, profiles, comments, posts
+- Needs Authentication: login, signup, user accounts, protected content, roles
+- Needs Edge Functions: external API calls, payment processing, email sending, webhooks
+- Needs Storage: file uploads, images, documents, media
+
 **Output JSON:**
 {
   "outputType": "meta-conversation" | "modification" | "html-website" | "react-app",
@@ -721,7 +770,16 @@ async function analyzeRequest(request: string, requestType: string, context: any
   "needsRouting": false,
   "needsInteractivity": true|false,
   "needsAPI": false,
-  "isMetaRequest": true|false
+  "isMetaRequest": false,
+  "backendRequirements": {
+    "needsDatabase": true|false,
+    "needsAuth": true|false,
+    "needsEdgeFunctions": true|false,
+    "needsStorage": true|false,
+    "databaseTables": ["users", "posts", "comments"],
+    "edgeFunctions": ["send-email", "process-payment"],
+    "explanation": "why backend is needed"
+  }
 }`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -1265,4 +1323,156 @@ async function verifySolution(
       quality: `${bestPractices.practicesEnforced?.length || 0} best practices enforced`
     }
   };
+}
+
+async function generateBackend(
+  request: string, 
+  analysis: any, 
+  context: any, 
+  supabase: any,
+  userId: string, 
+  broadcast: any
+): Promise<any> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+
+  const backendRequirements = analysis.backendRequirements || {};
+  const results: any = {
+    database: null,
+    edgeFunctions: [],
+    authentication: null,
+    storage: null
+  };
+
+  try {
+    // Generate database schema if needed
+    if (backendRequirements.needsDatabase) {
+      await broadcast('generation:phase', { 
+        status: 'generating', 
+        message: 'Generating database schema...', 
+        progress: 52 
+      });
+      
+      const dbPrompt = `Generate a Supabase database schema for this request:
+
+**Request:** ${request}
+**Tables Needed:** ${JSON.stringify(backendRequirements.databaseTables || [])}
+**Goal:** ${analysis.mainGoal}
+
+**CRITICAL RULES:**
+1. Use proper data types (uuid, text, timestamp, jsonb, etc.)
+2. Add primary keys (id uuid primary key default gen_random_uuid())
+3. Include user_id uuid for user-specific data
+4. Add created_at and updated_at timestamps
+5. Enable Row Level Security (RLS)
+6. Create RLS policies for SELECT, INSERT, UPDATE, DELETE
+7. Add indexes for foreign keys
+8. Use security definer functions for complex logic
+
+**Generate complete SQL migration with:**
+- CREATE TABLE statements
+- ALTER TABLE ... ENABLE ROW LEVEL SECURITY
+- CREATE POLICY statements
+- CREATE INDEX statements
+- CREATE FUNCTION and triggers if needed
+
+Return ONLY valid SQL code, no explanations.`;
+
+      const dbResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: 'You are a database architect expert. Generate production-ready SQL only.' },
+            { role: 'user', content: dbPrompt }
+          ]
+        }),
+      });
+
+      const dbData = await dbResponse.json();
+      const dbSql = dbData.choices[0].message.content;
+      
+      results.database = {
+        sql: dbSql,
+        tables: backendRequirements.databaseTables || [],
+        needsApproval: true
+      };
+      
+      console.log('✅ Generated database schema');
+    }
+
+    // Generate edge functions if needed
+    if (backendRequirements.needsEdgeFunctions) {
+      await broadcast('generation:phase', { 
+        status: 'generating', 
+        message: 'Creating backend functions...', 
+        progress: 55 
+      });
+      
+      for (const functionName of (backendRequirements.edgeFunctions || [])) {
+        const funcPrompt = `Generate a Supabase Edge Function for: ${functionName}
+
+**Context:** ${request}
+**Purpose:** ${functionName}
+
+**CRITICAL RULES:**
+1. Import necessary modules at top
+2. Add CORS headers
+3. Handle OPTIONS for preflight
+4. Validate inputs
+5. Use proper error handling
+6. Return JSON responses
+7. Log errors
+8. Use environment variables for secrets
+
+Generate complete TypeScript code for index.ts file.`;
+
+        const funcResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash',
+            messages: [
+              { role: 'system', content: 'You are an edge function expert. Generate production-ready code only.' },
+              { role: 'user', content: funcPrompt }
+            ]
+          }),
+        });
+
+        const funcData = await funcResponse.json();
+        const funcCode = funcData.choices[0].message.content;
+        
+        results.edgeFunctions.push({
+          name: functionName,
+          code: funcCode,
+          needsApproval: true
+        });
+      }
+      
+      console.log(`✅ Generated ${results.edgeFunctions.length} edge functions`);
+    }
+
+    // Generate authentication setup if needed
+    if (backendRequirements.needsAuth) {
+      results.authentication = {
+        enabled: true,
+        providers: ['email'],
+        needsProfilesTable: true,
+        autoConfirmEmail: true
+      };
+      console.log('✅ Authentication configuration generated');
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Backend generation error:', error);
+    throw error;
+  }
 }
