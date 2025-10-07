@@ -185,87 +185,103 @@ async function handleTestRunner(params: any, supabase: any) {
 }
 
 async function handleReactGeneration(params: any, supabase: any) {
-  const { prompt, context } = params;
-
+  const { prompt } = params;
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
-  const systemPrompt = `You are an expert React developer. Generate complete, production-ready React components using tool calling.
+  const systemPrompt = `You are an expert React developer. Generate production-ready React components.
+
+CRITICAL: You must use the generate_react_components tool to return your output.
 
 Guidelines:
-- Use TypeScript and functional components
-- Include proper imports (React, lucide-react for icons)
+- Use TypeScript (.tsx files) and functional components
+- Include ALL necessary imports at the top
 - Use Tailwind CSS for styling
-- Follow best practices (hooks, clean code, accessibility)
-- Generate multiple files if needed (components, hooks, utils)
-- Make components responsive and reusable`;
+- Use lucide-react for icons
+- Make components responsive and beautiful
+- Follow React best practices`;
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-      tools: [{
-        type: 'function',
-        function: {
-          name: 'generate_react_components',
-          description: 'Generate React component files',
-          parameters: {
-            type: 'object',
-            properties: {
-              entry_point: {
-                type: 'string',
-                description: 'Main component filename (e.g., App.tsx)'
-              },
-              files: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    path: { type: 'string', description: 'File path' },
-                    code: { type: 'string', description: 'Complete file code' },
-                    type: { type: 'string', enum: ['component', 'hook', 'util', 'style', 'config'] }
-                  },
-                  required: ['path', 'code', 'type'],
-                  additionalProperties: false
-                }
-              }
-            },
-            required: ['entry_point', 'files'],
-            additionalProperties: false
-          }
-        }
-      }],
-      tool_choice: { type: 'function', function: { name: 'generate_react_components' } }
-    })
-  });
-
-  const data = await response.json();
-  
-  // Extract structured output from tool call
   try {
-    const toolCall = data.choices[0].message.tool_calls?.[0];
-    if (toolCall?.function?.arguments) {
-      const parsed = typeof toolCall.function.arguments === 'string' 
-        ? JSON.parse(toolCall.function.arguments)
-        : toolCall.function.arguments;
-      return parsed;
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        tools: [{
+          type: 'function',
+          function: {
+            name: 'generate_react_components',
+            description: 'Generate React component files',
+            parameters: {
+              type: 'object',
+              properties: {
+                entry_point: { 
+                  type: 'string',
+                  description: 'Main component file (e.g., ProductCard.tsx)'
+                },
+                files: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      path: { type: 'string' },
+                      code: { type: 'string' },
+                      type: { type: 'string', enum: ['component', 'hook', 'util', 'style', 'config'] }
+                    },
+                    required: ['path', 'code', 'type'],
+                    additionalProperties: false
+                  }
+                }
+              },
+              required: ['entry_point', 'files'],
+              additionalProperties: false
+            }
+          }
+        }],
+        tool_choice: { type: 'function', function: { name: 'generate_react_components' } }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
     }
-    throw new Error('No tool call found');
-  } catch (e) {
-    console.error('Failed to parse tool call:', e);
-    // Fallback
+
+    const data = await response.json();
+    console.log('AI Response:', JSON.stringify(data).substring(0, 500));
+    
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall) {
+      throw new Error('No tool call in response');
+    }
+
+    const args = typeof toolCall.function.arguments === 'string' 
+      ? JSON.parse(toolCall.function.arguments)
+      : toolCall.function.arguments;
+    
+    console.log('Parsed result:', { entry_point: args.entry_point, fileCount: args.files?.length });
+    return args;
+    
+  } catch (error) {
+    console.error('Generation error:', error);
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     return {
-      entry_point: 'App.tsx',
+      entry_point: 'ErrorComponent.tsx',
       files: [{
-        path: 'App.tsx',
-        code: `export default function App() {\n  return <div className="p-4">Error: ${e.message}</div>;\n}`,
+        path: 'ErrorComponent.tsx',
+        code: `export default function ErrorComponent() {
+  return (
+    <div className="p-8 max-w-md mx-auto mt-8 bg-red-50 border border-red-200 rounded-lg">
+      <h2 className="text-xl font-bold text-red-800 mb-2">Generation Error</h2>
+      <p className="text-red-600">${errorMsg}</p>
+    </div>
+  );
+}`,
         type: 'component'
       }]
     };
