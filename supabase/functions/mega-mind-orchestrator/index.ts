@@ -520,29 +520,27 @@ async function analyzeRequest(request: string, requestType: string, context: any
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-  const prompt = `Analyze this request for a Lovable React/TypeScript project:
+  const prompt = `Analyze this request and determine if it's for HTML/CSS/JS website or React app:
 
 **Request:** ${request}
 **Type:** ${requestType}
 
-**PROJECT CONTEXT:**
-- This is a React + TypeScript + Tailwind CSS + Vite project (Lovable platform)
-- Generate React components (.tsx files) that work within this existing project
-- Use existing design system with semantic tokens (not direct colors)
-- Use shadcn/ui components when appropriate
+**Determine Output Type:**
+- If keywords like "website", "html", "css", "javascript", "portfolio", "landing page" → outputType: "html-website"
+- If keywords like "react", "component", "app", "dashboard", "interactive" → outputType: "react-app"
 
 **Output JSON:**
 {
-  "requestType": "react-component",
+  "outputType": "html-website" | "react-app",
   "mainGoal": "what the user wants to achieve",
   "subTasks": ["task 1", "task 2"],
-  "requiredComponents": ["Component1", "Component2"],
-  "requiredTechnologies": ["react", "typescript", "tailwind"],
+  "requiredSections": ["Hero", "About", "Projects"],
+  "requiredTechnologies": ["html", "css", "javascript"],
   "complexity": "simple" | "moderate" | "complex",
-  "estimatedFiles": 1-5,
-  "needsRouting": true|false,
-  "needsState": true|false,
-  "needsAPI": true|false
+  "estimatedFiles": 1,
+  "needsRouting": false,
+  "needsInteractivity": true|false,
+  "needsAPI": false
 }`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -554,7 +552,7 @@ async function analyzeRequest(request: string, requestType: string, context: any
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert React architect specializing in Lovable projects. Respond with JSON only.' },
+        { role: 'system', content: 'You are an expert analyst. Determine if the request is for HTML/CSS/JS website or React app. Respond with JSON only.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }
@@ -569,53 +567,43 @@ async function generateSimpleWebsite(request: string, analysis: any): Promise<an
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-  // This is now a React component generator, not HTML generator
-  const prompt = `Generate React components for this Lovable project:
+  const prompt = `Generate a COMPLETE, BEAUTIFUL, PRODUCTION-READY HTML/CSS/JavaScript website:
 
 **Request:** ${request}
 **Goal:** ${analysis.mainGoal}
-**Components Needed:** ${JSON.stringify(analysis.requiredComponents || [])}
+**Sections:** ${JSON.stringify(analysis.requiredSections || [])}
 
-**CRITICAL REQUIREMENTS:**
-1. Generate React .tsx components that work in an existing Lovable project
-2. Use TypeScript with proper types
-3. Use Tailwind CSS with SEMANTIC TOKENS (bg-background, text-foreground, etc.) - NO direct colors
-4. Use shadcn/ui components: Button, Card, Input, etc. from "@/components/ui/"
-5. Make components fully responsive and production-ready
-6. Add proper imports and exports
-7. Follow React best practices (hooks, composition, etc.)
+**CRITICAL REQUIREMENTS - MODERN BEAUTIFUL DESIGN:**
+1. Generate ONE complete HTML file with embedded CSS and JavaScript
+2. Use modern, clean design with proper spacing and typography
+3. Beautiful color scheme with gradients and smooth animations
+4. Fully responsive (mobile-first approach)
+5. Smooth scroll navigation with working anchor links
+6. Professional hover effects and transitions
+7. Modern CSS Grid and Flexbox layouts
+8. Attractive hero section with call-to-action
+9. Clean, readable fonts (Google Fonts)
+10. Professional portfolio-quality design
 
-**Available shadcn/ui components:**
-- Button, Card, Input, Label, Textarea
-- Dialog, Sheet, Popover, DropdownMenu
-- Toast (use useToast from "@/hooks/use-toast")
-- And many more from "@/components/ui/"
-
-**Example structure:**
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-
-export function MyComponent() {
-  return (
-    <div className="container mx-auto p-6">
-      <Card className="p-6">
-        <h1 className="text-2xl font-bold">Title</h1>
-        <Button>Click me</Button>
-      </Card>
-    </div>
-  );
-}
+**DESIGN GUIDELINES:**
+- Use a cohesive color palette (e.g., blues, purples, or modern dark theme)
+- Add subtle gradients and shadows for depth
+- Include smooth transitions on all interactive elements
+- Use modern CSS variables for consistency
+- Add animations for scroll reveals and hover states
+- Ensure proper contrast for accessibility
+- Professional spacing and visual hierarchy
 
 **Output JSON:**
 {
   "files": [
     {
-      "path": "src/pages/MyPage.tsx",
-      "content": "// Full React component code",
-      "description": "Main page component"
+      "path": "index.html",
+      "content": "<!-- COMPLETE HTML with embedded CSS and JS -->",
+      "description": "Beautiful portfolio website"
     }
   ],
-  "instructions": "How to use and integrate these components"
+  "instructions": "Website is ready to use"
 }`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -627,7 +615,7 @@ export function MyComponent() {
     body: JSON.stringify({
       model: 'google/gemini-2.5-pro',
       messages: [
-        { role: 'system', content: 'You are an expert React developer for Lovable projects. Generate production-ready React/TypeScript components using shadcn/ui and semantic Tailwind tokens. NEVER use direct colors like text-white or bg-blue-500. Respond with JSON only.' },
+        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE, BEAUTIFUL, PRODUCTION-READY HTML/CSS/JavaScript websites. Include modern design, smooth animations, and responsive layouts. Output as JSON only.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }
@@ -701,6 +689,16 @@ async function generateSolution(request: string, requestType: string, analysis: 
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
+  // Route to appropriate generator based on analysis
+  const outputType = analysis.outputType || 'react-app';
+  
+  if (outputType === 'html-website') {
+    console.log('🌐 Generating HTML/CSS/JS website...');
+    return await generateSimpleWebsite(request, analysis);
+  }
+
+  // Default: Generate React components
+  console.log('⚛️ Generating React components...');
   const prompt = `Generate React/TypeScript components for this Lovable project.
 
 **Request:** ${request}
