@@ -48,6 +48,7 @@ import { useDynamicCustomizations } from "@/hooks/useDynamicCustomizations";
 import { DynamicComponent } from "@/components/DynamicComponent";
 import { PreviewBanner } from "@/components/PreviewBanner";
 import { usePreviewMode } from "@/hooks/usePreviewMode";
+import { GeneratedProjectViewer } from "@/components/GeneratedProjectViewer";
 import { retryWithBackoff, validateRequest, formatErrorMessage, logMetrics } from "@/utils/orchestrationHelpers";
 
 interface Project {
@@ -310,32 +311,28 @@ const Index = () => {
         throw new Error("No components were generated");
       }
 
-      // Format files for display
-      const filesDisplay = generatedFiles.map((file: any) => 
-        `// File: ${file.path}\n${file.description ? `// ${file.description}\n` : ''}${file.content}\n\n`
-      ).join('\n');
-
-      setGeneratedCode(filesDisplay);
+      // Store files directly as state for the viewer
+      setGeneratedCode(JSON.stringify(generatedFiles));
       
-      // Auto-save and open in workspace
+      // Auto-save project
       const title = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt;
       const { data: project, error: saveError } = await supabase
         .from("projects")
         .insert({
           title: title,
           prompt: prompt,
-          html_code: JSON.stringify(generatedFiles), // Store as JSON array of files
+          html_code: JSON.stringify(generatedFiles),
           user_id: user.id,
         })
         .select()
         .single();
 
-      if (!saveError && project) {
-        toast.success(`Generated ${generatedFiles.length} React component${generatedFiles.length > 1 ? 's' : ''}! Opening workspace...`);
-        navigate(`/workspace/${project.id}`);
-      } else {
-        toast.error("Failed to save project");
+      if (saveError) {
+        console.error("Save error:", saveError);
       }
+
+      setCurrentProjectId(project?.id || null);
+      toast.success(`✅ Generated ${generatedFiles.length} React component${generatedFiles.length > 1 ? 's' : ''}!`);
     } catch (error) {
       console.error("Generation error:", error);
       toast.dismiss(progressToast);
@@ -896,6 +893,17 @@ const Index = () => {
             </div>
 
             <DevicePreview generatedCode={generatedCode} />
+            
+            {/* Generated Project Viewer - Shows file tree for React projects */}
+            {generatedCode && (() => {
+              try {
+                const parsedFiles = JSON.parse(generatedCode);
+                if (Array.isArray(parsedFiles) && parsedFiles.length > 0 && parsedFiles[0].path) {
+                  return <GeneratedProjectViewer files={parsedFiles} projectTitle={projectTitle} />;
+                }
+              } catch {}
+              return null;
+            })()}
           </Card>
 
           {/* AI Features Panel */}
