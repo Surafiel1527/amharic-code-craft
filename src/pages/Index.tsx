@@ -331,9 +331,16 @@ const Index = () => {
         console.error("Save error:", saveError);
         toast.error("Failed to save project to history");
       } else {
-        // Refresh the projects list so it shows in My Projects
+        // Refresh the projects list
         fetchRecentProjects();
-        toast.success(`✅ Generated ${generatedFiles.length} React component${generatedFiles.length > 1 ? 's' : ''} and saved to My Projects!`);
+        
+        // Show success message with action to view
+        toast.success(`✅ Generated ${generatedFiles.length} React component${generatedFiles.length > 1 ? 's' : ''} and saved!`, {
+          action: {
+            label: "View in My Projects",
+            onClick: () => navigate('/projects'),
+          },
+        });
       }
 
       setCurrentProjectId(project?.id || null);
