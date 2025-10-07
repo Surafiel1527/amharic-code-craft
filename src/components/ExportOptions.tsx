@@ -15,7 +15,7 @@ interface ExportOptionsProps {
 export const ExportOptions = ({ htmlCode, projectTitle }: ExportOptionsProps) => {
   const [copied, setCopied] = useState<string | null>(null);
 
-  // Clean HTML code by removing JSON artifacts
+  // Clean HTML code by removing JSON artifacts - ROBUST VERSION
   const cleanHTML = (() => {
     if (!htmlCode) return '';
     
@@ -24,33 +24,56 @@ export const ExportOptions = ({ htmlCode, projectTitle }: ExportOptionsProps) =>
     // Remove markdown code fences if present
     code = code.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
     
-    // If it's already HTML (starts with <!DOCTYPE or <html), return as-is
-    if (code.startsWith('<!DOCTYPE') || code.startsWith('<html')) {
+    // CRITICAL: If it's already clean HTML, return immediately
+    if (code.startsWith('<!DOCTYPE') || code.startsWith('<html') || code.includes('<body')) {
       return code;
     }
     
     // Try to parse as JSON and extract HTML content
     try {
       const parsed = JSON.parse(code);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        // Find HTML file in array
-        const htmlFile = parsed.find((f: any) => 
-          f.path?.endsWith('.html') || 
-          f.path?.endsWith('.htm') ||
-          f.content?.includes('<!DOCTYPE html>') ||
-          f.content?.includes('<html')
-        );
+      
+      // Handle array of files (multi-file project)
+      if (Array.isArray(parsed)) {
+        if (parsed.length === 0) return '';
+        
+        // Find HTML file in array - comprehensive search
+        const htmlFile = parsed.find((f: any) => {
+          if (!f) return false;
+          const path = f.path || f.name || '';
+          const content = f.content || '';
+          return path.match(/\.(html?|htm)$/i) || 
+                 content.includes('<!DOCTYPE html>') ||
+                 content.includes('<html') ||
+                 content.includes('<body');
+        });
+        
         if (htmlFile?.content) {
           return htmlFile.content;
         }
-      } else if (parsed.content) {
-        // Single file object
+        
+        // If no HTML file found but there's content, check first file
+        if (parsed[0]?.content) {
+          const firstContent = parsed[0].content;
+          if (firstContent.includes('<!DOCTYPE') || firstContent.includes('<html')) {
+            return firstContent;
+          }
+        }
+      } 
+      // Handle single file object
+      else if (parsed.content && typeof parsed.content === 'string') {
         return parsed.content;
       }
-    } catch {
-      // Not JSON, treat as raw HTML
+      // Handle direct content string
+      else if (typeof parsed === 'string') {
+        return parsed;
+      }
+    } catch (parseError) {
+      // Not JSON - treat as raw HTML
+      console.log('ExportOptions: Content is not JSON, treating as raw HTML');
     }
     
+    // Last resort: return the original code
     return code;
   })();
 

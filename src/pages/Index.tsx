@@ -288,24 +288,46 @@ const Index = () => {
     }
 
     setIsGenerating(true);
-    const progressToast = toast.loading("🎨 AI is creating your React components...");
     
     try {
-      // Use mega-mind-orchestrator for intelligent React component generation
+      // Create project immediately with generating status
+      const title = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt;
+      const { data: project, error: createError } = await supabase
+        .from("projects")
+        .insert({
+          title: `[Generating...] ${title}`,
+          prompt: prompt,
+          html_code: '',
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+      
+      const projectId = project.id;
+      setCurrentProjectId(projectId);
+      
+      // Navigate to workspace immediately
+      const frameworkLabel = framework === 'html' ? 'HTML/CSS/JS' : framework === 'react' ? 'React' : 'Vue';
+      toast.loading(`🎨 Generating ${frameworkLabel} project...`, { id: 'gen-toast' });
+      navigate(`/workspace/${projectId}`);
+      
+      // Continue generation in background
       const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
         body: { 
           request: prompt,
           requestType: 'website-generation',
           context: {
             userId: user.id,
+            projectId: projectId,
+            framework: framework,
             timestamp: new Date().toISOString()
           }
         },
       });
 
       if (error) throw error;
-
-      toast.dismiss(progressToast);
       
       // Extract generated files
       const generatedFiles = data?.generation?.files || [];
@@ -314,59 +336,49 @@ const Index = () => {
         throw new Error("No components were generated");
       }
 
-      // For HTML framework, extract the HTML content directly
-      let codeToStore = JSON.stringify(generatedFiles);
+      // For HTML framework, store the clean HTML content directly
+      let codeToStore = '';
       if (framework === 'html') {
         const htmlFile = generatedFiles.find((f: any) => 
           f.path?.endsWith('.html') || 
+          f.path?.endsWith('.htm') ||
           f.content?.includes('<!DOCTYPE html>') ||
           f.content?.includes('<html')
         );
         if (htmlFile?.content) {
+          // Store clean HTML directly for HTML projects
           codeToStore = htmlFile.content;
+        } else {
+          // Fallback: stringify all files
+          codeToStore = JSON.stringify(generatedFiles);
         }
-      }
-
-      // Store files for the viewer
-      setGeneratedCode(codeToStore);
-      
-      // Auto-save project
-      const title = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt;
-      const { data: project, error: saveError } = await supabase
-        .from("projects")
-        .insert({
-          title: title,
-          prompt: prompt,
-          html_code: JSON.stringify(generatedFiles),
-          user_id: user.id,
-        })
-        .select()
-        .single();
-
-      if (saveError) {
-        console.error("Save error:", saveError);
-        toast.error("Failed to save project to history");
       } else {
-        setCurrentProjectId(project?.id || null);
-        
-        // Refresh the projects list
-        fetchRecentProjects();
-        
-        // Navigate to workspace automatically after generation
-        const frameworkLabel = framework === 'html' ? 'HTML/CSS/JS' : framework === 'react' ? 'React' : 'Vue';
-        toast.success(`✅ Generated ${frameworkLabel} project! Opening workspace...`);
-        
-        // Navigate to workspace after a short delay
-        setTimeout(() => {
-          navigate(`/workspace/${project.id}`);
-        }, 1500);
+        // For React/Vue, store as JSON array of files
+        codeToStore = JSON.stringify(generatedFiles);
       }
+      
+      // Update project with generated code and remove "Generating..." prefix
+      const { error: updateError } = await supabase
+        .from("projects")
+        .update({
+          title: title,
+          html_code: codeToStore,
+        })
+        .eq('id', projectId);
+
+      if (updateError) {
+        console.error("Update error:", updateError);
+        toast.error("Failed to save generated code", { id: 'gen-toast' });
+      } else {
+        fetchRecentProjects();
+        toast.success(`✅ ${frameworkLabel} project generated successfully!`, { id: 'gen-toast' });
+      }
+
     } catch (error) {
       console.error("Generation error:", error);
-      toast.dismiss(progressToast);
       
-      const errorMsg = error instanceof Error ? error.message : "Failed to generate components";
-      toast.error(errorMsg);
+      const errorMsg = error instanceof Error ? error.message : "Failed to generate project";
+      toast.error(errorMsg, { id: 'gen-toast' });
     } finally {
       setIsGenerating(false);
     }
