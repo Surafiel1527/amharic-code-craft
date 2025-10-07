@@ -337,32 +337,50 @@ serve(async (req) => {
       })
       .eq('id', orchestrationId);
 
+    // Format the generated code for frontend display - PRODUCTION READY
+    const finalFiles = generation.files;
+    let generatedCode = '';
+    if (finalFiles && finalFiles.length > 0) {
+      // For single HTML file, use it directly
+      const htmlFile = finalFiles.find((f: any) => f.path.endsWith('.html'));
+      if (htmlFile) {
+        generatedCode = htmlFile.content;
+      } else {
+        // For multi-file, combine all code
+        generatedCode = finalFiles.map((file: any) => 
+          `// File: ${file.path}\n${file.description ? `// ${file.description}\n` : ''}${file.content}\n\n`
+        ).join('\n');
+      }
+    }
+
+    // CRITICAL: Update project in database BEFORE broadcasting completion
+    if (projectId) {
+      console.log(`📝 Updating project ${projectId} with generated code`);
+      const { error: projectUpdateError } = await supabaseClient
+        .from('projects')
+        .update({ 
+          html_code: generatedCode,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', projectId);
+      
+      if (projectUpdateError) {
+        console.error('Failed to update project:', projectUpdateError);
+      } else {
+        console.log('✅ Project updated in database');
+      }
+    }
+
     console.log('🎉 Mega Mind completed (optimized)!');
     await broadcast('generation:complete', { 
       progress: 100, 
       message: 'Project ready!',
-      filesCount: generation.files?.length || 0
+      filesCount: generation.files?.length || 0,
+      timestamp: new Date().toISOString()
     });
 
     // Mark job as completed
     if (jobId) {
-      const finalFiles = generation.files;
-      
-      // Format the generated code for frontend display - PRODUCTION READY
-      let generatedCode = '';
-      if (finalFiles && finalFiles.length > 0) {
-        // For single HTML file, use it directly
-        const htmlFile = finalFiles.find((f: any) => f.path.endsWith('.html'));
-        if (htmlFile) {
-          generatedCode = htmlFile.content;
-        } else {
-          // For multi-file, combine all code
-          generatedCode = finalFiles.map((file: any) => 
-            `// File: ${file.path}\n${file.description ? `// ${file.description}\n` : ''}${file.content}\n\n`
-          ).join('\n');
-        }
-      }
-
       await supabaseClient
         .from('ai_generation_jobs')
         .update({

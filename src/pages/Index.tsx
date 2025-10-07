@@ -313,7 +313,7 @@ const Index = () => {
       toast.loading(`🎨 Generating ${frameworkLabel} project...`, { id: 'gen-toast' });
       navigate(`/workspace/${projectId}`);
       
-      // Continue generation in background
+      // Continue generation in background (edge function handles project update)
       const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
         body: { 
           request: prompt,
@@ -327,52 +327,23 @@ const Index = () => {
         },
       });
 
-      if (error) throw error;
-      
-      // Extract generated files
-      const generatedFiles = data?.generation?.files || [];
-      
-      if (!generatedFiles || generatedFiles.length === 0) {
-        throw new Error("No components were generated");
-      }
-
-      // For HTML framework, store the clean HTML content directly
-      let codeToStore = '';
-      if (framework === 'html') {
-        const htmlFile = generatedFiles.find((f: any) => 
-          f.path?.endsWith('.html') || 
-          f.path?.endsWith('.htm') ||
-          f.content?.includes('<!DOCTYPE html>') ||
-          f.content?.includes('<html')
-        );
-        if (htmlFile?.content) {
-          // Store clean HTML directly for HTML projects
-          codeToStore = htmlFile.content;
-        } else {
-          // Fallback: stringify all files
-          codeToStore = JSON.stringify(generatedFiles);
-        }
-      } else {
-        // For React/Vue, store as JSON array of files
-        codeToStore = JSON.stringify(generatedFiles);
+      if (error) {
+        console.error("Generation error:", error);
+        toast.error("Generation failed", { id: 'gen-toast' });
+        // Update project to show failure
+        await supabase
+          .from("projects")
+          .update({
+            title: `[Failed] ${title}`,
+            html_code: `Generation failed: ${error.message}`
+          })
+          .eq('id', projectId);
+        throw error;
       }
       
-      // Update project with generated code and remove "Generating..." prefix
-      const { error: updateError } = await supabase
-        .from("projects")
-        .update({
-          title: title,
-          html_code: codeToStore,
-        })
-        .eq('id', projectId);
-
-      if (updateError) {
-        console.error("Update error:", updateError);
-        toast.error("Failed to save generated code", { id: 'gen-toast' });
-      } else {
-        fetchRecentProjects();
-        toast.success(`✅ ${frameworkLabel} project generated successfully!`, { id: 'gen-toast' });
-      }
+      // Edge function already updated the project, just refresh the list
+      fetchRecentProjects();
+      toast.success(`✅ ${frameworkLabel} project generated successfully!`, { id: 'gen-toast' });
 
     } catch (error) {
       console.error("Generation error:", error);

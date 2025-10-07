@@ -35,14 +35,22 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
         setUpdates(prev => [...prev, { ...payload, phase: 'complete' }]);
         setProgress(100);
         setIsComplete(true);
+        // Small delay to ensure database propagation
         setTimeout(() => {
           onComplete?.();
-        }, 2000);
+        }, 1500);
       })
       .subscribe();
 
+    // Timeout fallback: if stuck for >60 seconds, reload anyway
+    const timeout = setTimeout(() => {
+      console.log('Generation timeout - checking project status');
+      onComplete?.();
+    }, 60000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearTimeout(timeout);
     };
   }, [projectId, onComplete]);
 
