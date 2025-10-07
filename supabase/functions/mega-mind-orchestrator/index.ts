@@ -64,16 +64,26 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
     
-    // Broadcast function for real-time updates (defined AFTER supabaseClient)
+    // Create and subscribe to broadcast channel once
+    let broadcastChannel: any = null;
+    if (projectId) {
+      broadcastChannel = supabaseClient.channel(`project-${projectId}`, {
+        config: { broadcast: { ack: false } }
+      });
+      await broadcastChannel.subscribe();
+      console.log(`📡 Subscribed to channel: project-${projectId}`);
+    }
+    
+    // Broadcast function for real-time updates
     const broadcast = async (eventType: string, data: any) => {
-      if (!projectId) return;
+      if (!broadcastChannel) return;
       try {
-        await supabaseClient.channel(`project-${projectId}`)
-          .send({
-            type: 'broadcast',
-            event: eventType,
-            payload: { ...data, timestamp: new Date().toISOString() }
-          });
+        await broadcastChannel.send({
+          type: 'broadcast',
+          event: eventType,
+          payload: { ...data, timestamp: new Date().toISOString() }
+        });
+        console.log(`📤 Broadcast sent: ${eventType}`, data);
       } catch (e) {
         console.error('Broadcast error:', e);
       }
