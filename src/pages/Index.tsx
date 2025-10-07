@@ -314,8 +314,21 @@ const Index = () => {
         throw new Error("No components were generated");
       }
 
-      // Store files directly as state for the viewer
-      setGeneratedCode(JSON.stringify(generatedFiles));
+      // For HTML framework, extract the HTML content directly
+      let codeToStore = JSON.stringify(generatedFiles);
+      if (framework === 'html') {
+        const htmlFile = generatedFiles.find((f: any) => 
+          f.path?.endsWith('.html') || 
+          f.content?.includes('<!DOCTYPE html>') ||
+          f.content?.includes('<html')
+        );
+        if (htmlFile?.content) {
+          codeToStore = htmlFile.content;
+        }
+      }
+
+      // Store files for the viewer
+      setGeneratedCode(codeToStore);
       
       // Auto-save project
       const title = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt;
@@ -334,19 +347,20 @@ const Index = () => {
         console.error("Save error:", saveError);
         toast.error("Failed to save project to history");
       } else {
+        setCurrentProjectId(project?.id || null);
+        
         // Refresh the projects list
         fetchRecentProjects();
         
-        // Show success message with action to view
-        toast.success(`✅ Generated ${generatedFiles.length} React component${generatedFiles.length > 1 ? 's' : ''} and saved!`, {
-          action: {
-            label: "View in My Projects",
-            onClick: () => navigate('/projects'),
-          },
-        });
+        // Navigate to workspace automatically after generation
+        const frameworkLabel = framework === 'html' ? 'HTML/CSS/JS' : framework === 'react' ? 'React' : 'Vue';
+        toast.success(`✅ Generated ${frameworkLabel} project! Opening workspace...`);
+        
+        // Navigate to workspace after a short delay
+        setTimeout(() => {
+          navigate(`/workspace/${project.id}`);
+        }, 1500);
       }
-
-      setCurrentProjectId(project?.id || null);
     } catch (error) {
       console.error("Generation error:", error);
       toast.dismiss(progressToast);

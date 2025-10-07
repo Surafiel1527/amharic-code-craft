@@ -21,23 +21,37 @@ export const ExportOptions = ({ htmlCode, projectTitle }: ExportOptionsProps) =>
     
     let code = htmlCode.trim();
     
-    // Remove markdown code fences
+    // Remove markdown code fences if present
     code = code.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
+    
+    // If it's already HTML (starts with <!DOCTYPE or <html), return as-is
+    if (code.startsWith('<!DOCTYPE') || code.startsWith('<html')) {
+      return code;
+    }
     
     // Try to parse as JSON and extract HTML content
     try {
       const parsed = JSON.parse(code);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const htmlFile = parsed.find(f => f.path?.endsWith('.html') || f.content?.includes('<!DOCTYPE html>'));
-        if (htmlFile?.content) return htmlFile.content;
+        // Find HTML file in array
+        const htmlFile = parsed.find((f: any) => 
+          f.path?.endsWith('.html') || 
+          f.path?.endsWith('.htm') ||
+          f.content?.includes('<!DOCTYPE html>') ||
+          f.content?.includes('<html')
+        );
+        if (htmlFile?.content) {
+          return htmlFile.content;
+        }
       } else if (parsed.content) {
+        // Single file object
         return parsed.content;
       }
     } catch {
       // Not JSON, treat as raw HTML
     }
     
-    return code.trim();
+    return code;
   })();
 
   const handleDownloadHTML = () => {
