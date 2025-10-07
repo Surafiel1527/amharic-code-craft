@@ -564,6 +564,9 @@ serve(async (req) => {
         orchestrationId,
         generatedCode,
         html: generatedCode,
+        message: generation.instructions || `✨ Successfully ${analysis.outputType === 'modification' ? 'updated' : 'generated'} your code`,
+        explanation: generation.instructions || 'Your changes have been applied successfully.',
+        summary: generation.instructions,
         result: {
           generatedCode,
           explanation: generation.instructions
@@ -571,7 +574,9 @@ serve(async (req) => {
         analysis,
         generation,
         quickVerification,
-        message: `✨ Code generated in ${Math.round((Date.now() - new Date(orchestration.created_at).getTime()) / 1000)}s`
+        filesGenerated: generation.files?.length || 0,
+        outputType: analysis.outputType,
+        requestType: requestType
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

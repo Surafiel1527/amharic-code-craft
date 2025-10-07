@@ -943,8 +943,23 @@ export default function Workspace() {
                     // Update project with new code
                     setProject(prev => prev ? { ...prev, html_code: code } : null);
                     
-                    // Auto-save to database
+                    // Save to database immediately
                     if (project) {
+                      const { error: updateError } = await supabase
+                        .from('projects')
+                        .update({ 
+                          html_code: code,
+                          updated_at: new Date().toISOString()
+                        })
+                        .eq('id', project.id);
+
+                      if (updateError) {
+                        console.error('Failed to save code:', updateError);
+                        toast.error('Failed to save changes');
+                        return;
+                      }
+
+                      // Create version snapshot
                       const { data: versions } = await supabase
                         .from('project_versions')
                         .select('version_number')

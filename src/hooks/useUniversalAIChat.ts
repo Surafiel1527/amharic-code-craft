@@ -207,14 +207,23 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   }, [persistMessages]);
 
   /**
-   * Initialize conversation on mount
+   * Initialize conversation on mount and when conversationId changes
    */
   useEffect(() => {
     if (externalConversationId && persistMessages) {
+      logger.info('🔄 Conversation ID changed, loading messages', { conversationId: externalConversationId });
       loadConversation(externalConversationId);
       setConversationId(externalConversationId);
     }
-  }, [externalConversationId, persistMessages, loadConversation]);
+  }, [externalConversationId, persistMessages]);
+
+  // Reload conversation when it's set
+  useEffect(() => {
+    if (conversationId && persistMessages && messages.length === 0) {
+      logger.info('📨 Loading conversation messages', { conversationId });
+      loadConversation(conversationId);
+    }
+  }, [conversationId, persistMessages, messages.length]);
 
   /**
    * Detects if the message is likely reporting an error
@@ -456,12 +465,21 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
     } else if (routedTo === 'orchestrator' && data) {
       // Handle orchestrator response - check for generatedCode, html, or finalCode
       const code = data.generatedCode || data.html || data.finalCode;
+      const explanation = data.message || data.explanation || data.summary;
       
       if (code && typeof code === 'string') {
         const filePath = selectedFiles.length === 1 ? selectedFiles[0] : 'main-project';
-        await applyCodeFix(code, filePath, metadata);
+        const applied = await applyCodeFix(code, filePath, metadata);
 
-        content = `✨ **Updated Successfully!**\n\n${data.message || data.explanation || 'Your changes have been applied.'}\n\nApplied to: \`${filePath}\``;
+        // Create a descriptive message about what was done
+        let changeDescription = explanation || 'Your changes have been applied.';
+        if (!explanation && data.requestType) {
+          changeDescription = `Applied ${data.requestType} update`;
+        }
+
+        content = `✨ **Code Updated!**\n\n${changeDescription}\n\n` +
+                 `${applied ? '✅' : '📝'} Applied to: \`${filePath}\`\n\n` +
+                 `**What I did:**\n${explanation || 'Updated your code based on your request.'}`;
 
         codeBlock = {
           language: filePath.endsWith('.html') ? 'html' : 'typescript',
@@ -472,9 +490,10 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         // Handle nested result structure
         const code = data.result.generatedCode;
         const filePath = selectedFiles.length === 1 ? selectedFiles[0] : 'main-project';
-        await applyCodeFix(code, filePath, metadata);
+        const applied = await applyCodeFix(code, filePath, metadata);
 
-        content = `✨ **Updated Successfully!**\n\n${data.result.explanation || data.message || 'Your changes have been applied.'}\n\nApplied to: \`${filePath}\``;
+        content = `✨ **Code Updated!**\n\n${data.result.explanation || data.message || 'Your changes have been applied.'}\n\n` +
+                 `${applied ? '✅' : '📝'} Applied to: \`${filePath}\``;
 
         codeBlock = {
           language: filePath.endsWith('.html') ? 'html' : 'typescript',
@@ -482,7 +501,8 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
           filePath
         };
       } else {
-        content = data.message || data.explanation || 'Request processed successfully';
+        // No code, just a message response
+        content = `💡 ${explanation || 'Request processed successfully'}`;
       }
     }
 
