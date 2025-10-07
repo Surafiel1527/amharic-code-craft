@@ -193,6 +193,22 @@ serve(async (req) => {
       userId = user.id;
       console.log('✅ User authenticated:', userId);
     }
+    
+    // Fetch user's active Supabase connection
+    let userSupabaseConnection = null;
+    try {
+      const { data: connection } = await supabaseClient
+        .from('user_supabase_connections')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .single();
+      
+      userSupabaseConnection = connection;
+      console.log('📡 User Supabase connection:', connection ? connection.project_name : 'None (using platform DB)');
+    } catch (error) {
+      console.log('⚠️ No user Supabase connection found, will use platform database');
+    }
 
     // Rate limiting check
     if (!checkRateLimit(userId)) {

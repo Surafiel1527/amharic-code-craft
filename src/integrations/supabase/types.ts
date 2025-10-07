@@ -7091,6 +7091,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_supabase_connections: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          project_name: string
+          supabase_anon_key: string
+          supabase_service_role_key: string | null
+          supabase_url: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          project_name: string
+          supabase_anon_key: string
+          supabase_service_role_key?: string | null
+          supabase_url: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          project_name?: string
+          supabase_anon_key?: string
+          supabase_service_role_key?: string | null
+          supabase_url?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       validation_patterns: {
         Row: {
           confidence_score: number | null
