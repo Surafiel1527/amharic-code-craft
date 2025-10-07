@@ -52,6 +52,8 @@ import { SmartDebugger } from "@/components/SmartDebugger";
 import { LiveGenerationProgress } from "@/components/LiveGenerationProgress";
 // PythonProjectViewer removed - handled by UniversalChatInterface
 import { LanguageCapabilities } from "@/components/LanguageCapabilities";
+import { ConversationSidebar } from "@/components/ConversationSidebar";
+import { MessageSquarePlus } from "lucide-react";
 // orchestrationHelpers removed - no longer needed
 
 // Message interface removed - now handled by UniversalChatInterface
@@ -76,6 +78,8 @@ export default function Workspace() {
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [showConversations, setShowConversations] = useState(false);
   
   // Multi-file system state
   const [projectFiles, setProjectFiles] = useState<any[]>([]);
@@ -85,6 +89,54 @@ export default function Workspace() {
   const [editorMode, setEditorMode] = useState<'single' | 'split'>('single');
   const [showMetrics, setShowMetrics] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+
+  // Load all conversations for this project
+  const loadConversations = async () => {
+    if (!projectId || !user) return;
+    
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('id, title, updated_at')
+      .eq('project_id', projectId)
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false });
+    
+    if (!error && data) {
+      setConversations(data);
+    }
+  };
+
+  // Create a new conversation
+  const handleNewConversation = async () => {
+    if (!projectId || !user || !project) return;
+    
+    const { data: newConv, error } = await supabase
+      .from('conversations')
+      .insert({
+        title: `New Chat - ${new Date().toLocaleDateString()}`,
+        user_id: user.id,
+        project_id: projectId
+      })
+      .select('id')
+      .single();
+    
+    if (error) {
+      toast.error("Failed to create conversation");
+      return;
+    }
+    
+    if (newConv) {
+      setConversationId(newConv.id);
+      await loadConversations();
+      toast.success("New conversation started!");
+    }
+  };
+
+  // Switch to a different conversation
+  const handleConversationSelect = (id: string) => {
+    setConversationId(id);
+    setShowConversations(false);
+  };
 
   const handleRestoreVersion = async (htmlCode: string) => {
     if (!project) return;
@@ -224,6 +276,9 @@ export default function Workspace() {
       if (convId) {
         setConversationId(convId);
       }
+      
+      // Load all conversations for this project
+      loadConversations();
     };
 
     loadProject();
@@ -554,6 +609,29 @@ export default function Workspace() {
                 />
               </DialogContent>
             </Dialog>
+            
+            <Sheet open={showConversations} onOpenChange={setShowConversations}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MessageSquarePlus className="w-4 h-4 mr-2" />
+                  Chats
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[350px]">
+                <SheetHeader>
+                  <SheetTitle>Conversations</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6">
+                  <ConversationSidebar
+                    conversations={conversations}
+                    activeConversation={conversationId}
+                    onConversationSelect={handleConversationSelect}
+                    onNewConversation={handleNewConversation}
+                    onConversationsChange={loadConversations}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
             
             <Button
               variant="outline"

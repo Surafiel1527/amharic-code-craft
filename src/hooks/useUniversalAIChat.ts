@@ -450,11 +450,8 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
             ? `\n\n**💡 Prevention:**\n${data.preventionTips.map((t: string) => `• ${t}`).join('\n')}` 
             : '');
 
-        codeBlock = {
-          language: file.path.endsWith('.json') ? 'json' : 'typescript',
-          code: file.content,
-          filePath: file.path
-        };
+        // Don't show code blocks in chat - code is applied directly
+        codeBlock = undefined;
       } else if (solution?.codeChanges) {
         content = `🔧 **${category?.toUpperCase() || 'ERROR'} Analysis**\n\n` +
           `**Diagnosis:** ${diagnosis}\n\n` +
@@ -481,11 +478,8 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
                  `${applied ? '✅' : '📝'} Applied to: \`${filePath}\`\n\n` +
                  `**What I did:**\n${explanation || 'Updated your code based on your request.'}`;
 
-        codeBlock = {
-          language: filePath.endsWith('.html') ? 'html' : 'typescript',
-          code: code,
-          filePath
-        };
+        // Don't show code blocks in chat - code is applied directly to project
+        codeBlock = undefined;
       } else if (data.result?.generatedCode) {
         // Handle nested result structure
         const code = data.result.generatedCode;
@@ -495,11 +489,8 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         content = `✨ **Code Updated!**\n\n${data.result.explanation || data.message || 'Your changes have been applied.'}\n\n` +
                  `${applied ? '✅' : '📝'} Applied to: \`${filePath}\``;
 
-        codeBlock = {
-          language: filePath.endsWith('.html') ? 'html' : 'typescript',
-          code: code,
-          filePath
-        };
+        // Don't show code blocks in chat - code is applied directly
+        codeBlock = undefined;
       } else {
         // No code, just a message response
         content = `💡 ${explanation || 'Request processed successfully'}`;
