@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Terminal, Code, Package, AlertCircle, CheckCircle, Zap, BookOpen, Rocket } from "lucide-react";
 import { WebTerminal } from "./WebTerminal";
-import ReactGenerationHub from "./ReactGenerationHub";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -167,13 +166,8 @@ export default function EnhancedDevEnvironment() {
         </Card>
 
         {/* Main Interface */}
-        <Tabs defaultValue="generator" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-12">
-            <TabsTrigger value="generator" className="gap-2 hover-scale">
-              <Code className="w-4 h-4" />
-              <span className="hidden sm:inline">Component Generator</span>
-              <span className="sm:hidden">Generator</span>
-            </TabsTrigger>
+        <Tabs defaultValue="terminal" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 h-12">
             <TabsTrigger value="terminal" className="gap-2 hover-scale">
               <Terminal className="w-4 h-4" />
               <span className="hidden sm:inline">Interactive Terminal</span>
@@ -185,10 +179,6 @@ export default function EnhancedDevEnvironment() {
               <span className="sm:hidden">Docs</span>
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="generator" className="mt-6 animate-fade-in">
-            <ReactGenerationHub />
-          </TabsContent>
 
           <TabsContent value="terminal" className="mt-6 animate-fade-in">
             <Card className="p-6 border-2">

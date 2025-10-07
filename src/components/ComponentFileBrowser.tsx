@@ -10,7 +10,12 @@ import Prism from 'prismjs';
 import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-tsx';
 import 'prismjs/themes/prism-tomorrow.css';
-import type { GeneratedFile } from '@/hooks/useReactGeneration';
+
+interface GeneratedFile {
+  path: string;
+  code: string;
+  type: string;
+}
 
 interface ComponentFileBrowserProps {
   files: GeneratedFile[];
