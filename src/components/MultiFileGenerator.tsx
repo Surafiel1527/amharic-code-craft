@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, FileCode2, Package, Folder, CheckCircle2 } from "lucide-react";
+import { Loader2, FileCode2, Package, Folder, CheckCircle2, Code2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StackBlitzPreview } from "./StackBlitzPreview";
+import { FileTreeView } from "./FileTreeView";
+import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface MultiFileGeneratorProps {
   projectId: string;
@@ -19,8 +22,12 @@ interface MultiFileGeneratorProps {
 export function MultiFileGenerator({ projectId, conversationId, onFilesGenerated }: MultiFileGeneratorProps) {
   const navigate = useNavigate();
   const [request, setRequest] = useState("");
+  const [framework, setFramework] = useState<"react" | "html" | "vue">("react");
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [progress, setProgress] = useState(0);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [generatedFiles, setGeneratedFiles] = useState<any[]>([]);
 
   const handleGenerate = async () => {
     if (!request.trim()) {
@@ -30,38 +37,73 @@ export function MultiFileGenerator({ projectId, conversationId, onFilesGenerated
 
     setIsGenerating(true);
     setResult(null);
+    setProgress(0);
+    setGeneratedFiles([]);
+    setStatusMessage("Connecting to AI...");
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase.functions.invoke('multi-file-generate', {
-        body: {
+      const streamUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/multi-file-stream`;
+      
+      const response = await fetch(streamUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
           userRequest: request,
+          framework,
           projectId,
           conversationId
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
+        })
       });
 
-      if (error) throw error;
+      if (!response.ok) throw new Error('Failed to start generation');
 
-      setResult(data);
-      toast.success(`Generated ${data.files.length} files successfully!`);
-      onFilesGenerated();
-      
-      // Redirect to workspace after a short delay to show the preview
-      setTimeout(() => {
-        navigate(`/workspace/${projectId}`);
-        toast.success("Opening workspace with your generated files...");
-      }, 2000);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) throw new Error('No stream reader available');
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value);
+        const lines = text.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            const data = JSON.parse(line.slice(5));
+            
+            if (line.startsWith('event: status')) {
+              setStatusMessage(data.message);
+              setProgress(data.progress);
+            } else if (line.startsWith('event: file')) {
+              setGeneratedFiles(prev => [...prev, data.file]);
+              setProgress(data.progress);
+              setStatusMessage(`Generating ${data.current}/${data.total} files...`);
+            } else if (line.startsWith('event: complete')) {
+              setResult(data);
+              setProgress(100);
+              toast.success(`Generated ${data.files.length} files successfully!`);
+              onFilesGenerated();
+            } else if (line.startsWith('event: error')) {
+              throw new Error(data.message);
+            }
+          }
+        }
+      }
+
     } catch (error: any) {
       console.error('Generation error:', error);
       toast.error(error.message || 'Failed to generate files');
-    } finally {
       setIsGenerating(false);
+      setProgress(0);
+      setStatusMessage("");
     }
   };
 
@@ -74,13 +116,49 @@ export function MultiFileGenerator({ projectId, conversationId, onFilesGenerated
         </h3>
         
         <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">Framework</label>
+            <Select value={framework} onValueChange={(v: any) => setFramework(v)} disabled={isGenerating}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="react">
+                  <div className="flex items-center gap-2">
+                    <Code2 className="w-4 h-4" />
+                    React + TypeScript
+                  </div>
+                </SelectItem>
+                <SelectItem value="html">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    HTML + CSS + JS
+                  </div>
+                </SelectItem>
+                <SelectItem value="vue">
+                  <div className="flex items-center gap-2">
+                    <Code2 className="w-4 h-4" />
+                    Vue 3 + TypeScript
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <Textarea
             value={request}
             onChange={(e) => setRequest(e.target.value)}
-            placeholder="Describe your project... e.g., 'Create a React todo app with TypeScript, local storage, and dark mode'"
+            placeholder="Describe your project... e.g., 'Create a todo app with local storage and dark mode'"
             className="min-h-[100px]"
             disabled={isGenerating}
           />
+
+          {isGenerating && (
+            <div className="space-y-2">
+              <Progress value={progress} />
+              <p className="text-sm text-muted-foreground">{statusMessage}</p>
+            </div>
+          )}
 
           <Button 
             onClick={handleGenerate} 
@@ -90,17 +168,27 @@ export function MultiFileGenerator({ projectId, conversationId, onFilesGenerated
             {isGenerating ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Generating Project...
+                Generating {framework.toUpperCase()} Project...
               </>
             ) : (
               <>
                 <FileCode2 className="w-4 h-4 mr-2" />
-                Generate Multi-File Project
+                Generate {framework.toUpperCase()} Project
               </>
             )}
           </Button>
         </div>
       </Card>
+
+      {generatedFiles.length > 0 && !result && (
+        <Card className="p-4">
+          <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Generating Files...
+          </h4>
+          <FileTreeView files={generatedFiles} />
+        </Card>
+      )}
 
       {result && (
         <Card className="p-4 space-y-4">
@@ -144,21 +232,7 @@ export function MultiFileGenerator({ projectId, conversationId, onFilesGenerated
 
           <div>
             <h5 className="text-sm font-semibold mb-2">Generated Files:</h5>
-            <ScrollArea className="h-[200px] border rounded-lg">
-              <div className="p-2 space-y-1">
-                {result.files.map((file: any) => (
-                  <div key={file.path} className="flex items-center justify-between text-sm py-1 px-2 hover:bg-accent rounded">
-                    <div className="flex items-center gap-2">
-                      <FileCode2 className="w-3 h-3" />
-                      <span className="font-mono text-xs">{file.path}</span>
-                    </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {file.type}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
+            <FileTreeView files={result.files} />
           </div>
 
           {result.architecture && (
@@ -171,10 +245,31 @@ export function MultiFileGenerator({ projectId, conversationId, onFilesGenerated
       )}
 
       {result && result.files && result.files.length > 0 && (
-        <StackBlitzPreview 
-          files={result.files}
-          projectName={request.slice(0, 50) || "Generated Project"}
-        />
+        <>
+          <StackBlitzPreview 
+            files={result.files}
+            projectName={request.slice(0, 50) || "Generated Project"}
+          />
+          
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => navigate(`/workspace/${projectId}`)}
+              className="flex-1"
+            >
+              Open in Workspace
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => {
+                setResult(null);
+                setGeneratedFiles([]);
+                setIsGenerating(false);
+              }}
+            >
+              Generate Another
+            </Button>
+          </div>
+        </>
       )}
     </div>
   );
