@@ -159,27 +159,29 @@ export async function callAIWithFallback(
     }
   }
 
-  // ============ PHASE 3: Emergency Direct Gemini Fallback ============
+  // ============ PHASE 3: Emergency Direct Gemini Fallback (OPTIONAL) ============
   if (!enableEmergencyFallback) {
-    throw new Error(
-      `All Lovable Gateway attempts exhausted after ${totalAttempts} attempts. ` +
-      `Last error: ${lastError?.message}. Emergency fallback disabled.`
-    );
-  }
-
-  console.log('🆘 Layer 3 (Emergency) - All Lovable Gateway attempts failed. Activating direct Gemini API fallback...');
-  
-  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-  if (!GEMINI_API_KEY) {
     const errorMsg = 
-      `⚠️ CRITICAL: All AI layers failed!\n` +
-      `Lovable Gateway: ${lastError?.message}\n` +
-      `Emergency Fallback: GEMINI_API_KEY not configured.\n` +
-      `Total attempts: ${totalAttempts}\n\n` +
-      `To enable emergency fallback, add GEMINI_API_KEY in your secrets.`;
+      `All Lovable Gateway attempts exhausted after ${totalAttempts} attempts.\n` +
+      `Last error: ${lastError?.message}\n` +
+      `Emergency fallback is disabled.`;
     console.error(errorMsg);
     throw new Error(errorMsg);
   }
+
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+  if (!GEMINI_API_KEY) {
+    const errorMsg = 
+      `⚠️ All Lovable Gateway attempts failed after ${totalAttempts} tries.\n` +
+      `Last error: ${lastError?.message}\n\n` +
+      `Note: Emergency Gemini fallback is not configured (optional).\n` +
+      `The system works perfectly with just Lovable AI.\n` +
+      `To add emergency fallback, configure GEMINI_API_KEY in secrets.`;
+    console.warn(errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  console.log('🆘 Layer 3 (Emergency) - Attempting direct Gemini API fallback (optional feature)...');
 
   // Retry logic for emergency fallback
   for (let retry = 0; retry <= maxRetries; retry++) {

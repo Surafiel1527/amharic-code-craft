@@ -379,6 +379,21 @@ const Index = () => {
       
       const errorMsg = error instanceof Error ? error.message : "Failed to generate project";
       toast.error(errorMsg, { id: 'gen-toast' });
+      
+      // Clean up failed generation project
+      if (currentProjectId) {
+        try {
+          await supabase
+            .from("projects")
+            .update({
+              title: `[Failed] ${prompt.substring(0, 50)}`,
+              html_code: `<!-- Generation failed: ${errorMsg} -->`
+            })
+            .eq('id', currentProjectId);
+        } catch (cleanupError) {
+          console.error("Failed to update project status:", cleanupError);
+        }
+      }
     } finally {
       setIsGenerating(false);
     }
