@@ -413,22 +413,6 @@ serve(async (req) => {
         if (error) console.warn('Failed to log audit:', error);
       });
 
-    const finalFiles = generation.files;
-    
-    // Format the generated code for frontend display
-    let generatedCode = '';
-    if (finalFiles && finalFiles.length > 0) {
-      // If it's a single HTML file, return just that
-      if (finalFiles.length === 1 && finalFiles[0].path.endsWith('.html')) {
-        generatedCode = finalFiles[0].content;
-      } else {
-        // Create a combined view of all files
-        generatedCode = finalFiles.map((file: any) => 
-          `// File: ${file.path}\n${file.description ? `// ${file.description}\n` : ''}${file.content}\n\n`
-        ).join('\n');
-      }
-    }
-    
     return new Response(
       JSON.stringify({
         success: true,
