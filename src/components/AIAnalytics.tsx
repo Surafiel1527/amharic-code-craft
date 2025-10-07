@@ -60,7 +60,7 @@ export const AIAnalytics = () => {
   const triggerMetaImprovement = async () => {
     setImproving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('meta-improve');
+      const { data, error } = await supabase.functions.invoke('meta-self-improvement');
       
       if (error) throw error;
 

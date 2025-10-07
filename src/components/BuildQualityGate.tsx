@@ -60,7 +60,7 @@ export const BuildQualityGate = ({
     setIsChecking(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('build-quality-gate', {
+      const { data, error } = await supabase.functions.invoke('unified-quality', {
         body: {
           projectId,
           validationResults

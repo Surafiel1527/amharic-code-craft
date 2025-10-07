@@ -100,11 +100,12 @@ export default function AdminSelfModifyChat({ onCustomizationApplied }: AdminSel
           content: userMessage
         });
 
-      // Call the admin-self-modify edge function
-      const { data, error } = await supabase.functions.invoke('admin-self-modify', {
+      // Use mega-mind-orchestrator for admin modifications
+      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
         body: { 
-          prompt: userMessage,
-          userId: user.id
+          request: userMessage,
+          requestType: 'admin-modification',
+          context: { userId: user.id }
         }
       });
 

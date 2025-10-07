@@ -58,7 +58,7 @@ export const AutoFixEngine = ({
     setIsGenerating(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('auto-fix-engine', {
+      const { data, error } = await supabase.functions.invoke('autonomous-healing-engine', {
         body: {
           code,
           language,

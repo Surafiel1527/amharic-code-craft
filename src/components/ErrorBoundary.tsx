@@ -32,7 +32,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private async reportErrorToSystem(error: Error, errorInfo: ErrorInfo) {
     try {
-      await supabase.functions.invoke('report-error', {
+      await supabase.functions.invoke('unified-monitoring', {
         body: {
           errorType: error.name,
           errorMessage: error.message,

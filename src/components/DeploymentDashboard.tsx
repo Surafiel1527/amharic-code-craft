@@ -54,7 +54,7 @@ export const DeploymentDashboard = ({
         return acc;
       }, {} as Record<string, string>);
 
-      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('ai-deployment-advisor', {
+      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('unified-deployment', {
         body: {
           deploymentId: 'temp-' + Date.now(),
           projectFiles: filesObject,

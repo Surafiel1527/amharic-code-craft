@@ -44,7 +44,7 @@ const formatPrice = (price) => {
 };
       `.trim();
 
-      const { data, error } = await supabase.functions.invoke('learn-user-preferences', {
+      const { data, error } = await supabase.functions.invoke('self-learning-engine', {
         body: {
           userId: userData.user.id,
           generatedCode: sampleCode,
@@ -104,7 +104,7 @@ const createUser = async (userData) => {
 };
       `.trim();
 
-      await supabase.functions.invoke('multi-project-learn', {
+      await supabase.functions.invoke('unified-learning', {
         body: {
           action: 'learn',
           userId: userData.user.id,
@@ -115,7 +115,7 @@ const createUser = async (userData) => {
       });
 
       // Then retrieve patterns
-      const { data, error } = await supabase.functions.invoke('multi-project-learn', {
+      const { data, error } = await supabase.functions.invoke('unified-learning', {
         body: {
           action: 'retrieve',
           userId: userData.user.id,

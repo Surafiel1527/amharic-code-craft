@@ -58,7 +58,7 @@ export default function BeyondMegaMindDashboard() {
     setMultiModalResult(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('multi-modal-generator', {
+      const { data, error } = await supabase.functions.invoke('unified-ai-workers', {
         body: { 
           prompt: multiModalPrompt,
           includeImages,
@@ -93,7 +93,7 @@ export default function BeyondMegaMindDashboard() {
     try {
       const base64Data = designImagePreview.split(',')[1];
       
-      const { data, error } = await supabase.functions.invoke('visual-code-generator', {
+      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
         body: {
           imageBase64: base64Data,
           description: designDescription,

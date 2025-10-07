@@ -47,7 +47,7 @@ export const AutomatedTestGenerator = ({
     setIsGenerating(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('automated-test-generator', {
+      const { data, error } = await supabase.functions.invoke('unified-test-manager', {
         body: {
           sourceCode,
           language,

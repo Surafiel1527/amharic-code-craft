@@ -91,7 +91,7 @@ export const AutonomousTestingDashboard = () => {
 
   const runTests = async (suiteId?: string) => {
     try {
-      const { error } = await supabase.functions.invoke('ai-test-auto-runner', {
+      const { error } = await supabase.functions.invoke('unified-test-manager', {
         body: { suiteId }
       });
 

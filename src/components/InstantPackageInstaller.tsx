@@ -50,7 +50,7 @@ function MyComponent() {
     }, 200);
 
     try {
-      const { data, error } = await supabase.functions.invoke('intelligent-package-installer', {
+      const { data, error } = await supabase.functions.invoke('unified-package-manager', {
         body: { code, projectType: 'react' }
       });
 

@@ -25,7 +25,7 @@ export const DeploymentLogsViewer = ({ deploymentId }: { deploymentId: string })
 
   const loadLogs = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('vercel-logs', {
+      const { data, error } = await supabase.functions.invoke('vercel-integration', {
         body: { deploymentId },
       });
 
