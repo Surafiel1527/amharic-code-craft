@@ -49,6 +49,7 @@ import { DynamicComponent } from "@/components/DynamicComponent";
 import { PreviewBanner } from "@/components/PreviewBanner";
 import { usePreviewMode } from "@/hooks/usePreviewMode";
 import { GeneratedProjectViewer } from "@/components/GeneratedProjectViewer";
+import { StackBlitzPreview } from "@/components/StackBlitzPreview";
 import { retryWithBackoff, validateRequest, formatErrorMessage, logMetrics } from "@/utils/orchestrationHelpers";
 
 interface Project {
@@ -908,8 +909,16 @@ const Index = () => {
               try {
                 const parsedFiles = JSON.parse(generatedCode);
                 if (Array.isArray(parsedFiles) && parsedFiles.length > 0 && parsedFiles[0].path) {
-                  // It's a React multi-file project - show file browser
-                  return <GeneratedProjectViewer files={parsedFiles} projectTitle={projectTitle} />;
+                  // It's a React multi-file project - show file browser + live preview
+                  return (
+                    <div className="space-y-4">
+                      <GeneratedProjectViewer files={parsedFiles} projectTitle={projectTitle || prompt || "Generated Project"} />
+                      <StackBlitzPreview 
+                        files={parsedFiles} 
+                        projectName={projectTitle || prompt || "Generated Project"}
+                      />
+                    </div>
+                  );
                 }
               } catch {
                 // It's HTML code - show device preview
