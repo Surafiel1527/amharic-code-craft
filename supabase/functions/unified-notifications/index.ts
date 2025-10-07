@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface NotificationOperation {
-  operation: 'send' | 'send_bulk' | 'get_user_notifications' | 'mark_read' | 'mark_all_read' | 'delete' | 'get_preferences' | 'update_preferences';
+  operation: 'send' | 'send_bulk' | 'get_user_notifications' | 'mark_read' | 'mark_all_read' | 'delete' | 'get_preferences' | 'update_preferences' | 'send_alert';
   params: any;
 }
 
@@ -53,6 +53,9 @@ serve(async (req) => {
         break;
       case 'update_preferences':
         result = await handleUpdatePreferences(payload.params, supabase, requestId);
+        break;
+      case 'send_alert':
+        result = await handleSendAlert(payload.params, supabase, requestId);
         break;
       default:
         throw new Error(`Unknown operation: ${payload.operation}`);
@@ -263,4 +266,62 @@ async function handleUpdatePreferences(params: any, supabase: any, requestId: st
 
   console.log(`[${requestId}] Notification preferences updated`);
   return { preferences };
+}
+
+async function handleSendAlert(params: any, supabase: any, requestId: string) {
+  const { alert_type, severity, title, message, metadata = {} } = params;
+  
+  if (!alert_type || !severity || !title || !message) {
+    throw new Error('alert_type, severity, title, and message are required');
+  }
+
+  console.log(`[${requestId}] Sending alert: ${title} (${severity})`);
+
+  const { data: alertId, error: alertError } = await supabase.rpc('send_alert', {
+    p_alert_type: alert_type,
+    p_severity: severity,
+    p_title: title,
+    p_message: message,
+    p_metadata: metadata
+  });
+
+  if (alertError) throw alertError;
+
+  const { data: admins } = await supabase
+    .from('user_roles')
+    .select('user_id')
+    .eq('role', 'admin');
+
+  if (admins && admins.length > 0 && ['error', 'critical'].includes(severity)) {
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    if (resendApiKey) {
+      const { data: users } = await supabase.auth.admin.listUsers();
+      const adminEmails = users.users
+        .filter((u: any) => admins.some((a: any) => a.user_id === u.id))
+        .map((u: any) => u.email)
+        .filter(Boolean);
+
+      if (adminEmails.length > 0) {
+        try {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${resendApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              from: 'alerts@yourdomain.com',
+              to: adminEmails,
+              subject: `[${severity.toUpperCase()}] ${title}`,
+              html: `<h2>${title}</h2><p><strong>Severity:</strong> ${severity}</p><p>${message}</p>`
+            })
+          });
+        } catch (emailError) {
+          console.error(`[${requestId}] Email error:`, emailError);
+        }
+      }
+    }
+  }
+
+  return { success: true, alert_id: alertId };
 }

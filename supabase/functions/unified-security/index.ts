@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface SecurityOperation {
-  operation: 'scan_code' | 'scan_dependencies' | 'check_vulnerabilities' | 'audit_access' | 'validate_permissions' | 'encrypt_data' | 'generate_report' | 'get_security_score';
+  operation: 'scan_code' | 'scan_dependencies' | 'check_vulnerabilities' | 'audit_access' | 'validate_permissions' | 'encrypt_data' | 'generate_report' | 'get_security_score' | 'encrypt' | 'decrypt' | 'security_audit';
   params: any;
 }
 

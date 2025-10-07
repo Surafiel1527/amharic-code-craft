@@ -40,6 +40,11 @@ serve(async (req) => {
       case 'react-generation':
         result = await handleReactGeneration(params, supabase);
         break;
+      case 'execute':
+        result = await handleExecute(params, supabase);
+        break;
+      case 'stream_generation':
+        return await handleStreamGeneration(params, supabase, req);
       default:
         throw new Error(`Unknown operation: ${operation}`);
     }
@@ -286,5 +291,142 @@ Guidelines:
       }]
     };
   }
+}
+
+async function handleExecute(params: any, supabase: any) {
+  const { code, language, projectId, userId } = params;
+  const startTime = performance.now();
+
+  let result;
+  if (language === 'typescript' || language === 'javascript') {
+    result = await executeJavaScript(code);
+  } else if (language === 'python') {
+    result = { success: false, output: '', error: 'Python execution requires external runtime', memoryUsed: 0 };
+  } else {
+    throw new Error(`Unsupported language: ${language}`);
+  }
+
+  const executionTime = performance.now() - startTime;
+
+  if (projectId && userId) {
+    await supabase.from('code_executions').insert({
+      project_id: projectId,
+      user_id: userId,
+      code,
+      language,
+      output: result.output,
+      error: result.error,
+      execution_time_ms: executionTime,
+      memory_used_mb: result.memoryUsed,
+      success: result.success
+    });
+  }
+
+  return { ...result, executionTime: Math.round(executionTime) };
+}
+
+async function executeJavaScript(code: string) {
+  const capturedLogs: string[] = [];
+  const memoryBefore = (performance as any).memory?.usedJSHeapSize || 0;
+
+  const safeConsole = {
+    log: (...args: any[]) => capturedLogs.push(args.map(a => String(a)).join(' ')),
+    error: (...args: any[]) => capturedLogs.push('[ERROR] ' + args.map(a => String(a)).join(' ')),
+    warn: (...args: any[]) => capturedLogs.push('[WARN] ' + args.map(a => String(a)).join(' ')),
+  };
+
+  try {
+    const wrappedCode = `(async () => { const console = arguments[0]; ${code} })(arguments[0])`;
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Execution timeout (5s)')), 5000)
+    );
+    const executionPromise = (async () => {
+      const func = new Function('arguments', wrappedCode);
+      await func(safeConsole);
+    })();
+
+    await Promise.race([executionPromise, timeoutPromise]);
+
+    const memoryAfter = (performance as any).memory?.usedJSHeapSize || 0;
+    const memoryUsed = Math.max(0, (memoryAfter - memoryBefore) / (1024 * 1024));
+
+    return {
+      success: true,
+      output: capturedLogs.join('\n') || 'Code executed successfully',
+      error: null,
+      memoryUsed: Number(memoryUsed.toFixed(2))
+    };
+  } catch (error) {
+    const memoryAfter = (performance as any).memory?.usedJSHeapSize || 0;
+    const memoryUsed = Math.max(0, (memoryAfter - memoryBefore) / (1024 * 1024));
+
+    return {
+      success: false,
+      output: capturedLogs.join('\n'),
+      error: error instanceof Error ? error.message : String(error),
+      memoryUsed: Number(memoryUsed.toFixed(2))
+    };
+  }
+}
+
+async function handleStreamGeneration(params: any, supabase: any, req: any) {
+  const { userRequest, framework, projectId, conversationId } = params;
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+  const stream = new TransformStream();
+  const writer = stream.writable.getWriter();
+  const encoder = new TextEncoder();
+
+  const sendEvent = async (event: string, data: any) => {
+    await writer.write(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+  };
+
+  (async () => {
+    try {
+      await sendEvent('status', { message: 'Analyzing requirements...', progress: 10 });
+
+      const systemPrompt = `You are an expert code generator. Generate a complete ${framework} project.
+Return JSON: { "files": [{"path": "...", "content": "...", "type": "..."}], "framework": "...", "architecture": "...", "stats": {...} }`;
+
+      await sendEvent('status', { message: 'Generating files...', progress: 30 });
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userRequest }],
+          response_format: { type: "json_object" }
+        }),
+      });
+
+      if (!response.ok) throw new Error(`AI generation failed: ${response.status}`);
+
+      const aiResponse = await response.json();
+      const result = JSON.parse(aiResponse.choices[0].message.content);
+
+      for (let i = 0; i < result.files.length; i++) {
+        await sendEvent('file', { file: result.files[i], progress: 60 + (i / result.files.length) * 30 });
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      await sendEvent('complete', { ...result, projectId, conversationId });
+      await sendEvent('status', { message: 'Done!', progress: 100 });
+    } catch (error) {
+      await sendEvent('error', { message: error instanceof Error ? error.message : 'Generation failed' });
+    } finally {
+      await writer.close();
+    }
+  })();
+
+  return new Response(stream.readable, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
 }
 

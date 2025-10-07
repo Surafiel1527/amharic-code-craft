@@ -45,6 +45,9 @@ serve(async (req) => {
       case 'health_status':
         result = await handleHealthStatus(params, supabase);
         break;
+      case 'deployment_health_check':
+        result = await handleDeploymentHealthCheck(params, supabase);
+        break;
       default:
         throw new Error(`Unknown operation: ${operation}`);
     }
@@ -270,4 +273,92 @@ async function handleHealthStatus(params: any, supabase: any) {
     },
     timestamp: new Date().toISOString()
   };
+}
+
+async function handleDeploymentHealthCheck(params: any, supabase: any) {
+  const { deploymentId, checkAll } = params;
+
+  if (checkAll) {
+    // Check all active deployments
+    const { data: deployments } = await supabase
+      .from('vercel_deployments' as any)
+      .select('id, deployment_url')
+      .eq('status', 'ready')
+      .gte('completed_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+    if (!deployments || deployments.length === 0) {
+      return { message: 'No active deployments', checked: 0 };
+    }
+
+    const healthChecks = await Promise.allSettled(
+      deployments.map(async (dep: any) => {
+        if (!dep.deployment_url) return null;
+        const startTime = Date.now();
+        try {
+          const response = await fetch(dep.deployment_url, {
+            method: 'HEAD',
+            signal: AbortSignal.timeout(5000)
+          });
+          const responseTime = Date.now() - startTime;
+          await supabase.from('deployment_health_checks' as any).insert({
+            deployment_id: dep.id,
+            check_type: 'uptime',
+            status: response.ok ? 'healthy' : 'degraded',
+            response_time_ms: responseTime
+          });
+          return { deployment_id: dep.id, healthy: response.ok };
+        } catch {
+          await supabase.from('deployment_health_checks' as any).insert({
+            deployment_id: dep.id,
+            check_type: 'uptime',
+            status: 'unhealthy',
+            response_time_ms: Date.now() - startTime
+          });
+          return { deployment_id: dep.id, healthy: false };
+        }
+      })
+    );
+
+    return {
+      checked: deployments.length,
+      results: healthChecks.filter(r => r.status === 'fulfilled' && r.value !== null)
+    };
+  }
+
+  // Check single deployment
+  if (!deploymentId) throw new Error('deploymentId required');
+
+  const { data: deployment } = await supabase
+    .from('vercel_deployments' as any)
+    .select('deployment_url')
+    .eq('id', deploymentId)
+    .single();
+
+  if (!deployment?.deployment_url) throw new Error('Deployment not found');
+
+  const startTime = Date.now();
+  try {
+    const response = await fetch(deployment.deployment_url, {
+      method: 'HEAD',
+      signal: AbortSignal.timeout(5000)
+    });
+    const responseTime = Date.now() - startTime;
+
+    await supabase.from('deployment_health_checks' as any).insert({
+      deployment_id: deploymentId,
+      check_type: 'uptime',
+      status: response.ok ? 'healthy' : 'degraded',
+      response_time_ms: responseTime
+    });
+
+    return { healthy: response.ok, responseTime };
+  } catch (error) {
+    await supabase.from('deployment_health_checks' as any).insert({
+      deployment_id: deploymentId,
+      check_type: 'uptime',
+      status: 'unhealthy',
+      response_time_ms: Date.now() - startTime
+    });
+    return { healthy: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
 }

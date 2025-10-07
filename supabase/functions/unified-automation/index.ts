@@ -56,7 +56,8 @@ serve(async (req) => {
       'list_workflows',
       'trigger_automation',
       'get_execution_status',
-      'schedule_task'
+      'schedule_task',
+      'process_job_queue'
     ];
 
     if (!validOperations.includes(payload.operation)) {
@@ -91,6 +92,9 @@ serve(async (req) => {
         break;
       case 'schedule_task':
         result = await scheduleTask(payload, supabase, requestId);
+        break;
+      case 'process_job_queue':
+        result = await processJobQueue(payload, supabase, requestId);
         break;
       default:
         throw new Error(`Unhandled operation: ${payload.operation}`);
@@ -576,4 +580,96 @@ async function scheduleTask(
       scheduledFor: scheduleDate.toISOString()
     }
   };
+}
+
+/**
+ * Process job queue - check for pending jobs and execute them
+ */
+async function processJobQueue(
+  payload: AutomationOperation,
+  supabase: any,
+  requestId: string
+): Promise<AutomationResult> {
+  console.log(`[${requestId}] Processing job queue...`);
+
+  const { data: jobs, error: fetchError } = await supabase
+    .from('ai_generation_jobs')
+    .select('*')
+    .in('status', ['queued', 'running'])
+    .order('created_at', { ascending: true })
+    .limit(5);
+
+  if (fetchError) throw fetchError;
+
+  if (!jobs || jobs.length === 0) {
+    return { success: true, data: { processed: 0, message: 'No jobs in queue' } };
+  }
+
+  const results = [];
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+  for (const job of jobs) {
+    try {
+      // Check if job is stale
+      const lastUpdate = new Date(job.updated_at);
+      const minutesSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60);
+
+      if (job.status === 'running' && minutesSinceUpdate > 5) {
+        await supabase.from('ai_generation_jobs').update({
+          status: 'failed',
+          error_message: 'Job timed out',
+          updated_at: new Date().toISOString()
+        }).eq('id', job.id);
+        results.push({ id: job.id, action: 'timeout' });
+        continue;
+      }
+
+      if (job.status === 'queued') {
+        await supabase.from('ai_generation_jobs').update({
+          status: 'running',
+          started_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }).eq('id', job.id);
+      }
+
+      // Call orchestrator
+      const orchestratorResponse = await fetch(
+        `${supabaseUrl}/functions/v1/mega-mind-orchestrator`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({
+            jobId: job.id,
+            request: job.input_data?.prompt || 'Continue processing',
+            requestType: job.job_type || 'orchestration'
+          }),
+        }
+      );
+
+      if (!orchestratorResponse.ok) {
+        await supabase.from('ai_generation_jobs').update({
+          status: 'failed',
+          error_message: 'Orchestrator error',
+          updated_at: new Date().toISOString()
+        }).eq('id', job.id);
+        results.push({ id: job.id, action: 'failed' });
+        continue;
+      }
+
+      results.push({ id: job.id, action: 'processed' });
+    } catch (error) {
+      await supabase.from('ai_generation_jobs').update({
+        status: 'failed',
+        error_message: error instanceof Error ? error.message : 'Unknown error',
+        updated_at: new Date().toISOString()
+      }).eq('id', job.id);
+      results.push({ id: job.id, action: 'error' });
+    }
+  }
+
+  return { success: true, data: { processed: results.length, results } };
 }

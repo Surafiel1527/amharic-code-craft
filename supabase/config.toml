@@ -35,12 +35,6 @@ verify_jwt = false
 [functions.meta-self-improvement]
 verify_jwt = false
 
-[functions.process-job-queue]
-verify_jwt = false
-
-[functions.code-executor]
-verify_jwt = false
-
 # ============================================
 # UNIFIED WORKER FUNCTIONS (20)
 # Enterprise-grade consolidated operations
@@ -106,46 +100,10 @@ verify_jwt = true
 [functions.unified-rate-limiter]
 verify_jwt = false
 
-[functions.deployment-health-monitor]
-verify_jwt = false
-
 # ============================================
-# SECURITY & ENCRYPTION FUNCTIONS
-# Advanced security features
-# ============================================
-
-[functions.encrypt-sensitive-data]
-verify_jwt = true
-
-[functions.security-audit]
-verify_jwt = true
-
-[functions.ai-code-review]
-verify_jwt = true
-
-[functions.smart-debugger]
-verify_jwt = true
-
-[functions.send-monitoring-alert]
-verify_jwt = false
-
-# ============================================
-# DEPLOYMENT & VERCEL INTEGRATION
+# VERCEL INTEGRATION
 # Production deployment pipeline
 # ============================================
 
 [functions.vercel-integration]
 verify_jwt = true
-
-[functions.complete-vercel-pipeline]
-verify_jwt = true
-
-# ============================================
-# GENERATION & STREAMING
-# Multi-file project generation
-# ============================================
-
-[functions.multi-file-stream]
-verify_jwt = true
-
-
