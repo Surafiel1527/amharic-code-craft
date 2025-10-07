@@ -38,6 +38,7 @@ import APIAccessManager from "@/components/APIAccessManager";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { MobileNav } from "@/components/MobileNav";
+import { BackendConnectionStatus } from "@/components/BackendConnectionStatus";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -558,6 +559,10 @@ const Index = () => {
                   <Keyboard className="h-4 w-4" />
                 </Button>
                 <ThemeToggle />
+                <Button variant="outline" size="sm" onClick={() => navigate("/supabase-connections")} className="gap-2 hover-scale">
+                  <Database className="h-4 w-4" />
+                  <span className="hidden lg:inline">Database</span>
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => navigate("/settings")} className="gap-2 hover-scale">
                   <Settings className="h-4 w-4" />
                   <span className="hidden lg:inline">{t("header.settings")}</span>

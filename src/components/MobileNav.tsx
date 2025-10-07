@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, TrendingUp, Shield, Settings, LogOut, Keyboard, Code, FolderOpen } from "lucide-react";
+import { Menu, TrendingUp, Shield, Settings, LogOut, Keyboard, Code, FolderOpen, Database } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -68,6 +68,15 @@ export const MobileNav = ({ isAdmin, onShowShortcuts, onSignOut }: MobileNavProp
             >
               <Keyboard className="h-4 w-4" />
               {t("shortcuts.title")}
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-2"
+              onClick={() => navigate("/supabase-connections")}
+            >
+              <Database className="h-4 w-4" />
+              Database
             </Button>
 
             <Button

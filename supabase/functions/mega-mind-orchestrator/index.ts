@@ -40,6 +40,58 @@ function sanitizeInput(input: string): string {
     .trim();
 }
 
+/**
+ * Injects Supabase client initialization into HTML
+ */
+function injectSupabaseClient(html: string, connection: any): string {
+  const supabaseInit = `
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      // Initialize Supabase client with your project
+      const supabase = window.supabase.createClient(
+        '${connection.supabase_url}',
+        '${connection.supabase_anon_key}'
+      );
+      console.log('✅ Connected to your Supabase project: ${connection.project_name}');
+      
+      // Helper functions for database operations
+      async function insertData(table, data) {
+        const { data: result, error } = await supabase
+          .from(table)
+          .insert(data)
+          .select();
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
+        return result;
+      }
+      
+      async function fetchData(table, filters = {}) {
+        let query = supabase.from(table).select('*');
+        Object.entries(filters).forEach(([key, value]) => {
+          query = query.eq(key, value);
+        });
+        const { data, error } = await query;
+        if (error) {
+          console.error('Fetch error:', error);
+          throw error;
+        }
+        return data;
+      }
+    </script>
+  `;
+  
+  // Insert before </head> or before </body> if no </head>
+  if (html.includes('</head>')) {
+    return html.replace('</head>', `${supabaseInit}\n  </head>`);
+  } else if (html.includes('</body>')) {
+    return html.replace('</body>', `${supabaseInit}\n</body>`);
+  }
+  return html + supabaseInit;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -365,7 +417,7 @@ serve(async (req) => {
     // PHASE 2: Generate solution
     console.log('⚡ Phase 2: Generating solution...');
     await updateJobProgress(40, 'Generating solution...');
-    const generation = await generateSolution(request, requestType, analysis, context, supabaseClient, orchestrationId, broadcast);
+    const generation = await generateSolution(request, requestType, analysis, context, supabaseClient, orchestrationId, broadcast, userSupabaseConnection);
     
     await supabaseClient
       .from('mega_mind_orchestrations')
@@ -383,7 +435,7 @@ serve(async (req) => {
       await updateJobProgress(50, 'Setting up database and backend...');
       await broadcast('generation:phase', { phase: 'generating', progress: 50, message: 'Creating database and backend...' });
       
-      backendGeneration = await generateBackend(request, analysis, context, supabaseClient, userId, broadcast);
+      backendGeneration = await generateBackend(request, analysis, context, supabaseClient, userId, broadcast, userSupabaseConnection);
       
       await supabaseClient
         .from('mega_mind_orchestrations')
@@ -610,9 +662,16 @@ serve(async (req) => {
         if (backendParts.length > 0) {
           assistantMessage += ` Including ${backendParts.join(', ')}.`;
         }
+        
+        // Add connection status
+        if (backendGeneration.connection?.hasConnection) {
+          assistantMessage += `\n\n✅ **Connected to Your Supabase:** ${backendGeneration.connection.project_name}\nYou have full control over your database at: ${backendGeneration.connection.supabase_url}`;
+        } else {
+          assistantMessage += `\n\n⚠️ **Using Platform Database:** For full control, connect your own Supabase project at /supabase-connections`;
+        }
       }
       
-      assistantMessage += ` ${generation.instructions || 'Your project is ready to view!'}`;
+      assistantMessage += `\n\n${generation.instructions || 'Your project is ready to view!'}`;
       
       const { error: assistantMsgError } = await supabaseClient
         .from('messages')
@@ -625,7 +684,8 @@ serve(async (req) => {
             orchestrationId, 
             filesGenerated: generation.files?.length || 0,
             outputType: analysis.outputType,
-            hasBackend: !!backendGeneration
+            hasBackend: !!backendGeneration,
+            userSupabaseConnection: userSupabaseConnection ? userSupabaseConnection.project_name : null
           }
         });
       
@@ -667,6 +727,13 @@ serve(async (req) => {
         analysis,
         generation,
         backend: backendGeneration,
+        connection: userSupabaseConnection ? {
+          project_name: userSupabaseConnection.project_name,
+          supabase_url: userSupabaseConnection.supabase_url,
+          message: `✅ Connected to your Supabase: ${userSupabaseConnection.project_name}`
+        } : {
+          message: '⚠️ Using platform database. Connect your own Supabase at /supabase-connections for full control'
+        },
         quickVerification,
         filesGenerated: generation.files?.length || 0,
         outputType: analysis.outputType,
@@ -818,7 +885,7 @@ async function analyzeRequest(request: string, requestType: string, context: any
   return JSON.parse(data.choices[0].message.content);
 }
 
-async function generateSimpleWebsite(request: string, analysis: any, broadcast: any): Promise<any> {
+async function generateSimpleWebsite(request: string, analysis: any, broadcast: any, userSupabaseConnection?: any): Promise<any> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
@@ -945,6 +1012,15 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     result.files = [];
   }
   
+  // Inject Supabase client initialization if user has a connection
+  if (userSupabaseConnection && result.files.length > 0) {
+    const htmlFile = result.files.find((f: any) => f.path.endsWith('.html'));
+    if (htmlFile && htmlFile.content) {
+      htmlFile.content = injectSupabaseClient(htmlFile.content, userSupabaseConnection);
+      console.log(`✅ Injected Supabase client for project: ${userSupabaseConnection.project_name}`);
+    }
+  }
+  
   return result;
 }
 
@@ -1000,7 +1076,7 @@ async function detectDependencies(analysis: any, context: any): Promise<any[]> {
   return result.dependencies || result || [];
 }
 
-async function generateSolution(request: string, requestType: string, analysis: any, context: any, supabase: any, conversationId: string, broadcast: any): Promise<any> {
+async function generateSolution(request: string, requestType: string, analysis: any, context: any, supabase: any, conversationId: string, broadcast: any, userSupabaseConnection?: any): Promise<any> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
@@ -1009,7 +1085,7 @@ async function generateSolution(request: string, requestType: string, analysis: 
   
   if (outputType === 'html-website') {
     console.log('🌐 Generating HTML/CSS/JS website...');
-    return await generateSimpleWebsite(request, analysis, broadcast);
+    return await generateSimpleWebsite(request, analysis, broadcast, userSupabaseConnection);
   }
   
   // Broadcast thinking status for React apps
@@ -1347,7 +1423,8 @@ async function generateBackend(
   context: any, 
   supabase: any,
   userId: string, 
-  broadcast: any
+  broadcast: any,
+  userSupabaseConnection: any
 ): Promise<any> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
@@ -1357,7 +1434,15 @@ async function generateBackend(
     database: null,
     edgeFunctions: [],
     authentication: null,
-    storage: null
+    storage: null,
+    connection: userSupabaseConnection ? {
+      project_name: userSupabaseConnection.project_name,
+      supabase_url: userSupabaseConnection.supabase_url,
+      hasConnection: true
+    } : {
+      hasConnection: false,
+      message: 'Using platform database. Connect your Supabase at /supabase-connections for full control.'
+    }
   };
 
   try {
