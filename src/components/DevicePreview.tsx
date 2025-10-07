@@ -14,66 +14,34 @@ export function DevicePreview({ generatedCode }: DevicePreviewProps) {
   const { t } = useLanguage();
   const [deviceSize, setDeviceSize] = useState<DeviceSize>("desktop");
   
-  // Clean code by removing markdown code fences and any JSON artifacts
+  // Clean code by removing markdown code fences and any JSON artifacts - PRODUCTION READY
   const cleanCode = (() => {
     if (!generatedCode) return '';
     
     let code = generatedCode.trim();
     
-    // Remove markdown code fences if present
+    // Remove markdown code fences
     code = code.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
     
-    // CRITICAL: If it's already clean HTML, return immediately
+    // If it's clean HTML, return immediately
     if (code.startsWith('<!DOCTYPE') || code.startsWith('<html') || code.includes('<body')) {
       return code;
     }
     
-    // Try to parse as JSON and extract HTML content
+    // Try parsing as JSON for multi-file projects
     try {
       const parsed = JSON.parse(code);
-      
-      // Handle array of files (multi-file project)
       if (Array.isArray(parsed)) {
-        if (parsed.length === 0) return '';
-        
-        // Find HTML file in array
-        const htmlFile = parsed.find((f: any) => {
-          if (!f) return false;
-          const path = f.path || f.name || '';
-          const content = f.content || '';
-          return path.match(/\.(html?|htm)$/i) || 
-                 content.includes('<!DOCTYPE html>') ||
-                 content.includes('<html') ||
-                 content.includes('<body');
-        });
-        
-        if (htmlFile?.content) {
-          return htmlFile.content;
-        }
-        
-        // If no HTML file found but there's content, check first file
-        if (parsed[0]?.content) {
-          const firstContent = parsed[0].content;
-          if (firstContent.includes('<!DOCTYPE') || firstContent.includes('<html')) {
-            return firstContent;
-          }
-        }
-      } 
-      // Handle single file object
-      else if (parsed.content && typeof parsed.content === 'string') {
-        return parsed.content;
+        const htmlFile = parsed.find((f: any) => 
+          f?.path?.endsWith('.html') || f?.content?.includes('<!DOCTYPE')
+        );
+        return htmlFile?.content || '';
       }
-      // Handle direct content
-      else if (typeof parsed === 'string') {
-        return parsed;
-      }
-    } catch (parseError) {
-      // Not JSON - could be raw HTML with issues
-      console.log('DevicePreview: Content is not JSON, treating as raw HTML');
+      return parsed.content || parsed.html || '';
+    } catch {
+      // Return as-is if not JSON
+      return code;
     }
-    
-    // Last resort: return the original code
-    return code;
   })();
 
   // Inject script to fix header navigation

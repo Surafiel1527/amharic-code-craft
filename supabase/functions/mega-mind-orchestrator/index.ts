@@ -50,6 +50,21 @@ serve(async (req) => {
     
     // Extract projectId from context if available
     const projectId = context.projectId || null;
+    
+    // Broadcast function for real-time updates
+    const broadcast = async (eventType: string, data: any) => {
+      if (!projectId) return;
+      try {
+        await supabaseClient.channel(`project-${projectId}`)
+          .send({
+            type: 'broadcast',
+            event: eventType,
+            payload: { ...data, timestamp: new Date().toISOString() }
+          });
+      } catch (e) {
+        console.error('Broadcast error:', e);
+      }
+    };
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -188,6 +203,7 @@ serve(async (req) => {
     // PHASE 1: Analyze the request
     console.log('📊 Phase 1: Analyzing request...');
     await updateJobProgress(20, 'Analyzing request...');
+    await broadcast('generation:phase', { phase: 'analyzing', progress: 20, message: 'Analyzing your requirements...' });
     const analysis = await analyzeRequest(sanitizedRequest, requestType, context);
     
     console.log('📋 Analysis result:', JSON.stringify(analysis, null, 2));
@@ -203,6 +219,7 @@ serve(async (req) => {
     // Always generate React components (this is a React project)
     console.log('🚀 Generating React components for Lovable project...');
     await updateJobProgress(50, 'Generating React components...');
+    await broadcast('generation:phase', { phase: 'generating', progress: 40, message: 'Generating components...' });
     
     // PHASE 2: Generate solution
     console.log('⚡ Phase 2: Generating solution...');
@@ -221,6 +238,7 @@ serve(async (req) => {
     // PHASE 3: Detect and track dependencies from generated code
     console.log('📦 Phase 3: Detecting dependencies...');
     await updateJobProgress(60, 'Detecting dependencies...');
+    await broadcast('generation:phase', { phase: 'dependencies', progress: 60, message: 'Installing packages...' });
     
     let detectedPackages: string[] = [];
     try {
@@ -300,6 +318,7 @@ serve(async (req) => {
     // PHASE 4: Quick verification
     console.log('✅ Phase 4: Quick verification...');
     await updateJobProgress(85, 'Verifying...');
+    await broadcast('generation:phase', { phase: 'finalizing', progress: 85, message: 'Finalizing your project...' });
     
     const quickVerification = {
       hasFiles: generation.files && generation.files.length > 0,
@@ -319,17 +338,29 @@ serve(async (req) => {
       .eq('id', orchestrationId);
 
     console.log('🎉 Mega Mind completed (optimized)!');
+    await broadcast('generation:complete', { 
+      progress: 100, 
+      message: 'Project ready!',
+      filesCount: generation.files?.length || 0
+    });
 
     // Mark job as completed
     if (jobId) {
       const finalFiles = generation.files;
       
-      // Format the generated code for frontend display
+      // Format the generated code for frontend display - PRODUCTION READY
       let generatedCode = '';
       if (finalFiles && finalFiles.length > 0) {
-        generatedCode = finalFiles.map((file: any) => 
-          `// File: ${file.path}\n${file.description ? `// ${file.description}\n` : ''}${file.content}\n\n`
-        ).join('\n');
+        // For single HTML file, use it directly
+        const htmlFile = finalFiles.find((f: any) => f.path.endsWith('.html'));
+        if (htmlFile) {
+          generatedCode = htmlFile.content;
+        } else {
+          // For multi-file, combine all code
+          generatedCode = finalFiles.map((file: any) => 
+            `// File: ${file.path}\n${file.description ? `// ${file.description}\n` : ''}${file.content}\n\n`
+          ).join('\n');
+        }
       }
 
       await supabaseClient

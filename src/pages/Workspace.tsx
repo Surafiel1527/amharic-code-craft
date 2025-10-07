@@ -49,6 +49,7 @@ import { UsageAnalyticsDashboard } from "@/components/UsageAnalyticsDashboard";
 import { PerformanceMonitor } from "@/components/PerformanceMonitor";
 import { AICodeReview } from "@/components/AICodeReview";
 import { SmartDebugger } from "@/components/SmartDebugger";
+import { LiveGenerationProgress } from "@/components/LiveGenerationProgress";
 // PythonProjectViewer removed - handled by UniversalChatInterface
 import { LanguageCapabilities } from "@/components/LanguageCapabilities";
 // orchestrationHelpers removed - no longer needed
@@ -450,37 +451,17 @@ export default function Workspace() {
     );
   }
 
-  // Show generating state
+  // Show generating state with live progress
   if (isGenerating || (project && !project.html_code)) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-16 h-16 animate-spin text-primary" />
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl font-semibold">🎨 Generating Your Project</h2>
-            <p className="text-muted-foreground">
-              AI is creating your project... This may take a few moments
-            </p>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-4">
-              <Sparkles className="w-4 h-4 animate-pulse" />
-              <span>Analyzing requirements</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Code2 className="w-4 h-4 animate-pulse" />
-              <span>Generating code</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <FileCode2 className="w-4 h-4 animate-pulse" />
-              <span>Creating files</span>
-            </div>
-          </div>
-        </div>
-        <Card className="p-6 max-w-md">
-          <p className="text-sm text-center text-muted-foreground">
-            Your project will automatically appear here when ready. 
-            Feel free to wait or come back later - we'll save your work!
-          </p>
-        </Card>
+      <div className="min-h-screen bg-background">
+        <LiveGenerationProgress 
+          projectId={project.id}
+          onComplete={() => {
+            // Reload project data when generation completes
+            window.location.reload();
+          }}
+        />
       </div>
     );
   }
