@@ -79,17 +79,33 @@ export function CollaborativePresence({ projectId }: CollaborativePresenceProps)
   const loadActiveUsers = async () => {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     
-    const { data } = await supabase
+    const { data: sessions, error } = await supabase
       .from('active_sessions')
-      .select(`
-        *,
-        profile:user_id(full_name, avatar_url)
-      `)
+      .select('*')
       .eq('project_id', projectId)
       .gte('last_active', fiveMinutesAgo);
 
-    if (data) {
-      setActiveUsers(data as any);
+    if (error) {
+      console.error('Error loading active sessions:', error);
+      return;
+    }
+
+    // Fetch profiles separately since there's no foreign key relationship
+    if (sessions && sessions.length > 0) {
+      const userIds = sessions.map(s => s.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      
+      const usersWithProfiles = sessions.map(session => ({
+        ...session,
+        profile: profileMap.get(session.user_id) || { full_name: 'Unknown', avatar_url: null }
+      }));
+      
+      setActiveUsers(usersWithProfiles as any);
     }
   };
 
