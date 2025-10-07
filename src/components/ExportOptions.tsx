@@ -15,16 +15,74 @@ interface ExportOptionsProps {
 export const ExportOptions = ({ htmlCode, projectTitle }: ExportOptionsProps) => {
   const [copied, setCopied] = useState<string | null>(null);
 
+  // Clean HTML code by removing JSON artifacts
+  const cleanHTML = (() => {
+    if (!htmlCode) return '';
+    
+    let code = htmlCode.trim();
+    
+    // Remove markdown code fences
+    code = code.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
+    
+    // Try to parse as JSON and extract HTML content
+    try {
+      const parsed = JSON.parse(code);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const htmlFile = parsed.find(f => f.path?.endsWith('.html') || f.content?.includes('<!DOCTYPE html>'));
+        if (htmlFile?.content) return htmlFile.content;
+      } else if (parsed.content) {
+        return parsed.content;
+      }
+    } catch {
+      // Not JSON, treat as raw HTML
+    }
+    
+    return code.trim();
+  })();
+
   const handleDownloadHTML = () => {
-    if (!htmlCode) {
+    if (!cleanHTML) {
       toast.error("ምንም የተፈጠረ ኮድ የለም");
       return;
     }
     const filename = projectTitle 
       ? `${projectTitle.replace(/\s+/g, "-").toLowerCase()}.html`
       : "website.html";
-    downloadHTML(htmlCode, filename);
+    downloadHTML(cleanHTML, filename);
     toast.success("HTML ፋይል ወረደ!");
+  };
+
+  const handleDownloadZip = async () => {
+    if (!cleanHTML) {
+      toast.error("ምንም የተፈጠረ ኮድ የለም");
+      return;
+    }
+    
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      
+      // Add the HTML file
+      zip.file('index.html', cleanHTML);
+      
+      // Generate and download the zip
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = projectTitle 
+        ? `${projectTitle.replace(/\s+/g, "-").toLowerCase()}.zip`
+        : 'website.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast.success("ZIP ፋይል ወረደ!");
+    } catch (error) {
+      console.error('Failed to create zip:', error);
+      toast.error('ZIP ፋይል መፍጠር አልተሳካም');
+    }
   };
 
   const generateReactComponent = () => {
@@ -36,7 +94,7 @@ export const ExportOptions = ({ htmlCode, projectTitle }: ExportOptionsProps) =>
 
 const ${componentName} = () => {
   return (
-    <div dangerouslySetInnerHTML={{ __html: \`${htmlCode.replace(/`/g, '\\`')}\` }} />
+    <div dangerouslySetInnerHTML={{ __html: \`${cleanHTML.replace(/`/g, '\\`')}\` }} />
   );
 };
 
@@ -55,7 +113,7 @@ export default {
   name: '${componentName}',
   data() {
     return {
-      htmlContent: \`${htmlCode.replace(/`/g, '\\`')}\`
+      htmlContent: \`${cleanHTML.replace(/`/g, '\\`')}\`
     }
   }
 }
@@ -99,13 +157,13 @@ export default {
               </p>
               <ScrollArea className="h-[400px] w-full rounded-md border bg-muted p-4">
                 <pre className="text-xs">
-                  <code>{htmlCode}</code>
+                  <code>{cleanHTML}</code>
                 </pre>
               </ScrollArea>
               <div className="flex gap-2">
                 <Button 
                   variant="outline" 
-                  onClick={() => copyToClipboard(htmlCode, "Code")}
+                  onClick={() => copyToClipboard(cleanHTML, "Code")}
                   className="flex-1"
                 >
                   {copied === "Code" ? (
@@ -115,9 +173,9 @@ export default {
                   )}
                   Copy Code
                 </Button>
-                <Button onClick={handleDownloadHTML} className="flex-1">
+                <Button onClick={handleDownloadZip} className="flex-1">
                   <Download className="w-4 h-4 mr-2" />
-                  Download
+                  Download ZIP
                 </Button>
               </div>
             </div>
@@ -130,16 +188,24 @@ export default {
               </p>
               <ScrollArea className="h-[300px] w-full rounded-md border bg-muted p-4 mb-2">
                 <pre className="text-xs">
-                  <code>{htmlCode}</code>
+                  <code>{cleanHTML}</code>
                 </pre>
               </ScrollArea>
-              <Button onClick={handleDownloadHTML} className="w-full">
+              <Button onClick={handleDownloadZip} className="w-full">
                 <Download className="w-4 h-4 mr-2" />
-                Download HTML File
+                Download as ZIP
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={handleDownloadHTML} 
+                className="w-full"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download HTML Only
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => copyToClipboard(htmlCode, "HTML")}
+                onClick={() => copyToClipboard(cleanHTML, "HTML")}
                 className="w-full"
               >
                 {copied === "HTML" ? (

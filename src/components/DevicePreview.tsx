@@ -14,12 +14,33 @@ export function DevicePreview({ generatedCode }: DevicePreviewProps) {
   const { t } = useLanguage();
   const [deviceSize, setDeviceSize] = useState<DeviceSize>("desktop");
   
-  // Clean code by removing markdown code fences
-  const cleanCode = generatedCode
-    ?.replace(/^```html\s*/i, '')
-    ?.replace(/^```\s*/i, '')
-    ?.replace(/```\s*$/i, '')
-    ?.trim() || '';
+  // Clean code by removing markdown code fences and any JSON artifacts
+  const cleanCode = (() => {
+    if (!generatedCode) return '';
+    
+    let code = generatedCode.trim();
+    
+    // Remove markdown code fences
+    code = code.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
+    
+    // Remove JSON array brackets if present
+    code = code.replace(/^\[\s*{/, '{').replace(/}\s*\]\s*$/, '}');
+    
+    // Try to parse as JSON and extract HTML content
+    try {
+      const parsed = JSON.parse(code);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const htmlFile = parsed.find(f => f.path?.endsWith('.html') || f.content?.includes('<!DOCTYPE html>'));
+        if (htmlFile?.content) return htmlFile.content;
+      } else if (parsed.content) {
+        return parsed.content;
+      }
+    } catch {
+      // Not JSON, treat as raw HTML
+    }
+    
+    return code.trim();
+  })();
 
   // Inject script to fix header navigation
   const codeWithNavFix = cleanCode ? `
