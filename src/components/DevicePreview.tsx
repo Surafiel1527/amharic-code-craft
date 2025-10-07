@@ -105,7 +105,7 @@ export function DevicePreview({ generatedCode }: DevicePreviewProps) {
               srcDoc={codeWithNavFix}
               className="w-full h-full border-0"
               title="Preview"
-              sandbox="allow-scripts allow-same-origin"
+              sandbox="allow-scripts allow-forms allow-popups allow-modals"
             />
           </div>
         ) : (

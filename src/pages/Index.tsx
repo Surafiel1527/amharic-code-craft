@@ -134,10 +134,10 @@ const Index = () => {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   useEffect(() => {
-    const handler = (e: Event) => {
+    const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowInstallPrompt(true);
+      // Don't auto-show, let user trigger install when ready
     };
 
     window.addEventListener('beforeinstallprompt', handler);
@@ -147,15 +147,20 @@ const Index = () => {
   const handleInstallPWA = async () => {
     if (!deferredPrompt) return;
 
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      toast.success('App installed successfully!');
+    try {
+      await (deferredPrompt as any).prompt();
+      const choiceResult = await (deferredPrompt as any).userChoice;
+      
+      if (choiceResult.outcome === 'accepted') {
+        toast.success('App installed successfully!');
+      }
+      
+      setDeferredPrompt(null);
+      setShowInstallPrompt(false);
+    } catch (error) {
+      console.error('Install prompt error:', error);
+      toast.error('Failed to install app');
     }
-    
-    setDeferredPrompt(null);
-    setShowInstallPrompt(false);
   };
 
   // Keyboard shortcuts

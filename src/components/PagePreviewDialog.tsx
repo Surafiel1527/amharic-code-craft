@@ -51,7 +51,7 @@ export function PagePreviewDialog({ open, onOpenChange, pagePath, pageTitle }: P
             src={previewUrl}
             className="w-full h-full border-0"
             title={`Preview of ${pageTitle}`}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+            sandbox="allow-scripts allow-forms allow-popups allow-modals"
             loading="eager"
           />
         </div>

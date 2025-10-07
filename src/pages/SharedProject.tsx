@@ -152,7 +152,7 @@ export default function SharedProject() {
               srcDoc={project.html_code}
               title="Project Preview"
               className="w-full h-[600px] border-0"
-              sandbox="allow-scripts allow-same-origin"
+              sandbox="allow-scripts allow-forms allow-popups allow-modals"
             />
           </div>
         </Card>

@@ -247,7 +247,7 @@ export default function RealCodeExecutor({
                     ref={iframeRef}
                     src={livePreview}
                     className="w-full h-[400px] border-0"
-                    sandbox="allow-scripts allow-same-origin"
+                    sandbox="allow-scripts allow-forms allow-popups allow-modals"
                     title="Code Preview"
                   />
                 </div>

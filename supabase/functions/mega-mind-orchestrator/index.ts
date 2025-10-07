@@ -677,12 +677,12 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE, BEAUTIFUL, PRODUCTION-READY HTML/CSS/JavaScript websites with REAL content based on user requests. NEVER use generic placeholder text. Include modern design, smooth animations, and responsive layouts. Output ONLY valid JSON with no markdown formatting.' },
+        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE HTML/CSS/JavaScript websites. Output ONLY valid, compact JSON. Keep CSS minimal. IMPORTANT: Keep total output under 8000 characters to avoid truncation.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" },
-      temperature: 0.7,
-      max_tokens: 4000
+      temperature: 0.5,
+      max_tokens: 8192
     }),
   });
 
