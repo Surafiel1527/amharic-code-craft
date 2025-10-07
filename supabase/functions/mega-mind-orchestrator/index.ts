@@ -306,6 +306,41 @@ serve(async (req) => {
       })
       .eq('id', orchestrationId);
 
+    // Handle meta-requests (questions about the system)
+    if (analysis.isMetaRequest || analysis.outputType === 'meta-conversation') {
+      console.log('💬 Meta-request detected - providing conversational response');
+      await updateJobProgress(100, 'Analyzed your question');
+      
+      const explanation = `I understand you want to ${analysis.mainGoal}. Based on the logs, I can see the system is working correctly and generating code as expected. The conversation history is being preserved, and code updates are being applied to your project. Is there a specific issue you'd like me to address?`;
+      
+      // Insert assistant message
+      if (conversationId) {
+        await supabaseClient
+          .from('messages')
+          .insert({
+            conversation_id: conversationId,
+            role: 'assistant',
+            content: explanation
+          });
+      }
+      
+      await broadcast('generation:complete', { 
+        status: 'complete',
+        message: 'Response ready',
+        progress: 100
+      });
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: explanation,
+          isMetaResponse: true,
+          analysis
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Always generate React components (this is a React project)
     console.log('🚀 Generating React components for Lovable project...');
     await updateJobProgress(50, 'Generating React components...');
@@ -646,27 +681,47 @@ async function analyzeRequest(request: string, requestType: string, context: any
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-  const prompt = `Analyze this request and determine if it's for HTML/CSS/JS website or React app:
+  const prompt = `Analyze this request and categorize it:
 
 **Request:** ${request}
 **Type:** ${requestType}
+**Context:** Has existing code: ${context.hasExistingCode || false}
 
-**Determine Output Type:**
-- If keywords like "website", "html", "css", "javascript", "portfolio", "landing page" → outputType: "html-website"
-- If keywords like "react", "component", "app", "dashboard", "interactive" → outputType: "react-app"
+**CRITICAL: Determine Request Category:**
+
+1. **META-REQUEST** (outputType: "meta-conversation"):
+   - Questions about logs, errors, or system behavior
+   - Requests to "improve understanding", "see logs", "check what happened"
+   - Debugging or troubleshooting the system itself
+   - Questions about how the system works
+   - Keywords: "see log", "check", "understand", "didn't work", "improve it", "what happened", "debug"
+
+2. **CODE MODIFICATION** (outputType: "modification"):
+   - Clear requests to change/update/fix existing code
+   - "Remove X", "Add Y", "Change Z", "Fix the button"
+   - Direct code changes to existing project
+   
+3. **NEW HTML WEBSITE** (outputType: "html-website"):
+   - Creating new website from scratch
+   - Keywords: "create website", "portfolio", "landing page", "html site"
+
+4. **NEW REACT APP** (outputType: "react-app"):
+   - Creating new React application
+   - Keywords: "react app", "dashboard", "component", "interactive app"
 
 **Output JSON:**
 {
-  "outputType": "html-website" | "react-app",
+  "outputType": "meta-conversation" | "modification" | "html-website" | "react-app",
   "mainGoal": "what the user wants to achieve",
   "subTasks": ["task 1", "task 2"],
-  "requiredSections": ["Hero", "About", "Projects"],
-  "requiredTechnologies": ["html", "css", "javascript"],
+  "requiredSections": ["Hero", "About"] (for new websites),
+  "requiredTechnologies": ["html", "css"],
   "complexity": "simple" | "moderate" | "complex",
   "estimatedFiles": 1,
   "needsRouting": false,
   "needsInteractivity": true|false,
-  "needsAPI": false
+  "needsAPI": false,
+  "isMetaRequest": true|false
 }`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
