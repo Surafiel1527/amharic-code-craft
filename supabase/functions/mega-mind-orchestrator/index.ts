@@ -631,8 +631,31 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
 
   await broadcast('generation:status', { status: 'generating', message: 'Creating your beautiful website...', progress: 60 });
 
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('❌ AI API Error:', response.status, errorText);
+    throw new Error(`AI API returned ${response.status}: ${errorText}`);
+  }
+
   const data = await response.json();
-  const result = JSON.parse(data.choices[0].message.content);
+  
+  if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+    console.error('❌ Invalid AI response structure:', JSON.stringify(data));
+    throw new Error('Invalid response from AI API');
+  }
+
+  const content = data.choices[0].message.content;
+  console.log('📝 AI Response content length:', content?.length || 0);
+  
+  let result;
+  try {
+    result = JSON.parse(content);
+  } catch (parseError) {
+    console.error('❌ JSON Parse Error:', parseError);
+    console.error('📄 Content that failed to parse:', content?.substring(0, 500));
+    const errorMsg = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
+    throw new Error(`Failed to parse AI response: ${errorMsg}`);
+  }
   
   await broadcast('generation:status', { status: 'editing', message: 'Polishing design and responsiveness...', progress: 85 });
   
