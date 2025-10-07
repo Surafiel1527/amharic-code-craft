@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Blog</title>
+    <link rel="stylesheet" href="/blog.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">My Blog</h1>
+            <div class="nav-buttons">
+                <button id="loginBtn" class="btn btn-secondary">Login</button>
+                <button id="logoutBtn" class="btn btn-secondary" style="display: none;">Logout</button>
+                <button id="createPostBtn" class="btn btn-primary" style="display: none;">Create Post</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <!-- Login Modal -->
+        <div id="loginModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Login</h2>
+                <form id="loginForm">
+                    <input type="email" id="email" placeholder="Email" required>
+                    <input type="password" id="password" placeholder="Password" required>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+                <p>Don't have an account? <a href="#" id="showSignup">Sign up</a></p>
+            </div>
+        </div>
+
+        <!-- Signup Modal -->
+        <div id="signupModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Sign Up</h2>
+                <form id="signupForm">
+                    <input type="email" id="signupEmail" placeholder="Email" required>
+                    <input type="password" id="signupPassword" placeholder="Password" required>
+                    <button type="submit" class="btn btn-primary">Sign Up</button>
+                </form>
+                <p>Already have an account? <a href="#" id="showLogin">Login</a></p>
+            </div>
+        </div>
+
+        <!-- Create Post Modal -->
+        <div id="createPostModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Create New Post</h2>
+                <form id="createPostForm">
+                    <input type="text" id="postTitle" placeholder="Post Title" required>
+                    <textarea id="postContent" placeholder="Post Content" rows="10" required></textarea>
+                    <button type="submit" class="btn btn-primary">Publish Post</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Posts Container -->
+        <div id="postsContainer" class="posts-grid">
+            <div class="loading">Loading posts...</div>
+        </div>
+    </main>
+
+    <script type="module" src="/blog.js"></script>
+</body>
+</html>
