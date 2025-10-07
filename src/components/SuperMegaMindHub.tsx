@@ -54,11 +54,14 @@ export default function SuperMegaMindHub() {
     setReviewResult(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('ai-code-reviewer', {
+      const { data, error } = await supabase.functions.invoke('unified-ai-workers', {
         body: { 
-          code: reviewCode,
-          language: reviewLanguage,
-          filename: `code.${reviewLanguage}`
+          operation: 'code_review',
+          params: {
+            code: reviewCode,
+            language: reviewLanguage,
+            filename: `code.${reviewLanguage}`
+          }
         }
       });
 

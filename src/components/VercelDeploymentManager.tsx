@@ -82,8 +82,8 @@ export const VercelDeploymentManager = ({ projectId, projectName }: { projectId:
 
     setIsConnecting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('vercel-connect', {
-        body: { accessToken },
+      const { data, error } = await supabase.functions.invoke('vercel-integration', {
+        body: { action: 'connect', accessToken },
       });
 
       if (error) throw error;
@@ -146,8 +146,9 @@ export const VercelDeploymentManager = ({ projectId, projectName }: { projectId:
         },
       ];
 
-      const { data, error } = await supabase.functions.invoke('vercel-deploy', {
+      const { data, error } = await supabase.functions.invoke('vercel-integration', {
         body: {
+          action: 'deploy',
           projectId,
           projectName,
           files,

@@ -51,12 +51,15 @@ export const useAICodeReview = (options: UseAICodeReviewOptions = {}) => {
         .limit(20);
 
       // Call AI code review function
-      const { data, error } = await supabase.functions.invoke('ai-code-review', {
+      const { data, error } = await supabase.functions.invoke('unified-ai-workers', {
         body: { 
-          code, 
-          filePath, 
-          language,
-          previousLearnings: learnings || []
+          operation: 'code_review',
+          params: {
+            code,
+            filePath, 
+            language,
+            previousLearnings: learnings || []
+          }
         }
       });
 

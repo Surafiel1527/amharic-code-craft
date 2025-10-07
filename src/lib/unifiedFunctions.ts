@@ -68,6 +68,12 @@ export const aiWorkers = {
 
   retrieveKnowledge: (params: { query: string; category?: string }) =>
     invokeUnifiedFunction("unified-ai-workers", "knowledge_retrieval", params),
+
+  codeReview: (params: { code: string; language?: string; filePath?: string; previousLearnings?: any[] }) =>
+    invokeUnifiedFunction("unified-ai-workers", "code_review", params),
+
+  smartDebug: (params: { error: any; context?: any; projectId?: string }) =>
+    invokeUnifiedFunction("unified-ai-workers", "smart_debug", params),
 };
 
 /**
@@ -86,6 +92,12 @@ export const codeOps = {
 
   runTests: (params: { testSuite: any; projectId?: string }) =>
     invokeUnifiedFunction("unified-code-operations", "test_runner", params),
+
+  execute: (params: { code: string; language: string; projectId?: string; userId?: string }) =>
+    invokeUnifiedFunction("unified-code-operations", "execute", params),
+
+  streamGeneration: (params: { userRequest: string; framework?: string; projectId?: string; conversationId?: string }) =>
+    invokeUnifiedFunction("unified-code-operations", "stream_generation", params),
 
   generateComponent: (params: { componentType: string; requirements: string }) => {
     // Legacy support - route to react-generation
@@ -139,6 +151,15 @@ export const infrastructure = {
   security: {
     scan: (params: { projectId: string; scanType?: string }) =>
       invokeUnifiedFunction("unified-infrastructure", "security_scan", params),
+
+    encrypt: (params: { data: string; keyId?: string }) =>
+      invokeUnifiedFunction("unified-security", "encrypt", params),
+
+    decrypt: (params: { encryptedData: string; keyId?: string }) =>
+      invokeUnifiedFunction("unified-security", "decrypt", params),
+
+    getAuditLogs: (params?: { filters?: any }) =>
+      invokeUnifiedFunction("unified-security", "get_audit_logs", params || {}),
   },
 
   admin: {
@@ -170,6 +191,9 @@ export const monitoring = {
 
   getHealthStatus: (params: { projectId?: string }) =>
     invokeUnifiedFunction("unified-monitoring", "health_status", params),
+
+  deploymentHealthCheck: (params: { deploymentId: string }) =>
+    invokeUnifiedFunction("unified-monitoring", "deployment_health_check", params),
 };
 
 /**
@@ -247,6 +271,39 @@ export const analytics = {
     invokeUnifiedFunction("unified-analytics", "get_dashboard_data", params),
 };
 
+/**
+ * Notifications Unified Client
+ */
+export const notifications = {
+  sendAlert: (params: { alertType: string; severity: string; title: string; message: string; data?: any }) =>
+    invokeUnifiedFunction("unified-notifications", "send_alert", params),
+};
+
+/**
+ * Automation Unified Client
+ */
+export const automation = {
+  processJobQueue: (params: { jobId?: string; maxJobs?: number }) =>
+    invokeUnifiedFunction("unified-automation", "process_job_queue", params),
+};
+
+/**
+ * Vercel Integration Client
+ */
+export const vercel = {
+  connect: (params: { accessToken: string }) =>
+    invokeUnifiedFunction("vercel-integration", "connect", params, 1),
+
+  deploy: (params: { projectId: string; environment?: string; files?: any[]; envVars?: Record<string, string> }) =>
+    invokeUnifiedFunction("vercel-integration", "deploy", params, 1),
+
+  status: (params: { deploymentId: string }) =>
+    invokeUnifiedFunction("vercel-integration", "status", params, 1),
+
+  deployFull: (params: { projectId: string; environment?: string; files?: any[]; envVars?: Record<string, string> }) =>
+    invokeUnifiedFunction("vercel-integration", "deploy_full", params, 1),
+};
+
 // Export all clients
 export const unifiedFunctions = {
   aiWorkers,
@@ -257,4 +314,7 @@ export const unifiedFunctions = {
   learning,
   quality,
   analytics,
+  notifications,
+  automation,
+  vercel,
 };

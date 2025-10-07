@@ -158,21 +158,24 @@ export const useSmartDebugger = (options: UseSmartDebuggerOptions = {}) => {
     setCurrentError(error);
     
     try {
-      const { data, error: debugError } = await supabase.functions.invoke('smart-debugger', {
+      const { data, error: debugError } = await supabase.functions.invoke('unified-ai-workers', {
         body: {
-          error: {
-            message: error.errorMessage,
-            stack: error.stackTrace,
-            type: error.errorType,
-            file: error.filePath,
-            line: error.lineNumber,
-            column: (error as any).columnNumber
-          },
-          context: {
-            code: codeContext,
-            browserInfo: (error as any).browser_info
-          },
-          projectId
+          operation: 'smart_debug',
+          params: {
+            error: {
+              message: error.errorMessage,
+              stack: error.stackTrace,
+              type: error.errorType,
+              file: error.filePath,
+              line: error.lineNumber,
+              column: (error as any).columnNumber
+            },
+            context: {
+              code: codeContext,
+              browserInfo: (error as any).browser_info
+            },
+            projectId
+          }
         }
       });
 

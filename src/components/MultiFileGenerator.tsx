@@ -45,19 +45,22 @@ export function MultiFileGenerator({ projectId, conversationId, onFilesGenerated
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const streamUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/multi-file-stream`;
+      const streamUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-code-operations`;
       
       const response = await fetch(streamUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          userRequest: request,
-          framework,
-          projectId,
-          conversationId
+          operation: 'stream_generation',
+          params: {
+            userRequest: request,
+            framework,
+            projectId,
+            conversationId
+          }
         })
       });
 

@@ -69,8 +69,9 @@ export const useDeployment = (projectId?: string) => {
         return acc;
       }, {} as Record<string, string>);
 
-      const { data, error } = await supabase.functions.invoke('vercel-deploy-full', {
+      const { data, error } = await supabase.functions.invoke('vercel-integration', {
         body: {
+          action: 'deploy',
           projectId: options.projectId,
           projectName: options.projectName,
           files: filesObject,

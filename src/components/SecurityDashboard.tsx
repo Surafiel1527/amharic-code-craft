@@ -69,7 +69,9 @@ export const SecurityDashboard = () => {
 
   const fetchAuditLogs = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('get-security-audit-logs');
+      const { data, error } = await supabase.functions.invoke('unified-security', {
+        body: { operation: 'get_audit_logs', params: {} }
+      });
       
       if (error) throw error;
       

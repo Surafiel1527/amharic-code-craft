@@ -30,7 +30,7 @@ export default function EnhancedDevEnvironment() {
     
     try {
       const checks = await Promise.all([
-        supabase.functions.invoke('code-executor', { body: { code: 'return "OK"', language: 'javascript' } }),
+        supabase.functions.invoke('unified-code-operations', { body: { operation: 'execute', params: { code: 'return "OK"', language: 'javascript' } } }),
         supabase.functions.invoke('unified-package-manager', { body: { operation: 'auto_detect' } }),
         supabase.functions.invoke('mega-mind-orchestrator', { body: { request: 'health check', requestType: 'system' } })
       ]);
@@ -128,7 +128,7 @@ export default function EnhancedDevEnvironment() {
                     Code Executor
                   </Badge>
                 </TooltipTrigger>
-                <TooltipContent>Sandboxed JS/TS execution via code-executor</TooltipContent>
+                <TooltipContent>Sandboxed JS/TS execution via unified-code-operations</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -223,7 +223,7 @@ export default function EnhancedDevEnvironment() {
                       <span className="text-muted-foreground">React component generation with learned patterns</span>
                     </li>
                     <li className="flex items-start gap-2 hover-scale">
-                      <Badge variant="outline" className="mt-0.5">code-executor</Badge>
+                      <Badge variant="outline" className="mt-0.5">unified-code-operations</Badge>
                       <span className="text-muted-foreground">Secure JavaScript/TypeScript execution in Deno sandbox</span>
                     </li>
                     <li className="flex items-start gap-2 hover-scale">

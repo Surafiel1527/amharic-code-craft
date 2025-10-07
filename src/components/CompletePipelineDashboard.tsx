@@ -132,8 +132,9 @@ export const CompletePipelineDashboard = ({
     setDeploymentUrl(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('complete-vercel-pipeline', {
+      const { data, error } = await supabase.functions.invoke('vercel-integration', {
         body: {
+          action: 'deploy_full',
           projectId,
           projectName,
           files: projectFiles,

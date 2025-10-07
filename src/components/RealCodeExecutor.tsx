@@ -172,12 +172,15 @@ export default function RealCodeExecutor({
   const executeServerSide = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     
-    const { data, error } = await supabase.functions.invoke('code-executor', {
+    const { data, error } = await supabase.functions.invoke('unified-code-operations', {
       body: {
-        code,
-        language: language === 'typescript' ? 'typescript' : 'javascript',
-        projectId,
-        userId: user?.id
+        operation: 'execute',
+        params: {
+          code,
+          language: language === 'typescript' ? 'typescript' : 'javascript',
+          projectId,
+          userId: user?.id
+        }
       }
     });
 

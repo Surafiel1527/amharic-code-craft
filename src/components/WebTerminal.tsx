@@ -106,7 +106,7 @@ Package Management (via unified-package-manager):
   npm list        - List installed packages
   npm outdated    - Check for updates
   
-Code Execution (via code-executor):
+Code Execution (via unified-code-operations):
   node script.js  - Execute JavaScript
   Any JS code     - Run directly in Deno sandbox
   
@@ -161,11 +161,14 @@ Examples:
         return;
       }
 
-      // Execute JavaScript/TypeScript code via code-executor
-      const { data, error } = await supabase.functions.invoke('code-executor', {
+      // Execute JavaScript/TypeScript code via unified-code-operations
+      const { data, error } = await supabase.functions.invoke('unified-code-operations', {
         body: {
-          code: currentCommand,
-          language: 'javascript'
+          operation: 'execute',
+          params: {
+            code: currentCommand,
+            language: 'javascript'
+          }
         }
       });
 
