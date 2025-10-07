@@ -48,8 +48,9 @@ export const logError = async (params: LogErrorParams): Promise<void> => {
 
   // Report to self-healing system (non-blocking)
   try {
-    await supabase.functions.invoke('report-error', {
+    await supabase.functions.invoke('unified-monitoring', {
       body: {
+        operation: 'track-error',
         errorType,
         errorMessage,
         source,

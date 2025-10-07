@@ -90,8 +90,9 @@ export default function TeamWorkspaces() {
         // Report to self-healing system
         const error = ownedError || memberError;
         try {
-          await supabase.functions.invoke('report-error', {
+          await supabase.functions.invoke('unified-monitoring', {
             body: {
+              operation: 'track-error',
               errorType: 'DatabaseAccessError',
               errorMessage: error?.message || 'Failed to fetch workspaces',
               source: 'frontend',
@@ -144,8 +145,9 @@ export default function TeamWorkspaces() {
       
       // Report to self-healing system
       try {
-        await supabase.functions.invoke('report-error', {
+        await supabase.functions.invoke('unified-monitoring', {
           body: {
+            operation: 'track-error',
             errorType: error?.name || 'UnexpectedError',
             errorMessage: error?.message || 'Unexpected error in fetchWorkspaces',
             stackTrace: error?.stack,

@@ -66,8 +66,8 @@ export const useErrorMonitor = () => {
         return;
       }
 
-      const { error } = await supabase.functions.invoke('report-error', {
-        body: errorData
+      const { error } = await supabase.functions.invoke('unified-monitoring', {
+        body: { operation: 'track-error', ...errorData }
       });
 
       if (error) {

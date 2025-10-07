@@ -71,8 +71,9 @@ const TestingHub = () => {
 
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('automated-test-generator', {
+      const { data, error } = await supabase.functions.invoke('unified-test-manager', {
         body: {
+          operation: 'generate-tests',
           code: testCode,
           filePath: 'component.tsx',
           framework,

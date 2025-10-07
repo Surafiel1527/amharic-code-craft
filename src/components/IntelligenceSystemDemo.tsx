@@ -153,12 +153,11 @@ function process(x){var result=0;for(var i=0;i<x.length;i++){for(var j=0;j<x[i].
 const getData=()=>{var data=eval(localStorage.getItem('data'));document.write(data);return data}
       `.trim();
 
-      const { data, error } = await supabase.functions.invoke('iterative-refine', {
+      const { data, error } = await supabase.functions.invoke('unified-code-operations', {
         body: {
-          generatedCode: messyCode,
-          userRequest: 'Process nested array data',
-          maxIterations: 3,
-          targetQualityScore: 85,
+          operation: 'refactor',
+          code: messyCode,
+          instructions: 'Process nested array data - refactor for quality',
           userId: userData.user.id
         }
       });

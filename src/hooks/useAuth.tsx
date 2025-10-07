@@ -27,8 +27,9 @@ export const useAuth = () => {
 
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
-        supabase.functions.invoke('report-error', {
+        supabase.functions.invoke('unified-monitoring', {
           body: {
+            operation: 'track-error',
             errorType: 'AuthError',
             errorMessage: error.message,
             source: 'frontend',
@@ -58,8 +59,9 @@ export const useAuth = () => {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     } catch (error) {
-      supabase.functions.invoke('report-error', {
+      supabase.functions.invoke('unified-monitoring', {
         body: {
+          operation: 'track-error',
           errorType: 'AuthError',
           errorMessage: error instanceof Error ? error.message : 'Sign out failed',
           source: 'frontend',
