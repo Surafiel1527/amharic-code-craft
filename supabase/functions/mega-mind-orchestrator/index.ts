@@ -527,34 +527,36 @@ async function analyzeRequest(request: string, requestType: string, context: any
 
 **Request:** ${request}
 **Type:** ${requestType}
-**Context:** ${JSON.stringify(context, null, 2)}
 
-**DEFAULT: Use React/TypeScript for everything unless explicitly requesting pure HTML**
+**DEFAULT: Generate single-page HTML websites with embedded CSS/JS for most requests**
 
 **Classification Rules:**
-1. "simple-website" = ONLY if user explicitly says "no React", "only HTML", "pure HTML", "static HTML"
-2. "full-stack-app" = DEFAULT - Use React/TypeScript for all apps and websites
+1. "simple-website" = DEFAULT - Landing pages, portfolios, info sites, marketing pages
+2. "full-stack-app" = Only for complex apps requiring React components, state management, or backend
 
-**Examples of simple-website (HTML only):**
-- "Create a landing page using only HTML and CSS"
-- "Build a pure HTML portfolio"
-- "Make a static HTML page without React"
+**When to use simple-website (HTML/CSS/JS in one file):**
+- Landing pages, portfolios, business websites
+- Marketing pages, product pages
+- Information/content sites
+- Single-page applications that don't need React
+- Anything that can work as a beautiful static page
 
-**Examples of full-stack-app (React/TypeScript - DEFAULT):**
-- "Build a todo app" (use React)
-- "Create a landing page" (use React)
-- "Make a portfolio" (use React)
-- "Build an e-commerce platform" (use React + backend)
+**When to use full-stack-app (React/TypeScript):**
+- Complex dashboards with many interactive components
+- Apps explicitly requesting React or complex state management
+- Multi-step forms with complex validation
+- Real-time collaborative tools
+- Apps requiring authentication and database
 
 **Output JSON:**
 {
-  "requestType": "full-stack-app" (default for everything except explicit HTML-only requests),
+  "requestType": "simple-website" (default) or "full-stack-app" (only if truly complex),
   "mainGoal": "what the user wants to achieve",
   "subTasks": ["task 1", "task 2"],
-  "requiredTechnologies": ["react", "typescript", "tailwind"] (default stack),
-  "complexity": "simple|moderate|complex",
-  "estimatedFiles": 5+ for React apps,
-  "architecturalApproach": "React/TypeScript app with Tailwind CSS"
+  "requiredTechnologies": ["html", "css", "javascript"] (for simple) or ["react", "typescript"] (for complex),
+  "complexity": "simple" (default) | "moderate" | "complex",
+  "estimatedFiles": 1 (for HTML) or 5+ (for React),
+  "architecturalApproach": "Single HTML file with Tailwind CDN" or "React app"
 }`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -566,7 +568,7 @@ async function analyzeRequest(request: string, requestType: string, context: any
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert software architect. Respond with JSON only.' },
+        { role: 'system', content: 'You are an expert software architect. Default to simple HTML websites unless the request is truly complex. Respond with JSON only.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }
@@ -576,28 +578,30 @@ async function analyzeRequest(request: string, requestType: string, context: any
   const data = await response.json();
   const analysis = JSON.parse(data.choices[0].message.content);
   
-  // Only force simple-website if explicitly requesting no React/pure HTML
-  const explicitHtmlKeywords = ['only html', 'pure html', 'just html', 'no react', 'no javascript', 'static html', 'plain html'];
+  // Check if request needs React or can be simple HTML
   const requestLower = request.toLowerCase();
-  const wantsOnlyHtml = explicitHtmlKeywords.some(keyword => requestLower.includes(keyword));
+  const needsReact = requestLower.includes('react') || 
+                     requestLower.includes('dashboard') ||
+                     requestLower.includes('real-time') ||
+                     requestLower.includes('authentication') ||
+                     requestLower.includes('database') ||
+                     analysis.complexity === 'complex';
   
-  if (wantsOnlyHtml) {
-    analysis.requestType = 'simple-website';
-    analysis.complexity = 'simple';
-    analysis.estimatedFiles = 1;
-    analysis.requiredTechnologies = ['html', 'css'];
-  } else {
-    // Default to React/TypeScript for everything else
+  if (needsReact) {
+    // Use React for complex apps
     analysis.requestType = 'full-stack-app';
     if (!analysis.requiredTechnologies || analysis.requiredTechnologies.length === 0) {
       analysis.requiredTechnologies = ['react', 'typescript', 'tailwind'];
     }
-    if (!analysis.complexity) {
-      analysis.complexity = 'moderate';
-    }
     if (!analysis.estimatedFiles || analysis.estimatedFiles < 3) {
       analysis.estimatedFiles = 5;
     }
+  } else {
+    // Default to simple HTML website
+    analysis.requestType = 'simple-website';
+    analysis.complexity = 'simple';
+    analysis.estimatedFiles = 1;
+    analysis.requiredTechnologies = ['html', 'css', 'javascript'];
   }
   
   return analysis;
@@ -607,23 +611,45 @@ async function generateSimpleWebsite(request: string, analysis: any): Promise<an
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-  const prompt = `Generate a complete, beautiful, fully functional single-page website for this request:
+  const prompt = `Generate a complete, production-ready website for this request:
 
 **Request:** ${request}
 **Goal:** ${analysis.mainGoal}
 
-**Requirements:**
-1. Generate ONE complete HTML file with embedded CSS and JavaScript
-2. Make it modern, beautiful, and fully responsive
-3. Include all requested features
-4. Use modern CSS (flexbox, grid, animations)
-5. Add smooth interactions and animations
-6. Make it production-ready
+**CRITICAL REQUIREMENTS:**
+1. Create ONE complete HTML file with ALL code embedded (CSS in <style>, JS in <script>)
+2. Use Tailwind CSS via CDN: <script src="https://cdn.tailwindcss.com"></script>
+3. Make it modern, beautiful, fully responsive, and production-ready
+4. Include ALL requested features and sections
+5. Add smooth animations and interactions
+6. Use modern design principles (proper spacing, typography, color schemes)
+7. Include placeholder images from picsum.photos or unsplash.com
+8. Make it mobile-first responsive
+
+**Structure:**
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[Relevant Title]</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom CSS for animations and special effects */
+  </style>
+</head>
+<body>
+  <!-- Complete website with navigation, hero, sections, footer -->
+  <script>
+    // Interactive JavaScript
+  </script>
+</body>
+</html>
 
 **Output JSON:**
 {
-  "html": "<!DOCTYPE html><html>... complete HTML with CSS and JS ...",
-  "instructions": "Brief description of what was created and how to use it"
+  "html": "<!DOCTYPE html><html>... COMPLETE HTML with embedded CSS and JS ...",
+  "instructions": "Description of features and how to customize"
 }`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -635,7 +661,7 @@ async function generateSimpleWebsite(request: string, analysis: any): Promise<an
     body: JSON.stringify({
       model: 'google/gemini-2.5-pro',
       messages: [
-        { role: 'system', content: 'You are an expert web developer. Generate complete, beautiful, production-ready HTML. Respond with JSON only.' },
+        { role: 'system', content: 'You are an expert web developer specializing in beautiful, modern websites. You MUST generate a complete, single HTML file with all CSS and JavaScript embedded. Use Tailwind CSS via CDN. Make it production-ready and stunning. Respond with JSON only.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }

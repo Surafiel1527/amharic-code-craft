@@ -283,17 +283,19 @@ const Index = () => {
       return;
     }
 
-    const startTime = Date.now();
     setIsGenerating(true);
-    
-    const progressToast = toast.loading("🎨 AI is designing your website...");
+    const progressToast = toast.loading("🎨 AI is creating your website...");
     
     try {
-      // Generate website HTML using AI
-      const { data, error } = await supabase.functions.invoke("generate-website", {
+      // Use mega-mind-orchestrator for intelligent website generation
+      const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
         body: { 
-          prompt: prompt,
-          userId: user.id
+          request: prompt,
+          requestType: 'website-generation',
+          context: {
+            userId: user.id,
+            timestamp: new Date().toISOString()
+          }
         },
       });
 
@@ -302,10 +304,10 @@ const Index = () => {
       toast.dismiss(progressToast);
       
       // Extract generated HTML
-      const generatedHTML = data?.html || data?.code || '';
+      const generatedHTML = data?.html || data?.generatedCode || data?.result?.generatedCode || '';
       
       if (!generatedHTML) {
-        throw new Error("No HTML was generated");
+        throw new Error("No website was generated");
       }
 
       setGeneratedCode(generatedHTML);

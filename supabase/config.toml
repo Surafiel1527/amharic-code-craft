@@ -41,9 +41,6 @@ verify_jwt = false
 [functions.code-executor]
 verify_jwt = false
 
-[functions.generate-website]
-verify_jwt = true
-
 # ============================================
 # UNIFIED WORKER FUNCTIONS (20)
 # Enterprise-grade consolidated operations
