@@ -92,6 +92,12 @@ serve(async (req) => {
         break;
       case 'stream_generation':
         return await handleStreamGeneration(params, userSupabase, platformSupabase, req, user.id, userConnection);
+      case 'generate_preview':
+        result = await handleGeneratePreview(params, platformSupabase);
+        break;
+      case 'download_project':
+        result = await handleDownloadProject(params, platformSupabase);
+        break;
       default:
         throw new Error(`Unknown operation: ${operation}`);
     }
@@ -430,14 +436,108 @@ async function handleStreamGeneration(params: any, userSupabase: any, platformSu
   };
 
   (async () => {
+    let finalProjectId = projectId;
+    let versionNumber = 1;
+    
     try {
-      // ✅ Use userId already passed as parameter (already authenticated)
-      console.log('📝 Using authenticated user:', userId);
+      console.log('🚀 Starting generation for user:', userId);
+      console.log('📋 Request:', userRequest);
+      console.log('🎯 Framework:', framework);
+      console.log('📦 Project ID:', projectId || 'NEW');
 
-      await sendEvent('status', { message: 'Analyzing requirements...', progress: 10 });
+      // ============================================
+      // STEP 0: Check if Regeneration or New Project
+      // ============================================
+      let isRegeneration = false;
+      let previousVersion: any = null;
+      let previousFiles: any[] = [];
+      let conversationHistory: any[] = [];
 
-      // Step 1: Analyze if database is needed
-      const analysisPrompt = `Analyze this request and determine if it needs a database:
+      if (projectId) {
+        await sendEvent('status', { message: 'Checking existing project...', progress: 5 });
+        
+        // Fetch existing project
+        const { data: existingProject, error: projectError } = await platformSupabase
+          .from('projects')
+          .select('id, title, framework, current_version')
+          .eq('id', projectId)
+          .single();
+        
+        if (existingProject) {
+          isRegeneration = true;
+          finalProjectId = existingProject.id;
+          console.log(`♻️  Regeneration detected for project: ${existingProject.title}`);
+          console.log(`📊 Current version: ${existingProject.current_version}`);
+          
+          // Fetch latest version
+          const { data: latestVersion } = await platformSupabase
+            .from('project_versions')
+            .select('*')
+            .eq('project_id', projectId)
+            .eq('version_number', existingProject.current_version)
+            .single();
+          
+          if (latestVersion) {
+            previousVersion = latestVersion;
+            versionNumber = latestVersion.version_number + 1;
+            
+            // Fetch previous files
+            const { data: files } = await platformSupabase
+              .from('project_files')
+              .select('file_path, file_content, file_type')
+              .eq('version_id', latestVersion.id)
+              .order('file_path');
+            
+            if (files) {
+              previousFiles = files;
+              console.log(`📄 Found ${files.length} existing files`);
+            }
+          }
+          
+          // Fetch conversation history
+          const { data: history } = await platformSupabase
+            .from('project_conversations')
+            .select('message_role, message_content')
+            .eq('project_id', projectId)
+            .order('created_at', { ascending: true })
+            .limit(20); // Last 20 messages for context
+          
+          if (history) {
+            conversationHistory = history;
+            console.log(`💬 Found ${history.length} conversation messages`);
+          }
+        }
+      }
+
+      await sendEvent('status', { 
+        message: isRegeneration ? `Updating project (v${versionNumber})...` : 'Analyzing requirements...', 
+        progress: 10 
+      });
+
+      // ============================================
+      // STEP 1: Analyze Requirements
+      // ============================================
+      const analysisPrompt = isRegeneration ? `
+Analyze this CHANGE REQUEST for an existing ${framework} project:
+
+Original Request Context:
+${conversationHistory.slice(0, 3).map(m => `${m.message_role}: ${m.message_content}`).join('\n')}
+
+Current Files:
+${previousFiles.map(f => `- ${f.file_path} (${f.file_content.length} bytes)`).join('\n')}
+
+NEW CHANGE REQUEST: "${userRequest}"
+
+Determine what needs to be modified, added, or removed.
+Return structured JSON with field definitions (not text descriptions!):
+{
+  "changeType": "modify|add|refactor",
+  "affectedFiles": ["file1.html", "file2.js"],
+  "needsDatabase": true/false,
+  "needsAuth": true/false,
+  "databaseTables": [...]  // Same format as before
+}
+` : `Analyze this request and determine if it needs a database:
 
 "${userRequest}"
 
@@ -698,10 +798,31 @@ END; RETURN result; END; $$;`,
         }
       }
 
-      // Step 3: Generate code
-      await sendEvent('status', { message: 'Generating files...', progress: 40 });
+      // ============================================
+      // STEP 3: Generate Code with Context
+      // ============================================
+      await sendEvent('status', { message: isRegeneration ? 'Updating files...' : 'Generating files...', progress: 40 });
 
-      const systemPrompt = `You are an expert ${framework} developer. Generate a complete production-ready project.
+      const systemPrompt = isRegeneration ? `You are an expert ${framework} developer modifying an existing project.
+
+EXISTING PROJECT FILES:
+${previousFiles.map(f => `
+File: ${f.file_path}
+Content: ${f.file_content.substring(0, 500)}${f.file_content.length > 500 ? '...[truncated]' : ''}
+`).join('\n')}
+
+CHANGE REQUEST: "${userRequest}"
+
+Generate updated files maintaining existing structure. Return ALL files (modified + unchanged).
+${analysis.needsDatabase ? `
+IMPORTANT - Include Supabase integration:
+- Import: import { supabase } from "@/integrations/supabase/client"
+- Use these tables: ${analysis.databaseTables?.map((t: any) => t.name).join(', ')}
+- Include CRUD operations using supabase.from('table_name').select/insert/update/delete
+` : ''}
+
+Return JSON: { "files": [{"path": "...", "content": "...", "type": "..."}], "framework": "${framework}", "changes": "...", "stats": {...} }` 
+      : `You are an expert ${framework} developer. Generate a complete production-ready project.
 
 ${analysis.needsDatabase ? `
 IMPORTANT - Include Supabase integration:
@@ -727,12 +848,160 @@ Return JSON: { "files": [{"path": "...", "content": "...", "type": "..."}], "fra
       const aiResponse = await response.json();
       const result = JSON.parse(aiResponse.choices[0].message.content);
 
+      // Stream files to user
       for (let i = 0; i < result.files.length; i++) {
-        await sendEvent('file', { file: result.files[i], current: i + 1, total: result.files.length, progress: 50 + (i / result.files.length) * 40 });
+        await sendEvent('file', { file: result.files[i], current: i + 1, total: result.files.length, progress: 50 + (i / result.files.length) * 30 });
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      await sendEvent('complete', { ...result, projectId, conversationId });
+      // ============================================
+      // STEP 4: Save Project and Files to Database
+      // ============================================
+      await sendEvent('status', { message: 'Saving project...', progress: 85 });
+      console.log('💾 Starting to save project...');
+
+      // Create generation job record
+      const { data: generationJob } = await platformSupabase
+        .from('ai_generation_jobs')
+        .insert({
+          user_id: userId,
+          job_type: 'stream_generation',
+          status: 'completed',
+          project_id: finalProjectId,
+          conversation_id: conversationId,
+          input_data: { userRequest, framework },
+          output_data: { filesCount: result.files.length },
+          completed_at: new Date().toISOString()
+        })
+        .select('id')
+        .single();
+
+      const jobId = generationJob?.id;
+
+      // Create or update project record
+      if (!isRegeneration) {
+        const projectTitle = extractTitle(userRequest);
+        const { data: newProject, error: projectError } = await platformSupabase
+          .from('projects')
+          .insert({
+            title: projectTitle,
+            prompt: userRequest,
+            html_code: result.files.find((f: any) => f.path === 'index.html')?.content || '',
+            framework: framework,
+            user_id: userId,
+            current_version: 1,
+            last_generated_at: new Date().toISOString()
+          })
+          .select('id')
+          .single();
+
+        if (projectError) {
+          console.error('❌ Failed to create project:', projectError);
+          throw new Error(`Failed to create project: ${projectError.message}`);
+        }
+
+        finalProjectId = newProject.id;
+        console.log(`✅ Created new project: ${finalProjectId}`);
+      } else {
+        // Update existing project
+        await platformSupabase
+          .from('projects')
+          .update({
+            current_version: versionNumber,
+            last_generated_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', finalProjectId);
+        
+        console.log(`✅ Updated project to version ${versionNumber}`);
+      }
+
+      // Create version record
+      const { data: newVersion, error: versionError } = await platformSupabase
+        .from('project_versions')
+        .insert({
+          project_id: finalProjectId,
+          version_number: versionNumber,
+          html_code: result.files.find((f: any) => f.path === 'index.html')?.content || '',
+          changes_summary: isRegeneration ? userRequest : 'Initial version',
+          generation_job_id: jobId,
+          framework: framework,
+          is_current: true,
+          quality_score: result.stats?.quality || 85,
+          performance_score: result.stats?.performance || 90
+        })
+        .select('id')
+        .single();
+
+      if (versionError) {
+        console.error('❌ Failed to create version:', versionError);
+        throw new Error(`Failed to create version: ${versionError.message}`);
+      }
+
+      const versionId = newVersion.id;
+      console.log(`✅ Created version ${versionNumber}: ${versionId}`);
+
+      // Mark previous versions as not current
+      if (isRegeneration && previousVersion) {
+        await platformSupabase
+          .from('project_versions')
+          .update({ is_current: false })
+          .eq('project_id', finalProjectId)
+          .neq('id', versionId);
+      }
+
+      // Save all files with version link
+      const fileInserts = result.files.map((file: any) => ({
+        project_id: finalProjectId,
+        version_id: versionId,
+        file_path: file.path,
+        file_content: file.content,
+        file_type: file.type || 'text/plain',
+        created_by: userId
+      }));
+
+      const { error: filesError } = await platformSupabase
+        .from('project_files')
+        .insert(fileInserts);
+
+      if (filesError) {
+        console.error('❌ Failed to save files:', filesError);
+        throw new Error(`Failed to save files: ${filesError.message}`);
+      }
+
+      console.log(`✅ Saved ${result.files.length} files`);
+
+      // Save conversation messages
+      const conversationInserts = [
+        {
+          project_id: finalProjectId,
+          message_role: 'user',
+          message_content: userRequest,
+          metadata: { versionNumber, framework }
+        },
+        {
+          project_id: finalProjectId,
+          message_role: 'assistant',
+          message_content: isRegeneration 
+            ? `Updated project to version ${versionNumber} with ${result.files.length} files`
+            : `Created project with ${result.files.length} files`,
+          metadata: { versionNumber, filesCount: result.files.length, jobId }
+        }
+      ];
+
+      await platformSupabase
+        .from('project_conversations')
+        .insert(conversationInserts);
+
+      console.log('✅ Saved conversation history');
+
+      await sendEvent('complete', { 
+        ...result, 
+        projectId: finalProjectId, 
+        versionNumber,
+        conversationId,
+        isRegeneration
+      });
       await sendEvent('status', { message: 'Done!', progress: 100 });
     } catch (error) {
       console.error('Stream generation error:', error);
@@ -751,4 +1020,226 @@ Return JSON: { "files": [{"path": "...", "content": "...", "type": "..."}], "fra
     },
   });
 }
+
+// ============================================
+// ENTERPRISE: Preview Generation Handler
+// ============================================
+async function handleGeneratePreview(params: any, platformSupabase: any) {
+  const { projectId, versionNumber } = params;
+  
+  try {
+    console.log(`📦 Generating preview for project ${projectId}, version ${versionNumber}`);
+    
+    // Fetch version and files
+    const { data: version, error: versionError } = await platformSupabase
+      .from('project_versions')
+      .select('id, project_id, version_number')
+      .eq('project_id', projectId)
+      .eq('version_number', versionNumber || 1)
+      .single();
+    
+    if (versionError || !version) {
+      throw new Error(`Version not found: ${versionError?.message || 'Unknown error'}`);
+    }
+    
+    const { data: files, error: filesError } = await platformSupabase
+      .from('project_files')
+      .select('*')
+      .eq('version_id', version.id);
+    
+    if (filesError) {
+      throw new Error(`Failed to fetch files: ${filesError.message}`);
+    }
+    
+    if (!files || files.length === 0) {
+      throw new Error('No files found for this version');
+    }
+    
+    console.log(`📄 Found ${files.length} files to upload`);
+    
+    // Upload files to storage
+    const previewPath = `${projectId}/v${versionNumber}`;
+    const uploadPromises = files.map(async (file: any) => {
+      const filePath = `${previewPath}/${file.file_path}`;
+      
+      // Determine content type
+      const contentType = file.file_type || 
+        (file.file_path.endsWith('.html') ? 'text/html' :
+         file.file_path.endsWith('.css') ? 'text/css' :
+         file.file_path.endsWith('.js') ? 'application/javascript' :
+         file.file_path.endsWith('.json') ? 'application/json' :
+         'text/plain');
+      
+      const { error: uploadError } = await platformSupabase.storage
+        .from('generated-previews')
+        .upload(filePath, file.file_content, {
+          contentType,
+          upsert: true,
+          cacheControl: '3600'
+        });
+      
+      if (uploadError) {
+        console.error(`❌ Upload error for ${file.file_path}:`, uploadError);
+        throw uploadError;
+      }
+      
+      console.log(`✅ Uploaded: ${file.file_path}`);
+    });
+    
+    await Promise.all(uploadPromises);
+    
+    // Get public URL for index.html
+    const { data: urlData } = platformSupabase.storage
+      .from('generated-previews')
+      .getPublicUrl(`${previewPath}/index.html`);
+    
+    const previewUrl = urlData.publicUrl;
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    
+    console.log(`🎉 Preview generated: ${previewUrl}`);
+    
+    return {
+      success: true,
+      previewUrl,
+      expiresAt: expiresAt.toISOString(),
+      filesCount: files.length
+    };
+    
+  } catch (error) {
+    console.error('❌ Preview generation error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+// ============================================
+// ENTERPRISE: Project Download Handler
+// ============================================
+async function handleDownloadProject(params: any, platformSupabase: any) {
+  const { projectId, versionNumber } = params;
+  
+  try {
+    console.log(`📥 Preparing download for project ${projectId}, version ${versionNumber}`);
+    
+    // Fetch project info
+    const { data: project, error: projectError } = await platformSupabase
+      .from('projects')
+      .select('title, framework')
+      .eq('id', projectId)
+      .single();
+    
+    if (projectError || !project) {
+      throw new Error(`Project not found: ${projectError?.message || 'Unknown error'}`);
+    }
+    
+    // Fetch version and files
+    const { data: version, error: versionError } = await platformSupabase
+      .from('project_versions')
+      .select('id, version_number, created_at')
+      .eq('project_id', projectId)
+      .eq('version_number', versionNumber || 1)
+      .single();
+    
+    if (versionError || !version) {
+      throw new Error(`Version not found: ${versionError?.message || 'Unknown error'}`);
+    }
+    
+    const { data: files, error: filesError } = await platformSupabase
+      .from('project_files')
+      .select('file_path, file_content, file_type')
+      .eq('version_id', version.id)
+      .order('file_path');
+    
+    if (filesError) {
+      throw new Error(`Failed to fetch files: ${filesError.message}`);
+    }
+    
+    if (!files || files.length === 0) {
+      throw new Error('No files found for this version');
+    }
+    
+    console.log(`📦 Packaging ${files.length} files`);
+    
+    // Add README with project info
+    const readmeContent = `# ${project.title}
+
+## Project Information
+- Framework: ${project.framework}
+- Version: ${version.version_number}
+- Generated: ${new Date(version.created_at).toLocaleString()}
+- Files: ${files.length}
+
+## Getting Started
+
+### For HTML Projects:
+1. Open \`index.html\` in your browser
+
+### For React Projects:
+1. Install dependencies: \`npm install\`
+2. Run development server: \`npm run dev\`
+3. Build for production: \`npm run build\`
+
+---
+Generated by Mega Mind Platform
+`;
+    
+    const packagedFiles = [
+      ...files.map((f: any) => ({
+        path: f.file_path,
+        content: f.file_content,
+        type: f.file_type
+      })),
+      {
+        path: 'README.md',
+        content: readmeContent,
+        type: 'text/markdown'
+      }
+    ];
+    
+    console.log(`✅ Package ready for download`);
+    
+    return {
+      success: true,
+      projectName: project.title,
+      framework: project.framework,
+      version: version.version_number,
+      files: packagedFiles,
+      totalSize: packagedFiles.reduce((sum, f) => sum + f.content.length, 0)
+    };
+    
+  } catch (error) {
+    console.error('❌ Download preparation error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+// ============================================
+// HELPER: Extract Title from Prompt
+// ============================================
+function extractTitle(prompt: string): string {
+  // Try to extract from "Create a [X]" or "Build a [X]" patterns
+  const patterns = [
+    /create (?:a |an )?([^.,!?]+)/i,
+    /build (?:a |an )?([^.,!?]+)/i,
+    /make (?:a |an )?([^.,!?]+)/i,
+    /develop (?:a |an )?([^.,!?]+)/i
+  ];
+  
+  for (const pattern of patterns) {
+    const match = prompt.match(pattern);
+    if (match && match[1]) {
+      const title = match[1].trim();
+      return title.substring(0, 100); // Limit to 100 chars
+    }
+  }
+  
+  // Fallback: Use first 50 characters
+  return prompt.substring(0, 50).trim() + (prompt.length > 50 ? '...' : '');
+}
+
 
