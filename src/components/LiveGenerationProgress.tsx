@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Code2, Package, CheckCircle, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -22,6 +22,12 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
   const [currentPhase, setCurrentPhase] = useState<string>('starting');
   const [progress, setProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  
+  // Store the latest onComplete callback in a ref to avoid re-subscriptions
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     console.log('🔌 LiveGenerationProgress subscribing to:', `ai-status-${projectId}`);
@@ -59,7 +65,7 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
         if (progress >= 100 || payload.status === 'idle') {
           setIsComplete(true);
           setTimeout(() => {
-            onComplete?.();
+            onCompleteRef.current?.();
           }, 1500);
         }
       })
@@ -70,7 +76,7 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
     // Timeout fallback: if stuck for >45 seconds, reload anyway
     const timeout = setTimeout(() => {
       console.log('⏰ Generation timeout - checking project status');
-      onComplete?.();
+      onCompleteRef.current?.();
     }, 45000);
 
     return () => {
@@ -78,7 +84,7 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
       supabase.removeChannel(statusChannel);
       clearTimeout(timeout);
     };
-  }, [projectId, onComplete]);
+  }, [projectId]);
 
   const getPhaseIcon = (phase: string) => {
     switch (phase) {
