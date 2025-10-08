@@ -1175,12 +1175,15 @@ async function analyzeRequest(request: string, requestType: string, context: any
    - Direct code changes to existing project
    
 3. **NEW HTML WEBSITE** (outputType: "html-website"):
-   - Creating new website from scratch
-   - Keywords: "create website", "portfolio", "landing page", "html site"
+   - **ALWAYS use html-website for ANY new website/app/platform request**
+   - Includes: blogs, portfolios, landing pages, dashboards, platforms, games, apps
+   - Keywords: "create", "build", "make", "website", "app", "platform", "blog", "game", "dashboard", "landing", "portfolio"
+   - **Rule: If user says "create/build/make [anything]" → use html-website**
 
 4. **NEW REACT APP** (outputType: "react-app"):
-   - Creating new React application
-   - Keywords: "react app", "dashboard", "component", "interactive app"
+   - ONLY for explicit React development requests
+   - User must specifically mention "React" or "component library"
+   - Keywords: "react component", "react library", "reusable components"
 
 **SMART BACKEND DETECTION:**
 
@@ -1276,8 +1279,15 @@ async function generateSimpleWebsite(request: string, analysis: any, broadcast: 
 **Request:** "${request}"
 **Goal:** ${analysis.mainGoal}
 **Sections:** ${JSON.stringify(analysis.requiredSections || [])}
+**Backend Needs:** ${JSON.stringify(analysis.backendRequirements || {})}
 
-CRITICAL: Use the content and theme from the request above. DO NOT use placeholder text like "A Creative Developer" or generic content. Generate REAL, RELEVANT content that matches the user's request.
+CRITICAL INSTRUCTIONS:
+1. Use the content and theme from the request above
+2. If request needs database/authentication → Generate MOCK/DEMO functionality with localStorage
+3. Generate REAL, RELEVANT content that matches the user's request
+4. For blog platforms → Include sample posts, comments (stored in localStorage)
+5. For dashboards → Include sample data and charts
+6. For auth → Mock login/signup with localStorage
 
 **CRITICAL REQUIREMENTS - MODERN BEAUTIFUL DESIGN:**
 1. Generate ONE complete HTML file with embedded CSS and JavaScript
@@ -1324,12 +1334,12 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE HTML/CSS/JavaScript websites. Output ONLY valid, compact JSON. Keep CSS minimal. IMPORTANT: Keep total output under 8000 characters to avoid truncation.' },
+        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE HTML/CSS/JavaScript websites with ALL functionality working (use localStorage for data). Output ONLY valid JSON. For complex apps, include realistic mock data and full interactivity.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" },
-      temperature: 0.5,
-      max_tokens: 8192
+      temperature: 0.7
+      // No max_tokens limit - let AI generate complete code
     }),
   });
 
