@@ -28,6 +28,9 @@ export const UsageInsights = () => {
       'የፕሮቴይለር ደብዳቤ ገጽ': t('templates.professionalLetterPage'),
       'ንግድ ወቅታዊ': t('templates.businessDashboard'),
       'ፖርትፎሊዮ': t('templates.portfolio'),
+      'የቡና ቤት ድህረ ገፅ': t('templates.coffeeShopPage'),
+      'የፖርትፎሊዮ ድህረ ገፅ': t('templates.portfolioPage'),
+      'Personal Blog': t('templates.personalBlog'),
     };
     return titleMap[title] || title;
   };
@@ -39,8 +42,25 @@ export const UsageInsights = () => {
       'ብሎግ': t('templates.categoryBlog'),
       'ንግድ': t('templates.categoryBusiness'),
       'ፖርትፎሊዮ': t('templates.categoryPortfolio'),
+      'Business': t('templates.categoryBusiness'),
+      'Blog': t('templates.categoryBlog'),
+      'Portfolio': t('templates.categoryPortfolio'),
     };
     return categoryMap[category] || category;
+  };
+
+  // Translation mapping for tags
+  const translateTag = (tag: string): string => {
+    const tagMap: Record<string, string> = {
+      'ቡና': t('tags.coffee'),
+      'ንግድ': t('tags.business'),
+      'ምግብ': t('tags.food'),
+      'ብሎግ': t('tags.blog'),
+      'የግል': t('tags.personal'),
+      'ፖርትፎሊዮ': t('tags.portfolio'),
+      'ስነ-ጥበብ': t('tags.art'),
+    };
+    return tagMap[tag] || tag;
   };
 
   useEffect(() => {
@@ -129,7 +149,7 @@ export const UsageInsights = () => {
                       <div className="flex flex-wrap gap-1">
                         {template.tags.map((tag) => (
                           <Badge key={tag} variant="secondary" className="text-xs">
-                            {tag}
+                            {translateTag(tag)}
                           </Badge>
                         ))}
                       </div>

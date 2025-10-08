@@ -251,10 +251,21 @@ const translations = {
     "templates.professionalLetterPage": "Professional Letter Page",
     "templates.businessDashboard": "Business Dashboard",
     "templates.portfolio": "Portfolio",
+    "templates.coffeeShopPage": "Coffee Shop Page",
+    "templates.portfolioPage": "Portfolio Page",
     "templates.categoryPage": "Page",
     "templates.categoryBlog": "Blog",
     "templates.categoryBusiness": "Business",
     "templates.categoryPortfolio": "Portfolio",
+    
+    // Tags
+    "tags.coffee": "Coffee",
+    "tags.business": "Business",
+    "tags.food": "Food",
+    "tags.blog": "Blog",
+    "tags.personal": "Personal",
+    "tags.portfolio": "Portfolio",
+    "tags.art": "Art",
     
     // AI Assistant
     "aiAssistant.title": "AI Smart Assistant",
@@ -843,10 +854,21 @@ const translations = {
     "templates.professionalLetterPage": "የፕሮቴይለር ደብዳቤ ገጽ",
     "templates.businessDashboard": "ንግድ ወቅታዊ",
     "templates.portfolio": "ፖርትፎሊዮ",
+    "templates.coffeeShopPage": "የቡና ቤት ድህረ ገፅ",
+    "templates.portfolioPage": "የፖርትፎሊዮ ድህረ ገፅ",
     "templates.categoryPage": "ገጽ",
     "templates.categoryBlog": "ብሎግ",
     "templates.categoryBusiness": "ንግድ",
     "templates.categoryPortfolio": "ፖርትፎሊዮ",
+    
+    // Tags
+    "tags.coffee": "ቡና",
+    "tags.business": "ንግድ",
+    "tags.food": "ምግብ",
+    "tags.blog": "ብሎግ",
+    "tags.personal": "የግል",
+    "tags.portfolio": "ፖርትፎሊዮ",
+    "tags.art": "ስነ-ጥበብ",
     
     // AI Assistant
     "aiAssistant.title": "AI አስተዋይ ረዳት",
