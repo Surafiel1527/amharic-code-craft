@@ -245,6 +245,17 @@ const translations = {
     "insights.times": "times",
     "insights.projects": "projects",
     
+    // Template Names
+    "templates.personalLetterPage": "Personal Letter Page",
+    "templates.personalBlog": "Personal Blog",
+    "templates.professionalLetterPage": "Professional Letter Page",
+    "templates.businessDashboard": "Business Dashboard",
+    "templates.portfolio": "Portfolio",
+    "templates.categoryPage": "Page",
+    "templates.categoryBlog": "Blog",
+    "templates.categoryBusiness": "Business",
+    "templates.categoryPortfolio": "Portfolio",
+    
     // AI Assistant
     "aiAssistant.title": "AI Smart Assistant",
     "aiAssistant.subtitle": "Ask about your project, get help, and receive tips",
@@ -825,6 +836,17 @@ const translations = {
     "insights.loading": "መረጃ እየተጫነ ነው...",
     "insights.times": "ጊዜ",
     "insights.projects": "ፕሮጀክቶች",
+    
+    // Template Names
+    "templates.personalLetterPage": "የግለሰብ ደብዳቤ ገጽ",
+    "templates.personalBlog": "የግል ብሎግ",
+    "templates.professionalLetterPage": "የፕሮቴይለር ደብዳቤ ገጽ",
+    "templates.businessDashboard": "ንግድ ወቅታዊ",
+    "templates.portfolio": "ፖርትፎሊዮ",
+    "templates.categoryPage": "ገጽ",
+    "templates.categoryBlog": "ብሎግ",
+    "templates.categoryBusiness": "ንግድ",
+    "templates.categoryPortfolio": "ፖርትፎሊዮ",
     
     // AI Assistant
     "aiAssistant.title": "AI አስተዋይ ረዳት",

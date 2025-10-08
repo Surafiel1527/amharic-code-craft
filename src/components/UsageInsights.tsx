@@ -20,6 +20,29 @@ export const UsageInsights = () => {
   const [trendingTags, setTrendingTags] = useState<{ tag: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Translation mapping for template titles
+  const translateTemplateTitle = (title: string): string => {
+    const titleMap: Record<string, string> = {
+      'የግለሰብ ደብዳቤ ገጽ': t('templates.personalLetterPage'),
+      'የግል ብሎግ': t('templates.personalBlog'),
+      'የፕሮቴይለር ደብዳቤ ገጽ': t('templates.professionalLetterPage'),
+      'ንግድ ወቅታዊ': t('templates.businessDashboard'),
+      'ፖርትፎሊዮ': t('templates.portfolio'),
+    };
+    return titleMap[title] || title;
+  };
+
+  // Translation mapping for categories
+  const translateCategory = (category: string): string => {
+    const categoryMap: Record<string, string> = {
+      'ገጽ': t('templates.categoryPage'),
+      'ብሎግ': t('templates.categoryBlog'),
+      'ንግድ': t('templates.categoryBusiness'),
+      'ፖርትፎሊዮ': t('templates.categoryPortfolio'),
+    };
+    return categoryMap[category] || category;
+  };
+
   useEffect(() => {
     fetchInsights();
   }, []);
@@ -94,9 +117,9 @@ export const UsageInsights = () => {
                     {index + 1}
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-semibold mb-1">{template.title}</h4>
+                    <h4 className="font-semibold mb-1">{translateTemplateTitle(template.title)}</h4>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                      <Badge variant="outline">{template.category}</Badge>
+                      <Badge variant="outline">{translateCategory(template.category)}</Badge>
                       <span className="flex items-center gap-1">
                         <Users className="w-3 h-3" />
                         {template.usage_count} {t("insights.times")}
