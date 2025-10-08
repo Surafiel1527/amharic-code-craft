@@ -1292,16 +1292,35 @@ async function setupDatabaseTables(analysis: any, userId: string, broadcast: any
       // Generate CREATE TABLE statement
       const fields = table.fields || ['id', 'created_at'];
       const fieldDefinitions = fields.map((field: string) => {
-        if (field === 'id') return 'id uuid primary key default gen_random_uuid()';
-        if (field === 'user_id') return 'user_id uuid references auth.users(id) on delete cascade not null';
-        if (field === 'created_at') return 'created_at timestamp with time zone default now()';
-        if (field === 'updated_at') return 'updated_at timestamp with time zone default now()';
-        if (field.includes('email')) return `${field} text not null`;
-        if (field.includes('name') || field.includes('title')) return `${field} text not null`;
-        if (field.includes('content') || field.includes('body') || field.includes('description')) return `${field} text`;
-        if (field.includes('count') || field.includes('price') || field.includes('quantity')) return `${field} numeric default 0`;
-        if (field.includes('is_') || field.includes('has_')) return `${field} boolean default false`;
-        return `${field} text`;
+        // Extract field name - handle formats like "id (uuid, pk)" or "email (unique)"
+        let fieldName = field;
+        if (field.includes('(')) {
+          fieldName = field.substring(0, field.indexOf('(')).trim();
+        }
+        if (fieldName.includes(' ')) {
+          fieldName = fieldName.split(' ')[0].trim();
+        }
+        
+        // Generate SQL based on field name
+        if (fieldName === 'id') return 'id uuid primary key default gen_random_uuid()';
+        if (fieldName === 'user_id' || fieldName === 'author_id') return `${fieldName} uuid references auth.users(id) on delete cascade not null`;
+        if (fieldName === 'created_at') return 'created_at timestamp with time zone default now()';
+        if (fieldName === 'updated_at') return 'updated_at timestamp with time zone default now()';
+        if (fieldName.includes('email')) return `${fieldName} text unique not null`;
+        if (fieldName.includes('username')) return `${fieldName} text unique not null`;
+        if (fieldName.includes('slug')) return `${fieldName} text unique not null`;
+        if (fieldName.includes('password')) return `${fieldName} text not null`;
+        if (fieldName.includes('name') || fieldName.includes('title')) return `${fieldName} text not null`;
+        if (fieldName.includes('content') || fieldName.includes('body') || fieldName.includes('description')) return `${fieldName} text`;
+        if (fieldName.includes('status')) return `${fieldName} text default 'draft'`;
+        if (fieldName.includes('count') || fieldName.includes('price') || fieldName.includes('quantity')) return `${fieldName} numeric default 0`;
+        if (fieldName.includes('is_') || fieldName.includes('has_')) return `${fieldName} boolean default false`;
+        if (fieldName.includes('_id') && fieldName !== 'id') return `${fieldName} uuid`;
+        if (fieldName.includes('_at')) return `${fieldName} timestamp with time zone`;
+        if (fieldName.includes('_json')) return `${fieldName} jsonb default '{}'`;
+        if (fieldName.includes('_html')) return `${fieldName} text`;
+        if (fieldName.includes('url')) return `${fieldName} text`;
+        return `${fieldName} text`;
       }).join(',\n  ');
 
       sqlStatements.push(`
