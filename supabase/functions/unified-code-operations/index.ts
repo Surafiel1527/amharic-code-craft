@@ -454,6 +454,14 @@ Field type examples:
         const sqlStatements: string[] = [];
         
         for (const table of analysis.databaseTables) {
+          console.log(`📊 Creating table: ${table.name}`);
+          
+          // Validate table structure
+          if (!table.fields || !Array.isArray(table.fields) || table.fields.length === 0) {
+            console.error(`❌ Invalid table structure for ${table.name}: no fields`);
+            continue;
+          }
+          
           // Build field definitions from structured data
           const fieldDefinitions = table.fields.map((field: any) => {
             let sql = field.name + ' ' + field.type;
@@ -469,6 +477,13 @@ Field type examples:
 
           // Find user reference column for RLS
           const userRefField = table.fields.find((f: any) => f.isUserReference === true);
+          
+          // Log user reference field for debugging
+          if (userRefField) {
+            console.log(`✅ Found user reference field for ${table.name}: ${userRefField.name}`);
+          } else {
+            console.log(`ℹ️ No user reference field for ${table.name} - will use authenticated user policies`);
+          }
 
           let rlsPolicies = '';
           if (userRefField) {
@@ -508,20 +523,32 @@ create table if not exists public.${table.name} (
 ${rlsPolicies}`);
         }
 
-        const fullSQL = sqlStatements.join('\n\n');
-        
-        try {
-          const { data: execResult, error: execError } = await supabase
-            .rpc('execute_migration', { migration_sql: fullSQL });
+        if (sqlStatements.length === 0) {
+          console.warn('⚠️ No valid SQL statements generated');
+          await sendEvent('error', { message: 'Failed to generate valid database schema' });
+        } else {
+          const fullSQL = sqlStatements.join('\n\n');
+          console.log('📝 Generated SQL for database setup');
+          console.log('SQL to execute (first 500 chars):', fullSQL.substring(0, 500));
+          console.log('Total SQL length:', fullSQL.length);
+          
+          try {
+            const { data: execResult, error: execError } = await supabase
+              .rpc('execute_migration', { migration_sql: fullSQL });
 
-          if (!execError && execResult?.success) {
-            console.log('✅ Database tables created successfully');
-            await sendEvent('status', { message: `✅ Created ${analysis.databaseTables.length} tables`, progress: 30 });
-          } else {
-            console.error('Database setup failed:', execError || execResult?.error);
+            if (!execError && execResult?.success) {
+              console.log('✅ Database tables created successfully');
+              await sendEvent('status', { message: `✅ Created ${analysis.databaseTables.length} tables`, progress: 30 });
+            } else {
+              const errorMsg = execError?.message || execResult?.error || 'Unknown error';
+              console.error('❌ Failed to execute migration:', errorMsg);
+              console.error('Failed SQL:', fullSQL);
+              await sendEvent('error', { message: `Database setup failed: ${errorMsg}` });
+            }
+          } catch (error) {
+            console.error('Database setup error:', error);
+            await sendEvent('error', { message: 'Database setup failed due to an error' });
           }
-        } catch (error) {
-          console.error('Database setup error:', error);
         }
       }
 

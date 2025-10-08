@@ -1296,6 +1296,12 @@ async function setupDatabaseTables(analysis: any, userId: string, broadcast: any
     for (const table of backendRequirements.databaseTables) {
       console.log(`📊 Creating table: ${table.name}`);
       
+      // Validate table structure
+      if (!table.fields || !Array.isArray(table.fields) || table.fields.length === 0) {
+        console.error(`❌ Invalid table structure for ${table.name}: no fields`);
+        continue;
+      }
+      
       // Build field definitions from structured data
       const fieldDefinitions = table.fields.map((field: any) => {
         let sql = field.name + ' ' + field.type;
@@ -1311,6 +1317,13 @@ async function setupDatabaseTables(analysis: any, userId: string, broadcast: any
 
       // Find user reference column for RLS
       const userRefField = table.fields.find((f: any) => f.isUserReference === true);
+      
+      // Log user reference field for debugging
+      if (userRefField) {
+        console.log(`✅ Found user reference field for ${table.name}: ${userRefField.name}`);
+      } else {
+        console.log(`ℹ️ No user reference field for ${table.name} - will use authenticated user policies`);
+      }
 
       let rlsPolicies = '';
       if (userRefField) {
@@ -1361,10 +1374,21 @@ create table if not exists public.${table.name} (
 ${rlsPolicies}`);
     }
 
+    if (sqlStatements.length === 0) {
+      console.warn('⚠️ No valid SQL statements generated');
+      await broadcast('generation:database', { 
+        status: 'error', 
+        message: 'Failed to generate valid database schema', 
+        progress: 30 
+      });
+      return;
+    }
+
     // Build complete SQL
     const fullSQL = sqlStatements.join('\n\n');
     console.log('📝 Generated SQL for database setup');
-    console.log('SQL to execute:', fullSQL.substring(0, 300) + '...');
+    console.log('SQL to execute (first 500 chars):', fullSQL.substring(0, 500));
+    console.log('Total SQL length:', fullSQL.length);
     
     // Execute the SQL to create tables
     console.log('🚀 Executing SQL to create tables...');
@@ -1372,7 +1396,15 @@ ${rlsPolicies}`);
       .rpc('execute_migration', { migration_sql: fullSQL });
 
     if (execError || !execResult?.success) {
-      console.error('❌ Failed to execute migration:', execError || execResult?.error);
+      const errorMsg = execError?.message || execResult?.error || 'Unknown error';
+      console.error('❌ Failed to execute migration:', errorMsg);
+      console.error('Failed SQL:', fullSQL);
+      
+      await broadcast('generation:database', { 
+        status: 'error', 
+        message: `Database setup failed: ${errorMsg}`, 
+        progress: 30 
+      });
       
       // Store failed migration for review
       await supabaseAdmin
