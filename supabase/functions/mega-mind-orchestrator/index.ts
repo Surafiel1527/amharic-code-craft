@@ -13,7 +13,7 @@ const corsHeaders = {
 
 /**
  * Smart AI call with automatic fallback from GPT-5 to Gemini
- * Tries GPT-5 first (premium), falls back to Gemini (FREE until Oct 13, 2025)
+ * Tries: Lovable AI (GPT-5 → Gemini Pro → Gemini Flash) → Your own Gemini API
  */
 async function callAIWithFallback(
   messages: any[],
@@ -26,10 +26,10 @@ async function callAIWithFallback(
   } = {}
 ): Promise<any> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+  const USER_GEMINI_KEY = Deno.env.get('GEMINI_API_KEY');
 
-  // Model hierarchy: GPT-5 → Gemini Pro → Gemini Flash
-  const modelSequence = options.preferredModel === 'gpt-5' 
+  // Model hierarchy: GPT-5 → Gemini Pro → Gemini Flash (via Lovable AI)
+  const lovableModels = options.preferredModel === 'gpt-5' 
     ? ['openai/gpt-5', 'google/gemini-2.5-pro', 'google/gemini-2.5-flash']
     : options.preferredModel === 'gemini-pro'
     ? ['google/gemini-2.5-pro', 'google/gemini-2.5-flash']
@@ -41,72 +41,175 @@ async function callAIWithFallback(
 
   let lastError: any = null;
 
-  for (let i = 0; i < modelSequence.length; i++) {
-    const model = modelSequence[i];
-    
-    try {
-      console.log(`🤖 Attempting AI call with ${model}...`);
+  // Phase 1: Try Lovable AI models
+  if (LOVABLE_API_KEY) {
+    for (let i = 0; i < lovableModels.length; i++) {
+      const model = lovableModels[i];
       
-      const body: any = {
-        model,
-        messages: fullMessages,
-      };
-
-      if (options.responseFormat) body.response_format = options.responseFormat;
-      if (options.temperature !== undefined) body.temperature = options.temperature;
-      if (options.maxTokens) body.max_tokens = options.maxTokens;
-
-      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        lastError = { status: response.status, model, error: errorText };
+      try {
+        console.log(`🤖 Attempting Lovable AI with ${model}...`);
         
-        // Log the error
-        console.warn(`⚠️ ${model} failed (${response.status}): ${errorText.substring(0, 200)}`);
-        
-        // Rate limit (429) or Payment required (402) - try fallback
-        if (response.status === 429 || response.status === 402) {
-          console.log(`🔄 ${model} unavailable (${response.status}), trying fallback...`);
+        const body: any = {
+          model,
+          messages: fullMessages,
+        };
+
+        if (options.responseFormat) body.response_format = options.responseFormat;
+        if (options.temperature !== undefined) body.temperature = options.temperature;
+        if (options.maxTokens) body.max_tokens = options.maxTokens;
+
+        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          lastError = { status: response.status, model, error: errorText, provider: 'Lovable AI' };
+          
+          console.warn(`⚠️ Lovable AI ${model} failed (${response.status}): ${errorText.substring(0, 200)}`);
+          
+          // Rate limit (429) or Payment required (402) - try fallback
+          if (response.status === 429 || response.status === 402) {
+            console.log(`🔄 ${model} unavailable (${response.status}), trying fallback...`);
+            continue;
+          }
+          
+          console.log(`🔄 ${model} error, trying fallback...`);
           continue;
         }
-        
-        // Other errors - also try fallback
-        console.log(`🔄 ${model} error, trying fallback...`);
-        continue;
-      }
 
-      const data = await response.json();
-      console.log(`✅ Success with ${model}`);
-      
-      return {
-        data,
-        modelUsed: model,
-        wasFallback: i > 0
-      };
-      
-    } catch (error) {
-      lastError = { model, error: error instanceof Error ? error.message : 'Unknown error' };
-      console.error(`❌ ${model} exception:`, error);
-      
-      // Try next model in sequence
-      if (i < modelSequence.length - 1) {
-        console.log(`🔄 Trying fallback model...`);
-        continue;
+        const data = await response.json();
+        console.log(`✅ Success with Lovable AI ${model}`);
+        
+        return {
+          data,
+          modelUsed: model,
+          provider: 'Lovable AI',
+          wasFallback: i > 0
+        };
+        
+      } catch (error) {
+        lastError = { model, error: error instanceof Error ? error.message : 'Unknown error', provider: 'Lovable AI' };
+        console.error(`❌ Lovable AI ${model} exception:`, error);
+        
+        // Try next model
+        if (i < lovableModels.length - 1) {
+          console.log(`🔄 Trying next Lovable AI fallback...`);
+          continue;
+        }
       }
     }
   }
 
-  // All models failed
-  console.error('❌ All AI models failed:', lastError);
-  throw new Error(`All AI models failed. Last error: ${JSON.stringify(lastError)}`);
+  // Phase 2: Final fallback to user's own Gemini API
+  if (USER_GEMINI_KEY) {
+    try {
+      console.log(`🔑 All Lovable AI models exhausted. Trying your own Gemini API...`);
+      
+      // Convert messages to Gemini format
+      const geminiMessages = fullMessages
+        .filter(m => m.role !== 'system')
+        .map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        }));
+      
+      // Add system prompt as first user message if exists
+      const systemMessage = fullMessages.find(m => m.role === 'system');
+      if (systemMessage) {
+        geminiMessages.unshift({
+          role: 'user',
+          parts: [{ text: `System Instructions: ${systemMessage.content}` }]
+        });
+        geminiMessages.splice(1, 0, {
+          role: 'model',
+          parts: [{ text: 'Understood. I will follow these instructions.' }]
+        });
+      }
+
+      const geminiBody: any = {
+        contents: geminiMessages,
+        generationConfig: {}
+      };
+
+      if (options.temperature !== undefined) {
+        geminiBody.generationConfig.temperature = options.temperature;
+      }
+      if (options.maxTokens) {
+        geminiBody.generationConfig.maxOutputTokens = options.maxTokens;
+      }
+      if (options.responseFormat?.type === 'json_object') {
+        geminiBody.generationConfig.response_mime_type = 'application/json';
+      }
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${USER_GEMINI_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(geminiBody),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        lastError = { status: response.status, model: 'gemini-2.0-flash-exp', error: errorText, provider: 'Your Gemini API' };
+        throw new Error(`Your Gemini API failed: ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      // Convert Gemini response to OpenAI format
+      const geminiText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const openAIFormat = {
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: geminiText
+            },
+            index: 0,
+            finish_reason: 'stop'
+          }
+        ],
+        model: 'gemini-2.0-flash-exp',
+        usage: {
+          prompt_tokens: 0,
+          completion_tokens: 0,
+          total_tokens: 0
+        }
+      };
+
+      console.log(`✅ SUCCESS with your own Gemini API! (backup saved the day 🎉)`);
+      
+      return {
+        data: openAIFormat,
+        modelUsed: 'gemini-2.0-flash-exp',
+        provider: 'Your Gemini API',
+        wasFallback: true,
+        wasUserKey: true
+      };
+      
+    } catch (error) {
+      lastError = { 
+        model: 'gemini-2.0-flash-exp', 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        provider: 'Your Gemini API'
+      };
+      console.error(`❌ Your Gemini API also failed:`, error);
+    }
+  } else {
+    console.warn('⚠️ No GEMINI_API_KEY found for final fallback');
+  }
+
+  // Everything failed
+  console.error('❌ All AI providers failed (Lovable AI + Your Gemini API):', lastError);
+  throw new Error(`All AI providers exhausted. Last error: ${JSON.stringify(lastError)}`);
 }
 
 // Rate limiting map (in-memory for this instance)
