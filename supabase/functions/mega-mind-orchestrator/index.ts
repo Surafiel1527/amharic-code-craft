@@ -1847,52 +1847,47 @@ async function generateBackend(
         console.log('⚠️ Could not fetch existing schema:', error);
       }
       
-      const dbPrompt = `You are a PostgreSQL/Supabase database architect. Generate ONLY SQL migration code.
+      const dbPrompt = `CRITICAL INSTRUCTION: You MUST generate PostgreSQL SQL migration code ONLY.
 
-**Request:** ${request}
-**Tables Needed:** ${JSON.stringify(backendRequirements.databaseTables || [])}
-**Goal:** ${analysis.mainGoal}
+USER REQUEST: "${request}"
 
-**CRITICAL: You MUST return ONLY a JSON object with SQL statements. DO NOT return TypeScript files or frontend code!**
+REQUIRED TABLES:
+${JSON.stringify(backendRequirements.databaseTables || [], null, 2)}
 
-**Required JSON Structure:**
+YOU MUST RESPOND WITH VALID JSON IN THIS EXACT FORMAT:
 {
   "operation": "create",
-  "reasoning": "Brief explanation of database design",
-  "sql": "-- Complete PostgreSQL SQL migration script here
-CREATE TABLE IF NOT EXISTS public.users (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  email text UNIQUE NOT NULL,
-  name text NOT NULL,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY users_select_own ON public.users
-  FOR SELECT USING (auth.uid() = id);
-
-CREATE POLICY users_insert_own ON public.users  
-  FOR INSERT WITH CHECK (auth.uid() = id);",
-  "tables": ["users", "posts", "comments"],
-  "changes": [
-    {"table": "users", "action": "create", "description": "User authentication table"},
-    {"table": "posts", "action": "create", "description": "Blog posts with author"}
-  ],
-  "securityPolicies": [
-    {"table": "users", "policies": ["Users can view their own data"]}
-  ],
-  "recommendations": ["Add index on posts.author_id"]
+  "reasoning": "Why this schema design",
+  "sql": "YOUR COMPLETE SQL MIGRATION HERE",
+  "tables": ["list", "of", "table", "names"],
+  "securityPolicies": [{"table": "name", "policies": ["policy description"]}]
 }
 
-**RULES:**
-1. Return ONLY valid JSON - no TypeScript, no frontend files
-2. Put ALL SQL statements in the "sql" field as a single string
-3. Include CREATE TABLE, ALTER TABLE, RLS policies, indexes, triggers
-4. Use auth.uid() for user-scoped RLS policies
-5. Add created_at/updated_at with triggers
-6. Generate complete, production-ready SQL only`;
+EXAMPLE VALID RESPONSE FOR A BLOG:
+{
+  "operation": "create",
+  "reasoning": "Blog platform needs users, posts, and comments with proper relationships",
+  "sql": "-- Users table\\nCREATE TABLE IF NOT EXISTS public.users (\\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\\n  email text UNIQUE NOT NULL,\\n  name text NOT NULL,\\n  created_at timestamptz DEFAULT now()\\n);\\n\\n-- Enable RLS\\nALTER TABLE public.users ENABLE ROW LEVEL SECURITY;\\n\\n-- RLS Policies\\nCREATE POLICY users_select_own ON public.users FOR SELECT USING (auth.uid() = id);\\nCREATE POLICY users_insert_own ON public.users FOR INSERT WITH CHECK (auth.uid() = id);\\n\\n-- Posts table\\nCREATE TABLE IF NOT EXISTS public.posts (\\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\\n  author_id uuid REFERENCES public.users(id) ON DELETE CASCADE,\\n  title text NOT NULL,\\n  content text,\\n  created_at timestamptz DEFAULT now()\\n);\\n\\nALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;\\nCREATE POLICY posts_select_all ON public.posts FOR SELECT USING (true);\\nCREATE POLICY posts_insert_own ON public.posts FOR INSERT WITH CHECK (auth.uid() = author_id);\\nCREATE POLICY posts_update_own ON public.posts FOR UPDATE USING (auth.uid() = author_id);",
+  "tables": ["users", "posts"],
+  "securityPolicies": [
+    {"table": "users", "policies": ["Users can only see their own data"]},
+    {"table": "posts", "policies": ["Anyone can read posts", "Authors can edit their own posts"]}
+  ]
+}
+
+CRITICAL RULES - VIOLATION WILL CAUSE SYSTEM FAILURE:
+1. The "sql" field MUST contain ONLY PostgreSQL SQL statements
+2. DO NOT include any TypeScript code
+3. DO NOT include any React components
+4. DO NOT include any import statements
+5. DO NOT create separate files
+6. Put EVERYTHING in the "sql" field as one string
+7. Use \\n for line breaks in SQL
+8. Always enable RLS with ALTER TABLE ... ENABLE ROW LEVEL SECURITY
+9. Always create RLS policies for each table
+10. Use auth.uid() for user-scoped policies
+
+GENERATE ONLY SQL MIGRATIONS FOR: ${request}`;
 
       let dbResult;
       try {
@@ -1900,8 +1895,8 @@ CREATE POLICY users_insert_own ON public.users
         dbResult = await callAIWithFallback(
           [{ role: 'user', content: dbPrompt }],
           {
-            systemPrompt: 'You are an expert database architect with deep PostgreSQL and Supabase knowledge. Always respond with valid JSON containing complete, production-ready SQL migrations.',
-            preferredModel: 'gpt-5', // Try GPT-5 first, fallback to Gemini
+            systemPrompt: 'You are a PostgreSQL/Supabase expert. You ONLY generate SQL migrations. You NEVER generate TypeScript, React, or frontend code. Your entire response must be valid JSON with a "sql" field containing PostgreSQL statements.',
+            preferredModel: 'gpt-5', // Use GPT-5 which follows instructions better
             responseFormat: { type: "json_object" }
           }
         );
@@ -1931,10 +1926,24 @@ CREATE POLICY users_insert_own ON public.users
         if (!dbData.sql) {
           console.error('❌ Missing required "sql" field in AI response');
           console.error('📄 Full parsed data:', JSON.stringify(dbData, null, 2).substring(0, 1000));
-          throw new Error('AI did not return SQL migrations - got wrong format');
+          throw new Error('AI did not return SQL migrations - missing "sql" field');
         }
         
-        console.log('✅ Database schema validated - contains SQL migrations');
+        // Validate that SQL field contains actual SQL, not TypeScript
+        const sqlContent = dbData.sql.toLowerCase();
+        const typeScriptIndicators = ['import ', 'export ', 'interface ', 'type ', '.tsx', '.ts', 'const ', 'let ', 'var ', 'function ', 'react'];
+        const sqlIndicators = ['create table', 'alter table', 'create policy', 'enable row level security'];
+        
+        const hasTypeScript = typeScriptIndicators.some(indicator => sqlContent.includes(indicator));
+        const hasSQL = sqlIndicators.some(indicator => sqlContent.includes(indicator));
+        
+        if (hasTypeScript || !hasSQL) {
+          console.error('❌ VALIDATION FAILED: AI returned TypeScript/frontend code instead of SQL');
+          console.error('📄 Invalid content (first 500 chars):', dbData.sql.substring(0, 500));
+          throw new Error('AI violated instructions and returned TypeScript instead of SQL migrations. This is a critical error.');
+        }
+        
+        console.log('✅ Database schema validated - contains valid SQL migrations');
       } catch (parseError) {
         console.error('❌ CRITICAL: Failed to parse/validate database schema from AI');
         console.error('Error type:', parseError instanceof Error ? parseError.name : typeof parseError);
