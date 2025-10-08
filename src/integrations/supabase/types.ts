@@ -3389,6 +3389,39 @@ export type Database = {
           },
         ]
       }
+      generated_migrations: {
+        Row: {
+          created_at: string | null
+          executed_at: string | null
+          id: string
+          migration_sql: string
+          project_context: string | null
+          status: string | null
+          table_count: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          executed_at?: string | null
+          id?: string
+          migration_sql: string
+          project_context?: string | null
+          status?: string | null
+          table_count?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          executed_at?: string | null
+          id?: string
+          migration_sql?: string
+          project_context?: string | null
+          status?: string | null
+          table_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       generated_tests: {
         Row: {
           coverage_percentage: number | null

@@ -613,6 +613,12 @@ serve(async (req) => {
       })
       .eq('id', orchestrationId);
 
+    // Setup database tables if needed (after analysis, before generation)
+    if (analysis.backendRequirements?.needsDatabase) {
+      console.log('🗄️ Database setup required, creating tables...');
+      await setupDatabaseTables(analysis, userId, broadcast);
+    }
+
     // Handle meta-requests (questions about the system)
     if (analysis.isMetaRequest || analysis.outputType === 'meta-conversation') {
       console.log('💬 Meta-request detected - providing conversational response');
@@ -1241,6 +1247,130 @@ Intelligently infer database tables and relationships:
 
   console.log(`✅ Analysis completed with ${result.modelUsed}${result.wasFallback ? ' (fallback)' : ''}`);
   return JSON.parse(result.data.choices[0].message.content);
+}
+
+/**
+ * Creates database tables based on analysis requirements
+ */
+async function setupDatabaseTables(analysis: any, userId: string, broadcast: any): Promise<void> {
+  const { backendRequirements } = analysis;
+  
+  if (!backendRequirements?.needsDatabase || !backendRequirements.databaseTables?.length) {
+    console.log('⏭️ No database tables needed');
+    return;
+  }
+
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+  const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+    console.warn('⚠️ Database setup skipped - missing service role credentials');
+    return;
+  }
+
+  await broadcast('generation:database', { 
+    status: 'creating', 
+    message: `Setting up ${backendRequirements.databaseTables.length} database tables...`, 
+    progress: 25 
+  });
+
+  const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+  try {
+    // Build SQL to create all tables
+    const sqlStatements: string[] = [];
+    
+    for (const table of backendRequirements.databaseTables) {
+      console.log(`📊 Creating table: ${table.name}`);
+      
+      // Generate CREATE TABLE statement
+      const fields = table.fields || ['id', 'created_at'];
+      const fieldDefinitions = fields.map((field: string) => {
+        if (field === 'id') return 'id uuid primary key default gen_random_uuid()';
+        if (field === 'user_id') return 'user_id uuid references auth.users(id) on delete cascade not null';
+        if (field === 'created_at') return 'created_at timestamp with time zone default now()';
+        if (field === 'updated_at') return 'updated_at timestamp with time zone default now()';
+        if (field.includes('email')) return `${field} text not null`;
+        if (field.includes('name') || field.includes('title')) return `${field} text not null`;
+        if (field.includes('content') || field.includes('body') || field.includes('description')) return `${field} text`;
+        if (field.includes('count') || field.includes('price') || field.includes('quantity')) return `${field} numeric default 0`;
+        if (field.includes('is_') || field.includes('has_')) return `${field} boolean default false`;
+        return `${field} text`;
+      }).join(',\n  ');
+
+      sqlStatements.push(`
+-- Create ${table.name} table
+create table if not exists public.${table.name} (
+  ${fieldDefinitions}
+);
+
+-- Enable RLS
+alter table public.${table.name} enable row level security;
+
+-- Create policies for ${table.name}
+create policy "Users can view their own ${table.name}"
+  on public.${table.name}
+  for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert their own ${table.name}"
+  on public.${table.name}
+  for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own ${table.name}"
+  on public.${table.name}
+  for update
+  using (auth.uid() = user_id);
+
+create policy "Users can delete their own ${table.name}"
+  on public.${table.name}
+  for delete
+  using (auth.uid() = user_id);
+`);
+    }
+
+    // Store SQL for manual execution
+    const fullSQL = sqlStatements.join('\n\n');
+    console.log('📝 Generated SQL for database setup');
+    console.log('SQL to execute:', fullSQL.substring(0, 300) + '...');
+    
+    // Store the SQL in a table for the user to review/execute
+    const { error: storeError } = await supabaseAdmin
+      .from('generated_migrations')
+      .insert({
+        user_id: userId,
+        project_context: analysis.mainGoal,
+        migration_sql: fullSQL,
+        table_count: backendRequirements.databaseTables.length,
+        status: 'pending'
+      });
+
+    if (storeError) {
+      console.error('❌ Could not store migration:', storeError);
+      await broadcast('generation:database', { 
+        status: 'warning', 
+        message: 'Database setup requires manual migration', 
+        progress: 30 
+      });
+    } else {
+      console.log('✅ Database migration ready for execution');
+      await broadcast('generation:database', { 
+        status: 'ready', 
+        message: `Database schema ready (${backendRequirements.databaseTables.length} tables) - check migrations`, 
+        progress: 35,
+        migrationSQL: fullSQL
+      });
+    }
+  } catch (error) {
+    console.error('❌ Database setup failed:', error);
+    // Continue without database
+    await broadcast('generation:database', { 
+      status: 'warning', 
+      message: 'Database setup encountered issues', 
+      progress: 30 
+    });
+  }
 }
 
 async function generateSimpleWebsite(request: string, analysis: any, broadcast: any, userSupabaseConnection?: any): Promise<any> {
