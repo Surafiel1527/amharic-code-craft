@@ -1847,62 +1847,52 @@ async function generateBackend(
         console.log('⚠️ Could not fetch existing schema:', error);
       }
       
-      const dbPrompt = `You are a smart database architect. Analyze this request and generate the optimal database solution.
+      const dbPrompt = `You are a PostgreSQL/Supabase database architect. Generate ONLY SQL migration code.
 
 **Request:** ${request}
 **Tables Needed:** ${JSON.stringify(backendRequirements.databaseTables || [])}
 **Goal:** ${analysis.mainGoal}
-**Existing Schema:** ${existingSchema ? JSON.stringify(existingSchema) : 'None - fresh database'}
 
-**YOUR INTELLIGENCE:**
-1. **Detect Operations:** Determine if we need to CREATE new tables, ALTER existing ones, or just use existing
-2. **Smart Schema Design:** Choose optimal data types, relationships, and indexes
-3. **Context Awareness:** If tables exist, generate ALTER statements instead of CREATE
-4. **Best Practices:** Auto-add user_id, created_at, updated_at, soft delete if appropriate
-5. **Security First:** Always include RLS policies with proper user isolation
-6. **Performance:** Add indexes for foreign keys and frequently queried columns
-7. **Data Integrity:** Use CHECK constraints, NOT NULL where appropriate, foreign keys
+**CRITICAL: You MUST return ONLY a JSON object with SQL statements. DO NOT return TypeScript files or frontend code!**
 
-**CRITICAL RULES:**
-1. Analyze existing schema - don't recreate what exists!
-2. Use proper data types (uuid, text, integer, boolean, timestamp with time zone, jsonb, etc.)
-3. Primary keys: id uuid primary key default gen_random_uuid()
-4. User data: user_id uuid references auth.users(id) on delete cascade
-5. Timestamps: created_at timestamptz default now(), updated_at timestamptz default now()
-6. Enable RLS: ALTER TABLE table_name ENABLE ROW LEVEL SECURITY;
-7. Create comprehensive policies for SELECT, INSERT, UPDATE, DELETE
-8. Use security definer functions to avoid RLS recursion issues
-9. Add helpful indexes: CREATE INDEX idx_table_column ON table(column);
-10. Create triggers for updated_at: CREATE TRIGGER update_updated_at BEFORE UPDATE ON table...
-
-**SMART DECISIONS:**
-- If table exists → Generate ALTER TABLE ADD COLUMN
-- If relationship exists → Skip foreign key
-- If similar table exists → Suggest reuse or extension
-- If data model is complex → Create helper functions
-- If auth is needed → Auto-create profiles table with proper RLS
-
-**Output JSON:**
+**Required JSON Structure:**
 {
-  "operation": "create" | "modify" | "extend",
-  "reasoning": "why this approach",
-  "sql": "complete migration SQL with all statements",
-  "tables": ["table1", "table2"],
+  "operation": "create",
+  "reasoning": "Brief explanation of database design",
+  "sql": "-- Complete PostgreSQL SQL migration script here
+CREATE TABLE IF NOT EXISTS public.users (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text UNIQUE NOT NULL,
+  name text NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY users_select_own ON public.users
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY users_insert_own ON public.users  
+  FOR INSERT WITH CHECK (auth.uid() = id);",
+  "tables": ["users", "posts", "comments"],
   "changes": [
-    {
-      "table": "users",
-      "action": "create" | "alter" | "index",
-      "description": "what changed and why"
-    }
+    {"table": "users", "action": "create", "description": "User authentication table"},
+    {"table": "posts", "action": "create", "description": "Blog posts with author"}
   ],
   "securityPolicies": [
-    {
-      "table": "users", 
-      "policies": ["Users can view their own data", "Admins can view all"]
-    }
+    {"table": "users", "policies": ["Users can view their own data"]}
   ],
-  "recommendations": ["Add index on email", "Consider caching for posts"]
-}`;
+  "recommendations": ["Add index on posts.author_id"]
+}
+
+**RULES:**
+1. Return ONLY valid JSON - no TypeScript, no frontend files
+2. Put ALL SQL statements in the "sql" field as a single string
+3. Include CREATE TABLE, ALTER TABLE, RLS policies, indexes, triggers
+4. Use auth.uid() for user-scoped RLS policies
+5. Add created_at/updated_at with triggers
+6. Generate complete, production-ready SQL only`;
 
       let dbResult;
       try {
@@ -1929,13 +1919,28 @@ async function generateBackend(
 
       let dbData;
       try {
-        console.log('📄 Parsing AI response...');
-        dbData = JSON.parse(dbResult.data.choices[0].message.content);
-        console.log('✅ AI response parsed successfully');
+        console.log('📄 Parsing AI response for database schema...');
+        const aiContent = dbResult.data.choices[0].message.content;
+        console.log('📝 AI returned content (first 300 chars):', aiContent.substring(0, 300));
+        
+        dbData = JSON.parse(aiContent);
+        console.log('✅ JSON parsing successful');
+        console.log('📊 Parsed structure keys:', Object.keys(dbData));
+        
+        // Validate expected structure
+        if (!dbData.sql) {
+          console.error('❌ Missing required "sql" field in AI response');
+          console.error('📄 Full parsed data:', JSON.stringify(dbData, null, 2).substring(0, 1000));
+          throw new Error('AI did not return SQL migrations - got wrong format');
+        }
+        
+        console.log('✅ Database schema validated - contains SQL migrations');
       } catch (parseError) {
-        console.error('❌ Failed to parse AI response:', parseError);
-        console.error('Raw AI response:', dbResult.data.choices[0].message.content.substring(0, 500));
-        throw new Error(`Failed to parse database schema JSON: ${parseError instanceof Error ? parseError.message : 'Parse failed'}`);
+        console.error('❌ CRITICAL: Failed to parse/validate database schema from AI');
+        console.error('Error type:', parseError instanceof Error ? parseError.name : typeof parseError);
+        console.error('Error message:', parseError instanceof Error ? parseError.message : String(parseError));
+        console.error('Raw AI response (first 800 chars):', dbResult.data.choices[0].message.content.substring(0, 800));
+        throw new Error(`Failed to parse database schema: ${parseError instanceof Error ? parseError.message : 'Parse failed'}`);
       }
       
       results.database = {
