@@ -546,14 +546,45 @@ create policy "Users can delete their own ${table.name}"
   on public.${table.name} for delete using (auth.uid() = ${userRefField.name});
 `;
           } else {
-            rlsPolicies = `
+            // If no user reference and no auth required, allow public access
+            if (analysis.needsAuth) {
+              rlsPolicies = `
 -- Enable RLS
 alter table public.${table.name} enable row level security;
 
--- Allow authenticated users to read
+-- Allow authenticated users full access
 create policy "Authenticated users can view ${table.name}"
   on public.${table.name} for select using (auth.role() = 'authenticated');
+
+create policy "Authenticated users can insert ${table.name}"
+  on public.${table.name} for insert with check (auth.role() = 'authenticated');
+
+create policy "Authenticated users can update ${table.name}"
+  on public.${table.name} for update using (auth.role() = 'authenticated');
+
+create policy "Authenticated users can delete ${table.name}"
+  on public.${table.name} for delete using (auth.role() = 'authenticated');
 `;
+            } else {
+              // No auth required - allow public access
+              rlsPolicies = `
+-- Enable RLS
+alter table public.${table.name} enable row level security;
+
+-- Allow public access (no authentication required)
+create policy "Public can view ${table.name}"
+  on public.${table.name} for select using (true);
+
+create policy "Public can insert ${table.name}"
+  on public.${table.name} for insert with check (true);
+
+create policy "Public can update ${table.name}"
+  on public.${table.name} for update using (true);
+
+create policy "Public can delete ${table.name}"
+  on public.${table.name} for delete using (true);
+`;
+            }
           }
 
           sqlStatements.push(`
