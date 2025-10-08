@@ -29,6 +29,37 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
+  // Poll for actual project data to verify generation is complete
+  useEffect(() => {
+    if (!isComplete) return;
+
+    console.log('🔍 Verifying project generation is complete...');
+    
+    const checkProjectComplete = async () => {
+      const { data: projectData } = await supabase
+        .from('projects')
+        .select('html_code, title')
+        .eq('id', projectId)
+        .single();
+
+      console.log('📊 Project check:', projectData);
+
+      // Only complete if project has actual code AND title doesn't say generating
+      if (projectData?.html_code && !projectData.title.includes('[Generating...]')) {
+        console.log('✅ Project generation verified complete!');
+        setTimeout(() => {
+          onCompleteRef.current?.();
+        }, 1500);
+      } else {
+        console.log('⏳ Still waiting for project data to save...');
+        // Check again in 2 seconds
+        setTimeout(checkProjectComplete, 2000);
+      }
+    };
+
+    checkProjectComplete();
+  }, [isComplete, projectId]);
+
   useEffect(() => {
     console.log('🔌 LiveGenerationProgress subscribing to:', `ai-status-${projectId}`);
     
@@ -61,12 +92,10 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
         setCurrentPhase(phase);
         setProgress(progress);
         
-        // If we hit 100% or status is idle, mark complete
+        // If we hit 100% or status is idle, mark complete (but don't call onComplete yet)
         if (progress >= 100 || payload.status === 'idle') {
+          console.log('🎯 AI generation complete, verifying project data...');
           setIsComplete(true);
-          setTimeout(() => {
-            onCompleteRef.current?.();
-          }, 1500);
         }
       })
       .subscribe((status) => {
@@ -75,8 +104,8 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
 
     // Timeout fallback: if stuck for >45 seconds, reload anyway
     const timeout = setTimeout(() => {
-      console.log('⏰ Generation timeout - checking project status');
-      onCompleteRef.current?.();
+      console.log('⏰ Generation timeout - forcing completion check');
+      setIsComplete(true);
     }, 45000);
 
     return () => {
