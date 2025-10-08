@@ -670,21 +670,43 @@ serve(async (req) => {
     // PHASE 2.5: Generate backend if needed
     let backendGeneration: any = null;
     if (analysis.backendRequirements?.needsDatabase || analysis.backendRequirements?.needsAuth || analysis.backendRequirements?.needsEdgeFunctions) {
-      console.log('🗄️ Generating backend infrastructure...');
-      await updateJobProgress(50, 'Setting up database and backend...');
-      await broadcast('generation:phase', { phase: 'generating', progress: 50, message: 'Creating database and backend...' });
-      
-      backendGeneration = await generateBackend(request, analysis, context, supabaseClient, userId, broadcast, userSupabaseConnection);
-      
-      await supabaseClient
-        .from('mega_mind_orchestrations')
-        .update({ 
-          backend_phase: backendGeneration,
-          status: 'detecting_dependencies'
-        })
-        .eq('id', orchestrationId);
+      try {
+        console.log('🗄️ Generating backend infrastructure...');
+        await updateJobProgress(50, 'Setting up database and backend...');
+        await broadcast('generation:phase', { phase: 'generating', progress: 50, message: 'Creating database and backend...' });
         
-      console.log('✅ Backend infrastructure generated');
+        backendGeneration = await generateBackend(request, analysis, context, supabaseClient, userId, broadcast, userSupabaseConnection);
+        
+        await supabaseClient
+          .from('mega_mind_orchestrations')
+          .update({ 
+            backend_phase: backendGeneration,
+            status: 'detecting_dependencies'
+          })
+          .eq('id', orchestrationId);
+          
+        console.log('✅ Backend infrastructure generated successfully');
+      } catch (backendError) {
+        console.error('❌ BACKEND GENERATION FAILED:', backendError);
+        console.error('Backend error details:', {
+          message: backendError instanceof Error ? backendError.message : 'Unknown error',
+          stack: backendError instanceof Error ? backendError.stack : undefined,
+          analysis: analysis.backendRequirements
+        });
+        
+        // Continue without backend but log the failure
+        await broadcast('generation:warning', { 
+          phase: 'generating', 
+          progress: 50, 
+          message: `⚠️ Backend generation skipped: ${backendError instanceof Error ? backendError.message : 'Unknown error'}` 
+        });
+        
+        backendGeneration = {
+          error: backendError instanceof Error ? backendError.message : 'Unknown error',
+          skipped: true,
+          reason: 'Backend generation failed - continuing with frontend only'
+        };
+      }
     }
 
     // PHASE 3: Detect and track dependencies from generated code
@@ -1882,14 +1904,22 @@ async function generateBackend(
   "recommendations": ["Add index on email", "Consider caching for posts"]
 }`;
 
-      const dbResult = await callAIWithFallback(
-        [{ role: 'user', content: dbPrompt }],
-        {
-          systemPrompt: 'You are an expert database architect with deep PostgreSQL and Supabase knowledge. Always respond with valid JSON containing complete, production-ready SQL migrations.',
-          preferredModel: 'gpt-5', // Try GPT-5 first, fallback to Gemini
-          responseFormat: { type: "json_object" }
-        }
-      );
+      let dbResult;
+      try {
+        console.log('🤖 Calling AI for database schema generation...');
+        dbResult = await callAIWithFallback(
+          [{ role: 'user', content: dbPrompt }],
+          {
+            systemPrompt: 'You are an expert database architect with deep PostgreSQL and Supabase knowledge. Always respond with valid JSON containing complete, production-ready SQL migrations.',
+            preferredModel: 'gpt-5', // Try GPT-5 first, fallback to Gemini
+            responseFormat: { type: "json_object" }
+          }
+        );
+        console.log('✅ AI call successful, model used:', dbResult.modelUsed);
+      } catch (aiError) {
+        console.error('❌ AI call failed for database generation:', aiError);
+        throw new Error(`Failed to generate database schema: ${aiError instanceof Error ? aiError.message : 'AI call failed'}`);
+      }
 
       await broadcast('generation:phase', { 
         status: 'generating', 
@@ -1897,7 +1927,16 @@ async function generateBackend(
         progress: 55 
       });
 
-      const dbData = JSON.parse(dbResult.data.choices[0].message.content);
+      let dbData;
+      try {
+        console.log('📄 Parsing AI response...');
+        dbData = JSON.parse(dbResult.data.choices[0].message.content);
+        console.log('✅ AI response parsed successfully');
+      } catch (parseError) {
+        console.error('❌ Failed to parse AI response:', parseError);
+        console.error('Raw AI response:', dbResult.data.choices[0].message.content.substring(0, 500));
+        throw new Error(`Failed to parse database schema JSON: ${parseError instanceof Error ? parseError.message : 'Parse failed'}`);
+      }
       
       results.database = {
         operation: dbData.operation,
