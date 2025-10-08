@@ -1330,36 +1330,54 @@ create policy "Users can delete their own ${table.name}"
 `);
     }
 
-    // Store SQL for manual execution
+    // Build complete SQL
     const fullSQL = sqlStatements.join('\n\n');
     console.log('📝 Generated SQL for database setup');
     console.log('SQL to execute:', fullSQL.substring(0, 300) + '...');
     
-    // Store the SQL in a table for the user to review/execute
-    const { error: storeError } = await supabaseAdmin
-      .from('generated_migrations')
-      .insert({
-        user_id: userId,
-        project_context: analysis.mainGoal,
-        migration_sql: fullSQL,
-        table_count: backendRequirements.databaseTables.length,
-        status: 'pending'
-      });
+    // Execute the SQL to create tables
+    console.log('🚀 Executing SQL to create tables...');
+    const { data: execResult, error: execError } = await supabaseAdmin
+      .rpc('execute_migration', { migration_sql: fullSQL });
 
-    if (storeError) {
-      console.error('❌ Could not store migration:', storeError);
+    if (execError || !execResult?.success) {
+      console.error('❌ Failed to execute migration:', execError || execResult?.error);
+      
+      // Store failed migration for review
+      await supabaseAdmin
+        .from('generated_migrations')
+        .insert({
+          user_id: userId,
+          project_context: analysis.mainGoal,
+          migration_sql: fullSQL,
+          table_count: backendRequirements.databaseTables.length,
+          status: 'failed',
+          error_message: execError?.message || execResult?.error
+        });
+      
       await broadcast('generation:database', { 
         status: 'warning', 
-        message: 'Database setup requires manual migration', 
+        message: 'Database setup encountered issues - check migrations', 
         progress: 30 
       });
     } else {
-      console.log('✅ Database migration ready for execution');
+      console.log('✅ Tables created successfully!');
+      
+      // Store successful migration
+      await supabaseAdmin
+        .from('generated_migrations')
+        .insert({
+          user_id: userId,
+          project_context: analysis.mainGoal,
+          migration_sql: fullSQL,
+          table_count: backendRequirements.databaseTables.length,
+          status: 'executed'
+        });
+      
       await broadcast('generation:database', { 
-        status: 'ready', 
-        message: `Database schema ready (${backendRequirements.databaseTables.length} tables) - check migrations`, 
-        progress: 35,
-        migrationSQL: fullSQL
+        status: 'complete', 
+        message: `✅ Created ${backendRequirements.databaseTables.length} tables with RLS policies`, 
+        progress: 35
       });
     }
   } catch (error) {

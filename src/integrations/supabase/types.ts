@@ -7450,6 +7450,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      execute_migration: {
+        Args: { migration_sql: string }
+        Returns: Json
+      }
       generate_share_token: {
         Args: Record<PropertyKey, never>
         Returns: string
