@@ -17,9 +17,13 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { conversationId, codeContext, errorType } = await req.json();
+    const { conversationId, codeContext, errorType, userRequest, projectContext } = await req.json();
 
-    console.log('Pattern recognizer analyzing:', { conversationId, errorType });
+    console.log('🔍 Enhanced Pattern Recognizer analyzing:', { conversationId, errorType, hasProjectContext: !!projectContext });
+
+    // **NEW: Smart Pattern Detection for Common Scenarios**
+    const detectedPatterns = await detectSmartPatterns(userRequest, codeContext, projectContext);
+    console.log('🧠 Smart patterns detected:', detectedPatterns);
 
     // Create pattern signature
     const signature = `${errorType}_${codeContext?.substring(0, 100)}`;
@@ -30,7 +34,7 @@ serve(async (req) => {
       .select('*')
       .eq('pattern_type', errorType)
       .eq('pattern_signature', signature)
-      .single();
+      .maybeSingle();
 
     if (existingPattern) {
       // Update pattern
@@ -46,7 +50,8 @@ serve(async (req) => {
         success: true,
         pattern_recognized: true,
         recommended_action: existingPattern.recommended_action,
-        confidence: existingPattern.success_rate / 100
+        confidence: existingPattern.success_rate / 100,
+        smart_patterns: detectedPatterns // NEW: Include smart patterns
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -60,17 +65,23 @@ Analyze this error pattern and recommend a solution:
 
 Error Type: ${errorType}
 Code Context: ${codeContext}
+User Request: ${userRequest}
+Detected Smart Patterns: ${JSON.stringify(detectedPatterns)}
 
 Provide:
 1. Root cause analysis
 2. Recommended fix
 3. Prevention strategy
+4. Security considerations
+5. Required RLS policies (if database involved)
 
 Return JSON:
 {
   "root_cause": "<analysis>",
   "recommended_fix": "<fix>",
-  "prevention_strategy": "<strategy>"
+  "prevention_strategy": "<strategy>",
+  "security_notes": "<security>",
+  "rls_policies": ["<policy1>", "<policy2>"]
 }
     `;
 
@@ -83,7 +94,7 @@ Return JSON:
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: 'You are a pattern recognition system for code errors.' },
+          { role: 'system', content: 'You are an enhanced pattern recognition system that understands security, authentication, and best practices.' },
           { role: 'user', content: analysisPrompt }
         ]
       })
@@ -95,7 +106,9 @@ Return JSON:
     let analysis = {
       root_cause: 'Unknown',
       recommended_fix: 'Manual review required',
-      prevention_strategy: 'Add tests'
+      prevention_strategy: 'Add tests',
+      security_notes: '',
+      rls_policies: []
     };
     
     try {
@@ -120,10 +133,62 @@ Return JSON:
       success: true,
       pattern_recognized: false,
       is_new_pattern: true,
-      recommended_action: analysis
+      recommended_action: analysis,
+      smart_patterns: detectedPatterns // NEW: Include smart patterns
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
+// **NEW: Smart Pattern Detection Function**
+function detectSmartPatterns(userRequest: string, codeContext: string, projectContext: any) {
+  const patterns = {
+    needsAuth: false,
+    needsConfirmation: false,
+    needsRLS: false,
+    needsProtectedRoute: false,
+    isDestructiveOperation: false,
+    involvesPII: false,
+    requiredComponents: [] as string[]
+  };
+
+  const request = (userRequest || '').toLowerCase();
+  const code = (codeContext || '').toLowerCase();
+
+  // Detect CRUD operations that need auth
+  const crudKeywords = ['todo', 'post', 'comment', 'note', 'task', 'item', 'list', 'message', 'user data'];
+  patterns.needsAuth = crudKeywords.some(keyword => request.includes(keyword));
+
+  // Detect destructive operations that need confirmation
+  const destructiveKeywords = ['delete', 'remove', 'clear', 'destroy', 'wipe'];
+  patterns.isDestructiveOperation = destructiveKeywords.some(keyword => request.includes(keyword));
+  patterns.needsConfirmation = patterns.isDestructiveOperation || request.includes('edit');
+
+  // Detect table creation = need RLS
+  patterns.needsRLS = request.includes('table') || request.includes('database') || request.includes('store');
+
+  // Detect PII
+  const piiKeywords = ['email', 'phone', 'address', 'profile', 'personal'];
+  patterns.involvesPII = piiKeywords.some(keyword => request.includes(keyword));
+
+  // Detect if protected route is needed
+  patterns.needsProtectedRoute = patterns.needsAuth;
+
+  // Recommend required components
+  if (patterns.needsAuth) {
+    patterns.requiredComponents.push('Authentication', 'useAuth hook');
+  }
+  if (patterns.needsConfirmation) {
+    patterns.requiredComponents.push('ConfirmDialog component');
+  }
+  if (patterns.needsRLS) {
+    patterns.requiredComponents.push('RLS policies');
+  }
+  if (patterns.needsProtectedRoute) {
+    patterns.requiredComponents.push('ProtectedRoute wrapper');
+  }
+
+  return patterns;
+}
 
   } catch (error) {
     console.error('Error in pattern-recognizer:', error);

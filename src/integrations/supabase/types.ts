@@ -4685,6 +4685,51 @@ export type Database = {
           },
         ]
       }
+      pending_confirmations: {
+        Row: {
+          affected_resources: Json | null
+          approved_at: string | null
+          change_type: string
+          conversation_id: string | null
+          created_at: string | null
+          expires_at: string
+          id: string
+          preview: string
+          proposed_changes: Json | null
+          severity: string
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          affected_resources?: Json | null
+          approved_at?: string | null
+          change_type: string
+          conversation_id?: string | null
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          preview: string
+          proposed_changes?: Json | null
+          severity: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          affected_resources?: Json | null
+          approved_at?: string | null
+          change_type?: string
+          conversation_id?: string | null
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          preview?: string
+          proposed_changes?: Json | null
+          severity?: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       performance_cache: {
         Row: {
           cache_key: string
@@ -5276,6 +5321,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      project_intelligence_context: {
+        Row: {
+          created_at: string | null
+          has_auth: boolean | null
+          has_profiles: boolean | null
+          has_rls: boolean | null
+          id: string
+          last_updated: string | null
+          project_id: string | null
+          protected_routes: string[] | null
+          user_id: string | null
+          user_preferences: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          has_auth?: boolean | null
+          has_profiles?: boolean | null
+          has_rls?: boolean | null
+          id?: string
+          last_updated?: string | null
+          project_id?: string | null
+          protected_routes?: string[] | null
+          user_id?: string | null
+          user_preferences?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          has_auth?: boolean | null
+          has_profiles?: boolean | null
+          has_rls?: boolean | null
+          id?: string
+          last_updated?: string | null
+          project_id?: string | null
+          protected_routes?: string[] | null
+          user_id?: string | null
+          user_preferences?: Json | null
+        }
+        Relationships: []
       }
       project_memory: {
         Row: {

@@ -35,6 +35,12 @@ verify_jwt = false
 [functions.meta-self-improvement]
 verify_jwt = false
 
+[functions.security-intelligence]
+verify_jwt = false
+
+[functions.confirmation-engine]
+verify_jwt = true
+
 # ============================================
 # UNIFIED WORKER FUNCTIONS (20)
 # Enterprise-grade consolidated operations
