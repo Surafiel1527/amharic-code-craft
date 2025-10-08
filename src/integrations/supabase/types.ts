@@ -7126,36 +7126,42 @@ export type Database = {
       }
       user_supabase_connections: {
         Row: {
-          created_at: string
+          created_at: string | null
           id: string
           is_active: boolean | null
+          last_tested_at: string | null
           project_name: string
           supabase_anon_key: string
-          supabase_service_role_key: string | null
+          supabase_service_role_key: string
           supabase_url: string
-          updated_at: string
+          test_status: string | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           is_active?: boolean | null
+          last_tested_at?: string | null
           project_name: string
           supabase_anon_key: string
-          supabase_service_role_key?: string | null
+          supabase_service_role_key: string
           supabase_url: string
-          updated_at?: string
+          test_status?: string | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           is_active?: boolean | null
+          last_tested_at?: string | null
           project_name?: string
           supabase_anon_key?: string
-          supabase_service_role_key?: string | null
+          supabase_service_role_key?: string
           supabase_url?: string
-          updated_at?: string
+          test_status?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []

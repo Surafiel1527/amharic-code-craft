@@ -38,8 +38,8 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
   }, [editConnection]);
 
   const handleConnect = async () => {
-    if (!projectName.trim() || !supabaseUrl.trim() || !anonKey.trim()) {
-      toast.error("Please fill in all required fields");
+    if (!projectName.trim() || !supabaseUrl.trim() || !anonKey.trim() || !serviceRoleKey.trim()) {
+      toast.error("Please fill in all required fields including Service Role Key");
       return;
     }
 
@@ -63,7 +63,7 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
             project_name: projectName.trim(),
             supabase_url: supabaseUrl.trim(),
             supabase_anon_key: anonKey.trim(),
-            supabase_service_role_key: serviceRoleKey.trim() || null,
+            supabase_service_role_key: serviceRoleKey.trim(),
           })
           .eq("id", editConnection.id);
 
@@ -78,7 +78,7 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
             project_name: projectName.trim(),
             supabase_url: supabaseUrl.trim(),
             supabase_anon_key: anonKey.trim(),
-            supabase_service_role_key: serviceRoleKey.trim() || null,
+            supabase_service_role_key: serviceRoleKey.trim(),
             is_active: true
           });
 
@@ -181,7 +181,7 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="service-role-key">Service Role Key (Optional)</Label>
+              <Label htmlFor="service-role-key">Service Role Key *</Label>
               <Input
                 id="service-role-key"
                 type="password"
@@ -190,7 +190,7 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
                 onChange={(e) => setServiceRoleKey(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Only needed for advanced features. Find this in Settings → API → service_role
+                Required for creating database tables. Find in Settings → API → service_role
               </p>
             </div>
           </div>

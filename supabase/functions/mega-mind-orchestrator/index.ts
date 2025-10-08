@@ -467,17 +467,39 @@ serve(async (req) => {
       console.log('✅ User authenticated:', userId);
     }
     
-    // Fetch user's active Supabase connection
+    // ✅ FETCH USER'S ACTIVE SUPABASE CONNECTION (Multi-tenant architecture)
     let userSupabaseConnection = null;
+    let userSupabaseClient = null;
+    
     try {
-      const { data: connection } = await supabaseClient
+      const { data: connection, error: connError } = await supabaseClient
         .from('user_supabase_connections')
         .select('*')
         .eq('user_id', userId)
         .eq('is_active', true)
         .single();
       
+      if (connError || !connection) {
+        console.error('❌ No active Supabase connection found for user:', userId);
+        return new Response(
+          JSON.stringify({ 
+            error: 'No active Supabase connection found. Please connect your Supabase project first.',
+            requiresConnection: true,
+            redirectTo: '/supabase-connections'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       userSupabaseConnection = connection;
+      
+      // ✅ CREATE SUPABASE CLIENT USING USER'S CREDENTIALS
+      userSupabaseClient = createClient(
+        connection.supabase_url,
+        connection.supabase_service_role_key || connection.supabase_anon_key
+      );
+      
+      console.log('✅ Using user Supabase database:', connection.project_name, connection.supabase_url);
       console.log('📡 User Supabase connection:', connection ? connection.project_name : 'None (using platform DB)');
     } catch (error) {
       console.log('⚠️ No user Supabase connection found, will use platform database');
@@ -622,7 +644,7 @@ serve(async (req) => {
     // Setup database tables if needed (after analysis, before generation)
     if (analysis.backendRequirements?.needsDatabase) {
       console.log('🗄️ Database setup required, creating tables...');
-      await setupDatabaseTables(analysis, userId, broadcast);
+      await setupDatabaseTables(analysis, userId, broadcast, userSupabaseClient, supabaseClient);
     }
 
     // Handle meta-requests (questions about the system)
@@ -1265,7 +1287,13 @@ Intelligently infer database tables and relationships:
 /**
  * Creates database tables based on analysis requirements
  */
-async function setupDatabaseTables(analysis: any, userId: string, broadcast: any): Promise<void> {
+async function setupDatabaseTables(
+  analysis: any, 
+  userId: string, 
+  broadcast: any, 
+  userSupabaseClient: any, 
+  platformSupabaseClient: any
+): Promise<void> {
   const { backendRequirements } = analysis;
   
   if (!backendRequirements?.needsDatabase || !backendRequirements.databaseTables?.length) {
@@ -1287,7 +1315,8 @@ async function setupDatabaseTables(analysis: any, userId: string, broadcast: any
     progress: 25 
   });
 
-  const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  // ✅ USE USER'S SUPABASE CLIENT for database migrations
+  const userSupabase = userSupabaseClient;
 
   try {
     // Build SQL to create all tables using structured field definitions
@@ -1392,9 +1421,9 @@ ${rlsPolicies}`);
     console.log('SQL to execute (first 500 chars):', fullSQL.substring(0, 500));
     console.log('Total SQL length:', fullSQL.length);
     
-    // Execute the SQL to create tables
-    console.log('🚀 Executing SQL to create tables...');
-    const { data: execResult, error: execError } = await supabaseAdmin
+    // ✅ EXECUTE SQL ON USER'S SUPABASE DATABASE
+    console.log('🚀 Executing SQL on user\'s Supabase database...');
+    const { data: execResult, error: execError } = await userSupabase
       .rpc('execute_migration', { migration_sql: fullSQL });
 
     if (execError || !execResult?.success) {
@@ -1408,8 +1437,8 @@ ${rlsPolicies}`);
         progress: 30 
       });
       
-      // Store failed migration for review
-      await supabaseAdmin
+      // Store failed migration for review (in platform database)
+      await platformSupabaseClient
         .from('generated_migrations')
         .insert({
           user_id: userId,
@@ -1431,8 +1460,8 @@ ${rlsPolicies}`);
     } else {
       console.log('✅ Tables created successfully!');
       
-      // Store successful migration
-      await supabaseAdmin
+      // Store successful migration (in platform database)
+      await platformSupabaseClient
         .from('generated_migrations')
         .insert({
           user_id: userId,

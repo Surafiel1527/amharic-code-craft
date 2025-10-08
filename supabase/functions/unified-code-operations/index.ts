@@ -12,7 +12,8 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
+    // Create platform Supabase client (for auth and fetching user credentials)
+    const platformSupabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
@@ -21,30 +22,76 @@ serve(async (req) => {
 
     console.log('Code Operations:', operation);
 
+    // Authenticate user and get their Supabase connection
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await platformSupabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ✅ FETCH USER'S ACTIVE SUPABASE CONNECTION (Multi-tenant architecture)
+    const { data: userConnection, error: connectionError } = await platformSupabase
+      .from('user_supabase_connections')
+      .select('supabase_url, supabase_anon_key, supabase_service_role_key')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .single();
+
+    if (connectionError || !userConnection) {
+      console.error('No active Supabase connection found for user:', user.id);
+      return new Response(JSON.stringify({ 
+        error: 'No active Supabase connection found. Please connect your Supabase project first.',
+        requiresConnection: true 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ✅ CREATE SUPABASE CLIENT USING USER'S CREDENTIALS
+    const userSupabase = createClient(
+      userConnection.supabase_url,
+      userConnection.supabase_service_role_key || userConnection.supabase_anon_key
+    );
+
+    console.log('✅ Using user Supabase:', userConnection.supabase_url);
+
     let result;
 
     switch (operation) {
       case 'analyze':
-        result = await handleAnalysis(params, supabase);
+        result = await handleAnalysis(params, platformSupabase);
         break;
       case 'optimize':
-        result = await handleOptimization(params, supabase);
+        result = await handleOptimization(params, platformSupabase);
         break;
       case 'refactor':
-        result = await handleRefactoring(params, supabase);
+        result = await handleRefactoring(params, platformSupabase);
         break;
       case 'test_runner':
-        result = await handleTestRunner(params, supabase);
+        result = await handleTestRunner(params, platformSupabase);
         break;
       case 'component_generation':
       case 'react-generation':
-        result = await handleReactGeneration(params, supabase);
+        result = await handleReactGeneration(params, platformSupabase);
         break;
       case 'execute':
-        result = await handleExecute(params, supabase);
+        result = await handleExecute(params, platformSupabase);
         break;
       case 'stream_generation':
-        return await handleStreamGeneration(params, supabase, req);
+        return await handleStreamGeneration(params, userSupabase, platformSupabase, req, user.id);
       default:
         throw new Error(`Unknown operation: ${operation}`);
     }
@@ -369,7 +416,7 @@ async function executeJavaScript(code: string) {
   }
 }
 
-async function handleStreamGeneration(params: any, supabase: any, req: any) {
+async function handleStreamGeneration(params: any, userSupabase: any, platformSupabase: any, req: any, userId: string) {
   const { userRequest, framework, projectId, conversationId } = params.params;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -384,14 +431,8 @@ async function handleStreamGeneration(params: any, supabase: any, req: any) {
 
   (async () => {
     try {
-      // Get user from auth header
-      const authHeader = req.headers.get('Authorization');
-      let userId = null;
-      if (authHeader) {
-        const token = authHeader.replace('Bearer ', '');
-        const { data: { user } } = await supabase.auth.getUser(token);
-        userId = user?.id;
-      }
+      // ✅ Use userId already passed as parameter (already authenticated)
+      console.log('📝 Using authenticated user:', userId);
 
       await sendEvent('status', { message: 'Analyzing requirements...', progress: 10 });
 
@@ -535,7 +576,8 @@ ${rlsPolicies}`);
           console.log('Total SQL length:', fullSQL.length);
           
           try {
-            const { data: execResult, error: execError } = await supabase
+            // ✅ EXECUTE MIGRATION ON USER'S SUPABASE DATABASE
+            const { data: execResult, error: execError } = await userSupabase
               .rpc('execute_migration', { migration_sql: fullSQL });
 
             if (!execError && execResult?.success) {
