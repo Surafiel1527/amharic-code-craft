@@ -858,8 +858,12 @@ serve(async (req) => {
         }
         
         let cleanTitle = currentProject?.title || 'Generated Project';
+        // Remove all status prefixes from title
         if (cleanTitle.startsWith('[Generating...] ')) {
           cleanTitle = cleanTitle.replace('[Generating...] ', '');
+        }
+        if (cleanTitle.startsWith('[Failed] ')) {
+          cleanTitle = cleanTitle.replace('[Failed] ', '');
         }
         
         console.log(`📝 Updating project with title: "${cleanTitle}"`);

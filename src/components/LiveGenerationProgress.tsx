@@ -50,8 +50,10 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
 
         console.log('📊 Project check:', projectData);
 
-        // Only complete if project has actual code AND title doesn't say generating
-        if (projectData?.html_code && !projectData.title.includes('[Generating...]')) {
+        // Only complete if project has actual code AND title doesn't have status prefixes
+        if (projectData?.html_code && 
+            !projectData.title.includes('[Generating...]') && 
+            !projectData.title.includes('[Failed]')) {
           console.log('✅ Project generation verified complete!');
           setTimeout(() => {
             onCompleteRef.current?.();
