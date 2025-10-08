@@ -516,8 +516,10 @@ create policy "Authenticated users can view ${table.name}"
           }
 
           sqlStatements.push(`
--- Create ${table.name} table
-create table if not exists public.${table.name} (
+-- Drop and recreate ${table.name} table
+drop table if exists public.${table.name} cascade;
+
+create table public.${table.name} (
   ${fieldDefinitions}
 );
 ${rlsPolicies}`);
@@ -544,6 +546,9 @@ ${rlsPolicies}`);
               console.error('❌ Failed to execute migration:', errorMsg);
               console.error('Failed SQL:', fullSQL);
               await sendEvent('error', { message: `Database setup failed: ${errorMsg}` });
+              
+              // STOP execution on database failure
+              return;
             }
           } catch (error) {
             console.error('Database setup error:', error);

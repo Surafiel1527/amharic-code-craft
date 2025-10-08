@@ -1366,9 +1366,11 @@ create policy "Authenticated users can view ${table.name}"
 `;
       }
 
-      sqlStatements.push(`
--- Create ${table.name} table
-create table if not exists public.${table.name} (
+          sqlStatements.push(`
+-- Drop and recreate ${table.name} table
+drop table if exists public.${table.name} cascade;
+
+create table public.${table.name} (
   ${fieldDefinitions}
 );
 ${rlsPolicies}`);
@@ -1423,6 +1425,9 @@ ${rlsPolicies}`);
         message: 'Database setup encountered issues - check migrations', 
         progress: 30 
       });
+      
+      // STOP execution on database failure
+      return;
     } else {
       console.log('✅ Tables created successfully!');
       
