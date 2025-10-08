@@ -20,6 +20,10 @@ import { PatternLearner } from "@/components/PatternLearner";
 // OrchestrationProgress, ArchitecturePlanViewer, QualityMetrics removed - handled by UniversalChatInterface
 import { FileTree } from "@/components/FileTree";
 import { CodeEditor } from "@/components/CodeEditor";
+import { ProjectVersionSelector } from "@/components/ProjectVersionSelector";
+import { ConversationHistoryPanel } from "@/components/ConversationHistoryPanel";
+import { ProjectPreviewGenerator } from "@/components/ProjectPreviewGenerator";
+import { ProjectDownloader } from "@/components/ProjectDownloader";
 import { ComponentTemplates } from "@/components/ComponentTemplates";
 import { CollaborativePresence } from "@/components/CollaborativePresence";
 import { MultiFileGenerator } from "@/components/MultiFileGenerator";
@@ -89,6 +93,10 @@ export default function Workspace() {
   const [editorMode, setEditorMode] = useState<'single' | 'split'>('single');
   const [showMetrics, setShowMetrics] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  
+  // Version management state
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
+  const [currentVersionNumber, setCurrentVersionNumber] = useState<number>(1);
 
   // Load all conversations for this project
   const loadConversations = async () => {
@@ -795,6 +803,8 @@ export default function Workspace() {
                 <Tabs defaultValue="templates">
                   <TabsList className="w-full grid grid-cols-3 lg:grid-cols-17">
                     <TabsTrigger value="templates">Templates</TabsTrigger>
+                    <TabsTrigger value="versions">Versions</TabsTrigger>
+                    <TabsTrigger value="history">History</TabsTrigger>
                     <TabsTrigger value="metrics">Metrics</TabsTrigger>
                     <TabsTrigger value="deps">Deps</TabsTrigger>
                     <TabsTrigger value="refactor">Refactor</TabsTrigger>
@@ -820,6 +830,45 @@ export default function Workspace() {
                         handleCreateFile(fileName, 'file');
                         toast.success(`Created ${fileName} from template`);
                       }}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="versions" className="h-[calc(100vh-200px)] overflow-auto p-4">
+                    <div className="space-y-4">
+                      <ProjectVersionSelector
+                        projectId={projectId!}
+                        currentVersion={currentVersionNumber}
+                        onVersionChange={(versionId, versionNumber) => {
+                          setSelectedVersionId(versionId);
+                          setCurrentVersionNumber(versionNumber);
+                          toast.success(`Viewing Version ${versionNumber}`);
+                        }}
+                        onPreview={(versionId) => {
+                          toast.info("Preview feature coming soon!");
+                        }}
+                        onDownload={(versionId) => {
+                          toast.info("Download feature coming soon!");
+                        }}
+                      />
+                      
+                      <div className="flex gap-2">
+                        <ProjectPreviewGenerator
+                          projectId={projectId!}
+                          versionId={selectedVersionId || undefined}
+                        />
+                        <ProjectDownloader
+                          projectId={projectId!}
+                          versionId={selectedVersionId || undefined}
+                          projectTitle={project.title}
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="history" className="h-[calc(100vh-200px)] overflow-auto p-4">
+                    <ConversationHistoryPanel
+                      projectId={projectId!}
+                      conversationId={conversationId || undefined}
                     />
                   </TabsContent>
 

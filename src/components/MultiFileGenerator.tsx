@@ -58,8 +58,9 @@ export function MultiFileGenerator({ projectId, conversationId, onFilesGenerated
           params: {
             userRequest: request,
             framework,
-            projectId,
-            conversationId
+            projectId: projectId || undefined, // Pass projectId for regeneration
+            conversationId,
+            isRegeneration: !!projectId // Flag to indicate regeneration
           }
         })
       });
