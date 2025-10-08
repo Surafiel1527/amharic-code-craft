@@ -1438,20 +1438,64 @@ ${rlsPolicies}`);
     );
     
     if (isMissingFunction) {
-      console.log('🔧 execute_migration function missing - first time setup needed');
+      console.log('🔧 execute_migration function missing - attempting auto-setup...');
       await broadcast('generation:database', { 
-        status: 'warning', 
-        message: '⚠️ Database function missing - one-time setup required', 
-        progress: 25 
+        status: 'info', 
+        message: '🔧 First-time setup - creating database function...', 
+        progress: 22 
       });
       
-      // Since we can't execute raw SQL from edge functions without the execute_migration function,
-      // we need to provide clear instructions to the user
-      execError = {
-        message: 'Could not find the function public.execute_migration(migration_sql) in the schema cache',
-        details: 'first_time_setup_required',
-        code: 'FUNCTION_MISSING'
-      } as any;
+      try {
+        // Call our setup function to create execute_migration
+        console.log('📞 Calling setup-user-database function...');
+        const setupResponse = await platformSupabaseClient.functions.invoke('setup-user-database', {
+          body: {
+            supabaseUrl: userConnection.supabase_url,
+            serviceRoleKey: userConnection.supabase_service_role_key
+          }
+        });
+        
+        if (setupResponse.data?.success) {
+          console.log('✅ Database function created automatically!');
+          await broadcast('generation:database', { 
+            status: 'success', 
+            message: '✅ Database configured - creating tables...', 
+            progress: 26 
+          });
+          
+          // Retry the migration with the new function
+          console.log('🔄 Retrying migration...');
+          ({ data: execResult, error: execError } = await userSupabase
+            .rpc('execute_migration', { migration_sql: fullSQL }));
+            
+          if (!execError && execResult?.success) {
+            console.log('✅ Migration successful after auto-setup!');
+          }
+        } else if (setupResponse.data?.requiresManualSetup) {
+          console.log('⚠️ Auto-setup not possible, manual setup required');
+          await broadcast('generation:database', { 
+            status: 'warning', 
+            message: '⚠️ Manual database setup required', 
+            progress: 25 
+          });
+          
+          // Keep the original error with clear instructions
+          execError = {
+            message: 'First-time database setup required',
+            details: 'manual_setup_required',
+            code: 'FUNCTION_MISSING',
+            setupSQL: setupResponse.data?.sql,
+            instructions: setupResponse.data?.instructions
+          } as any;
+        }
+      } catch (setupError) {
+        console.error('❌ Auto-setup failed:', setupError);
+        await broadcast('generation:database', { 
+          status: 'warning', 
+          message: '⚠️ Auto-setup failed - manual setup needed', 
+          progress: 25 
+        });
+      }
     }
 
 

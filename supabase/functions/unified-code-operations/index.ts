@@ -591,15 +591,43 @@ ${rlsPolicies}`);
     );
     
     if (isMissingFunction) {
-      console.log('🔧 execute_migration function missing - first time setup needed');
-      await sendEvent('status', { message: '⚠️ Database function missing - setup required', progress: 25 });
+      console.log('🔧 execute_migration function missing - attempting auto-setup...');
+      await sendEvent('status', { message: '🔧 First-time setup - creating function...', progress: 22 });
       
-      // Mark as first-time setup error
-      execError = {
-        message: 'Could not find the function public.execute_migration(migration_sql) in the schema cache',
-        details: 'first_time_setup_required',
-        code: 'FUNCTION_MISSING'
-      } as any;
+      try {
+        // Call setup function to create execute_migration
+        console.log('📞 Calling setup-user-database...');
+        const platformSupabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+        
+        const setupResponse = await platformSupabaseClient.functions.invoke('setup-user-database', {
+          body: {
+            supabaseUrl: userConnection?.supabase_url,
+            serviceRoleKey: userConnection?.supabase_service_role_key
+          }
+        });
+        
+        if (setupResponse.data?.success) {
+          console.log('✅ Function created automatically!');
+          await sendEvent('status', { message: '✅ Database configured!', progress: 26 });
+          
+          // Retry migration
+          ({ data: execResult, error: execError } = await userSupabase
+            .rpc('execute_migration', { migration_sql: fullSQL }));
+        } else if (setupResponse.data?.requiresManualSetup) {
+          console.log('⚠️ Manual setup required');
+          execError = {
+            message: 'First-time database setup required',
+            details: 'manual_setup_required',
+            code: 'FUNCTION_MISSING',
+            setupSQL: setupResponse.data?.sql
+          } as any;
+        }
+      } catch (setupError) {
+        console.error('❌ Auto-setup failed:', setupError);
+      }
     }
 
 

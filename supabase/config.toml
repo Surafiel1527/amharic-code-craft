@@ -107,3 +107,14 @@ verify_jwt = false
 
 [functions.vercel-integration]
 verify_jwt = true
+
+# ============================================
+# DATABASE SETUP & TESTING
+# Helper functions for database configuration
+# ============================================
+
+[functions.test-supabase-connection]
+verify_jwt = true
+
+[functions.setup-user-database]
+verify_jwt = true
