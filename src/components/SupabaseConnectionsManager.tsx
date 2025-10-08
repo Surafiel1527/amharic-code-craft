@@ -179,6 +179,7 @@ export function SupabaseConnectionsManager() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-10 w-10 touch-manipulation"
                       onClick={() => setEditingConnection(connection)}
                     >
                       <Pencil className="w-4 h-4" />
@@ -186,6 +187,7 @@ export function SupabaseConnectionsManager() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-10 w-10 touch-manipulation"
                       onClick={() => setDeleteConfirm(connection.id)}
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />
