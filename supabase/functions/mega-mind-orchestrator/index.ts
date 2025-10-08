@@ -807,33 +807,46 @@ serve(async (req) => {
 
     // CRITICAL: Update project in database BEFORE broadcasting completion
     if (projectId) {
-      console.log(`📝 Updating project ${projectId} with generated code`);
+      console.log(`📝 Updating project ${projectId} with generated code (length: ${generatedCode.length} chars)`);
       
-      // First get the current title to clean it
-      const { data: currentProject } = await supabaseClient
-        .from('projects')
-        .select('title')
-        .eq('id', projectId)
-        .single();
-      
-      let cleanTitle = currentProject?.title || 'Generated Project';
-      if (cleanTitle.startsWith('[Generating...] ')) {
-        cleanTitle = cleanTitle.replace('[Generating...] ', '');
-      }
-      
-      const { error: projectUpdateError } = await supabaseClient
-        .from('projects')
-        .update({ 
-          title: cleanTitle,
-          html_code: generatedCode,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', projectId);
-      
-      if (projectUpdateError) {
-        console.error('Failed to update project:', projectUpdateError);
-      } else {
-        console.log('✅ Project updated in database');
+      try {
+        // First get the current title to clean it
+        const { data: currentProject, error: fetchError } = await supabaseClient
+          .from('projects')
+          .select('title')
+          .eq('id', projectId)
+          .single();
+        
+        if (fetchError) {
+          console.error('❌ Error fetching project:', fetchError);
+          throw new Error(`Failed to fetch project: ${fetchError.message}`);
+        }
+        
+        let cleanTitle = currentProject?.title || 'Generated Project';
+        if (cleanTitle.startsWith('[Generating...] ')) {
+          cleanTitle = cleanTitle.replace('[Generating...] ', '');
+        }
+        
+        console.log(`📝 Updating project with title: "${cleanTitle}"`);
+        
+        const { error: projectUpdateError } = await supabaseClient
+          .from('projects')
+          .update({ 
+            title: cleanTitle,
+            html_code: generatedCode,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', projectId);
+        
+        if (projectUpdateError) {
+          console.error('❌ CRITICAL: Failed to update project in database:', projectUpdateError);
+          throw new Error(`Failed to save project: ${projectUpdateError.message}`);
+        }
+        
+        console.log('✅ Project successfully updated in database');
+      } catch (updateError) {
+        console.error('❌ CRITICAL ERROR updating project:', updateError);
+        throw updateError; // Re-throw to be caught by outer try-catch
       }
     }
 
@@ -1008,13 +1021,16 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ CRITICAL ERROR in mega-mind-orchestrator:', error);
+    console.error('Error name:', error instanceof Error ? error.constructor.name : typeof error);
+    console.error('Error message:', error instanceof Error ? error.message : String(error));
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.log('📝 Error details:', {
       message: errorMessage,
       type: error instanceof Error ? error.constructor.name : typeof error,
-      projectId: projectId || 'unknown'
+      projectId: projectId || 'unknown',
+      stack: error instanceof Error ? error.stack?.substring(0, 500) : 'No stack'
     });
     
     // Try to update project status if projectId is available
@@ -1026,24 +1042,26 @@ serve(async (req) => {
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
         );
         
-        await supabaseClient
+        const { error: updateError } = await supabaseClient
           .from('projects')
           .update({
             html_code: `<!-- Generation failed: ${errorMessage} -->`,
-            title: new Date().toISOString() // Update to trigger change
+            title: `[Failed] ${errorMessage.substring(0, 50)}`
           })
           .eq('id', projectId);
-        console.log('✅ Project status updated');
+          
+        if (updateError) {
+          console.error('❌ Failed to update project with error status:', updateError);
+        } else {
+          console.log('✅ Project status updated to failed');
+        }
       } catch (updateError) {
-        console.error('❌ Failed to update project:', updateError);
+        console.error('❌ Exception while updating project:', updateError);
       }
     }
     
     // Learn from error pattern
     try {
-      const { request, conversationId, requestType } = await req.json().catch(() => ({}));
-      
-      console.log('🧠 Learning from error pattern...');
       const supabaseClient = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -1051,64 +1069,44 @@ serve(async (req) => {
       
       await supabaseClient.functions.invoke('pattern-recognizer', {
         body: {
-          conversationId,
-          codeContext: request || 'unknown',
-          errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
-          patternSignature: `error_${requestType || 'general'}_${errorMessage.substring(0, 50)}`,
+          conversationId: null,
+          codeContext: errorMessage,
+          errorType: 'orchestration_failure',
+          patternSignature: `error_${error instanceof Error ? error.constructor.name : 'unknown'}`,
           success: false,
           metadata: {
             errorMessage,
-            stack: error instanceof Error ? error.stack : undefined
+            projectId: projectId || null
           }
         }
       });
-      console.log('✅ Error pattern learned');
+      console.log('✅ Error pattern logged');
     } catch (patternError) {
-      console.log('⚠️ Pattern learning from error failed:', patternError);
+      console.error('Failed to log error pattern:', patternError);
     }
-    
-    // Update job as failed
-    try {
-      const { jobId } = await req.json().catch(() => ({}));
-      if (jobId) {
-        const supabaseClient = createClient(
-          Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        );
-        
-        await supabaseClient
-          .from('ai_generation_jobs')
-          .update({
-            status: 'failed',
-            error_message: errorMessage,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', jobId);
-      }
-    } catch (jobUpdateError) {
-      console.error('Failed to update job status:', jobUpdateError);
-    }
-    
+
     // Audit log error
     try {
-      const authHeader = req.headers.get('Authorization');
-      if (authHeader) {
-        const supabaseClient = createClient(
-          Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        );
-        
-        await supabaseClient
-          .from('audit_logs')
-          .insert({
-            action: 'orchestration_error',
-            resource_type: 'ai_generation',
-            severity: 'error',
-            metadata: {
-              error: errorMessage
-            }
-          });
-      }
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+      
+      await supabaseClient
+        .from('audit_logs')
+        .insert({
+          user_id: null,
+          action: 'orchestration_error',
+          resource_type: 'ai_generation',
+          resource_id: projectId || null,
+          severity: 'critical',
+          metadata: { 
+            error: errorMessage,
+            projectId: projectId || null,
+            stack: error instanceof Error ? error.stack?.substring(0, 1000) : undefined
+          }
+        });
+      console.log('✅ Error audit logged');
     } catch (auditError) {
       console.error('Failed to log error audit:', auditError);
     }
@@ -1118,7 +1116,12 @@ serve(async (req) => {
       JSON.stringify({ 
         success: false,
         error: errorMessage,
-        details: error instanceof Error ? error.stack : undefined
+        message: `Generation failed: ${errorMessage}`,
+        details: error instanceof Error ? {
+          name: error.constructor.name,
+          message: error.message,
+          stack: error.stack?.substring(0, 500)
+        } : undefined
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
