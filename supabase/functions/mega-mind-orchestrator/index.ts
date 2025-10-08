@@ -1430,105 +1430,30 @@ ${rlsPolicies}`);
     ({ data: execResult, error: execError } = await userSupabase
       .rpc('execute_migration', { migration_sql: fullSQL }));
 
-    // 🔧 AUTO-FIX: If execute_migration function is missing, create it automatically
-    if (execError?.message?.includes('execute_migration') && execError.message.includes('does not exist')) {
-      console.log('🔧 execute_migration function missing, attempting auto-setup...');
+     // 🔧 AUTO-FIX: Check if execute_migration function is missing
+    const isMissingFunction = execError?.message && (
+      execError.message.includes('Could not find the function') ||
+      execError.message.includes('does not exist') ||
+      execError.message.includes('schema cache')
+    );
+    
+    if (isMissingFunction) {
+      console.log('🔧 execute_migration function missing - first time setup needed');
       await broadcast('generation:database', { 
-        status: 'info', 
-        message: '🔧 First-time database setup - creating migration function...', 
+        status: 'warning', 
+        message: '⚠️ Database function missing - one-time setup required', 
         progress: 25 
       });
       
-      const createFunctionSql = `
-CREATE OR REPLACE FUNCTION public.execute_migration(migration_sql text)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  result jsonb;
-  error_message text;
-BEGIN
-  BEGIN
-    EXECUTE migration_sql;
-    result := jsonb_build_object(
-      'success', true,
-      'message', 'Migration executed successfully'
-    );
-  EXCEPTION WHEN OTHERS THEN
-    GET STACKED DIAGNOSTICS error_message = MESSAGE_TEXT;
-    result := jsonb_build_object(
-      'success', false,
-      'error', error_message
-    );
-  END;
-  
-  RETURN result;
-END;
-$$;
-`;
-
-      // Attempt to create the function using service role privileges
-      try {
-        // Since we're using service_role key, we have elevated privileges
-        // We'll create a temporary admin function to bootstrap execute_migration
-        const bootstrapSql = `
-DO $$
-BEGIN
-  ${createFunctionSql}
-EXCEPTION WHEN OTHERS THEN
-  RAISE NOTICE 'Function creation handled';
-END $$;
-`;
-        
-        // Try to execute bootstrap SQL directly
-        const { error: bootstrapError } = await userSupabase
-          .from('_supabase_bootstrap')
-          .select('*')
-          .limit(0); // This will fail but establish connection
-        
-        // Now try alternative approach: use REST API directly
-        const supabaseUrl = userConnection?.supabase_url;
-        const serviceRoleKey = userConnection?.supabase_service_role_key;
-        
-        if (serviceRoleKey) {
-          console.log('Attempting to create function via REST API...');
-          
-          const response = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${serviceRoleKey}`,
-              'apikey': serviceRoleKey,
-              'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({ query: createFunctionSql })
-          });
-          
-          if (response.ok) {
-            console.log('✅ execute_migration function created successfully via REST!');
-          } else {
-            console.log('REST API approach failed, will provide instructions to user');
-          }
-        }
-        
-        console.log('✅ Auto-setup complete, retrying migration...');
-        await broadcast('generation:database', { 
-          status: 'info', 
-          message: '✅ Database configured, creating tables...', 
-          progress: 28 
-        });
-        
-        // Retry the migration
-        ({ data: execResult, error: execError } = await userSupabase
-          .rpc('execute_migration', { migration_sql: fullSQL }));
-          
-      } catch (autoFixError) {
-        console.error('Auto-fix attempt failed:', autoFixError);
-        // Will fall through to error handling below
-      }
+      // Since we can't execute raw SQL from edge functions without the execute_migration function,
+      // we need to provide clear instructions to the user
+      execError = {
+        message: 'Could not find the function public.execute_migration(migration_sql) in the schema cache',
+        details: 'first_time_setup_required',
+        code: 'FUNCTION_MISSING'
+      } as any;
     }
+
 
     if (execError || !execResult?.success) {
       const errorMsg = execError?.message || execResult?.error || 'Unknown error';
@@ -1539,7 +1464,41 @@ END $$;
       let userFriendlyMessage = 'Database setup failed';
       let recommendations: string[] = [];
       
-      if (execError?.message?.includes('execute_migration') && execError.message.includes('does not exist')) {
+      if (errorMsg.includes('Could not find the function') || errorMsg.includes('execute_migration') && errorMsg.includes('does not exist')) {
+        userFriendlyMessage = 'First-time database setup required';
+        recommendations = [
+          'This is a one-time setup. Run this SQL in your Supabase SQL Editor:',
+          '',
+          'CREATE OR REPLACE FUNCTION public.execute_migration(migration_sql text)',
+          'RETURNS jsonb',
+          'LANGUAGE plpgsql',
+          'SECURITY DEFINER',
+          'SET search_path = public',
+          'AS $$',
+          'DECLARE',
+          '  result jsonb;',
+          '  error_message text;',
+          'BEGIN',
+          '  BEGIN',
+          '    EXECUTE migration_sql;',
+          '    result := jsonb_build_object(',
+          "      'success', true,",
+          "      'message', 'Migration executed successfully'",
+          '    );',
+          '  EXCEPTION WHEN OTHERS THEN',
+          '    GET STACKED DIAGNOSTICS error_message = MESSAGE_TEXT;',
+          '    result := jsonb_build_object(',
+          "      'success', false,",
+          "      'error', error_message",
+          '    );',
+          '  END;',
+          '  RETURN result;',
+          'END;',
+          '$$;',
+          '',
+          'After running this SQL, try generating your project again.'
+        ];
+      } else if (errorMsg.includes('JWT') || errorMsg.includes('authentication') || errorMsg.includes('permission denied')) {
         userFriendlyMessage = 'Your database is missing the required migration function. This happens on first connection.';
         recommendations.push('The platform attempted to set this up automatically');
         recommendations.push('Please run this SQL manually in your Supabase SQL Editor:');
