@@ -11,6 +11,108 @@ const corsHeaders = {
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
 };
 
+// Auto-setup authentication infrastructure if needed
+async function ensureAuthInfrastructure(supabaseClient: any) {
+  try {
+    console.log('[AUTH-SETUP] Checking if profiles table exists...');
+    
+    // Check if profiles table exists
+    const { error: checkError } = await supabaseClient
+      .from('profiles')
+      .select('id')
+      .limit(1);
+    
+    if (checkError && checkError.code === '42P01') {
+      // Table doesn't exist, create it
+      console.log('[AUTH-SETUP] Profiles table missing, creating infrastructure...');
+      
+      const setupSQL = `
+        -- Create profiles table
+        CREATE TABLE IF NOT EXISTS public.profiles (
+          id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+          username text UNIQUE,
+          full_name text,
+          avatar_url text,
+          bio text,
+          created_at timestamptz DEFAULT now(),
+          updated_at timestamptz DEFAULT now()
+        );
+
+        -- Enable RLS
+        ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+        -- RLS Policies
+        CREATE POLICY "Public profiles are viewable by everyone"
+          ON public.profiles FOR SELECT
+          USING (true);
+
+        CREATE POLICY "Users can insert their own profile"
+          ON public.profiles FOR INSERT
+          WITH CHECK (auth.uid() = id);
+
+        CREATE POLICY "Users can update their own profile"
+          ON public.profiles FOR UPDATE
+          USING (auth.uid() = id);
+
+        -- Auto-create profile trigger
+        CREATE OR REPLACE FUNCTION public.handle_new_user()
+        RETURNS trigger
+        LANGUAGE plpgsql
+        SECURITY DEFINER SET search_path = public
+        AS $$
+        BEGIN
+          INSERT INTO public.profiles (id, full_name, avatar_url, username)
+          VALUES (
+            NEW.id,
+            COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name'),
+            NEW.raw_user_meta_data->>'avatar_url',
+            COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1))
+          );
+          RETURN NEW;
+        END;
+        $$;
+
+        CREATE TRIGGER on_auth_user_created
+          AFTER INSERT ON auth.users
+          FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+        -- Updated_at trigger
+        CREATE OR REPLACE FUNCTION public.handle_updated_at()
+        RETURNS trigger
+        LANGUAGE plpgsql
+        AS $$
+        BEGIN
+          NEW.updated_at = now();
+          RETURN NEW;
+        END;
+        $$;
+
+        CREATE TRIGGER handle_profiles_updated_at
+          BEFORE UPDATE ON public.profiles
+          FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+      `;
+
+      const { error: createError } = await supabaseClient.rpc('execute_migration', {
+        migration_sql: setupSQL
+      });
+
+      if (createError) {
+        console.error('[AUTH-SETUP] Failed to create profiles infrastructure:', createError);
+        throw createError;
+      }
+
+      console.log('[AUTH-SETUP] ✅ Successfully created profiles table with RLS and triggers');
+      return { success: true, created: true };
+    } else {
+      console.log('[AUTH-SETUP] ✅ Profiles table already exists');
+      return { success: true, created: false };
+    }
+  } catch (error) {
+    console.error('[AUTH-SETUP] ❌ Error setting up auth infrastructure:', error);
+    return { success: false, error };
+  }
+}
+
 /**
  * Smart AI call with automatic fallback from GPT-5 to Gemini
  * Tries: Lovable AI (GPT-5 → Gemini Pro → Gemini Flash) → Your own Gemini API
@@ -600,6 +702,60 @@ serve(async (req) => {
           .eq('id', jobId);
       }
     };
+
+    // PHASE 0: Auto-setup authentication infrastructure if needed
+    const needsAuth = sanitizedRequest.toLowerCase().match(/\b(sign ?up|log ?in|auth|register|user|account|profile|password|email verification|reset password)\b/);
+    if (needsAuth && projectId) {
+      console.log('[PHASE 0] 🔐 Authentication detected in prompt, checking database infrastructure...');
+      await updateJobProgress(10, 'Setting up authentication infrastructure...');
+      await broadcast('generation:phase', { 
+        phase: 'auth_setup', 
+        progress: 10, 
+        message: 'Preparing authentication system...' 
+      });
+      
+      // Update project title to show auth setup
+      try {
+        const { data: currentProject } = await supabaseClient
+          .from('projects')
+          .select('title')
+          .eq('id', projectId)
+          .single();
+        
+        if (currentProject) {
+          await supabaseClient
+            .from('projects')
+            .update({ 
+              title: '[Generating...] Setting up authentication...',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', projectId);
+        }
+      } catch (err) {
+        console.warn('⚠️ Could not update project title:', err);
+      }
+      
+      const authSetup = await ensureAuthInfrastructure(userSupabaseClient);
+      
+      if (authSetup.success) {
+        if (authSetup.created) {
+          console.log('[PHASE 0] ✅ Auth infrastructure created successfully');
+          await broadcast('generation:phase', { 
+            phase: 'auth_setup', 
+            progress: 15, 
+            message: '✅ Authentication database ready!' 
+          });
+        } else {
+          console.log('[PHASE 0] ✅ Auth infrastructure already exists');
+        }
+      } else {
+        console.error('[PHASE 0] ❌ Auth setup failed:', authSetup.error);
+        // Log but continue - frontend can still be generated
+        await broadcast('generation:warning', { 
+          message: 'Auth setup encountered issues, continuing with generation...' 
+        });
+      }
+    }
 
     // PHASE 1: Analyze the request
     console.log('📊 Phase 1: Analyzing request...');
@@ -1696,7 +1852,7 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE HTML/CSS/JavaScript websites. Output ONLY valid, compact JSON. Keep CSS minimal. IMPORTANT: Keep total output under 8000 characters to avoid truncation. SECURITY: Never use alert() or console.log() to display user credentials (passwords, emails). Use proper UI feedback instead.' },
+        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE HTML/CSS/JavaScript websites. Output ONLY valid, compact JSON. Keep CSS minimal. IMPORTANT: Keep total output under 8000 characters to avoid truncation. SECURITY: Never use alert() or console.log() to display user credentials (passwords, emails). Use proper UI feedback instead. AUTHENTICATION: If generating signup/login forms, use Supabase Auth (supabase.auth.signUp/signInWithPassword). Store user data in the "profiles" table which has columns: id (uuid), username (text), full_name (text), avatar_url (text), bio (text). After successful auth, redirect to main page. Handle errors gracefully with UI feedback.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" },
@@ -1894,7 +2050,7 @@ async function generateSolution(request: string, requestType: string, analysis: 
     body: JSON.stringify({
       model: 'google/gemini-2.5-pro',
       messages: [
-        { role: 'system', content: 'You are a Lovable React expert. Generate clean, production-ready React/TypeScript components using shadcn/ui and semantic Tailwind classes. NEVER use direct colors. Respond with JSON only. SECURITY: Never display sensitive user data (passwords, tokens) in alerts or console logs. Use proper toast notifications for user feedback.' },
+        { role: 'system', content: 'You are a Lovable React expert. Generate clean, production-ready React/TypeScript components using shadcn/ui and semantic Tailwind classes. NEVER use direct colors. Respond with JSON only. SECURITY: Never display sensitive user data (passwords, tokens) in alerts or console logs. Use proper toast notifications for user feedback. AUTHENTICATION: Import supabase client from "@/integrations/supabase/client". For signup: supabase.auth.signUp({ email, password, options: { data: { username, full_name } } }). For login: supabase.auth.signInWithPassword({ email, password }). Listen to auth: supabase.auth.onAuthStateChange((event, session) => {...}). Check session: supabase.auth.getSession(). Logout: supabase.auth.signOut(). Access profiles from "profiles" table. Redirect authenticated users. Use toast for feedback, never alerts.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }
