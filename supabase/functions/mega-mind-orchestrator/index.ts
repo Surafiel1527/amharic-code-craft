@@ -1550,8 +1550,8 @@ async function generateSolution(request: string, requestType: string, analysis: 
         { role: 'system', content: `You are a Lovable React expert. Generate clean, production-ready React/TypeScript components using shadcn/ui and semantic Tailwind classes. NEVER use direct colors. ${isComplex ? 'CRITICAL: Generate MAXIMUM 8 simple files. Keep everything minimal.' : ''} Respond with JSON only.` },
         { role: 'user', content: prompt }
       ],
-      response_format: { type: "json_object" },
-      max_tokens: isComplex ? 4000 : 8000 // Limit tokens for complex projects
+      response_format: { type: "json_object" }
+      // Removed max_tokens limit - let AI complete the full response
     }),
   });
   
@@ -1616,6 +1616,15 @@ async function generateSolution(request: string, requestType: string, analysis: 
   try {
     const content = data.choices[0].message.content;
     console.log('AI content to parse:', content.substring(0, 500));
+    
+    // Check if response was truncated (ends abruptly without closing braces)
+    const trimmed = content.trim();
+    if (!trimmed.endsWith('}') && !trimmed.endsWith(']')) {
+      console.error('⚠️ AI response appears truncated - missing closing brace/bracket');
+      console.error('Content received (last 200 chars):', content.substring(content.length - 200));
+      throw new Error('AI response was truncated. The project is too complex - try requesting fewer features.');
+    }
+    
     return JSON.parse(content);
   } catch (parseError) {
     console.error('Failed to parse AI content as JSON:', parseError);
