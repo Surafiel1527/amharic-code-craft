@@ -626,7 +626,7 @@ serve(async (req) => {
     const analysis = await analyzeRequest(sanitizedRequest, requestType, context);
     
     // Override outputType with user's framework choice
-    if (requestType === 'code-generation') {
+    if (requestType === 'code-generation' || requestType === 'website-generation') {
       analysis.outputType = framework === 'html' ? 'html-website' : 'react-app';
       console.log(`🎯 Using user-selected framework: ${framework} → outputType: ${analysis.outputType}`);
     }
