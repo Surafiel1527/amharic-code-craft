@@ -298,14 +298,21 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let projectId: string | null = null;
+  
   try {
+    console.log('🚀 Mega Mind Orchestrator - Request received');
+    
     const { request, requestType, context = {}, jobId } = await req.json();
+    console.log('📦 Request parsed:', { requestType, hasJobId: !!jobId, hasContext: !!context });
     
     // Extract projectId from context if available
-    const projectId = context.projectId || null;
+    projectId = context.projectId || null;
+    console.log('📌 Project ID:', projectId);
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('❌ No authorization header');
       return new Response(
         JSON.stringify({ error: 'Authorization required' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -316,6 +323,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+    console.log('✅ Supabase client created');
     
     // Create broadcast channels for real-time status updates
     let statusChannel: any = null;
@@ -410,6 +418,7 @@ serve(async (req) => {
       console.log('🔧 Service role authentication detected');
       
       if (!jobId) {
+        console.error('❌ Missing jobId for service role call');
         return new Response(
           JSON.stringify({ error: 'jobId required for service role calls' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -424,6 +433,7 @@ serve(async (req) => {
         .single();
       
       if (jobError || !job) {
+        console.error('❌ Job not found:', jobError);
         return new Response(
           JSON.stringify({ error: 'Job not found' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -434,11 +444,21 @@ serve(async (req) => {
       console.log('✅ Using user_id from job:', userId);
     } else {
       // Normal user JWT authentication
+      console.log('🔐 Authenticating user with JWT...');
       const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
 
-      if (authError || !user) {
+      if (authError) {
+        console.error('❌ Auth error:', authError.message);
         return new Response(
-          JSON.stringify({ error: 'Invalid authorization' }),
+          JSON.stringify({ error: 'Authentication failed: ' + authError.message }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (!user) {
+        console.error('❌ No user found');
+        return new Response(
+          JSON.stringify({ error: 'User not found' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -987,9 +1007,37 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ Error in mega-mind-orchestrator:', error);
+    console.error('❌ CRITICAL ERROR in mega-mind-orchestrator:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.log('📝 Error details:', {
+      message: errorMessage,
+      type: error instanceof Error ? error.constructor.name : typeof error,
+      projectId: projectId || 'unknown'
+    });
+    
+    // Try to update project status if projectId is available
+    if (projectId) {
+      try {
+        console.log('🔄 Updating project status to failed...');
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+        
+        await supabaseClient
+          .from('projects')
+          .update({
+            html_code: `<!-- Generation failed: ${errorMessage} -->`,
+            title: new Date().toISOString() // Update to trigger change
+          })
+          .eq('id', projectId);
+        console.log('✅ Project status updated');
+      } catch (updateError) {
+        console.error('❌ Failed to update project:', updateError);
+      }
+    }
     
     // Learn from error pattern
     try {
@@ -1065,10 +1113,12 @@ serve(async (req) => {
       console.error('Failed to log error audit:', auditError);
     }
     
+    console.log('🔙 Returning error response to client');
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: errorMessage
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : undefined
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
