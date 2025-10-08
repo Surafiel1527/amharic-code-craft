@@ -107,18 +107,50 @@ serve(async (req) => {
       results.recommendations.push('Add your service_role key to enable database table generation');
     }
 
-    // Step 4: Overall assessment
+    // Step 4: If function is missing, provide setup SQL
+    if (!results.hasExecuteMigrationFunction && results.serviceRoleKeyValid) {
+      results.success = false;
+      results.requiresSetup = true;
+      results.setupSQL = `CREATE OR REPLACE FUNCTION public.execute_migration(migration_sql text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  result jsonb;
+  error_message text;
+BEGIN
+  BEGIN
+    EXECUTE migration_sql;
+    result := jsonb_build_object(
+      'success', true,
+      'message', 'Migration executed successfully'
+    );
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS error_message = MESSAGE_TEXT;
+    result := jsonb_build_object(
+      'success', false,
+      'error', error_message
+    );
+  END;
+  RETURN result;
+END;
+$$;`;
+      results.errors.push('Required database function not found');
+      results.recommendations.push('One-time setup: Run the SQL above in your Supabase SQL Editor');
+      results.recommendations.push('1. Open Supabase Dashboard → SQL Editor');
+      results.recommendations.push('2. Create new query and paste the SQL');
+      results.recommendations.push('3. Click "Run" to execute');
+      results.recommendations.push('4. Return here and test connection again');
+    }
+    
+    // Step 5: Overall assessment
     if (results.urlValid && results.anonKeyValid && results.errors.length === 0) {
       results.success = true;
       
       if (!results.serviceRoleKeyValid) {
         results.warnings.push('Service role key not validated - some features may be limited');
-      }
-      
-      if (!results.hasExecuteMigrationFunction && results.serviceRoleKeyValid) {
-        results.success = false;
-        results.errors.push('Database is missing required execute_migration function');
-        results.recommendations.push('Run this SQL in your Supabase SQL editor:\n\nCREATE OR REPLACE FUNCTION public.execute_migration(migration_sql text)\nRETURNS jsonb\nLANGUAGE plpgsql\nSECURITY DEFINER\nSET search_path = public\nAS $$\nDECLARE\n  result jsonb;\n  error_message text;\nBEGIN\n  BEGIN\n    EXECUTE migration_sql;\n    result := jsonb_build_object(\n      \'success\', true,\n      \'message\', \'Migration executed successfully\'\n    );\n  EXCEPTION WHEN OTHERS THEN\n    GET STACKED DIAGNOSTICS error_message = MESSAGE_TEXT;\n    result := jsonb_build_object(\n      \'success\', false,\n      \'error\', error_message\n    );\n  END;\n  RETURN result;\nEND;\n$$;');
       }
     }
 

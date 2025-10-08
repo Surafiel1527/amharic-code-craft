@@ -583,54 +583,6 @@ ${rlsPolicies}`);
             ({ data: execResult, error: execError } = await userSupabase
               .rpc('execute_migration', { migration_sql: fullSQL }));
 
-    // 🔧 AUTO-FIX: Check if execute_migration function is missing
-    const isMissingFunction = execError?.message && (
-      execError.message.includes('Could not find the function') ||
-      execError.message.includes('does not exist') ||
-      execError.message.includes('schema cache')
-    );
-    
-    if (isMissingFunction) {
-      console.log('🔧 execute_migration function missing - attempting auto-setup...');
-      await sendEvent('status', { message: '🔧 First-time setup - creating function...', progress: 22 });
-      
-      try {
-        // Call setup function to create execute_migration
-        console.log('📞 Calling setup-user-database...');
-        const platformSupabaseClient = createClient(
-          Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        );
-        
-        const setupResponse = await platformSupabaseClient.functions.invoke('setup-user-database', {
-          body: {
-            supabaseUrl: userConnection?.supabase_url,
-            serviceRoleKey: userConnection?.supabase_service_role_key
-          }
-        });
-        
-        if (setupResponse.data?.success) {
-          console.log('✅ Function created automatically!');
-          await sendEvent('status', { message: '✅ Database configured!', progress: 26 });
-          
-          // Retry migration
-          ({ data: execResult, error: execError } = await userSupabase
-            .rpc('execute_migration', { migration_sql: fullSQL }));
-        } else if (setupResponse.data?.requiresManualSetup) {
-          console.log('⚠️ Manual setup required');
-          execError = {
-            message: 'First-time database setup required',
-            details: 'manual_setup_required',
-            code: 'FUNCTION_MISSING',
-            setupSQL: setupResponse.data?.sql
-          } as any;
-        }
-      } catch (setupError) {
-        console.error('❌ Auto-setup failed:', setupError);
-      }
-    }
-
-
             if (!execError && execResult?.success) {
               console.log('✅ Database tables created successfully');
               await sendEvent('status', { message: `✅ Created ${analysis.databaseTables.length} tables`, progress: 30 });

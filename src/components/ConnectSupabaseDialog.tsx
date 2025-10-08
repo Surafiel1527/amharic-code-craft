@@ -247,9 +247,9 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
                   <XCircle className="w-4 h-4" />
                 )}
                 <AlertTitle>
-                  {testResults.success ? "Connection Successful ✓" : "Connection Issues Found"}
+                  {testResults.success ? "✅ Connection Successful" : testResults.requiresSetup ? "🔧 Setup Required" : "⚠️ Connection Issues"}
                 </AlertTitle>
-                <AlertDescription className="space-y-2 mt-2">
+                <AlertDescription className="space-y-3 mt-2">
                   {testResults.errors?.length > 0 && (
                     <div className="space-y-1">
                       <p className="font-semibold text-sm">Errors:</p>
@@ -258,6 +258,38 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
                           <li key={i}>{err}</li>
                         ))}
                       </ul>
+                    </div>
+                  )}
+                  
+                  {testResults.requiresSetup && testResults.setupSQL && (
+                    <div className="space-y-2 mt-3">
+                      <p className="font-semibold text-sm flex items-center gap-2">
+                        📋 One-Time Setup SQL:
+                      </p>
+                      <div className="relative">
+                        <pre className="bg-muted/50 p-3 rounded-md text-xs overflow-x-auto max-h-48 border">
+                          <code>{testResults.setupSQL}</code>
+                        </pre>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="absolute top-2 right-2"
+                          onClick={() => {
+                            navigator.clipboard.writeText(testResults.setupSQL);
+                            toast.success("✅ SQL Copied! Paste it in your Supabase SQL Editor");
+                          }}
+                        >
+                          📋 Copy SQL
+                        </Button>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => window.open('https://supabase.com/dashboard', '_blank')}
+                      >
+                        Open Supabase Dashboard →
+                      </Button>
                     </div>
                   )}
                   
@@ -276,18 +308,18 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
 
                   {testResults.recommendations?.length > 0 && (
                     <div className="space-y-1">
-                      <p className="font-semibold text-sm">How to fix:</p>
-                      <ul className="list-disc list-inside space-y-1 text-sm">
+                      <p className="font-semibold text-sm">Steps:</p>
+                      <ol className="list-decimal list-inside space-y-1 text-sm">
                         {testResults.recommendations.map((rec: string, i: number) => (
                           <li key={i} className="whitespace-pre-wrap">{rec}</li>
                         ))}
-                      </ul>
+                      </ol>
                     </div>
                   )}
 
                   {testResults.success && (
                     <p className="text-sm text-muted-foreground mt-2">
-                      ✓ URL Valid | ✓ Anon Key Valid | {testResults.serviceRoleKeyValid ? '✓' : '⚠'} Service Role Key | {testResults.canCreateTables ? '✓ Can Create Tables' : '⚠ Limited Features'}
+                      ✓ URL Valid | ✓ Anon Key Valid | {testResults.serviceRoleKeyValid ? '✓' : '⚠'} Service Role Key | {testResults.canCreateTables ? '✓ Ready for Database Operations' : '⚠ Limited Features'}
                     </p>
                   )}
                 </AlertDescription>
@@ -317,7 +349,7 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
               onClick={handleConnect}
               disabled={isSubmitting || isTesting || (testResults && !testResults.success)}
             >
-              {isSubmitting ? (editConnection ? "Updating..." : "Connecting...") : (editConnection ? "Update Project" : "Connect Project")}
+              {isSubmitting ? (editConnection ? "Updating..." : "Connecting...") : testResults?.requiresSetup ? "⚠️ Complete Setup First" : (editConnection ? "Update Project" : "Connect Project")}
             </Button>
             </div>
           </div>
