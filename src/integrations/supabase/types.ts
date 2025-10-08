@@ -1755,6 +1755,36 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_context_log: {
+        Row: {
+          conversation_id: string
+          created_at: string | null
+          execution_plan: Json | null
+          id: string
+          intent: Json | null
+          request: string
+          user_id: string | null
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string | null
+          execution_plan?: Json | null
+          id?: string
+          intent?: Json | null
+          request: string
+          user_id?: string | null
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string | null
+          execution_plan?: Json | null
+          id?: string
+          intent?: Json | null
+          request?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       conversation_learnings: {
         Row: {
           confidence: number | null
@@ -3353,6 +3383,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      generated_code: {
+        Row: {
+          code_content: string | null
+          component_name: string
+          conversation_id: string
+          created_at: string | null
+          feature_type: string | null
+          file_path: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          code_content?: string | null
+          component_name: string
+          conversation_id: string
+          created_at?: string | null
+          feature_type?: string | null
+          file_path: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          code_content?: string | null
+          component_name?: string
+          conversation_id?: string
+          created_at?: string | null
+          feature_type?: string | null
+          file_path?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       generated_images: {
         Row: {
@@ -5325,6 +5388,7 @@ export type Database = {
       project_intelligence_context: {
         Row: {
           created_at: string | null
+          generated_features: string[] | null
           has_auth: boolean | null
           has_profiles: boolean | null
           has_rls: boolean | null
@@ -5337,6 +5401,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          generated_features?: string[] | null
           has_auth?: boolean | null
           has_profiles?: boolean | null
           has_rls?: boolean | null
@@ -5349,6 +5414,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          generated_features?: string[] | null
           has_auth?: boolean | null
           has_profiles?: boolean | null
           has_rls?: boolean | null
