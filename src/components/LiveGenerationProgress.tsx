@@ -36,24 +36,33 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
     console.log('🔍 Verifying project generation is complete...');
     
     const checkProjectComplete = async () => {
-      const { data: projectData } = await supabase
-        .from('projects')
-        .select('html_code, title')
-        .eq('id', projectId)
-        .single();
+      try {
+        const { data: projectData, error } = await supabase
+          .from('projects')
+          .select('html_code, title')
+          .eq('id', projectId)
+          .single();
 
-      console.log('📊 Project check:', projectData);
+        if (error) {
+          console.error('❌ Error checking project:', error);
+          return;
+        }
 
-      // Only complete if project has actual code AND title doesn't say generating
-      if (projectData?.html_code && !projectData.title.includes('[Generating...]')) {
-        console.log('✅ Project generation verified complete!');
-        setTimeout(() => {
-          onCompleteRef.current?.();
-        }, 1500);
-      } else {
-        console.log('⏳ Still waiting for project data to save...');
-        // Check again in 2 seconds
-        setTimeout(checkProjectComplete, 2000);
+        console.log('📊 Project check:', projectData);
+
+        // Only complete if project has actual code AND title doesn't say generating
+        if (projectData?.html_code && !projectData.title.includes('[Generating...]')) {
+          console.log('✅ Project generation verified complete!');
+          setTimeout(() => {
+            onCompleteRef.current?.();
+          }, 1500);
+        } else {
+          console.log('⏳ Still waiting for project data to save...');
+          // Check again in 2 seconds
+          setTimeout(checkProjectComplete, 2000);
+        }
+      } catch (err) {
+        console.error('❌ Exception checking project:', err);
       }
     };
 
@@ -171,7 +180,7 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
           <Progress value={progress} className="h-3" />
         </div>
 
-        <div className="space-y-3 max-h-[300px] overflow-y-auto">
+        <div className="space-y-3">
           <AnimatePresence mode="popLayout">
             {updates.map((update, index) => (
               <motion.div
@@ -183,7 +192,11 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
                 className={`flex items-start gap-3 p-3 rounded-lg bg-card border ${getPhaseColor(update.phase)}`}
               >
                 <div className={`mt-0.5 ${getPhaseColor(update.phase)}`}>
-                  {getPhaseIcon(update.phase)}
+                  {update.progress >= 100 || update.phase === 'complete' ? (
+                    <CheckCircle className="h-5 w-5 text-emerald-500" />
+                  ) : (
+                    getPhaseIcon(update.phase)
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium capitalize">{update.phase}</p>
