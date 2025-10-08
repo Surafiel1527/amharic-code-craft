@@ -1225,10 +1225,17 @@ Intelligently infer database tables and relationships:
     "confidence": 0.0-1.0,
     "databaseTables": [
       {
-        "name": "users",
-        "purpose": "store user accounts",
-        "fields": ["id", "email", "name"],
-        "relationships": ["posts", "comments"]
+        "name": "posts",
+        "purpose": "store blog posts",
+        "fields": [
+          { "name": "id", "type": "uuid", "primaryKey": true, "default": "gen_random_uuid()" },
+          { "name": "user_id", "type": "uuid", "nullable": false, "references": "auth.users(id)", "isUserReference": true },
+          { "name": "title", "type": "text", "nullable": false },
+          { "name": "content", "type": "text", "nullable": true },
+          { "name": "status", "type": "text", "default": "'draft'" },
+          { "name": "created_at", "type": "timestamp with time zone", "default": "now()" }
+        ],
+        "relationships": ["belongs to user", "has many comments"]
       }
     ],
     "edgeFunctions": [
@@ -1283,61 +1290,30 @@ async function setupDatabaseTables(analysis: any, userId: string, broadcast: any
   const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
   try {
-    // Build SQL to create all tables
+    // Build SQL to create all tables using structured field definitions
     const sqlStatements: string[] = [];
     
     for (const table of backendRequirements.databaseTables) {
       console.log(`📊 Creating table: ${table.name}`);
       
-      // Generate CREATE TABLE statement
-      const fields = table.fields || ['id', 'created_at'];
-      const fieldDefinitions = fields.map((field: string) => {
-        // Extract field name - handle formats like "id (uuid, pk)" or "email (unique)"
-        let fieldName = field;
-        if (field.includes('(')) {
-          fieldName = field.substring(0, field.indexOf('(')).trim();
-        }
-        if (fieldName.includes(' ')) {
-          fieldName = fieldName.split(' ')[0].trim();
-        }
+      // Build field definitions from structured data
+      const fieldDefinitions = table.fields.map((field: any) => {
+        let sql = field.name + ' ' + field.type;
         
-        // Generate SQL based on field name
-        if (fieldName === 'id') return 'id uuid primary key default gen_random_uuid()';
-        if (fieldName === 'user_id' || fieldName === 'author_id') return `${fieldName} uuid references auth.users(id) on delete cascade not null`;
-        if (fieldName === 'created_at') return 'created_at timestamp with time zone default now()';
-        if (fieldName === 'updated_at') return 'updated_at timestamp with time zone default now()';
-        if (fieldName.includes('email')) return `${fieldName} text unique not null`;
-        if (fieldName.includes('username')) return `${fieldName} text unique not null`;
-        if (fieldName.includes('slug')) return `${fieldName} text unique not null`;
-        if (fieldName.includes('password')) return `${fieldName} text not null`;
-        if (fieldName.includes('name') || fieldName.includes('title')) return `${fieldName} text not null`;
-        if (fieldName.includes('content') || fieldName.includes('body') || fieldName.includes('description')) return `${fieldName} text`;
-        if (fieldName.includes('status')) return `${fieldName} text default 'draft'`;
-        if (fieldName.includes('count') || fieldName.includes('price') || fieldName.includes('quantity')) return `${fieldName} numeric default 0`;
-        if (fieldName.includes('is_') || fieldName.includes('has_')) return `${fieldName} boolean default false`;
-        if (fieldName.includes('_id') && fieldName !== 'id') return `${fieldName} uuid`;
-        if (fieldName.includes('_at')) return `${fieldName} timestamp with time zone`;
-        if (fieldName.includes('_json')) return `${fieldName} jsonb default '{}'`;
-        if (fieldName.includes('_html')) return `${fieldName} text`;
-        if (fieldName.includes('url')) return `${fieldName} text`;
-        return `${fieldName} text`;
+        if (field.primaryKey) sql += ' primary key';
+        if (field.unique) sql += ' unique';
+        if (field.nullable === false) sql += ' not null';
+        if (field.references) sql += ` references ${field.references} on delete cascade`;
+        if (field.default) sql += ` default ${field.default}`;
+        
+        return sql;
       }).join(',\n  ');
 
-      // Check if table has a user reference column for RLS policies
-      const userRefColumn = fields.find((f: string) => {
-        const fieldName = f.includes('(') ? f.substring(0, f.indexOf('(')).trim() : f.trim();
-        const cleanFieldName = fieldName.split(' ')[0];
-        return cleanFieldName === 'user_id' || cleanFieldName === 'author_id' || cleanFieldName === 'created_by';
-      });
+      // Find user reference column for RLS
+      const userRefField = table.fields.find((f: any) => f.isUserReference === true);
 
       let rlsPolicies = '';
-      if (userRefColumn) {
-        // Extract the actual column name
-        let columnName = userRefColumn.includes('(') 
-          ? userRefColumn.substring(0, userRefColumn.indexOf('(')).trim() 
-          : userRefColumn.trim();
-        columnName = columnName.split(' ')[0];
-
+      if (userRefField) {
         rlsPolicies = `
 -- Enable RLS
 alter table public.${table.name} enable row level security;
@@ -1346,22 +1322,22 @@ alter table public.${table.name} enable row level security;
 create policy "Users can view their own ${table.name}"
   on public.${table.name}
   for select
-  using (auth.uid() = ${columnName});
+  using (auth.uid() = ${userRefField.name});
 
 create policy "Users can insert their own ${table.name}"
   on public.${table.name}
   for insert
-  with check (auth.uid() = ${columnName});
+  with check (auth.uid() = ${userRefField.name});
 
 create policy "Users can update their own ${table.name}"
   on public.${table.name}
   for update
-  using (auth.uid() = ${columnName});
+  using (auth.uid() = ${userRefField.name});
 
 create policy "Users can delete their own ${table.name}"
   on public.${table.name}
   for delete
-  using (auth.uid() = ${columnName});
+  using (auth.uid() = ${userRefField.name});
 `;
       } else {
         // Table without user reference - make it readable by authenticated users
