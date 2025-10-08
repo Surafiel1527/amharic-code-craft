@@ -702,12 +702,12 @@ serve(async (req) => {
       })
       .eq('id', orchestrationId);
 
-    // PHASE 2.5: Generate backend if needed (BEFORE frontend to avoid progress jumping)
+    // PHASE 2.5: Generate backend helpers (AFTER frontend generation)
     let backendGeneration: any = null;
     if (analysis.backendRequirements?.needsDatabase || analysis.backendRequirements?.needsAuth || analysis.backendRequirements?.needsEdgeFunctions) {
       console.log('🗄️ Generating backend infrastructure...');
-      await updateJobProgress(30, 'Setting up database and backend...');
-      await broadcast('generation:phase', { phase: 'generating', progress: 30, message: 'Creating database and backend...' });
+      await updateJobProgress(70, 'Setting up backend helpers...');
+      await broadcast('generation:phase', { phase: 'generating', progress: 70, message: 'Creating backend helpers...' });
       
       backendGeneration = await generateBackend(request, analysis, context, supabaseClient, userId, broadcast, userSupabaseConnection);
       
@@ -2152,7 +2152,7 @@ async function generateBackend(
       await broadcast('generation:phase', { 
         status: 'generating', 
         message: '🧠 Analyzing database requirements...', 
-        progress: 52 
+        progress: 72 
       });
       
       // Get existing database schema for context
@@ -2240,7 +2240,7 @@ async function generateBackend(
       await broadcast('generation:phase', { 
         status: 'generating', 
         message: `⚡ Creating smart database schema with ${dbResult.modelUsed}...`, 
-        progress: 55 
+        progress: 74 
       });
 
       const dbData = JSON.parse(dbResult.data.choices[0].message.content);
