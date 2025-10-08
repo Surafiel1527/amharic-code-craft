@@ -514,6 +514,9 @@ async function handleStreamGeneration(params: any, userSupabase: any, platformSu
         progress: 10 
       });
 
+      // Track SQL statements for migration files
+      const sqlStatements: string[] = [];
+
       // ============================================
       // STEP 1: Analyze Requirements
       // ============================================
@@ -588,11 +591,71 @@ Field type examples:
       const analysis = JSON.parse(analysisData.choices[0].message.content);
       console.log('📊 Analysis:', analysis);
 
-      // Step 2: Create database tables if needed
+      // ============================================
+      // STEP 2: Auto-Setup Migration Function (First-Time Setup)
+      // ============================================
       if (analysis.needsDatabase && analysis.databaseTables?.length > 0 && userId) {
-        await sendEvent('status', { message: `Setting up ${analysis.databaseTables.length} database tables...`, progress: 20 });
+        await sendEvent('status', { message: 'Setting up database infrastructure...', progress: 15 });
+        
+        // 🔧 AUTO-CREATE execute_migration function if it doesn't exist
+        console.log('🔧 Checking if execute_migration function exists...');
+        const setupSQL = `
+-- Create execute_migration function if it doesn't exist
+CREATE OR REPLACE FUNCTION public.execute_migration(migration_sql text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  result jsonb;
+  error_message text;
+BEGIN
+  BEGIN
+    EXECUTE migration_sql;
+    result := jsonb_build_object(
+      'success', true,
+      'message', 'Migration executed successfully'
+    );
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS error_message = MESSAGE_TEXT;
+    result := jsonb_build_object(
+      'success', false,
+      'error', error_message
+    );
+  END;
+  
+  RETURN result;
+END;
+$$;`;
 
-        const sqlStatements: string[] = [];
+        try {
+          const { data: setupResult, error: setupError } = await userSupabase
+            .rpc('execute_migration', { migration_sql: setupSQL });
+          
+          if (setupError) {
+            // Function doesn't exist, try creating it directly
+            console.log('⚙️ Creating execute_migration function...');
+            const { error: directError } = await userSupabase.rpc('exec_sql', { sql: setupSQL });
+            
+            if (directError) {
+              console.warn('⚠️ Could not auto-create migration function. User will need to create it manually.');
+              await sendEvent('warning', { 
+                message: 'Please run this SQL in your Supabase dashboard to enable migrations:',
+                sql: setupSQL
+              });
+            } else {
+              console.log('✅ Migration function created successfully');
+            }
+          } else {
+            console.log('✅ Migration function already exists or created successfully');
+          }
+        } catch (error) {
+          console.warn('⚠️ Migration function setup warning:', error);
+          // Continue anyway - the main migration might still work
+        }
+
+        await sendEvent('status', { message: `Creating ${analysis.databaseTables.length} database tables...`, progress: 20 });
         
         for (const table of analysis.databaseTables) {
           console.log(`📊 Creating table: ${table.name}`);
@@ -799,9 +862,28 @@ END; RETURN result; END; $$;`,
       }
 
       // ============================================
-      // STEP 3: Generate Code with Context
+      // STEP 3: Generate Code with User's Supabase Credentials
       // ============================================
       await sendEvent('status', { message: isRegeneration ? 'Updating files...' : 'Generating files...', progress: 40 });
+
+      // Prepare Supabase configuration for injection
+      const supabaseConfig = analysis.needsDatabase ? `
+SUPABASE CONFIGURATION (Use these exact values):
+- Supabase URL: ${userConnection.supabase_url}
+- Supabase Anon Key: ${userConnection.supabase_anon_key}
+
+CRITICAL: Create a file "src/lib/supabase.js" or "src/integrations/supabase/client.js" with:
+\`\`\`javascript
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = '${userConnection.supabase_url}';
+const supabaseAnonKey = '${userConnection.supabase_anon_key}';
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+\`\`\`
+
+Then import from this file: import { supabase } from './lib/supabase';
+` : '';
 
       const systemPrompt = isRegeneration ? `You are an expert ${framework} developer modifying an existing project.
 
@@ -815,20 +897,29 @@ CHANGE REQUEST: "${userRequest}"
 
 Generate updated files maintaining existing structure. Return ALL files (modified + unchanged).
 ${analysis.needsDatabase ? `
-IMPORTANT - Include Supabase integration:
-- Import: import { supabase } from "@/integrations/supabase/client"
-- Use these tables: ${analysis.databaseTables?.map((t: any) => t.name).join(', ')}
-- Include CRUD operations using supabase.from('table_name').select/insert/update/delete
+${supabaseConfig}
+
+CRITICAL DATABASE INTEGRATION:
+1. CREATE the Supabase client file with the exact credentials above
+2. Use these tables: ${analysis.databaseTables?.map((t: any) => t.name).join(', ')}
+3. Include full CRUD operations: supabase.from('table').select/insert/update/delete
+4. Add proper error handling for all database operations
+5. Include loading states when fetching data
 ` : ''}
 
 Return JSON: { "files": [{"path": "...", "content": "...", "type": "..."}], "framework": "${framework}", "changes": "...", "stats": {...} }` 
       : `You are an expert ${framework} developer. Generate a complete production-ready project.
 
 ${analysis.needsDatabase ? `
-IMPORTANT - Include Supabase integration:
-- Import: import { supabase } from "@/integrations/supabase/client"
-- Use these tables: ${analysis.databaseTables?.map((t: any) => t.name).join(', ')}
-- Include CRUD operations using supabase.from('table_name').select/insert/update/delete
+${supabaseConfig}
+
+CRITICAL DATABASE INTEGRATION:
+1. CREATE the Supabase client file with the exact credentials above
+2. Use these tables: ${analysis.databaseTables?.map((t: any) => t.name).join(', ')}
+3. Include full CRUD operations: supabase.from('table').select/insert/update/delete
+4. Add proper error handling for all database operations
+5. Include loading states when fetching data
+6. Add authentication if needed with: supabase.auth.signUp/signIn/signOut
 ` : ''}
 
 Return JSON: { "files": [{"path": "...", "content": "...", "type": "..."}], "framework": "${framework}", "architecture": "...", "stats": {...} }`;
@@ -847,6 +938,58 @@ Return JSON: { "files": [{"path": "...", "content": "...", "type": "..."}], "fra
 
       const aiResponse = await response.json();
       const result = JSON.parse(aiResponse.choices[0].message.content);
+
+      // ============================================
+      // STEP 3.5: Add Migration Files to Generated Project
+      // ============================================
+      if (analysis.needsDatabase && analysis.databaseTables?.length > 0 && sqlStatements.length > 0) {
+        console.log('📝 Adding migration SQL files to project...');
+        
+        const migrationFileName = `migrations/${new Date().toISOString().split('T')[0]}_initial_schema.sql`;
+        const migrationContent = `-- Database Migration
+-- Generated: ${new Date().toISOString()}
+-- Tables: ${analysis.databaseTables.map((t: any) => t.name).join(', ')}
+
+${sqlStatements.join('\n\n')}
+
+-- End of migration`;
+
+        result.files.push({
+          path: migrationFileName,
+          content: migrationContent,
+          type: 'sql'
+        });
+
+        // Add migration README
+        result.files.push({
+          path: 'migrations/README.md',
+          content: `# Database Migrations
+
+This folder contains SQL migration files that were executed on your Supabase database.
+
+## Tables Created
+${analysis.databaseTables.map((t: any) => `- **${t.name}**: ${t.purpose || 'No description'}`).join('\n')}
+
+## Running Migrations Manually
+
+If you need to run these migrations on another Supabase project:
+
+1. Go to your Supabase Dashboard
+2. Navigate to SQL Editor
+3. Copy the contents of the migration files
+4. Execute them in order
+
+## Connection Info
+
+Your project is connected to:
+- Supabase URL: ${userConnection.supabase_url}
+
+Keep your connection details secure!`,
+          type: 'markdown'
+        });
+
+        console.log('✅ Added migration files to project');
+      }
 
       // Stream files to user
       for (let i = 0; i < result.files.length; i++) {
