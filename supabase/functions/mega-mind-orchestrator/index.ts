@@ -682,14 +682,15 @@ serve(async (req) => {
       );
     }
 
-    // Always generate React components (this is a React project)
-    console.log('🚀 Generating React components for Lovable project...');
-    await updateJobProgress(50, 'Generating React components...');
-    await broadcast('generation:phase', { phase: 'generating', progress: 40, message: 'Generating components...' });
-    
-    // PHASE 2: Generate solution
-    console.log('⚡ Phase 2: Generating solution...');
+    // PHASE 2: Generate solution (respects user's framework choice)
+    console.log(`⚡ Phase 2: Generating ${analysis.outputType === 'html-website' ? 'HTML/CSS/JS' : 'React'} solution...`);
     await updateJobProgress(40, 'Generating solution...');
+    await broadcast('generation:phase', { 
+      phase: 'generating', 
+      progress: 40, 
+      message: analysis.outputType === 'html-website' ? 'Generating HTML/CSS/JS...' : 'Generating React components...' 
+    });
+    
     const generation = await generateSolution(request, requestType, analysis, context, supabaseClient, orchestrationId, broadcast, userSupabaseConnection);
     
     await supabaseClient
