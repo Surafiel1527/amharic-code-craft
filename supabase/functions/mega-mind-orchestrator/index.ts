@@ -1468,6 +1468,24 @@ async function generateSolution(request: string, requestType: string, analysis: 
     return await generateSimpleWebsite(request, analysis, broadcast, userSupabaseConnection);
   }
   
+  // Check if project is too complex for single generation
+  const estimatedFiles = analysis.estimatedFiles || 10;
+  const isComplex = estimatedFiles > 12;
+  
+  if (isComplex) {
+    console.log(`⚠️ Complex project detected (${estimatedFiles} files). Generating MVP scaffold only...`);
+    await broadcast('generation:warning', { 
+      status: 'thinking', 
+      message: `Project requires ${estimatedFiles} files - generating core features first...`, 
+      progress: 15 
+    });
+    
+    // Simplify to MVP for complex projects
+    analysis.estimatedFiles = 8; // Generate max 8 files
+    analysis.subTasks = analysis.subTasks.slice(0, 4); // Only first 4 tasks
+    request = `${request}\n\nIMPORTANT: Generate only the core MVP features. Keep it simple with ~5-8 files maximum. Focus on basic ${analysis.mainGoal.toLowerCase()}.`;
+  }
+  
   // Broadcast thinking status for React apps
   await broadcast('generation:thinking', { status: 'thinking', message: 'Planning component architecture...', progress: 15 });
 
@@ -1476,6 +1494,8 @@ async function generateSolution(request: string, requestType: string, analysis: 
   await broadcast('generation:reading', { status: 'reading', message: 'Analyzing code requirements...', progress: 35 });
   
   const prompt = `Generate React/TypeScript components for this Lovable project.
+  
+  ${isComplex ? '**IMPORTANT: Generate ONLY core MVP features with maximum 8 files. Keep it simple!**' : ''}
 
 **Request:** ${request}
 **Analysis:** ${JSON.stringify(analysis, null, 2)}
@@ -1513,21 +1533,54 @@ async function generateSolution(request: string, requestType: string, analysis: 
   "nextSteps": ["Test the components", "Add routing"]
 }`;
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  // Add timeout protection (90 seconds)
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('AI_TIMEOUT')), 90000)
+  );
+  
+  const fetchPromise = fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${LOVABLE_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-pro',
+      model: 'google/gemini-2.5-flash', // Use faster model to avoid timeouts
       messages: [
-        { role: 'system', content: 'You are a Lovable React expert. Generate clean, production-ready React/TypeScript components using shadcn/ui and semantic Tailwind classes. NEVER use direct colors. Respond with JSON only.' },
+        { role: 'system', content: `You are a Lovable React expert. Generate clean, production-ready React/TypeScript components using shadcn/ui and semantic Tailwind classes. NEVER use direct colors. ${isComplex ? 'CRITICAL: Generate MAXIMUM 8 simple files. Keep everything minimal.' : ''} Respond with JSON only.` },
         { role: 'user', content: prompt }
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      max_tokens: isComplex ? 4000 : 8000 // Limit tokens for complex projects
     }),
   });
+  
+  let response;
+  try {
+    response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+  } catch (error: any) {
+    if (error.message === 'AI_TIMEOUT') {
+      console.error('❌ AI generation timed out after 90 seconds');
+      await broadcast('generation:error', { 
+        status: 'error', 
+        message: 'Generation timed out. Try breaking your request into smaller features.', 
+        progress: 0 
+      });
+      
+      // Return minimal fallback
+      return {
+        files: [{
+          path: 'README.md',
+          content: `# ${analysis.mainGoal}\n\n⚠️ Project too complex for single generation.\n\n## Recommended Approach\n\nBreak this into smaller steps:\n\n${analysis.subTasks.slice(0, 5).map((t: string, i: number) => `${i + 1}. ${t}`).join('\n')}\n\nStart with: "${analysis.subTasks[0]}"`,
+          description: 'Getting started guide'
+        }],
+        instructions: 'Project requires incremental development. Start with one feature at a time.',
+        error: 'timeout',
+        nextSteps: analysis.subTasks.slice(0, 3)
+      };
+    }
+    throw error;
+  }
 
   await broadcast('generation:generating', { status: 'generating', message: 'Writing component code...', progress: 65 });
 
