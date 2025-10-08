@@ -670,43 +670,21 @@ serve(async (req) => {
     // PHASE 2.5: Generate backend if needed
     let backendGeneration: any = null;
     if (analysis.backendRequirements?.needsDatabase || analysis.backendRequirements?.needsAuth || analysis.backendRequirements?.needsEdgeFunctions) {
-      try {
-        console.log('🗄️ Generating backend infrastructure...');
-        await updateJobProgress(50, 'Setting up database and backend...');
-        await broadcast('generation:phase', { phase: 'generating', progress: 50, message: 'Creating database and backend...' });
+      console.log('🗄️ Generating backend infrastructure...');
+      await updateJobProgress(50, 'Setting up database and backend...');
+      await broadcast('generation:phase', { phase: 'generating', progress: 50, message: 'Creating database and backend...' });
+      
+      backendGeneration = await generateBackend(request, analysis, context, supabaseClient, userId, broadcast, userSupabaseConnection);
+      
+      await supabaseClient
+        .from('mega_mind_orchestrations')
+        .update({ 
+          backend_phase: backendGeneration,
+          status: 'detecting_dependencies'
+        })
+        .eq('id', orchestrationId);
         
-        backendGeneration = await generateBackend(request, analysis, context, supabaseClient, userId, broadcast, userSupabaseConnection);
-        
-        await supabaseClient
-          .from('mega_mind_orchestrations')
-          .update({ 
-            backend_phase: backendGeneration,
-            status: 'detecting_dependencies'
-          })
-          .eq('id', orchestrationId);
-          
-        console.log('✅ Backend infrastructure generated successfully');
-      } catch (backendError) {
-        console.error('❌ BACKEND GENERATION FAILED:', backendError);
-        console.error('Backend error details:', {
-          message: backendError instanceof Error ? backendError.message : 'Unknown error',
-          stack: backendError instanceof Error ? backendError.stack : undefined,
-          analysis: analysis.backendRequirements
-        });
-        
-        // Continue without backend but log the failure
-        await broadcast('generation:warning', { 
-          phase: 'generating', 
-          progress: 50, 
-          message: `⚠️ Backend generation skipped: ${backendError instanceof Error ? backendError.message : 'Unknown error'}` 
-        });
-        
-        backendGeneration = {
-          error: backendError instanceof Error ? backendError.message : 'Unknown error',
-          skipped: true,
-          reason: 'Backend generation failed - continuing with frontend only'
-        };
-      }
+      console.log('✅ Backend infrastructure generated');
     }
 
     // PHASE 3: Detect and track dependencies from generated code
@@ -1175,15 +1153,12 @@ async function analyzeRequest(request: string, requestType: string, context: any
    - Direct code changes to existing project
    
 3. **NEW HTML WEBSITE** (outputType: "html-website"):
-   - **ALWAYS use html-website for ANY new website/app/platform request**
-   - Includes: blogs, portfolios, landing pages, dashboards, platforms, games, apps
-   - Keywords: "create", "build", "make", "website", "app", "platform", "blog", "game", "dashboard", "landing", "portfolio"
-   - **Rule: If user says "create/build/make [anything]" → use html-website**
+   - Creating new website from scratch
+   - Keywords: "create website", "portfolio", "landing page", "html site"
 
 4. **NEW REACT APP** (outputType: "react-app"):
-   - ONLY for explicit React development requests
-   - User must specifically mention "React" or "component library"
-   - Keywords: "react component", "react library", "reusable components"
+   - Creating new React application
+   - Keywords: "react app", "dashboard", "component", "interactive app"
 
 **SMART BACKEND DETECTION:**
 
@@ -1279,15 +1254,8 @@ async function generateSimpleWebsite(request: string, analysis: any, broadcast: 
 **Request:** "${request}"
 **Goal:** ${analysis.mainGoal}
 **Sections:** ${JSON.stringify(analysis.requiredSections || [])}
-**Backend Needs:** ${JSON.stringify(analysis.backendRequirements || {})}
 
-CRITICAL INSTRUCTIONS:
-1. Use the content and theme from the request above
-2. If request needs database/authentication → Generate MOCK/DEMO functionality with localStorage
-3. Generate REAL, RELEVANT content that matches the user's request
-4. For blog platforms → Include sample posts, comments (stored in localStorage)
-5. For dashboards → Include sample data and charts
-6. For auth → Mock login/signup with localStorage
+CRITICAL: Use the content and theme from the request above. DO NOT use placeholder text like "A Creative Developer" or generic content. Generate REAL, RELEVANT content that matches the user's request.
 
 **CRITICAL REQUIREMENTS - MODERN BEAUTIFUL DESIGN:**
 1. Generate ONE complete HTML file with embedded CSS and JavaScript
@@ -1334,12 +1302,12 @@ CRITICAL INSTRUCTIONS:
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE HTML/CSS/JavaScript websites with ALL functionality working (use localStorage for data). Output ONLY valid JSON. For complex apps, include realistic mock data and full interactivity.' },
+        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE HTML/CSS/JavaScript websites. Output ONLY valid, compact JSON. Keep CSS minimal. IMPORTANT: Keep total output under 8000 characters to avoid truncation.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" },
-      temperature: 0.7
-      // No max_tokens limit - let AI generate complete code
+      temperature: 0.5,
+      max_tokens: 8192
     }),
   });
 
@@ -1478,24 +1446,6 @@ async function generateSolution(request: string, requestType: string, analysis: 
     return await generateSimpleWebsite(request, analysis, broadcast, userSupabaseConnection);
   }
   
-  // Check if project is too complex for single generation
-  const estimatedFiles = analysis.estimatedFiles || 10;
-  const isComplex = estimatedFiles > 12;
-  
-  if (isComplex) {
-    console.log(`⚠️ Complex project detected (${estimatedFiles} files). Generating MVP scaffold only...`);
-    await broadcast('generation:warning', { 
-      status: 'thinking', 
-      message: `Project requires ${estimatedFiles} files - generating core features first...`, 
-      progress: 15 
-    });
-    
-    // Simplify to MVP for complex projects
-    analysis.estimatedFiles = 8; // Generate max 8 files
-    analysis.subTasks = analysis.subTasks.slice(0, 4); // Only first 4 tasks
-    request = `${request}\n\nIMPORTANT: Generate only the core MVP features. Keep it simple with ~5-8 files maximum. Focus on basic ${analysis.mainGoal.toLowerCase()}.`;
-  }
-  
   // Broadcast thinking status for React apps
   await broadcast('generation:thinking', { status: 'thinking', message: 'Planning component architecture...', progress: 15 });
 
@@ -1504,8 +1454,6 @@ async function generateSolution(request: string, requestType: string, analysis: 
   await broadcast('generation:reading', { status: 'reading', message: 'Analyzing code requirements...', progress: 35 });
   
   const prompt = `Generate React/TypeScript components for this Lovable project.
-  
-  ${isComplex ? '**IMPORTANT: Generate ONLY core MVP features with maximum 8 files. Keep it simple!**' : ''}
 
 **Request:** ${request}
 **Analysis:** ${JSON.stringify(analysis, null, 2)}
@@ -1543,54 +1491,21 @@ async function generateSolution(request: string, requestType: string, analysis: 
   "nextSteps": ["Test the components", "Add routing"]
 }`;
 
-  // Add timeout protection (90 seconds)
-  const timeoutPromise = new Promise((_, reject) => 
-    setTimeout(() => reject(new Error('AI_TIMEOUT')), 90000)
-  );
-  
-  const fetchPromise = fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${LOVABLE_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash', // Use faster model to avoid timeouts
+      model: 'google/gemini-2.5-pro',
       messages: [
-        { role: 'system', content: `You are a Lovable React expert. Generate clean, production-ready React/TypeScript components using shadcn/ui and semantic Tailwind classes. NEVER use direct colors. ${isComplex ? 'CRITICAL: Generate MAXIMUM 8 simple files. Keep everything minimal.' : ''} Respond with JSON only.` },
+        { role: 'system', content: 'You are a Lovable React expert. Generate clean, production-ready React/TypeScript components using shadcn/ui and semantic Tailwind classes. NEVER use direct colors. Respond with JSON only.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }
-      // Removed max_tokens limit - let AI complete the full response
     }),
   });
-  
-  let response;
-  try {
-    response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
-  } catch (error: any) {
-    if (error.message === 'AI_TIMEOUT') {
-      console.error('❌ AI generation timed out after 90 seconds');
-      await broadcast('generation:error', { 
-        status: 'error', 
-        message: 'Generation timed out. Try breaking your request into smaller features.', 
-        progress: 0 
-      });
-      
-      // Return minimal fallback
-      return {
-        files: [{
-          path: 'README.md',
-          content: `# ${analysis.mainGoal}\n\n⚠️ Project too complex for single generation.\n\n## Recommended Approach\n\nBreak this into smaller steps:\n\n${analysis.subTasks.slice(0, 5).map((t: string, i: number) => `${i + 1}. ${t}`).join('\n')}\n\nStart with: "${analysis.subTasks[0]}"`,
-          description: 'Getting started guide'
-        }],
-        instructions: 'Project requires incremental development. Start with one feature at a time.',
-        error: 'timeout',
-        nextSteps: analysis.subTasks.slice(0, 3)
-      };
-    }
-    throw error;
-  }
 
   await broadcast('generation:generating', { status: 'generating', message: 'Writing component code...', progress: 65 });
 
@@ -1626,15 +1541,6 @@ async function generateSolution(request: string, requestType: string, analysis: 
   try {
     const content = data.choices[0].message.content;
     console.log('AI content to parse:', content.substring(0, 500));
-    
-    // Check if response was truncated (ends abruptly without closing braces)
-    const trimmed = content.trim();
-    if (!trimmed.endsWith('}') && !trimmed.endsWith(']')) {
-      console.error('⚠️ AI response appears truncated - missing closing brace/bracket');
-      console.error('Content received (last 200 chars):', content.substring(content.length - 200));
-      throw new Error('AI response was truncated. The project is too complex - try requesting fewer features.');
-    }
-    
     return JSON.parse(content);
   } catch (parseError) {
     console.error('Failed to parse AI content as JSON:', parseError);
@@ -1919,64 +1825,71 @@ async function generateBackend(
         console.log('⚠️ Could not fetch existing schema:', error);
       }
       
-      const dbPrompt = `CRITICAL INSTRUCTION: You MUST generate PostgreSQL SQL migration code ONLY.
+      const dbPrompt = `You are a smart database architect. Analyze this request and generate the optimal database solution.
 
-USER REQUEST: "${request}"
+**Request:** ${request}
+**Tables Needed:** ${JSON.stringify(backendRequirements.databaseTables || [])}
+**Goal:** ${analysis.mainGoal}
+**Existing Schema:** ${existingSchema ? JSON.stringify(existingSchema) : 'None - fresh database'}
 
-REQUIRED TABLES:
-${JSON.stringify(backendRequirements.databaseTables || [], null, 2)}
+**YOUR INTELLIGENCE:**
+1. **Detect Operations:** Determine if we need to CREATE new tables, ALTER existing ones, or just use existing
+2. **Smart Schema Design:** Choose optimal data types, relationships, and indexes
+3. **Context Awareness:** If tables exist, generate ALTER statements instead of CREATE
+4. **Best Practices:** Auto-add user_id, created_at, updated_at, soft delete if appropriate
+5. **Security First:** Always include RLS policies with proper user isolation
+6. **Performance:** Add indexes for foreign keys and frequently queried columns
+7. **Data Integrity:** Use CHECK constraints, NOT NULL where appropriate, foreign keys
 
-YOU MUST RESPOND WITH VALID JSON IN THIS EXACT FORMAT:
+**CRITICAL RULES:**
+1. Analyze existing schema - don't recreate what exists!
+2. Use proper data types (uuid, text, integer, boolean, timestamp with time zone, jsonb, etc.)
+3. Primary keys: id uuid primary key default gen_random_uuid()
+4. User data: user_id uuid references auth.users(id) on delete cascade
+5. Timestamps: created_at timestamptz default now(), updated_at timestamptz default now()
+6. Enable RLS: ALTER TABLE table_name ENABLE ROW LEVEL SECURITY;
+7. Create comprehensive policies for SELECT, INSERT, UPDATE, DELETE
+8. Use security definer functions to avoid RLS recursion issues
+9. Add helpful indexes: CREATE INDEX idx_table_column ON table(column);
+10. Create triggers for updated_at: CREATE TRIGGER update_updated_at BEFORE UPDATE ON table...
+
+**SMART DECISIONS:**
+- If table exists → Generate ALTER TABLE ADD COLUMN
+- If relationship exists → Skip foreign key
+- If similar table exists → Suggest reuse or extension
+- If data model is complex → Create helper functions
+- If auth is needed → Auto-create profiles table with proper RLS
+
+**Output JSON:**
 {
-  "operation": "create",
-  "reasoning": "Why this schema design",
-  "sql": "YOUR COMPLETE SQL MIGRATION HERE",
-  "tables": ["list", "of", "table", "names"],
-  "securityPolicies": [{"table": "name", "policies": ["policy description"]}]
-}
-
-EXAMPLE VALID RESPONSE FOR A BLOG:
-{
-  "operation": "create",
-  "reasoning": "Blog platform needs users, posts, and comments with proper relationships",
-  "sql": "-- Users table\\nCREATE TABLE IF NOT EXISTS public.users (\\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\\n  email text UNIQUE NOT NULL,\\n  name text NOT NULL,\\n  created_at timestamptz DEFAULT now()\\n);\\n\\n-- Enable RLS\\nALTER TABLE public.users ENABLE ROW LEVEL SECURITY;\\n\\n-- RLS Policies\\nCREATE POLICY users_select_own ON public.users FOR SELECT USING (auth.uid() = id);\\nCREATE POLICY users_insert_own ON public.users FOR INSERT WITH CHECK (auth.uid() = id);\\n\\n-- Posts table\\nCREATE TABLE IF NOT EXISTS public.posts (\\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\\n  author_id uuid REFERENCES public.users(id) ON DELETE CASCADE,\\n  title text NOT NULL,\\n  content text,\\n  created_at timestamptz DEFAULT now()\\n);\\n\\nALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;\\nCREATE POLICY posts_select_all ON public.posts FOR SELECT USING (true);\\nCREATE POLICY posts_insert_own ON public.posts FOR INSERT WITH CHECK (auth.uid() = author_id);\\nCREATE POLICY posts_update_own ON public.posts FOR UPDATE USING (auth.uid() = author_id);",
-  "tables": ["users", "posts"],
+  "operation": "create" | "modify" | "extend",
+  "reasoning": "why this approach",
+  "sql": "complete migration SQL with all statements",
+  "tables": ["table1", "table2"],
+  "changes": [
+    {
+      "table": "users",
+      "action": "create" | "alter" | "index",
+      "description": "what changed and why"
+    }
+  ],
   "securityPolicies": [
-    {"table": "users", "policies": ["Users can only see their own data"]},
-    {"table": "posts", "policies": ["Anyone can read posts", "Authors can edit their own posts"]}
-  ]
-}
+    {
+      "table": "users", 
+      "policies": ["Users can view their own data", "Admins can view all"]
+    }
+  ],
+  "recommendations": ["Add index on email", "Consider caching for posts"]
+}`;
 
-CRITICAL RULES - VIOLATION WILL CAUSE SYSTEM FAILURE:
-1. The "sql" field MUST contain ONLY PostgreSQL SQL statements
-2. DO NOT include any TypeScript code
-3. DO NOT include any React components
-4. DO NOT include any import statements
-5. DO NOT create separate files
-6. Put EVERYTHING in the "sql" field as one string
-7. Use \\n for line breaks in SQL
-8. Always enable RLS with ALTER TABLE ... ENABLE ROW LEVEL SECURITY
-9. Always create RLS policies for each table
-10. Use auth.uid() for user-scoped policies
-
-GENERATE ONLY SQL MIGRATIONS FOR: ${request}`;
-
-      let dbResult;
-      try {
-        console.log('🤖 Calling AI for database schema generation...');
-        dbResult = await callAIWithFallback(
-          [{ role: 'user', content: dbPrompt }],
-          {
-            systemPrompt: 'You are a PostgreSQL/Supabase expert. You ONLY generate SQL migrations. You NEVER generate TypeScript, React, or frontend code. Your entire response must be valid JSON with a "sql" field containing PostgreSQL statements.',
-            preferredModel: 'gpt-5', // Use GPT-5 which follows instructions better
-            responseFormat: { type: "json_object" }
-          }
-        );
-        console.log('✅ AI call successful, model used:', dbResult.modelUsed);
-      } catch (aiError) {
-        console.error('❌ AI call failed for database generation:', aiError);
-        throw new Error(`Failed to generate database schema: ${aiError instanceof Error ? aiError.message : 'AI call failed'}`);
-      }
+      const dbResult = await callAIWithFallback(
+        [{ role: 'user', content: dbPrompt }],
+        {
+          systemPrompt: 'You are an expert database architect with deep PostgreSQL and Supabase knowledge. Always respond with valid JSON containing complete, production-ready SQL migrations.',
+          preferredModel: 'gpt-5', // Try GPT-5 first, fallback to Gemini
+          responseFormat: { type: "json_object" }
+        }
+      );
 
       await broadcast('generation:phase', { 
         status: 'generating', 
@@ -1984,45 +1897,7 @@ GENERATE ONLY SQL MIGRATIONS FOR: ${request}`;
         progress: 55 
       });
 
-      let dbData;
-      try {
-        console.log('📄 Parsing AI response for database schema...');
-        const aiContent = dbResult.data.choices[0].message.content;
-        console.log('📝 AI returned content (first 300 chars):', aiContent.substring(0, 300));
-        
-        dbData = JSON.parse(aiContent);
-        console.log('✅ JSON parsing successful');
-        console.log('📊 Parsed structure keys:', Object.keys(dbData));
-        
-        // Validate expected structure
-        if (!dbData.sql) {
-          console.error('❌ Missing required "sql" field in AI response');
-          console.error('📄 Full parsed data:', JSON.stringify(dbData, null, 2).substring(0, 1000));
-          throw new Error('AI did not return SQL migrations - missing "sql" field');
-        }
-        
-        // Validate that SQL field contains actual SQL, not TypeScript
-        const sqlContent = dbData.sql.toLowerCase();
-        const typeScriptIndicators = ['import ', 'export ', 'interface ', 'type ', '.tsx', '.ts', 'const ', 'let ', 'var ', 'function ', 'react'];
-        const sqlIndicators = ['create table', 'alter table', 'create policy', 'enable row level security'];
-        
-        const hasTypeScript = typeScriptIndicators.some(indicator => sqlContent.includes(indicator));
-        const hasSQL = sqlIndicators.some(indicator => sqlContent.includes(indicator));
-        
-        if (hasTypeScript || !hasSQL) {
-          console.error('❌ VALIDATION FAILED: AI returned TypeScript/frontend code instead of SQL');
-          console.error('📄 Invalid content (first 500 chars):', dbData.sql.substring(0, 500));
-          throw new Error('AI violated instructions and returned TypeScript instead of SQL migrations. This is a critical error.');
-        }
-        
-        console.log('✅ Database schema validated - contains valid SQL migrations');
-      } catch (parseError) {
-        console.error('❌ CRITICAL: Failed to parse/validate database schema from AI');
-        console.error('Error type:', parseError instanceof Error ? parseError.name : typeof parseError);
-        console.error('Error message:', parseError instanceof Error ? parseError.message : String(parseError));
-        console.error('Raw AI response (first 800 chars):', dbResult.data.choices[0].message.content.substring(0, 800));
-        throw new Error(`Failed to parse database schema: ${parseError instanceof Error ? parseError.message : 'Parse failed'}`);
-      }
+      const dbData = JSON.parse(dbResult.data.choices[0].message.content);
       
       results.database = {
         operation: dbData.operation,
