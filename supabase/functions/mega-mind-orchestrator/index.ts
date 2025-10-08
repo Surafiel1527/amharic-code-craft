@@ -11,6 +11,104 @@ const corsHeaders = {
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
 };
 
+/**
+ * Smart AI call with automatic fallback from GPT-5 to Gemini
+ * Tries GPT-5 first (premium), falls back to Gemini (FREE until Oct 13, 2025)
+ */
+async function callAIWithFallback(
+  messages: any[],
+  options: {
+    systemPrompt?: string;
+    preferredModel?: 'gpt-5' | 'gemini-pro' | 'gemini-flash';
+    responseFormat?: any;
+    temperature?: number;
+    maxTokens?: number;
+  } = {}
+): Promise<any> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+
+  // Model hierarchy: GPT-5 → Gemini Pro → Gemini Flash
+  const modelSequence = options.preferredModel === 'gpt-5' 
+    ? ['openai/gpt-5', 'google/gemini-2.5-pro', 'google/gemini-2.5-flash']
+    : options.preferredModel === 'gemini-pro'
+    ? ['google/gemini-2.5-pro', 'google/gemini-2.5-flash']
+    : ['google/gemini-2.5-flash', 'google/gemini-2.5-pro'];
+
+  const fullMessages = options.systemPrompt 
+    ? [{ role: 'system', content: options.systemPrompt }, ...messages]
+    : messages;
+
+  let lastError: any = null;
+
+  for (let i = 0; i < modelSequence.length; i++) {
+    const model = modelSequence[i];
+    
+    try {
+      console.log(`🤖 Attempting AI call with ${model}...`);
+      
+      const body: any = {
+        model,
+        messages: fullMessages,
+      };
+
+      if (options.responseFormat) body.response_format = options.responseFormat;
+      if (options.temperature !== undefined) body.temperature = options.temperature;
+      if (options.maxTokens) body.max_tokens = options.maxTokens;
+
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        lastError = { status: response.status, model, error: errorText };
+        
+        // Log the error
+        console.warn(`⚠️ ${model} failed (${response.status}): ${errorText.substring(0, 200)}`);
+        
+        // Rate limit (429) or Payment required (402) - try fallback
+        if (response.status === 429 || response.status === 402) {
+          console.log(`🔄 ${model} unavailable (${response.status}), trying fallback...`);
+          continue;
+        }
+        
+        // Other errors - also try fallback
+        console.log(`🔄 ${model} error, trying fallback...`);
+        continue;
+      }
+
+      const data = await response.json();
+      console.log(`✅ Success with ${model}`);
+      
+      return {
+        data,
+        modelUsed: model,
+        wasFallback: i > 0
+      };
+      
+    } catch (error) {
+      lastError = { model, error: error instanceof Error ? error.message : 'Unknown error' };
+      console.error(`❌ ${model} exception:`, error);
+      
+      // Try next model in sequence
+      if (i < modelSequence.length - 1) {
+        console.log(`🔄 Trying fallback model...`);
+        continue;
+      }
+    }
+  }
+
+  // All models failed
+  console.error('❌ All AI models failed:', lastError);
+  throw new Error(`All AI models failed. Last error: ${JSON.stringify(lastError)}`);
+}
+
 // Rate limiting map (in-memory for this instance)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
@@ -875,9 +973,6 @@ serve(async (req) => {
 });
 
 async function analyzeRequest(request: string, requestType: string, context: any): Promise<any> {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
-
   const prompt = `You are an expert system analyst with deep understanding of web applications, databases, and backend architecture.
 
 **Request to Analyze:** ${request}
@@ -979,24 +1074,17 @@ Intelligently infer database tables and relationships:
   }
 }`;
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-pro',
-      messages: [
-        { role: 'system', content: 'You are an expert analyst with deep reasoning. Analyze web development requests intelligently. Respond with JSON only.' },
-        { role: 'user', content: prompt }
-      ],
-      response_format: { type: "json_object" }
-    }),
-  });
+  const result = await callAIWithFallback(
+    [{ role: 'user', content: prompt }],
+    {
+      systemPrompt: 'You are an expert analyst with deep reasoning. Analyze web development requests intelligently. Respond with JSON only.',
+      preferredModel: 'gpt-5', // Try GPT-5 first, fallback to Gemini
+      responseFormat: { type: "json_object" }
+    }
+  );
 
-  const data = await response.json();
-  return JSON.parse(data.choices[0].message.content);
+  console.log(`✅ Analysis completed with ${result.modelUsed}${result.wasFallback ? ' (fallback)' : ''}`);
+  return JSON.parse(result.data.choices[0].message.content);
 }
 
 async function generateSimpleWebsite(request: string, analysis: any, broadcast: any, userSupabaseConnection?: any): Promise<any> {
@@ -1540,9 +1628,6 @@ async function generateBackend(
   broadcast: any,
   userSupabaseConnection: any
 ): Promise<any> {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
-
   const backendRequirements = analysis.backendRequirements || {};
   const results: any = {
     database: null,
@@ -1641,46 +1726,39 @@ async function generateBackend(
   "recommendations": ["Add index on email", "Consider caching for posts"]
 }`;
 
-      const dbResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-pro',
-          messages: [
-            { role: 'system', content: 'You are an expert database architect with deep PostgreSQL and Supabase knowledge. Always respond with valid JSON containing complete, production-ready SQL migrations.' },
-            { role: 'user', content: dbPrompt }
-          ],
-          response_format: { type: "json_object" }
-        }),
-      });
+      const dbResult = await callAIWithFallback(
+        [{ role: 'user', content: dbPrompt }],
+        {
+          systemPrompt: 'You are an expert database architect with deep PostgreSQL and Supabase knowledge. Always respond with valid JSON containing complete, production-ready SQL migrations.',
+          preferredModel: 'gpt-5', // Try GPT-5 first, fallback to Gemini
+          responseFormat: { type: "json_object" }
+        }
+      );
 
       await broadcast('generation:phase', { 
         status: 'generating', 
-        message: '⚡ Creating smart database schema...', 
+        message: `⚡ Creating smart database schema with ${dbResult.modelUsed}...`, 
         progress: 55 
       });
 
-      const dbData = await dbResponse.json();
-      const dbResult = JSON.parse(dbData.choices[0].message.content);
+      const dbData = JSON.parse(dbResult.data.choices[0].message.content);
       
       results.database = {
-        operation: dbResult.operation,
-        reasoning: dbResult.reasoning,
-        sql: dbResult.sql,
-        tables: dbResult.tables || backendRequirements.databaseTables || [],
-        changes: dbResult.changes || [],
-        securityPolicies: dbResult.securityPolicies || [],
-        recommendations: dbResult.recommendations || [],
-        needsApproval: true
+        operation: dbData.operation,
+        reasoning: dbData.reasoning,
+        sql: dbData.sql,
+        tables: dbData.tables || backendRequirements.databaseTables || [],
+        changes: dbData.changes || [],
+        securityPolicies: dbData.securityPolicies || [],
+        recommendations: dbData.recommendations || [],
+        needsApproval: true,
+        generatedBy: dbResult.modelUsed
       };
       
-      console.log(`✅ Smart database schema generated (${dbResult.operation}):`);
-      console.log(`  - Tables: ${dbResult.tables?.join(', ')}`);
-      console.log(`  - Changes: ${dbResult.changes?.length || 0}`);
-      console.log(`  - Reasoning: ${dbResult.reasoning}`);
+      console.log(`✅ Smart database schema generated with ${dbResult.modelUsed} (${dbData.operation}):`);
+      console.log(`  - Tables: ${dbData.tables?.join(', ')}`);
+      console.log(`  - Changes: ${dbData.changes?.length || 0}`);
+      console.log(`  - Reasoning: ${dbData.reasoning}`);
     }
 
     // Generate edge functions if needed
@@ -1709,28 +1787,21 @@ async function generateBackend(
 
 Generate complete TypeScript code for index.ts file.`;
 
-        const funcResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
-            messages: [
-              { role: 'system', content: 'You are an edge function expert. Generate production-ready code only.' },
-              { role: 'user', content: funcPrompt }
-            ]
-          }),
-        });
+        const funcResult = await callAIWithFallback(
+          [{ role: 'user', content: funcPrompt }],
+          {
+            systemPrompt: 'You are an edge function expert. Generate production-ready code only.',
+            preferredModel: 'gemini-flash' // Use fast model for edge functions
+          }
+        );
 
-        const funcData = await funcResponse.json();
-        const funcCode = funcData.choices[0].message.content;
+        const funcCode = funcResult.data.choices[0].message.content;
         
         results.edgeFunctions.push({
           name: functionName,
           code: funcCode,
-          needsApproval: true
+          needsApproval: true,
+          generatedBy: funcResult.modelUsed
         });
       }
       
