@@ -465,28 +465,52 @@ Respond with JSON:
             return `${fieldName} text`;
           }).join(',\n  ');
 
-          sqlStatements.push(`
--- Create ${table.name} table
-create table if not exists public.${table.name} (
-  ${fieldDefinitions}
-);
+          // Check if table has a user reference column for RLS policies
+          const userRefColumn = fields.find((f: string) => {
+            const fieldName = f.split('(')[0].split(' ')[0].trim();
+            return fieldName === 'user_id' || fieldName === 'author_id' || fieldName === 'created_by';
+          });
 
+          let rlsPolicies = '';
+          if (userRefColumn) {
+            // Extract the actual column name
+            const columnName = userRefColumn.split('(')[0].split(' ')[0].trim();
+
+            rlsPolicies = `
 -- Enable RLS
 alter table public.${table.name} enable row level security;
 
 -- Create policies
 create policy "Users can view their own ${table.name}"
-  on public.${table.name} for select using (auth.uid() = user_id);
+  on public.${table.name} for select using (auth.uid() = ${columnName});
 
 create policy "Users can insert their own ${table.name}"
-  on public.${table.name} for insert with check (auth.uid() = user_id);
+  on public.${table.name} for insert with check (auth.uid() = ${columnName});
 
 create policy "Users can update their own ${table.name}"
-  on public.${table.name} for update using (auth.uid() = user_id);
+  on public.${table.name} for update using (auth.uid() = ${columnName});
 
 create policy "Users can delete their own ${table.name}"
-  on public.${table.name} for delete using (auth.uid() = user_id);
-`);
+  on public.${table.name} for delete using (auth.uid() = ${columnName});
+`;
+          } else {
+            // Table without user reference - make it readable by authenticated users
+            rlsPolicies = `
+-- Enable RLS
+alter table public.${table.name} enable row level security;
+
+-- Allow authenticated users to read
+create policy "Authenticated users can view ${table.name}"
+  on public.${table.name} for select using (auth.role() = 'authenticated');
+`;
+          }
+
+          sqlStatements.push(`
+-- Create ${table.name} table
+create table if not exists public.${table.name} (
+  ${fieldDefinitions}
+);
+${rlsPolicies}`);
         }
 
         const fullSQL = sqlStatements.join('\n\n');

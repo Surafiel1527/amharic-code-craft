@@ -1323,12 +1323,22 @@ async function setupDatabaseTables(analysis: any, userId: string, broadcast: any
         return `${fieldName} text`;
       }).join(',\n  ');
 
-      sqlStatements.push(`
--- Create ${table.name} table
-create table if not exists public.${table.name} (
-  ${fieldDefinitions}
-);
+      // Check if table has a user reference column for RLS policies
+      const userRefColumn = fields.find((f: string) => {
+        const fieldName = f.includes('(') ? f.substring(0, f.indexOf('(')).trim() : f.trim();
+        const cleanFieldName = fieldName.split(' ')[0];
+        return cleanFieldName === 'user_id' || cleanFieldName === 'author_id' || cleanFieldName === 'created_by';
+      });
 
+      let rlsPolicies = '';
+      if (userRefColumn) {
+        // Extract the actual column name
+        let columnName = userRefColumn.includes('(') 
+          ? userRefColumn.substring(0, userRefColumn.indexOf('(')).trim() 
+          : userRefColumn.trim();
+        columnName = columnName.split(' ')[0];
+
+        rlsPolicies = `
 -- Enable RLS
 alter table public.${table.name} enable row level security;
 
@@ -1336,23 +1346,43 @@ alter table public.${table.name} enable row level security;
 create policy "Users can view their own ${table.name}"
   on public.${table.name}
   for select
-  using (auth.uid() = user_id);
+  using (auth.uid() = ${columnName});
 
 create policy "Users can insert their own ${table.name}"
   on public.${table.name}
   for insert
-  with check (auth.uid() = user_id);
+  with check (auth.uid() = ${columnName});
 
 create policy "Users can update their own ${table.name}"
   on public.${table.name}
   for update
-  using (auth.uid() = user_id);
+  using (auth.uid() = ${columnName});
 
 create policy "Users can delete their own ${table.name}"
   on public.${table.name}
   for delete
-  using (auth.uid() = user_id);
-`);
+  using (auth.uid() = ${columnName});
+`;
+      } else {
+        // Table without user reference - make it readable by authenticated users
+        rlsPolicies = `
+-- Enable RLS
+alter table public.${table.name} enable row level security;
+
+-- Allow authenticated users to read
+create policy "Authenticated users can view ${table.name}"
+  on public.${table.name}
+  for select
+  using (auth.role() = 'authenticated');
+`;
+      }
+
+      sqlStatements.push(`
+-- Create ${table.name} table
+create table if not exists public.${table.name} (
+  ${fieldDefinitions}
+);
+${rlsPolicies}`);
     }
 
     // Build complete SQL
