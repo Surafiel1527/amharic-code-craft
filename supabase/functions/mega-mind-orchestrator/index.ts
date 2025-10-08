@@ -878,11 +878,14 @@ async function analyzeRequest(request: string, requestType: string, context: any
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
-  const prompt = `Analyze this request and categorize it:
+  const prompt = `You are an expert system analyst with deep understanding of web applications, databases, and backend architecture.
 
-**Request:** ${request}
+**Request to Analyze:** ${request}
 **Type:** ${requestType}
-**Context:** Has existing code: ${context.hasExistingCode || false}
+**Context:** 
+- Has existing code: ${context.hasExistingCode || false}
+- Project context: ${JSON.stringify(context.projectContext || {})}
+- Known patterns: ${context.knownPatterns ? context.knownPatterns.length + ' similar patterns found' : 'None'}
 
 **CRITICAL: Determine Request Category:**
 
@@ -906,11 +909,37 @@ async function analyzeRequest(request: string, requestType: string, context: any
    - Creating new React application
    - Keywords: "react app", "dashboard", "component", "interactive app"
 
-**DETECT BACKEND REQUIREMENTS:**
-- Needs Database: user data, persistent storage, forms with save, listings, profiles, comments, posts
-- Needs Authentication: login, signup, user accounts, protected content, roles
-- Needs Edge Functions: external API calls, payment processing, email sending, webhooks
-- Needs Storage: file uploads, images, documents, media
+**SMART BACKEND DETECTION:**
+
+Analyze the request for these backend needs:
+
+**Database Indicators:**
+- Words: save, store, persist, database, collection, list, crud, manage, track, record
+- Features: user profiles, posts, comments, likes, bookmarks, shopping cart, inventory
+- Data types: user data, content management, social features, e-commerce, analytics
+- Patterns: "save to database", "store user info", "manage products", "track orders"
+
+**Authentication Indicators:**
+- Words: login, signup, register, logout, profile, user, account, password, auth
+- Features: protected pages, user dashboard, personalized content, permissions, roles
+- Patterns: "user login", "sign up", "my profile", "only logged in users"
+
+**Edge Functions Indicators:**
+- External integrations: payment, email, SMS, webhooks, third-party APIs
+- Server-side logic: data processing, scheduled tasks, background jobs
+- Security: API key usage, server-side validation, rate limiting
+- Patterns: "send email", "process payment", "call API", "webhook"
+
+**Storage Indicators:**
+- File handling: upload, download, images, documents, media, files, attachments
+- Patterns: "upload image", "profile picture", "file storage", "document upload"
+
+**Data Model Detection:**
+Intelligently infer database tables and relationships:
+- User systems → users/profiles table
+- Social features → posts, comments, likes, followers tables
+- E-commerce → products, orders, cart_items, reviews tables
+- Content management → articles, pages, categories, tags tables
 
 **Output JSON:**
 {
@@ -918,7 +947,7 @@ async function analyzeRequest(request: string, requestType: string, context: any
   "mainGoal": "what the user wants to achieve",
   "subTasks": ["task 1", "task 2"],
   "requiredSections": ["Hero", "About"] (for new websites),
-  "requiredTechnologies": ["html", "css"],
+  "requiredTechnologies": ["html", "css", "react", "supabase"],
   "complexity": "simple" | "moderate" | "complex",
   "estimatedFiles": 1,
   "needsRouting": false,
@@ -930,9 +959,23 @@ async function analyzeRequest(request: string, requestType: string, context: any
     "needsAuth": true|false,
     "needsEdgeFunctions": true|false,
     "needsStorage": true|false,
-    "databaseTables": ["users", "posts", "comments"],
-    "edgeFunctions": ["send-email", "process-payment"],
-    "explanation": "why backend is needed"
+    "confidence": 0.0-1.0,
+    "databaseTables": [
+      {
+        "name": "users",
+        "purpose": "store user accounts",
+        "fields": ["id", "email", "name"],
+        "relationships": ["posts", "comments"]
+      }
+    ],
+    "edgeFunctions": [
+      {
+        "name": "send-welcome-email",
+        "purpose": "send email to new users",
+        "triggers": ["user signup"]
+      }
+    ],
+    "explanation": "detailed explanation of why backend is needed and what it will do"
   }
 }`;
 
@@ -943,9 +986,9 @@ async function analyzeRequest(request: string, requestType: string, context: any
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'google/gemini-2.5-pro',
       messages: [
-        { role: 'system', content: 'You are an expert analyst. Determine if the request is for HTML/CSS/JS website or React app. Respond with JSON only.' },
+        { role: 'system', content: 'You are an expert analyst with deep reasoning. Analyze web development requests intelligently. Respond with JSON only.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }
@@ -1517,38 +1560,86 @@ async function generateBackend(
   };
 
   try {
-    // Generate database schema if needed
+    // Generate smart database operations if needed
     if (backendRequirements.needsDatabase) {
       await broadcast('generation:phase', { 
         status: 'generating', 
-        message: 'Generating database schema...', 
+        message: '🧠 Analyzing database requirements...', 
         progress: 52 
       });
       
-      const dbPrompt = `Generate a Supabase database schema for this request:
+      // Get existing database schema for context
+      let existingSchema: any = null;
+      try {
+        const { data: tables } = await supabase
+          .from('information_schema.tables')
+          .select('table_name, table_schema')
+          .eq('table_schema', 'public');
+        
+        if (tables && tables.length > 0) {
+          console.log(`📊 Found ${tables.length} existing tables`);
+          existingSchema = tables;
+        }
+      } catch (error) {
+        console.log('⚠️ Could not fetch existing schema:', error);
+      }
+      
+      const dbPrompt = `You are a smart database architect. Analyze this request and generate the optimal database solution.
 
 **Request:** ${request}
 **Tables Needed:** ${JSON.stringify(backendRequirements.databaseTables || [])}
 **Goal:** ${analysis.mainGoal}
+**Existing Schema:** ${existingSchema ? JSON.stringify(existingSchema) : 'None - fresh database'}
+
+**YOUR INTELLIGENCE:**
+1. **Detect Operations:** Determine if we need to CREATE new tables, ALTER existing ones, or just use existing
+2. **Smart Schema Design:** Choose optimal data types, relationships, and indexes
+3. **Context Awareness:** If tables exist, generate ALTER statements instead of CREATE
+4. **Best Practices:** Auto-add user_id, created_at, updated_at, soft delete if appropriate
+5. **Security First:** Always include RLS policies with proper user isolation
+6. **Performance:** Add indexes for foreign keys and frequently queried columns
+7. **Data Integrity:** Use CHECK constraints, NOT NULL where appropriate, foreign keys
 
 **CRITICAL RULES:**
-1. Use proper data types (uuid, text, timestamp, jsonb, etc.)
-2. Add primary keys (id uuid primary key default gen_random_uuid())
-3. Include user_id uuid for user-specific data
-4. Add created_at and updated_at timestamps
-5. Enable Row Level Security (RLS)
-6. Create RLS policies for SELECT, INSERT, UPDATE, DELETE
-7. Add indexes for foreign keys
-8. Use security definer functions for complex logic
+1. Analyze existing schema - don't recreate what exists!
+2. Use proper data types (uuid, text, integer, boolean, timestamp with time zone, jsonb, etc.)
+3. Primary keys: id uuid primary key default gen_random_uuid()
+4. User data: user_id uuid references auth.users(id) on delete cascade
+5. Timestamps: created_at timestamptz default now(), updated_at timestamptz default now()
+6. Enable RLS: ALTER TABLE table_name ENABLE ROW LEVEL SECURITY;
+7. Create comprehensive policies for SELECT, INSERT, UPDATE, DELETE
+8. Use security definer functions to avoid RLS recursion issues
+9. Add helpful indexes: CREATE INDEX idx_table_column ON table(column);
+10. Create triggers for updated_at: CREATE TRIGGER update_updated_at BEFORE UPDATE ON table...
 
-**Generate complete SQL migration with:**
-- CREATE TABLE statements
-- ALTER TABLE ... ENABLE ROW LEVEL SECURITY
-- CREATE POLICY statements
-- CREATE INDEX statements
-- CREATE FUNCTION and triggers if needed
+**SMART DECISIONS:**
+- If table exists → Generate ALTER TABLE ADD COLUMN
+- If relationship exists → Skip foreign key
+- If similar table exists → Suggest reuse or extension
+- If data model is complex → Create helper functions
+- If auth is needed → Auto-create profiles table with proper RLS
 
-Return ONLY valid SQL code, no explanations.`;
+**Output JSON:**
+{
+  "operation": "create" | "modify" | "extend",
+  "reasoning": "why this approach",
+  "sql": "complete migration SQL with all statements",
+  "tables": ["table1", "table2"],
+  "changes": [
+    {
+      "table": "users",
+      "action": "create" | "alter" | "index",
+      "description": "what changed and why"
+    }
+  ],
+  "securityPolicies": [
+    {
+      "table": "users", 
+      "policies": ["Users can view their own data", "Admins can view all"]
+    }
+  ],
+  "recommendations": ["Add index on email", "Consider caching for posts"]
+}`;
 
       const dbResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -1557,24 +1648,39 @@ Return ONLY valid SQL code, no explanations.`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'google/gemini-2.5-pro',
           messages: [
-            { role: 'system', content: 'You are a database architect expert. Generate production-ready SQL only.' },
+            { role: 'system', content: 'You are an expert database architect with deep PostgreSQL and Supabase knowledge. Always respond with valid JSON containing complete, production-ready SQL migrations.' },
             { role: 'user', content: dbPrompt }
-          ]
+          ],
+          response_format: { type: "json_object" }
         }),
       });
 
+      await broadcast('generation:phase', { 
+        status: 'generating', 
+        message: '⚡ Creating smart database schema...', 
+        progress: 55 
+      });
+
       const dbData = await dbResponse.json();
-      const dbSql = dbData.choices[0].message.content;
+      const dbResult = JSON.parse(dbData.choices[0].message.content);
       
       results.database = {
-        sql: dbSql,
-        tables: backendRequirements.databaseTables || [],
+        operation: dbResult.operation,
+        reasoning: dbResult.reasoning,
+        sql: dbResult.sql,
+        tables: dbResult.tables || backendRequirements.databaseTables || [],
+        changes: dbResult.changes || [],
+        securityPolicies: dbResult.securityPolicies || [],
+        recommendations: dbResult.recommendations || [],
         needsApproval: true
       };
       
-      console.log('✅ Generated database schema');
+      console.log(`✅ Smart database schema generated (${dbResult.operation}):`);
+      console.log(`  - Tables: ${dbResult.tables?.join(', ')}`);
+      console.log(`  - Changes: ${dbResult.changes?.length || 0}`);
+      console.log(`  - Reasoning: ${dbResult.reasoning}`);
     }
 
     // Generate edge functions if needed
