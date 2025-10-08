@@ -320,7 +320,15 @@ const Index = () => {
       navigate(`/workspace/${projectId}`);
       
       // Continue generation in background (edge function handles project update)
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session) {
+        throw new Error("Not authenticated");
+      }
+
       const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
+        headers: {
+          Authorization: `Bearer ${session.session.access_token}`,
+        },
         body: { 
           request: prompt,
           requestType: 'website-generation',
@@ -335,13 +343,14 @@ const Index = () => {
 
       if (error) {
         console.error("Generation error:", error);
-        toast.error("Generation failed", { id: 'gen-toast' });
+        const errorMsg = error.message || "Unknown error occurred";
+        toast.error(`Generation failed: ${errorMsg}`, { id: 'gen-toast' });
         // Update project to show failure
         await supabase
           .from("projects")
           .update({
             title: `[Failed] ${title}`,
-            html_code: `Generation failed: ${error.message}`
+            html_code: `<!-- Generation failed: ${errorMsg} -->`
           })
           .eq('id', projectId);
         throw error;
