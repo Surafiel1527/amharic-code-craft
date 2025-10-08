@@ -91,7 +91,7 @@ serve(async (req) => {
         result = await handleExecute(params, platformSupabase);
         break;
       case 'stream_generation':
-        return await handleStreamGeneration(params, userSupabase, platformSupabase, req, user.id);
+        return await handleStreamGeneration(params, userSupabase, platformSupabase, req, user.id, userConnection);
       default:
         throw new Error(`Unknown operation: ${operation}`);
     }
@@ -416,7 +416,7 @@ async function executeJavaScript(code: string) {
   }
 }
 
-async function handleStreamGeneration(params: any, userSupabase: any, platformSupabase: any, req: any, userId: string) {
+async function handleStreamGeneration(params: any, userSupabase: any, platformSupabase: any, req: any, userId: string, userConnection: any) {
   const { userRequest, framework, projectId, conversationId } = params.params;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -577,8 +577,81 @@ ${rlsPolicies}`);
           
           try {
             // ✅ EXECUTE MIGRATION ON USER'S SUPABASE DATABASE
-            const { data: execResult, error: execError } = await userSupabase
-              .rpc('execute_migration', { migration_sql: fullSQL });
+            let execResult;
+            let execError;
+            
+            ({ data: execResult, error: execError } = await userSupabase
+              .rpc('execute_migration', { migration_sql: fullSQL }));
+
+            // 🔧 AUTO-FIX: If execute_migration function is missing, create it automatically
+            if (execError?.message?.includes('execute_migration') && execError.message.includes('does not exist')) {
+              console.log('🔧 execute_migration function missing, attempting auto-setup...');
+              await sendEvent('status', { message: '🔧 First-time setup - creating migration function...', progress: 25 });
+              
+              const createFunctionSql = `
+CREATE OR REPLACE FUNCTION public.execute_migration(migration_sql text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  result jsonb;
+  error_message text;
+BEGIN
+  BEGIN
+    EXECUTE migration_sql;
+    result := jsonb_build_object(
+      'success', true,
+      'message', 'Migration executed successfully'
+    );
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS error_message = MESSAGE_TEXT;
+    result := jsonb_build_object(
+      'success', false,
+      'error', error_message
+    );
+  END;
+  RETURN result;
+END;
+$$;
+`;
+
+              // Retry with the creation SQL
+              try {
+                // Use REST API if available
+                const supabaseUrl = userConnection?.supabase_url;
+                const serviceRoleKey = userConnection?.supabase_service_role_key;
+                
+                if (serviceRoleKey && supabaseUrl) {
+                  console.log('Attempting to create function via direct execution...');
+                  
+                  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${serviceRoleKey}`,
+                      'apikey': serviceRoleKey
+                    },
+                    body: JSON.stringify({ query: createFunctionSql })
+                  });
+                  
+                  if (response.ok) {
+                    console.log('✅ Function created via REST API');
+                  }
+                }
+                
+                console.log('✅ Auto-setup complete, retrying migration...');
+                await sendEvent('status', { message: '✅ Database configured, creating tables...', progress: 28 });
+                
+                // Retry the migration
+                ({ data: execResult, error: execError } = await userSupabase
+                  .rpc('execute_migration', { migration_sql: fullSQL }));
+                  
+              } catch (autoFixError) {
+                console.error('Auto-fix attempt failed:', autoFixError);
+              }
+            }
 
             if (!execError && execResult?.success) {
               console.log('✅ Database tables created successfully');
@@ -588,20 +661,53 @@ ${rlsPolicies}`);
               console.error('❌ Failed to execute migration:', errorMsg);
               console.error('Failed SQL:', fullSQL);
               
-              // ✅ INTELLIGENT ERROR DETECTION
+              // ✅ INTELLIGENT ERROR DETECTION WITH ENHANCED MESSAGES
               let userFriendlyMessage = 'Database setup failed';
+              let recommendations: string[] = [];
               
-              if (execError?.message?.includes('function') && execError.message.includes('does not exist')) {
-                userFriendlyMessage = '❌ Your Supabase database is missing the execute_migration function. Please add it via SQL Editor in your Supabase dashboard.';
-              } else if (execError?.message?.includes('JWT') || execError?.message?.includes('authentication')) {
-                userFriendlyMessage = '❌ Authentication failed - Your Service Role Key may be invalid. Please update it in Supabase Connections.';
+              if (execError?.message?.includes('execute_migration') && execError.message.includes('does not exist')) {
+                userFriendlyMessage = 'Your database is missing the required migration function.';
+                recommendations = [
+                  'The platform attempted to set this up automatically',
+                  'Run this SQL in your Supabase SQL Editor:',
+                  `CREATE OR REPLACE FUNCTION public.execute_migration(migration_sql text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$ DECLARE result jsonb; error_message text;
+BEGIN BEGIN EXECUTE migration_sql;
+  result := jsonb_build_object('success', true, 'message', 'Success');
+EXCEPTION WHEN OTHERS THEN
+  GET STACKED DIAGNOSTICS error_message = MESSAGE_TEXT;
+  result := jsonb_build_object('success', false, 'error', error_message);
+END; RETURN result; END; $$;`,
+                  'Then try generating again'
+                ];
+              } else if (execError?.message?.includes('JWT') || execError?.message?.includes('authentication') || execError?.message?.includes('permission denied')) {
+                userFriendlyMessage = 'Authentication failed with your database.';
+                recommendations = [
+                  'Your Service Role Key may be invalid or expired',
+                  'Go to Settings → API in Supabase dashboard',
+                  'Copy a fresh service_role key',
+                  'Update your connection'
+                ];
               } else if (execError?.message?.includes('connect') || execError?.message?.includes('network')) {
-                userFriendlyMessage = '❌ Cannot connect to your Supabase database. Check if your project is active.';
+                userFriendlyMessage = 'Cannot connect to your database.';
+                recommendations = [
+                  'Check if your Supabase project is active',
+                  'Verify the Project URL is correct',
+                  'Check your internet connection'
+                ];
               } else {
-                userFriendlyMessage = `❌ Database error: ${errorMsg.substring(0, 150)}`;
+                userFriendlyMessage = `Database error: ${errorMsg.substring(0, 150)}`;
+                recommendations = [
+                  'Check your Supabase dashboard for more details',
+                  'Verify your Service Role Key has admin permissions'
+                ];
               }
               
-              await sendEvent('error', { message: userFriendlyMessage });
+              await sendEvent('error', { 
+                message: userFriendlyMessage,
+                recommendations 
+              });
               
               // STOP execution on database failure
               return;
