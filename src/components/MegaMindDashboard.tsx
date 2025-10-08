@@ -3,7 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,7 +19,6 @@ import EnhancedDevEnvironment from "./EnhancedDevEnvironment";
 export const MegaMindDashboard = () => {
   const [request, setRequest] = useState("");
   const [requestType, setRequestType] = useState<"code-generation" | "error-fix" | "deployment" | "enhancement">("code-generation");
-  const [framework, setFramework] = useState<"html" | "react">("html");
   const [orchestration, setOrchestration] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -38,7 +36,6 @@ export const MegaMindDashboard = () => {
         body: {
           request,
           requestType,
-          framework,
           context: {
             appType: requestType === "code-generation" ? detectAppType(request) : "general"
           }
@@ -147,22 +144,9 @@ export const MegaMindDashboard = () => {
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-2 block">Framework</label>
-                <Select value={framework} onValueChange={(value: "html" | "react") => setFramework(value)}>
-                  <SelectTrigger className="w-full bg-background z-50">
-                    <SelectValue placeholder="Select framework" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border shadow-lg z-50">
-                    <SelectItem value="html">HTML/CSS/JavaScript</SelectItem>
-                    <SelectItem value="react">React + TypeScript</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
                 <label className="text-sm font-medium mb-2 block">Your Request</label>
                 <Textarea
-                  placeholder="Example: Create a blog platform with posts and comments..."
+                  placeholder="Example: Create a 2D platformer game with physics..."
                   value={request}
                   onChange={(e) => setRequest(e.target.value)}
                   rows={6}

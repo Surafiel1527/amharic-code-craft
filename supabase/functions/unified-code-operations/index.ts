@@ -370,7 +370,7 @@ async function executeJavaScript(code: string) {
 }
 
 async function handleStreamGeneration(params: any, supabase: any, req: any) {
-  const { userRequest, framework, projectId, conversationId } = params;
+  const { userRequest, framework, projectId, conversationId } = params.params;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -384,12 +384,129 @@ async function handleStreamGeneration(params: any, supabase: any, req: any) {
 
   (async () => {
     try {
+      // Get user from auth header
+      const authHeader = req.headers.get('Authorization');
+      let userId = null;
+      if (authHeader) {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user } } = await supabase.auth.getUser(token);
+        userId = user?.id;
+      }
+
       await sendEvent('status', { message: 'Analyzing requirements...', progress: 10 });
 
-      const systemPrompt = `You are an expert code generator. Generate a complete ${framework} project.
-Return JSON: { "files": [{"path": "...", "content": "...", "type": "..."}], "framework": "...", "architecture": "...", "stats": {...} }`;
+      // Step 1: Analyze if database is needed
+      const analysisPrompt = `Analyze this request and determine if it needs a database:
 
-      await sendEvent('status', { message: 'Generating files...', progress: 30 });
+"${userRequest}"
+
+Respond with JSON:
+{
+  "needsDatabase": true/false,
+  "needsAuth": true/false,
+  "databaseTables": [
+    {
+      "name": "table_name",
+      "purpose": "what it stores",
+      "fields": ["id", "user_id", "created_at", "field1", "field2"]
+    }
+  ]
+}`;
+
+      const analysisResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: "You analyze web app requirements. Respond with JSON only." },
+            { role: "user", content: analysisPrompt }
+          ],
+          response_format: { type: "json_object" }
+        }),
+      });
+
+      if (!analysisResponse.ok) throw new Error(`Analysis failed: ${analysisResponse.status}`);
+      
+      const analysisData = await analysisResponse.json();
+      const analysis = JSON.parse(analysisData.choices[0].message.content);
+      console.log('📊 Analysis:', analysis);
+
+      // Step 2: Create database tables if needed
+      if (analysis.needsDatabase && analysis.databaseTables?.length > 0 && userId) {
+        await sendEvent('status', { message: `Setting up ${analysis.databaseTables.length} database tables...`, progress: 20 });
+
+        const sqlStatements: string[] = [];
+        
+        for (const table of analysis.databaseTables) {
+          const fields = table.fields || ['id', 'created_at'];
+          const fieldDefinitions = fields.map((field: string) => {
+            if (field === 'id') return 'id uuid primary key default gen_random_uuid()';
+            if (field === 'user_id') return 'user_id uuid references auth.users(id) on delete cascade not null';
+            if (field === 'created_at') return 'created_at timestamp with time zone default now()';
+            if (field === 'updated_at') return 'updated_at timestamp with time zone default now()';
+            if (field.includes('email')) return `${field} text not null`;
+            if (field.includes('name') || field.includes('title')) return `${field} text not null`;
+            if (field.includes('content') || field.includes('body') || field.includes('description')) return `${field} text`;
+            if (field.includes('count') || field.includes('price') || field.includes('quantity')) return `${field} numeric default 0`;
+            if (field.includes('is_') || field.includes('has_')) return `${field} boolean default false`;
+            return `${field} text`;
+          }).join(',\n  ');
+
+          sqlStatements.push(`
+-- Create ${table.name} table
+create table if not exists public.${table.name} (
+  ${fieldDefinitions}
+);
+
+-- Enable RLS
+alter table public.${table.name} enable row level security;
+
+-- Create policies
+create policy "Users can view their own ${table.name}"
+  on public.${table.name} for select using (auth.uid() = user_id);
+
+create policy "Users can insert their own ${table.name}"
+  on public.${table.name} for insert with check (auth.uid() = user_id);
+
+create policy "Users can update their own ${table.name}"
+  on public.${table.name} for update using (auth.uid() = user_id);
+
+create policy "Users can delete their own ${table.name}"
+  on public.${table.name} for delete using (auth.uid() = user_id);
+`);
+        }
+
+        const fullSQL = sqlStatements.join('\n\n');
+        
+        try {
+          const { data: execResult, error: execError } = await supabase
+            .rpc('execute_migration', { migration_sql: fullSQL });
+
+          if (!execError && execResult?.success) {
+            console.log('✅ Database tables created successfully');
+            await sendEvent('status', { message: `✅ Created ${analysis.databaseTables.length} tables`, progress: 30 });
+          } else {
+            console.error('Database setup failed:', execError || execResult?.error);
+          }
+        } catch (error) {
+          console.error('Database setup error:', error);
+        }
+      }
+
+      // Step 3: Generate code
+      await sendEvent('status', { message: 'Generating files...', progress: 40 });
+
+      const systemPrompt = `You are an expert ${framework} developer. Generate a complete production-ready project.
+
+${analysis.needsDatabase ? `
+IMPORTANT - Include Supabase integration:
+- Import: import { supabase } from "@/integrations/supabase/client"
+- Use these tables: ${analysis.databaseTables?.map((t: any) => t.name).join(', ')}
+- Include CRUD operations using supabase.from('table_name').select/insert/update/delete
+` : ''}
+
+Return JSON: { "files": [{"path": "...", "content": "...", "type": "..."}], "framework": "${framework}", "architecture": "...", "stats": {...} }`;
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -407,13 +524,14 @@ Return JSON: { "files": [{"path": "...", "content": "...", "type": "..."}], "fra
       const result = JSON.parse(aiResponse.choices[0].message.content);
 
       for (let i = 0; i < result.files.length; i++) {
-        await sendEvent('file', { file: result.files[i], progress: 60 + (i / result.files.length) * 30 });
+        await sendEvent('file', { file: result.files[i], current: i + 1, total: result.files.length, progress: 50 + (i / result.files.length) * 40 });
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       await sendEvent('complete', { ...result, projectId, conversationId });
       await sendEvent('status', { message: 'Done!', progress: 100 });
     } catch (error) {
+      console.error('Stream generation error:', error);
       await sendEvent('error', { message: error instanceof Error ? error.message : 'Generation failed' });
     } finally {
       await writer.close();
