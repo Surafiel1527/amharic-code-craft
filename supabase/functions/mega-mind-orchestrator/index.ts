@@ -701,12 +701,12 @@ serve(async (req) => {
       })
       .eq('id', orchestrationId);
 
-    // PHASE 2.5: Generate backend if needed
+    // PHASE 2.5: Generate backend if needed (BEFORE frontend to avoid progress jumping)
     let backendGeneration: any = null;
     if (analysis.backendRequirements?.needsDatabase || analysis.backendRequirements?.needsAuth || analysis.backendRequirements?.needsEdgeFunctions) {
       console.log('🗄️ Generating backend infrastructure...');
-      await updateJobProgress(50, 'Setting up database and backend...');
-      await broadcast('generation:phase', { phase: 'generating', progress: 50, message: 'Creating database and backend...' });
+      await updateJobProgress(30, 'Setting up database and backend...');
+      await broadcast('generation:phase', { phase: 'generating', progress: 30, message: 'Creating database and backend...' });
       
       backendGeneration = await generateBackend(request, analysis, context, supabaseClient, userId, broadcast, userSupabaseConnection);
       
@@ -723,8 +723,8 @@ serve(async (req) => {
 
     // PHASE 3: Detect and track dependencies from generated code
     console.log('📦 Phase 3: Detecting dependencies...');
-    await updateJobProgress(60, 'Detecting dependencies...');
-    await broadcast('generation:phase', { phase: 'dependencies', progress: 60, message: 'Installing packages...' });
+    await updateJobProgress(75, 'Detecting dependencies...');
+    await broadcast('generation:phase', { phase: 'dependencies', progress: 75, message: 'Installing packages...' });
     
     let detectedPackages: string[] = [];
     try {
@@ -1842,15 +1842,20 @@ async function generateSolution(request: string, requestType: string, analysis: 
     }),
   });
 
-  await broadcast('generation:generating', { status: 'generating', message: 'Writing component code...', progress: 65 });
+  await broadcast('generation:generating', { status: 'generating', message: 'Writing component code...', progress: 50 });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('AI API Error:', response.status, errorText);
+    console.error('❌ AI API Error:', response.status, errorText);
+    await broadcast('generation:error', { 
+      status: 'error', 
+      message: `AI generation failed: ${response.status}. Please try again.`,
+      error: errorText 
+    });
     throw new Error(`AI API failed with status ${response.status}: ${errorText}`);
   }
   
-  await broadcast('generation:editing', { status: 'editing', message: 'Optimizing and formatting code...', progress: 90 });
+  await broadcast('generation:editing', { status: 'editing', message: 'Optimizing and formatting code...', progress: 65 });
 
   // Read response as text first to handle potential parsing issues
   const responseText = await response.text();
@@ -1878,9 +1883,14 @@ async function generateSolution(request: string, requestType: string, analysis: 
     console.log('AI content to parse:', content.substring(0, 500));
     return JSON.parse(content);
   } catch (parseError) {
-    console.error('Failed to parse AI content as JSON:', parseError);
+    console.error('❌ Failed to parse AI content as JSON:', parseError);
     console.error('Content received:', data.choices[0].message.content?.substring(0, 1000));
     const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+    await broadcast('generation:error', { 
+      status: 'error', 
+      message: 'AI generated invalid code format. Please try again.',
+      error: errorMsg 
+    });
     throw new Error(`Failed to parse AI generated content: ${errorMsg}`);
   }
 }
