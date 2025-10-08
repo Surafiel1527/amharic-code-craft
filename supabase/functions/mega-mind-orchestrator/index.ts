@@ -1431,9 +1431,38 @@ ${rlsPolicies}`);
       console.error('❌ Failed to execute migration:', errorMsg);
       console.error('Failed SQL:', fullSQL);
       
+      // ✅ INTELLIGENT ERROR DETECTION
+      let userFriendlyMessage = 'Database setup failed';
+      let recommendations: string[] = [];
+      
+      if (execError?.message?.includes('function') && execError.message.includes('does not exist')) {
+        userFriendlyMessage = '❌ Your Supabase database is missing the execute_migration function';
+        recommendations.push('Run this SQL in your Supabase SQL editor:');
+        recommendations.push('CREATE OR REPLACE FUNCTION public.execute_migration(migration_sql text) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$ DECLARE result jsonb; error_message text; BEGIN BEGIN EXECUTE migration_sql; result := jsonb_build_object(\'success\', true, \'message\', \'Migration executed successfully\'); EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS error_message = MESSAGE_TEXT; result := jsonb_build_object(\'success\', false, \'error\', error_message); END; RETURN result; END; $$;');
+      } else if (execError?.message?.includes('JWT') || execError?.message?.includes('authentication') || execError?.message?.includes('permission denied')) {
+        userFriendlyMessage = '❌ Authentication failed with your Supabase database';
+        recommendations.push('Your Service Role Key may be invalid or expired');
+        recommendations.push('Go to Settings → API in your Supabase dashboard and copy a fresh service_role key');
+        recommendations.push('Update your connection in the Supabase Connections page');
+      } else if (execError?.message?.includes('connect') || execError?.message?.includes('network') || execError?.message?.includes('timeout')) {
+        userFriendlyMessage = '❌ Cannot connect to your Supabase database';
+        recommendations.push('Check if your Supabase project is active and running');
+        recommendations.push('Verify the Project URL is correct');
+        recommendations.push('Check your internet connection');
+      } else if (execError?.message?.includes('already exists') || errorMsg.includes('already exists')) {
+        userFriendlyMessage = '⚠️ Some tables already exist in your database';
+        recommendations.push('The generation will continue with existing tables');
+        recommendations.push('You may want to drop old tables if you want fresh ones');
+      } else {
+        userFriendlyMessage = `❌ Database error: ${errorMsg.substring(0, 100)}`;
+        recommendations.push('Check your Supabase dashboard for more details');
+        recommendations.push('Verify your Service Role Key has admin permissions');
+      }
+      
       await broadcast('generation:database', { 
         status: 'error', 
-        message: `Database setup failed: ${errorMsg}`, 
+        message: userFriendlyMessage, 
+        recommendations,
         progress: 30 
       });
       

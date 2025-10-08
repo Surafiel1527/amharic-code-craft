@@ -3,10 +3,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Database, AlertCircle, ExternalLink } from "lucide-react";
+import { Database, AlertCircle, ExternalLink, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 
 interface ConnectSupabaseDialogProps {
   open: boolean;
@@ -21,6 +21,8 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
   const [anonKey, setAnonKey] = useState("");
   const [serviceRoleKey, setServiceRoleKey] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResults, setTestResults] = useState<any>(null);
 
   // Populate form when editing
   useEffect(() => {
@@ -34,8 +36,49 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
       setSupabaseUrl("");
       setAnonKey("");
       setServiceRoleKey("");
+      setTestResults(null);
     }
   }, [editConnection]);
+
+  const handleTestConnection = async () => {
+    if (!supabaseUrl.trim() || !anonKey.trim()) {
+      toast.error("Please enter URL and Anon Key first");
+      return;
+    }
+
+    setIsTesting(true);
+    setTestResults(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-supabase-connection', {
+        body: {
+          supabaseUrl: supabaseUrl.trim(),
+          supabaseAnonKey: anonKey.trim(),
+          supabaseServiceRoleKey: serviceRoleKey.trim() || null
+        }
+      });
+
+      if (error) throw error;
+
+      setTestResults(data);
+
+      if (data.success) {
+        toast.success("Connection test successful!");
+      } else {
+        toast.error("Connection test failed - see details below");
+      }
+    } catch (error: any) {
+      console.error("Test failed:", error);
+      toast.error("Connection test failed");
+      setTestResults({
+        success: false,
+        errors: [error.message || "Failed to test connection"],
+        recommendations: ["Check your network connection and try again"]
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   const handleConnect = async () => {
     if (!projectName.trim() || !supabaseUrl.trim() || !anonKey.trim() || !serviceRoleKey.trim()) {
@@ -94,6 +137,7 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
       setSupabaseUrl("");
       setAnonKey("");
       setServiceRoleKey("");
+      setTestResults(null);
     } catch (error: any) {
       console.error("Failed to connect Supabase:", error);
       if (error.message.includes("unique")) {
@@ -193,10 +237,75 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
                 Required for creating database tables. Find in Settings → API → service_role
               </p>
             </div>
+
+            {/* Test Results */}
+            {testResults && (
+              <Alert variant={testResults.success ? "default" : "destructive"}>
+                {testResults.success ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <XCircle className="w-4 h-4" />
+                )}
+                <AlertTitle>
+                  {testResults.success ? "Connection Successful ✓" : "Connection Issues Found"}
+                </AlertTitle>
+                <AlertDescription className="space-y-2 mt-2">
+                  {testResults.errors?.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="font-semibold text-sm">Errors:</p>
+                      <ul className="list-disc list-inside space-y-1 text-sm">
+                        {testResults.errors.map((err: string, i: number) => (
+                          <li key={i}>{err}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {testResults.warnings?.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="font-semibold text-sm flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> Warnings:
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 text-sm">
+                        {testResults.warnings.map((warn: string, i: number) => (
+                          <li key={i}>{warn}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {testResults.recommendations?.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="font-semibold text-sm">How to fix:</p>
+                      <ul className="list-disc list-inside space-y-1 text-sm">
+                        {testResults.recommendations.map((rec: string, i: number) => (
+                          <li key={i} className="whitespace-pre-wrap">{rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {testResults.success && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      ✓ URL Valid | ✓ Anon Key Valid | {testResults.serviceRoleKeyValid ? '✓' : '⚠'} Service Role Key | {testResults.canCreateTables ? '✓ Can Create Tables' : '⚠ Limited Features'}
+                    </p>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 pt-4">
+          <div className="flex justify-between gap-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={handleTestConnection}
+              disabled={isSubmitting || isTesting}
+            >
+              {isTesting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {isTesting ? "Testing..." : "Test Connection"}
+            </Button>
+            <div className="flex gap-2">
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
@@ -206,10 +315,11 @@ export function ConnectSupabaseDialog({ open, onOpenChange, onConnected, editCon
             </Button>
             <Button
               onClick={handleConnect}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isTesting || (testResults && !testResults.success)}
             >
               {isSubmitting ? (editConnection ? "Updating..." : "Connecting...") : (editConnection ? "Update Project" : "Connect Project")}
             </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

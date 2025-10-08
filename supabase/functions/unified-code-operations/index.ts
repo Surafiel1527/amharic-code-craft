@@ -587,7 +587,21 @@ ${rlsPolicies}`);
               const errorMsg = execError?.message || execResult?.error || 'Unknown error';
               console.error('❌ Failed to execute migration:', errorMsg);
               console.error('Failed SQL:', fullSQL);
-              await sendEvent('error', { message: `Database setup failed: ${errorMsg}` });
+              
+              // ✅ INTELLIGENT ERROR DETECTION
+              let userFriendlyMessage = 'Database setup failed';
+              
+              if (execError?.message?.includes('function') && execError.message.includes('does not exist')) {
+                userFriendlyMessage = '❌ Your Supabase database is missing the execute_migration function. Please add it via SQL Editor in your Supabase dashboard.';
+              } else if (execError?.message?.includes('JWT') || execError?.message?.includes('authentication')) {
+                userFriendlyMessage = '❌ Authentication failed - Your Service Role Key may be invalid. Please update it in Supabase Connections.';
+              } else if (execError?.message?.includes('connect') || execError?.message?.includes('network')) {
+                userFriendlyMessage = '❌ Cannot connect to your Supabase database. Check if your project is active.';
+              } else {
+                userFriendlyMessage = `❌ Database error: ${errorMsg.substring(0, 150)}`;
+              }
+              
+              await sendEvent('error', { message: userFriendlyMessage });
               
               // STOP execution on database failure
               return;
