@@ -303,8 +303,8 @@ serve(async (req) => {
   try {
     console.log('🚀 Mega Mind Orchestrator - Request received');
     
-    const { request, requestType, context = {}, jobId } = await req.json();
-    console.log('📦 Request parsed:', { requestType, hasJobId: !!jobId, hasContext: !!context });
+    const { request, requestType, framework = 'html', context = {}, jobId } = await req.json();
+    console.log('📦 Request parsed:', { requestType, framework, hasJobId: !!jobId, hasContext: !!context });
     
     // Extract projectId from context if available
     projectId = context.projectId || null;
@@ -602,6 +602,12 @@ serve(async (req) => {
     }
     
     const analysis = await analyzeRequest(sanitizedRequest, requestType, context);
+    
+    // Override outputType with user's framework choice
+    if (requestType === 'code-generation') {
+      analysis.outputType = framework === 'html' ? 'html-website' : 'react-app';
+      console.log(`🎯 Using user-selected framework: ${framework} → outputType: ${analysis.outputType}`);
+    }
     
     console.log('📋 Analysis result:', JSON.stringify(analysis, null, 2));
     
