@@ -827,13 +827,51 @@ serve(async (req) => {
     // Format the generated code for frontend display - PRODUCTION READY
     const finalFiles = generation.files;
     let generatedCode = '';
+    
+    // CRITICAL FIX: Handle modifications vs new projects differently
     if (finalFiles && finalFiles.length > 0) {
-      // For single HTML file, use it directly
       const htmlFile = finalFiles.find((f: any) => f.path.endsWith('.html'));
+      
       if (htmlFile) {
+        // New HTML project - use the HTML file directly
         generatedCode = htmlFile.content;
+      } else if (analysis.outputType === 'modification' && projectId) {
+        // MODIFICATION: Fetch existing code and merge changes
+        console.log('🔄 Modification detected - merging with existing code...');
+        
+        const { data: existingProject, error: fetchExistingError } = await supabaseClient
+          .from('projects')
+          .select('html_code')
+          .eq('id', projectId)
+          .single();
+        
+        if (existingProject?.html_code && !existingProject.html_code.includes('// File:')) {
+          // Preserve existing working code, append modification notes
+          console.log('✅ Preserving existing working code');
+          generatedCode = existingProject.html_code;
+          
+          // Add modification summary as HTML comment
+          const modificationSummary = `\n<!-- 
+  Modification Applied: ${analysis.mainGoal}
+  Files Updated: ${finalFiles.map((f: any) => f.path).join(', ')}
+  Timestamp: ${new Date().toISOString()}
+-->\n`;
+          
+          // For HTML, insert before closing body tag
+          if (generatedCode.includes('</body>')) {
+            generatedCode = generatedCode.replace('</body>', `${modificationSummary}</body>`);
+          } else {
+            generatedCode += modificationSummary;
+          }
+        } else {
+          // No existing code or corrupted - use new generation
+          console.log('⚠️ No valid existing code found, using new generation');
+          generatedCode = finalFiles.map((file: any) => 
+            `// File: ${file.path}\n${file.description ? `// ${file.description}\n` : ''}${file.content}\n\n`
+          ).join('\n');
+        }
       } else {
-        // For multi-file, combine all code
+        // New React/multi-file project
         generatedCode = finalFiles.map((file: any) => 
           `// File: ${file.path}\n${file.description ? `// ${file.description}\n` : ''}${file.content}\n\n`
         ).join('\n');
@@ -867,6 +905,22 @@ serve(async (req) => {
         }
         
         console.log(`📝 Updating project with title: "${cleanTitle}"`);
+        
+        // CRITICAL: Validate generated code before saving
+        if (!generatedCode || generatedCode.trim().length === 0) {
+          console.error('❌ Generated code is empty!');
+          throw new Error('Generated code is empty - aborting update');
+        }
+        
+        // Check if code looks corrupted (starts with file comments when it should be HTML)
+        const looksCorrupted = generatedCode.startsWith('// File:') && 
+                               !generatedCode.includes('<html') && 
+                               analysis.outputType === 'modification';
+        
+        if (looksCorrupted) {
+          console.error('❌ Generated code appears corrupted - preserving existing');
+          throw new Error('Generated code validation failed - format mismatch');
+        }
         
         const { error: projectUpdateError } = await supabaseClient
           .from('projects')
@@ -1642,7 +1696,7 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE HTML/CSS/JavaScript websites. Output ONLY valid, compact JSON. Keep CSS minimal. IMPORTANT: Keep total output under 8000 characters to avoid truncation.' },
+        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE HTML/CSS/JavaScript websites. Output ONLY valid, compact JSON. Keep CSS minimal. IMPORTANT: Keep total output under 8000 characters to avoid truncation. SECURITY: Never use alert() or console.log() to display user credentials (passwords, emails). Use proper UI feedback instead.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" },
@@ -1840,7 +1894,7 @@ async function generateSolution(request: string, requestType: string, analysis: 
     body: JSON.stringify({
       model: 'google/gemini-2.5-pro',
       messages: [
-        { role: 'system', content: 'You are a Lovable React expert. Generate clean, production-ready React/TypeScript components using shadcn/ui and semantic Tailwind classes. NEVER use direct colors. Respond with JSON only.' },
+        { role: 'system', content: 'You are a Lovable React expert. Generate clean, production-ready React/TypeScript components using shadcn/ui and semantic Tailwind classes. NEVER use direct colors. Respond with JSON only. SECURITY: Never display sensitive user data (passwords, tokens) in alerts or console logs. Use proper toast notifications for user feedback.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }
