@@ -30,6 +30,15 @@ export interface Message {
     toolUsed?: string;
     toolResult?: any;
   };
+  plan?: {
+    summary: string;
+    approach: string;
+    codebaseAnalysis: any;
+    implementationPlan: any;
+    formattedPlan: string;
+    requiresApproval: boolean;
+    approved?: boolean;
+  };
 }
 
 export interface UniversalAIChatOptions {
@@ -426,6 +435,32 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
     let content = '';
     let codeBlock: Message['codeBlock'] = undefined;
     let metadata: Message['metadata'] = { routedTo };
+    let plan: Message['plan'] = undefined;
+
+    // Check if response contains implementation plan
+    if (data && data.plan) {
+      logger.info('📋 Implementation plan received');
+      plan = {
+        summary: data.plan.summary,
+        approach: data.plan.approach,
+        codebaseAnalysis: data.plan.codebaseAnalysis,
+        implementationPlan: data.plan.implementationPlan,
+        formattedPlan: data.plan.formattedPlan,
+        requiresApproval: true,
+        approved: false
+      };
+      
+      content = `📋 **Implementation Plan Ready**\n\n${data.plan.summary}\n\n**Approach:** ${data.plan.approach}\n\n---\n\nReview the detailed plan below and approve to proceed with implementation.`;
+      
+      return {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content,
+        timestamp: new Date().toISOString(),
+        metadata,
+        plan
+      };
+    }
 
     if (routedTo === 'error-teacher' && data) {
       const { solution, diagnosis, category, confidence, isKnown, patternId } = data;

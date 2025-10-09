@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useUniversalAIChat, Message } from "@/hooks/useUniversalAIChat";
 import { EnhancedSensitiveDataDetector } from "@/components/EnhancedSensitiveDataDetector";
 import { RealtimeAIPanel } from "@/components/RealtimeAIPanel";
+import { PlanApprovalCard } from "@/components/PlanApprovalCard";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css";
 import "prismjs/components/prism-typescript";
@@ -365,6 +366,23 @@ export function UniversalChatInterface({
                       message.content
                     )}
                   </div>
+
+                  {/* Implementation Plan */}
+                  {message.plan && !message.streaming && !message.plan.approved && (
+                    <div className="mt-3">
+                      <PlanApprovalCard
+                        plan={message.plan}
+                        onApprove={() => {
+                          // Send approval message to trigger actual generation
+                          sendMessage('yes - proceed with implementation');
+                        }}
+                        onReject={(feedback) => {
+                          // Send feedback to revise plan
+                          sendMessage(feedback || 'Please revise the plan with these changes');
+                        }}
+                      />
+                    </div>
+                  )}
 
                   {/* Code Block */}
                   {message.codeBlock && !message.streaming && (
