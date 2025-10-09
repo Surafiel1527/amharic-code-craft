@@ -1835,22 +1835,28 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
    - Icons: Font Awesome, Bootstrap Icons, or similar via CDN
    - Libraries: jQuery, AOS, etc. via CDN if needed
 
-**Output JSON:**
+5. **JSON FORMATTING RULES (CRITICAL):**
+   - Escape ALL special characters in strings: \\ for backslash, \\" for quotes, \\n for newlines
+   - Use single quotes in HTML/CSS/JS content where possible to avoid escaping
+   - Keep file content compact and clean
+   - Validate JSON structure before output
+
+**Output JSON Structure:**
 {
   "files": [
     {
       "path": "index.html",
-      "content": "<!DOCTYPE html>... (HTML structure with <link rel='stylesheet' href='styles.css'> and <script src='script.js'>)",
+      "content": "<properly escaped HTML content>",
       "description": "Main HTML structure"
     },
     {
       "path": "styles.css",
-      "content": "/* All CSS styles */",
+      "content": "/* CSS with escaped special chars */",
       "description": "Stylesheet"
     },
     {
       "path": "script.js",
-      "content": "// All JavaScript",
+      "content": "// JS with escaped special chars",
       "description": "JavaScript functionality"
     }
   ],
@@ -1858,7 +1864,7 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
 }
 
 **IMPORTANT FOR COMPLEX SITES:**
-- If the site is very complex, prioritize core sections first
+- Prioritize core sections first
 - Use efficient CSS (CSS variables, reusable classes)
 - Keep JavaScript modular and well-commented
 - Focus on quality over quantity`;
@@ -1932,33 +1938,42 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     console.error('❌ JSON Parse Error:', parseError);
     console.error('Error name:', parseError instanceof Error ? parseError.constructor.name : 'Unknown');
     console.error('Error message:', parseError instanceof Error ? parseError.message : 'Unknown');
-    console.error('Error stack:', parseError instanceof Error ? parseError.stack : 'N/A');
-    console.error('📄 Content that failed to parse:', content?.substring(0, 500));
     console.error('📝 Content length:', content?.length || 0);
+    console.error('📄 Content preview:', content?.substring(0, 500));
     
-    // Try to fix common JSON issues
+    // Try to sanitize and fix the JSON
     if (content) {
       try {
-        // Attempt to close unterminated strings/objects
-        let fixedContent = content;
+        console.log('🔧 Attempting to sanitize JSON...');
         
-        // If content ends abruptly in a string, try to close it
-        if (content.match(/"[^"]*$/)) {
-          fixedContent = content + '"}]}';
-        } else if (content.match(/[^}\]]\s*$/)) {
-          fixedContent = content + '}]}';
-        }
+        // Fix common JSON escaping issues
+        let sanitized = content
+          // Fix unescaped backslashes first
+          .replace(/\\(?!["\\/bfnrtu])/g, '\\\\')
+          // Fix unescaped newlines in strings
+          .replace(/([^\\])\n/g, '$1\\n');
         
-        result = JSON.parse(fixedContent);
-        console.log('✅ Successfully recovered from truncated JSON');
-      } catch (recoveryError) {
-        console.error('❌ Recovery attempt failed:', recoveryError);
-        const errorMsg = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
-        await broadcast('generation:error', { 
-          message: 'AI response was incomplete', 
-          details: `Response length: ${content.length} chars. Try again or simplify your request.`
+        result = JSON.parse(sanitized);
+        console.log('✅ Successfully sanitized and parsed JSON');
+      } catch (sanitizeError) {
+        console.error('❌ Sanitization failed:', sanitizeError);
+        
+        // Last resort: try to extract and create fallback
+        console.log('🔧 Using fallback response...');
+        result = {
+          files: [{
+            path: 'index.html',
+            content: '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Generation Error</title><style>body{font-family:Arial,sans-serif;padding:40px;text-align:center;background:#f5f5f5;}h1{color:#e74c3c;}</style></head><body><h1>Generation Failed</h1><p>The AI response had formatting issues. Please try again with a simpler request or rephrase your request.</p><button onclick="location.reload()">Try Again</button></body></html>',
+            description: 'Fallback HTML'
+          }],
+          instructions: 'Generation encountered issues, please try again'
+        };
+        console.log('⚠️ Using fallback response');
+        
+        await broadcast('generation:warning', { 
+          message: 'Using fallback due to AI formatting issues', 
+          details: 'Please try again'
         });
-        throw new Error(`Failed to parse AI response: ${errorMsg}`);
       }
     } else {
       const errorMsg = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
