@@ -2013,6 +2013,71 @@ Intelligently infer database tables and relationships:
 }
 
 /**
+ * Auto-heals common database errors
+ */
+async function autoHealDatabaseError(
+  userSupabase: any,
+  errorMessage: string,
+  originalSql: string
+): Promise<boolean> {
+  console.log('🔧 Auto-healing database error:', errorMessage);
+  
+  try {
+    // Pattern 1: Missing UUID extension
+    if (errorMessage.includes('uuid_generate_v4') || errorMessage.includes('function uuid_generate_v4() does not exist')) {
+      console.log('🩹 Detected: Missing uuid-ossp extension');
+      const fixSql = `CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA extensions;`;
+      
+      const { error } = await userSupabase.rpc('execute_migration', { migration_sql: fixSql });
+      if (!error) {
+        console.log('✅ Enabled uuid-ossp extension');
+        return true;
+      }
+    }
+    
+    // Pattern 2: Missing other common extensions
+    if (errorMessage.includes('extension') && errorMessage.includes('does not exist')) {
+      const extensionMatch = errorMessage.match(/"([^"]+)"\s+extension/i) || errorMessage.match(/extension\s+"([^"]+)"/i);
+      if (extensionMatch) {
+        const extension = extensionMatch[1];
+        console.log(`🩹 Detected: Missing ${extension} extension`);
+        const fixSql = `CREATE EXTENSION IF NOT EXISTS "${extension}" SCHEMA extensions;`;
+        
+        const { error } = await userSupabase.rpc('execute_migration', { migration_sql: fixSql });
+        if (!error) {
+          console.log(`✅ Enabled ${extension} extension`);
+          return true;
+        }
+      }
+    }
+    
+    // Pattern 3: Missing schema
+    if (errorMessage.includes('schema') && errorMessage.includes('does not exist')) {
+      const schemaMatch = errorMessage.match(/schema\s+"([^"]+)"/i);
+      if (schemaMatch) {
+        const schema = schemaMatch[1];
+        if (schema !== 'auth' && schema !== 'storage') { // Don't try to create system schemas
+          console.log(`🩹 Detected: Missing ${schema} schema`);
+          const fixSql = `CREATE SCHEMA IF NOT EXISTS ${schema};`;
+          
+          const { error } = await userSupabase.rpc('execute_migration', { migration_sql: fixSql });
+          if (!error) {
+            console.log(`✅ Created ${schema} schema`);
+            return true;
+          }
+        }
+      }
+    }
+    
+    console.log('❌ No auto-fix available for this error');
+    return false;
+  } catch (err) {
+    console.error('❌ Auto-heal failed:', err);
+    return false;
+  }
+}
+
+/**
  * Creates database tables based on analysis requirements
  */
 async function setupDatabaseTables(
@@ -2163,9 +2228,47 @@ ${rlsPolicies}`);
       console.error('❌ Failed to execute migration:', errorMsg);
       console.error('Failed SQL:', fullSQL);
       
-      // ✅ INTELLIGENT ERROR DETECTION
-      let userFriendlyMessage = 'Database setup failed';
-      let recommendations: string[] = [];
+      // 🔧 AUTO-HEALING: Try to fix common database issues and retry
+      console.log('🩹 Attempting auto-heal for database error...');
+      const healed = await autoHealDatabaseError(userSupabaseClient, errorMsg, fullSQL);
+      
+      if (healed) {
+        console.log('✅ Auto-healed! Retrying migration...');
+        // Retry the migration after healing
+        ({ data: execResult, error: execError } = await userSupabaseClient
+          .rpc('execute_migration', { migration_sql: fullSQL }));
+        
+        if (!execError && execResult?.success) {
+          console.log('✅ Migration successful after auto-healing!');
+          await broadcast('generation:database', { 
+            status: 'success', 
+            message: '✅ Database setup complete (auto-fixed)', 
+            progress: 35 
+          });
+          
+          // Log the successful auto-fix
+          await platformSupabaseClient.from('build_events').insert({
+            user_id: userId,
+            event_type: 'auto_heal_success',
+            status: 'success',
+            title: 'Auto-fixed database issue',
+            details: { error: errorMsg, solution: 'automatic' },
+            motivation_message: '🎉 Platform automatically fixed a database issue!'
+          });
+          
+          // Continue with generation...
+          execError = null;
+        }
+      }
+      
+      // If still failing, show user-friendly error
+      if (execError || !execResult?.success) {
+        const finalError = execError?.message || execResult?.error || 'Unknown error';
+        console.error('❌ Migration failed even after auto-heal:', finalError);
+        
+        // ✅ INTELLIGENT ERROR DETECTION
+        let userFriendlyMessage = 'Database setup failed';
+        let recommendations: string[] = [];
       
       if (errorMsg.includes('Could not find the function') || errorMsg.includes('execute_migration') && errorMsg.includes('does not exist')) {
         userFriendlyMessage = 'First-time database setup required';
@@ -2275,26 +2378,26 @@ $$;
       
       // STOP execution on database failure
       return;
-    } else {
-      console.log('✅ Tables created successfully!');
-      
-      // Store successful migration (in platform database)
-      await platformSupabaseClient
-        .from('generated_migrations')
-        .insert({
-          user_id: userId,
-          project_context: analysis.mainGoal,
-          migration_sql: fullSQL,
-          table_count: backendRequirements.databaseTables.length,
-          status: 'executed'
-        });
-      
-      await broadcast('generation:database', { 
-        status: 'complete', 
-        message: `✅ Created ${backendRequirements.databaseTables.length} tables with RLS policies`, 
-        progress: 35
-      });
     }
+    
+    console.log('✅ Tables created successfully!');
+    
+    // Store successful migration (in platform database)
+    await platformSupabaseClient
+      .from('generated_migrations')
+      .insert({
+        user_id: userId,
+        project_context: analysis.mainGoal,
+        migration_sql: fullSQL,
+        table_count: backendRequirements.databaseTables.length,
+        status: 'executed'
+      });
+    
+    await broadcast('generation:database', { 
+      status: 'complete', 
+      message: `✅ Created ${backendRequirements.databaseTables.length} tables with RLS policies`, 
+      progress: 35
+    });
   } catch (error) {
     console.error('❌ Database setup failed:', error);
     // Continue without database

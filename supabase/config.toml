@@ -32,6 +32,11 @@ verify_jwt = false
 [functions.autonomous-healing-engine]
 verify_jwt = false
 
+[cron.autonomous_healing]
+# Run autonomous healing every 5 minutes
+schedule = "*/5 * * * *"
+function_name = "autonomous-healing-engine"
+
 [functions.meta-self-improvement]
 verify_jwt = false
 
