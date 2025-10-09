@@ -87,15 +87,15 @@ class Analytics {
     this.events = [];
 
     try {
-      // Send to analytics aggregator edge function
-      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analytics-aggregator`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({ events: eventsToSend }),
+      // Use Supabase SDK instead of direct fetch
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { error } = await supabase.functions.invoke('analytics-aggregator', {
+        body: { events: eventsToSend }
       });
+      
+      if (error) {
+        console.error('Failed to send analytics:', error);
+      }
     } catch (err) {
       console.error('Failed to send analytics:', err);
       // Re-add events if send failed

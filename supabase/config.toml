@@ -122,3 +122,9 @@ verify_jwt = true
 
 [functions.test-supabase-connection]
 verify_jwt = true
+
+[functions.analytics-aggregator]
+verify_jwt = false
+
+[functions.report-error]
+verify_jwt = false

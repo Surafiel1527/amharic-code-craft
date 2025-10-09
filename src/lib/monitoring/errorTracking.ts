@@ -56,22 +56,26 @@ class ErrorTracker {
 
   private async sendToBackend(report: ErrorReport): Promise<void> {
     try {
-      // Send to edge function for logging
-      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/report-error`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({
+      // Use Supabase SDK instead of direct fetch
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { error } = await supabase.functions.invoke('report-error', {
+        body: {
           errorType: 'frontend',
           errorMessage: report.message,
           stackTrace: report.stack,
-          source: 'frontend',
           severity: report.severity,
-          context: report.context,
-        }),
+          metadata: {
+            route: report.context.route,
+            userId: report.context.userId,
+            timestamp: report.timestamp,
+            ...report.context.additionalInfo
+          }
+        }
       });
+      
+      if (error) {
+        console.error('Error sending report:', error);
+      }
     } catch (err) {
       console.error('Failed to send error report:', err);
     }
