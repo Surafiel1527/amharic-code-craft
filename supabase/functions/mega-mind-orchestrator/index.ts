@@ -1391,12 +1391,12 @@ serve(async (req) => {
             features: analysis.intent?.features || [],
             existingContext: projectContext.existingFeatures || [],
             fileCount: projectContext.fileCount || 0,
-            conversationTurns: conversationHistory.totalTurns,
+            conversationTurns: conversationHistory?.totalTurns || 0,
             mode
           }
         });
 
-        console.log(`💾 Stored conversation turn with memory (${conversationHistory.totalTurns + 1} total turns)`);
+        console.log(`💾 Stored conversation turn with memory (${(conversationHistory?.totalTurns || 0) + 1} total turns)`);
       } catch (memoryError) {
         console.warn('⚠️ Failed to store conversation memory (non-critical):', memoryError);
       }
