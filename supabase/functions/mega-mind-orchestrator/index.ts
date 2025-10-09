@@ -23,7 +23,6 @@ import {
   storeSuccessfulPattern, 
   findRelevantPatterns 
 } from '../_shared/patternLearning.ts';
-import { validateWebsite } from '../_shared/validationHelpers.ts';
 import { 
   setupDatabaseTables, 
   ensureAuthInfrastructure 
@@ -32,6 +31,7 @@ import {
   buildAnalysisPrompt, 
   buildWebsitePrompt 
 } from '../_shared/promptTemplates.ts';
+import { autoFixGeneratedCode } from './autoFixIntegration.ts';
 
 // CORS headers
 const corsHeaders = {
@@ -210,17 +210,51 @@ async function processRequest(ctx: {
 
   const generatedCode = await generateCode(analysis, request, broadcast);
 
-  // Step 5: Validate output
+  // Step 5: AUTO-FIX - Validate and fix code automatically
   await broadcast('generation:validating', { 
-    status: 'validating', 
-    message: 'Validating code quality...', 
+    status: 'auto_fixing', 
+    message: 'Validating and auto-fixing code...', 
     progress: 70 
   });
 
-  const validation = validateWebsite(generatedCode.files);
-  
-  if (!validation.isValid) {
-    console.warn('⚠️ Validation warnings:', validation.overallWarnings);
+  const autoFixResult = await autoFixGeneratedCode(
+    generatedCode.files, 
+    platformSupabase, 
+    userId,
+    broadcast
+  );
+
+  // Use fixed files if auto-fix succeeded
+  if (autoFixResult.success && autoFixResult.fixed) {
+    console.log(`✅ Auto-fixed ${autoFixResult.fixedErrorTypes.length} error types in ${autoFixResult.totalAttempts} attempts`);
+    generatedCode.files = autoFixResult.fixedFiles.map(f => ({
+      path: f.path,
+      content: f.content,
+      language: f.language === 'typescript' ? 'typescript' : 'javascript',
+      imports: [] // Will be extracted later
+    }));
+    
+    await broadcast('generation:auto_fixed', {
+      status: 'success',
+      message: `✅ Auto-fixed ${autoFixResult.fixedErrorTypes.join(', ')} errors`,
+      progress: 75,
+      details: {
+        attempts: autoFixResult.totalAttempts,
+        fixedTypes: autoFixResult.fixedErrorTypes
+      }
+    });
+  } else if (!autoFixResult.success) {
+    console.warn('⚠️ Auto-fix could not resolve all errors:', autoFixResult.errors);
+    
+    await broadcast('generation:validation_warning', {
+      status: 'warning',
+      message: '⚠️ Some errors remain - please review',
+      progress: 75,
+      details: {
+        errors: autoFixResult.errors,
+        warnings: autoFixResult.warnings
+      }
+    });
   }
 
   // Step 6: Learn from success
@@ -230,7 +264,14 @@ async function processRequest(ctx: {
       patternName: `${analysis.mainGoal} pattern`,
       useCase: request,
       codeTemplate: JSON.stringify(generatedCode.files[0]),
-      context: { analysis, validation }
+      context: { 
+        analysis, 
+        autoFix: {
+          success: autoFixResult.success,
+          attempts: autoFixResult.totalAttempts,
+          fixedTypes: autoFixResult.fixedErrorTypes
+        }
+      }
     });
   }
 
@@ -257,7 +298,13 @@ async function processRequest(ctx: {
     success: true,
     files: generatedCode.files,
     analysis,
-    validation,
+    autoFix: {
+      success: autoFixResult.success,
+      fixed: autoFixResult.fixed,
+      attempts: autoFixResult.totalAttempts,
+      errors: autoFixResult.errors,
+      warnings: autoFixResult.warnings
+    },
     backendSetup: analysis.backendRequirements
   };
 }
