@@ -2270,45 +2270,45 @@ ${rlsPolicies}`);
         let userFriendlyMessage = 'Database setup failed';
         let recommendations: string[] = [];
       
-      if (errorMsg.includes('Could not find the function') || errorMsg.includes('execute_migration') && errorMsg.includes('does not exist')) {
-        userFriendlyMessage = 'First-time database setup required';
-        recommendations = [
-          'This is a one-time setup. Run this SQL in your Supabase SQL Editor:',
-          '',
-          'CREATE OR REPLACE FUNCTION public.execute_migration(migration_sql text)',
-          'RETURNS jsonb',
-          'LANGUAGE plpgsql',
-          'SECURITY DEFINER',
-          'SET search_path = public',
-          'AS $$',
-          'DECLARE',
-          '  result jsonb;',
-          '  error_message text;',
-          'BEGIN',
-          '  BEGIN',
-          '    EXECUTE migration_sql;',
-          '    result := jsonb_build_object(',
-          "      'success', true,",
-          "      'message', 'Migration executed successfully'",
-          '    );',
-          '  EXCEPTION WHEN OTHERS THEN',
-          '    GET STACKED DIAGNOSTICS error_message = MESSAGE_TEXT;',
-          '    result := jsonb_build_object(',
-          "      'success', false,",
-          "      'error', error_message",
-          '    );',
-          '  END;',
-          '  RETURN result;',
-          'END;',
-          '$$;',
-          '',
-          'After running this SQL, try generating your project again.'
-        ];
-      } else if (errorMsg.includes('JWT') || errorMsg.includes('authentication') || errorMsg.includes('permission denied')) {
-        userFriendlyMessage = 'Your database is missing the required migration function. This happens on first connection.';
-        recommendations.push('The platform attempted to set this up automatically');
-        recommendations.push('Please run this SQL manually in your Supabase SQL Editor:');
-        recommendations.push(`
+        if (errorMsg.includes('Could not find the function') || errorMsg.includes('execute_migration') && errorMsg.includes('does not exist')) {
+          userFriendlyMessage = 'First-time database setup required';
+          recommendations = [
+            'This is a one-time setup. Run this SQL in your Supabase SQL Editor:',
+            '',
+            'CREATE OR REPLACE FUNCTION public.execute_migration(migration_sql text)',
+            'RETURNS jsonb',
+            'LANGUAGE plpgsql',
+            'SECURITY DEFINER',
+            'SET search_path = public',
+            'AS $$',
+            'DECLARE',
+            '  result jsonb;',
+            '  error_message text;',
+            'BEGIN',
+            '  BEGIN',
+            '    EXECUTE migration_sql;',
+            '    result := jsonb_build_object(',
+            "      'success', true,",
+            "      'message', 'Migration executed successfully'",
+            '    );',
+            '  EXCEPTION WHEN OTHERS THEN',
+            '    GET STACKED DIAGNOSTICS error_message = MESSAGE_TEXT;',
+            '    result := jsonb_build_object(',
+            "      'success', false,",
+            "      'error', error_message",
+            '    );',
+            '  END;',
+            '  RETURN result;',
+            'END;',
+            '$$;',
+            '',
+            'After running this SQL, try generating your project again.'
+          ];
+        } else if (errorMsg.includes('JWT') || errorMsg.includes('authentication') || errorMsg.includes('permission denied')) {
+          userFriendlyMessage = 'Your database is missing the required migration function. This happens on first connection.';
+          recommendations.push('The platform attempted to set this up automatically');
+          recommendations.push('Please run this SQL manually in your Supabase SQL Editor:');
+          recommendations.push(`
 CREATE OR REPLACE FUNCTION public.execute_migration(migration_sql text)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -2329,55 +2329,56 @@ BEGIN
   RETURN result;
 END;
 $$;
-        `.trim());
-        recommendations.push('Then try generating again');
-      } else if (execError?.message?.includes('JWT') || execError?.message?.includes('authentication') || execError?.message?.includes('permission denied')) {
-        userFriendlyMessage = '❌ Authentication failed with your Supabase database';
-        recommendations.push('Your Service Role Key may be invalid or expired');
-        recommendations.push('Go to Settings → API in your Supabase dashboard and copy a fresh service_role key');
-        recommendations.push('Update your connection in the Supabase Connections page');
-      } else if (execError?.message?.includes('connect') || execError?.message?.includes('network') || execError?.message?.includes('timeout')) {
-        userFriendlyMessage = '❌ Cannot connect to your Supabase database';
-        recommendations.push('Check if your Supabase project is active and running');
-        recommendations.push('Verify the Project URL is correct');
-        recommendations.push('Check your internet connection');
-      } else if (execError?.message?.includes('already exists') || errorMsg.includes('already exists')) {
-        userFriendlyMessage = '⚠️ Some tables already exist in your database';
-        recommendations.push('The generation will continue with existing tables');
-        recommendations.push('You may want to drop old tables if you want fresh ones');
-      } else {
-        userFriendlyMessage = `❌ Database error: ${errorMsg.substring(0, 100)}`;
-        recommendations.push('Check your Supabase dashboard for more details');
-        recommendations.push('Verify your Service Role Key has admin permissions');
-      }
-      
-      await broadcast('generation:database', { 
-        status: 'error', 
-        message: userFriendlyMessage, 
-        recommendations,
-        progress: 30 
-      });
-      
-      // Store failed migration for review (in platform database)
-      await platformSupabaseClient
-        .from('generated_migrations')
-        .insert({
-          user_id: userId,
-          project_context: analysis.mainGoal,
-          migration_sql: fullSQL,
-          table_count: backendRequirements.databaseTables.length,
-          status: 'failed',
-          error_message: execError?.message || execResult?.error
+          `.trim());
+          recommendations.push('Then try generating again');
+        } else if (execError?.message?.includes('JWT') || execError?.message?.includes('authentication') || execError?.message?.includes('permission denied')) {
+          userFriendlyMessage = '❌ Authentication failed with your Supabase database';
+          recommendations.push('Your Service Role Key may be invalid or expired');
+          recommendations.push('Go to Settings → API in your Supabase dashboard and copy a fresh service_role key');
+          recommendations.push('Update your connection in the Supabase Connections page');
+        } else if (execError?.message?.includes('connect') || execError?.message?.includes('network') || execError?.message?.includes('timeout')) {
+          userFriendlyMessage = '❌ Cannot connect to your Supabase database';
+          recommendations.push('Check if your Supabase project is active and running');
+          recommendations.push('Verify the Project URL is correct');
+          recommendations.push('Check your internet connection');
+        } else if (execError?.message?.includes('already exists') || errorMsg.includes('already exists')) {
+          userFriendlyMessage = '⚠️ Some tables already exist in your database';
+          recommendations.push('The generation will continue with existing tables');
+          recommendations.push('You may want to drop old tables if you want fresh ones');
+        } else {
+          userFriendlyMessage = `❌ Database error: ${errorMsg.substring(0, 100)}`;
+          recommendations.push('Check your Supabase dashboard for more details');
+          recommendations.push('Verify your Service Role Key has admin permissions');
+        }
+        
+        await broadcast('generation:database', { 
+          status: 'error', 
+          message: userFriendlyMessage, 
+          recommendations,
+          progress: 30 
         });
-      
-      await broadcast('generation:database', { 
-        status: 'warning', 
-        message: 'Database setup encountered issues - check migrations', 
-        progress: 30 
-      });
-      
-      // STOP execution on database failure
-      return;
+        
+        // Store failed migration for review (in platform database)
+        await platformSupabaseClient
+          .from('generated_migrations')
+          .insert({
+            user_id: userId,
+            project_context: analysis.mainGoal,
+            migration_sql: fullSQL,
+            table_count: backendRequirements.databaseTables.length,
+            status: 'failed',
+            error_message: execError?.message || execResult?.error
+          });
+        
+        await broadcast('generation:database', { 
+          status: 'warning', 
+          message: 'Database setup encountered issues - check migrations', 
+          progress: 30 
+        });
+        
+        // STOP execution on database failure
+        return;
+      }
     }
     
     console.log('✅ Tables created successfully!');
