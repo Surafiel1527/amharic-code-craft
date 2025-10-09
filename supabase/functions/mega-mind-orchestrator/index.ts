@@ -1325,11 +1325,13 @@ serve(async (req) => {
           success: false,
           metadata: {
             errorMessage,
-            projectId: projectId || null
+            projectId: projectId || null,
+            phase: 'generation',
+            canAutoFix: true // Mark that this can potentially be auto-fixed
           }
         }
       });
-      console.log('✅ Error pattern logged');
+      console.log('✅ Error pattern logged for self-healing');
     } catch (patternError) {
       console.error('Failed to log error pattern:', patternError);
     }
@@ -1941,6 +1943,32 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     console.error('📝 Content length:', content?.length || 0);
     console.error('📄 Content preview:', content?.substring(0, 500));
     
+    // Log this error pattern for learning
+    try {
+      const platformClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+      
+      await platformClient.functions.invoke('pattern-recognizer', {
+        body: {
+          conversationId: null,
+          codeContext: content?.substring(0, 1000),
+          errorType: 'json_parse_error',
+          patternSignature: `json_parse_${parseError instanceof Error ? parseError.message : 'unknown'}`,
+          success: false,
+          metadata: {
+            errorMessage: parseError instanceof Error ? parseError.message : 'Unknown',
+            contentLength: content?.length || 0,
+            generationType: 'html_website'
+          }
+        }
+      });
+      console.log('✅ JSON parse error pattern logged for learning');
+    } catch (logError) {
+      console.error('⚠️ Failed to log error pattern:', logError);
+    }
+    
     // Try to sanitize and fix the JSON
     if (content) {
       try {
@@ -1955,6 +1983,30 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
         
         result = JSON.parse(sanitized);
         console.log('✅ Successfully sanitized and parsed JSON');
+        
+        // Log successful recovery pattern
+        try {
+          const platformClient = createClient(
+            Deno.env.get('SUPABASE_URL')!,
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+          );
+          
+          await platformClient.functions.invoke('pattern-recognizer', {
+            body: {
+              conversationId: null,
+              codeContext: 'json_sanitization_success',
+              errorType: 'json_parse_error_recovered',
+              patternSignature: 'json_sanitization_fixed',
+              success: true,
+              metadata: {
+                originalError: parseError instanceof Error ? parseError.message : 'Unknown',
+                recoveryMethod: 'sanitization'
+              }
+            }
+          });
+        } catch (logError) {
+          // Non-critical
+        }
       } catch (sanitizeError) {
         console.error('❌ Sanitization failed:', sanitizeError);
         
