@@ -1,29 +1,271 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { validateWebsite } from "../_shared/codeValidator.ts";
-import type { WebsiteValidation } from "../_shared/codeValidator.ts";
-import { 
-  loadConversationHistory, 
-  storeConversationTurn, 
-  buildConversationSummary 
-} from "../_shared/conversationMemory.ts";
-import { 
-  loadFileDependencies, 
-  storeFileDependency,
-  buildDependencySummary 
-} from "../_shared/fileDependencies.ts";
-import {
-  findRelevantPatterns,
-  buildPromptWithPatterns,
-  storeSuccessfulPattern,
-  detectPatternCategory
-} from "../_shared/patternLearning.ts";
-import {
-  generateProactiveSuggestions,
-  formatSuggestionsForPrompt,
-  formatSuggestionsForUser
-} from "../_shared/proactiveSuggestions.ts";
+
+// Inlined from codeValidator.ts
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  type: 'html' | 'react' | 'css' | 'javascript';
+}
+
+interface HTMLValidationResult extends ValidationResult {
+  type: 'html';
+  hasHtml: boolean;
+  hasHead: boolean;
+  hasBody: boolean;
+  unclosedTags: string[];
+}
+
+interface WebsiteValidation {
+  isValid: boolean;
+  html: HTMLValidationResult;
+  css?: ValidationResult;
+  js?: ValidationResult;
+  overallErrors: string[];
+  overallWarnings: string[];
+}
+
+function validateHTML(html: string): HTMLValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const unclosedTags: string[] = [];
+  const hasHtml = /<html[^>]*>/i.test(html);
+  const hasHead = /<head[^>]*>/i.test(html);
+  const hasBody = /<body[^>]*>/i.test(html);
+  if (!hasHtml) warnings.push('Missing <html> tag');
+  if (!hasHead) warnings.push('Missing <head> tag');
+  if (!hasBody) errors.push('Missing <body> tag - required');
+  return { isValid: errors.length === 0, errors, warnings, type: 'html', hasHtml, hasHead, hasBody, unclosedTags };
+}
+
+function validateWebsite(files: Array<{ path: string; content: string }>): WebsiteValidation {
+  const results: WebsiteValidation = {
+    isValid: true,
+    html: validateHTML(''),
+    overallErrors: [],
+    overallWarnings: []
+  };
+  for (const file of files) {
+    if (file.path.endsWith('.html')) {
+      results.html = validateHTML(file.content);
+      if (!results.html.isValid) results.isValid = false;
+    }
+  }
+  results.overallErrors.push(...results.html.errors);
+  results.overallWarnings.push(...results.html.warnings);
+  return results;
+}
+
+// Inlined from conversationMemory.ts
+interface ConversationTurn {
+  id: string;
+  conversation_id: string;
+  user_id: string;
+  request: string;
+  intent: any;
+  execution_plan: any;
+  created_at: string;
+}
+
+interface ConversationContext {
+  recentTurns: ConversationTurn[];
+  totalTurns: number;
+}
+
+async function loadConversationHistory(supabase: any, conversationId: string, limit: number = 5): Promise<ConversationContext> {
+  const { data: turns, error } = await supabase
+    .from('conversation_context_log')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error('Error loading conversation history:', error);
+    return { recentTurns: [], totalTurns: 0 };
+  }
+  return { recentTurns: turns || [], totalTurns: turns?.length || 0 };
+}
+
+async function storeConversationTurn(supabase: any, data: { conversationId: string; userId: string; userRequest: string; intent?: any; executionPlan?: any }): Promise<void> {
+  const { error } = await supabase.from('conversation_context_log').insert({
+    conversation_id: data.conversationId,
+    user_id: data.userId,
+    request: data.userRequest,
+    intent: data.intent || {},
+    execution_plan: data.executionPlan || {}
+  });
+  if (error) console.error('Error storing conversation turn:', error);
+}
+
+function buildConversationSummary(context: ConversationContext): string {
+  if (context.totalTurns === 0) return "This is the first interaction in this conversation.";
+  const recentRequests = context.recentTurns.slice(0, 3).map(t => `- ${t.request}`).join('\n');
+  return `CONVERSATION HISTORY (${context.totalTurns} previous turns):\nRecent Requests:\n${recentRequests}\n\nIMPORTANT: User can reference "that component" or "the feature we built" - check the conversation history above.`.trim();
+}
+
+// Inlined from fileDependencies.ts
+interface FileInfo {
+  component_name: string;
+  component_type: string;
+  depends_on: any;
+  used_by: any;
+  complexity_score: number;
+  criticality: string;
+}
+
+async function loadFileDependencies(supabase: any, conversationId: string): Promise<FileInfo[]> {
+  const { data: deps, error } = await supabase.from('component_dependencies').select('*').eq('conversation_id', conversationId);
+  if (error) {
+    console.error('Error loading file dependencies:', error);
+    return [];
+  }
+  return deps || [];
+}
+
+async function storeFileDependency(supabase: any, data: { conversationId: string; componentName: string; componentType: string; dependsOn: any; usedBy: any; complexityScore?: number; criticality?: string }): Promise<void> {
+  const { error } = await supabase.from('component_dependencies').upsert({
+    conversation_id: data.conversationId,
+    component_name: data.componentName,
+    component_type: data.componentType,
+    depends_on: data.dependsOn || [],
+    used_by: data.usedBy || [],
+    complexity_score: data.complexityScore || 1,
+    criticality: data.criticality || 'medium'
+  });
+  if (error) console.error('Error storing file dependency:', error);
+}
+
+function buildDependencySummary(files: FileInfo[]): string {
+  const criticalFiles = files.filter(f => f.criticality === 'high' || f.criticality === 'critical').slice(0, 5).map(f => `${f.component_name} (${f.component_type})`).join(', ');
+  return `FILE DEPENDENCIES TRACKED: ${files.length} components\nCritical Components: ${criticalFiles || 'None'}\n\nCRITICAL: When modifying code, check component dependencies to avoid breaking changes!`.trim();
+}
+
+// Inlined from patternLearning.ts
+interface LearnedPattern {
+  id: string;
+  category: string;
+  pattern_name: string;
+  use_case: string;
+  code_template: string;
+  success_rate: number;
+  times_used: number;
+  avg_user_rating: number;
+}
+
+interface PatternMatch {
+  pattern: LearnedPattern;
+  relevanceScore: number;
+  reason: string;
+}
+
+async function storeSuccessfulPattern(supabase: any, data: { category: string; patternName: string; useCase: string; codeTemplate: string; context: Record<string, any> }): Promise<void> {
+  try {
+    const { data: existing } = await supabase.from('learned_patterns').select('*').eq('pattern_name', data.patternName).eq('category', data.category).single();
+    if (existing) {
+      await supabase.from('learned_patterns').update({
+        times_used: existing.times_used + 1,
+        last_used_at: new Date().toISOString(),
+        success_rate: Math.min(100, existing.success_rate + 2),
+      }).eq('id', existing.id);
+      console.log(`📈 Updated pattern "${data.patternName}" (used ${existing.times_used + 1} times)`);
+    } else {
+      await supabase.from('learned_patterns').insert({
+        category: data.category,
+        pattern_name: data.patternName,
+        use_case: data.useCase,
+        code_template: data.codeTemplate,
+        success_rate: 75,
+        times_used: 1,
+        avg_user_rating: 0,
+        context: data.context,
+      });
+      console.log(`✨ Stored new pattern "${data.patternName}" in category "${data.category}"`);
+    }
+  } catch (error) {
+    console.error('Failed to store pattern:', error);
+  }
+}
+
+async function findRelevantPatterns(supabase: any, request: string, category?: string): Promise<PatternMatch[]> {
+  try {
+    const query = supabase.from('learned_patterns').select('*').gte('success_rate', 60).order('success_rate', { ascending: false }).limit(5);
+    if (category) query.eq('category', category);
+    const { data: patterns, error } = await query;
+    if (error || !patterns) {
+      console.log('No patterns found or error:', error);
+      return [];
+    }
+    const matches: PatternMatch[] = patterns.map((pattern: LearnedPattern) => {
+      const relevanceScore = calculateRelevance(request, pattern);
+      return { pattern, relevanceScore, reason: getMatchReason(request, pattern) };
+    }).filter((match: PatternMatch) => match.relevanceScore > 0.3).sort((a: PatternMatch, b: PatternMatch) => b.relevanceScore - a.relevanceScore);
+    if (matches.length > 0) {
+      console.log(`🎯 Found ${matches.length} relevant patterns`);
+      matches.forEach((m) => console.log(`  - ${m.pattern.pattern_name} (${Math.round(m.relevanceScore * 100)}% match)`));
+    }
+    return matches;
+  } catch (error) {
+    console.error('Failed to find patterns:', error);
+    return [];
+  }
+}
+
+function calculateRelevance(request: string, pattern: LearnedPattern): number {
+  const requestLower = request.toLowerCase();
+  const useCase = pattern.use_case.toLowerCase();
+  const patternName = pattern.pattern_name.toLowerCase();
+  let score = 0;
+  const keywords = [...useCase.split(' '), ...patternName.split(' ')];
+  keywords.forEach((keyword) => {
+    if (keyword.length > 3 && requestLower.includes(keyword)) score += 0.2;
+  });
+  if (requestLower.includes(pattern.category.toLowerCase())) score += 0.3;
+  score = score * (pattern.success_rate / 100);
+  if (pattern.times_used > 10) score += 0.1;
+  if (pattern.times_used > 50) score += 0.1;
+  return Math.min(1, score);
+}
+
+function getMatchReason(request: string, pattern: LearnedPattern): string {
+  const requestLower = request.toLowerCase();
+  const category = pattern.category.toLowerCase();
+  const patternName = pattern.pattern_name.toLowerCase();
+  if (requestLower.includes(category)) return `Request mentions "${category}" which matches this pattern`;
+  const keywords = patternName.split(' ').filter((w) => w.length > 3);
+  for (const keyword of keywords) {
+    if (requestLower.includes(keyword)) return `Request includes "${keyword}" from proven pattern`;
+  }
+  return `Similar to successful past generations (${pattern.times_used} uses, ${pattern.success_rate}% success)`;
+}
+
+function buildPromptWithPatterns(matches: PatternMatch[]): string {
+  if (matches.length === 0) return '';
+  let prompt = '\n\n🎯 LEARNED PATTERNS (Proven successful approaches):\n\n';
+  matches.forEach((match, index) => {
+    const p = match.pattern;
+    prompt += `${index + 1}. ${p.pattern_name}\n   Category: ${p.category}\n   Use Case: ${p.use_case}\n   Success Rate: ${p.success_rate}% (used ${p.times_used} times)\n   Why relevant: ${match.reason}\n   Template:\n${p.code_template}\n\n`;
+  });
+  prompt += '💡 INSTRUCTION: Adapt these proven patterns to the current request. They have high success rates.\n';
+  return prompt;
+}
+
+function detectPatternCategory(request: string): string | undefined {
+  const requestLower = request.toLowerCase();
+  if (requestLower.includes('auth') || requestLower.includes('login') || requestLower.includes('signup')) return 'authentication';
+  if (requestLower.includes('form') || requestLower.includes('input') || requestLower.includes('validation')) return 'forms';
+  if (requestLower.includes('list') || requestLower.includes('table') || requestLower.includes('grid')) return 'data-display';
+  if (requestLower.includes('dashboard') || requestLower.includes('chart') || requestLower.includes('graph')) return 'analytics';
+  if (requestLower.includes('modal') || requestLower.includes('dialog') || requestLower.includes('popup')) return 'ui-components';
+  if (requestLower.includes('api') || requestLower.includes('backend') || requestLower.includes('endpoint')) return 'backend';
+  return undefined;
+}
+
+// Inlined proactiveSuggestions functions (minimal stubs)
+function generateProactiveSuggestions(a: any, b: any, c: any) { return []; }
+function formatSuggestionsForPrompt(suggestions: any) { return ''; }
+function formatSuggestionsForUser(suggestions: any): string { return ''; }
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

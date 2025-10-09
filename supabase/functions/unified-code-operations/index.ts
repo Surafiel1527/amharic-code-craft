@@ -1,7 +1,66 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { validateReactProject } from "../_shared/codeValidator.ts";
-import type { ReactProjectValidation } from "../_shared/codeValidator.ts";
+
+// Inlined from codeValidator.ts
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  type: 'html' | 'react' | 'css' | 'javascript';
+}
+
+interface ReactValidationResult extends ValidationResult {
+  type: 'react';
+  hasExport: boolean;
+  hasImports: boolean;
+  missingImports: string[];
+  syntaxErrors: string[];
+}
+
+interface ReactProjectValidation {
+  isValid: boolean;
+  files: Array<{ path: string; validation: ReactValidationResult }>;
+  overallErrors: string[];
+  overallWarnings: string[];
+}
+
+function validateReact(code: string, fileName: string = 'Component.tsx'): ReactValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const missingImports: string[] = [];
+  const syntaxErrors: string[] = [];
+  const hasExport = /export\s+(default\s+)?/.test(code);
+  if (!hasExport) errors.push('Component must have an export statement');
+  const hasImports = /import\s+/.test(code);
+  if (/<[A-Z]\w*/.test(code) && !code.includes('import') && !code.includes('React')) {
+    warnings.push('JSX used but no React import found');
+  }
+  const braces = { '{': 0, '}': 0 };
+  for (const char of code) {
+    if (char === '{') braces['{']++;
+    if (char === '}') braces['}']++;
+  }
+  if (braces['{'] !== braces['}']) {
+    errors.push(`Unbalanced braces in component (${braces['{']} opened, ${braces['}']} closed)`);
+  }
+  return { isValid: errors.length === 0 && syntaxErrors.length === 0, errors: [...errors, ...syntaxErrors], warnings, type: 'react', hasExport, hasImports, missingImports, syntaxErrors };
+}
+
+function validateReactProject(files: Array<{ path: string; code: string }>): ReactProjectValidation {
+  const results: ReactProjectValidation = { isValid: true, files: [], overallErrors: [], overallWarnings: [] };
+  for (const file of files) {
+    if (file.path.endsWith('.tsx') || file.path.endsWith('.jsx')) {
+      const validation = validateReact(file.code, file.path);
+      results.files.push({ path: file.path, validation });
+      if (!validation.isValid) {
+        results.isValid = false;
+        results.overallErrors.push(...validation.errors.map(e => `${file.path}: ${e}`));
+      }
+      results.overallWarnings.push(...validation.warnings.map(w => `${file.path}: ${w}`));
+    }
+  }
+  return results;
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

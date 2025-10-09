@@ -1,10 +1,244 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { callAIWithFallback, PRIMARY_MODEL } from '../_shared/aiWithFallback.ts';
 
-// Use Gemini 2.5 Pro for deep reasoning
+// Inlined from aiWithFallback.ts
+interface AIMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface AIResponse {
+  success: boolean;
+  data: {
+    choices: Array<{
+      message: {
+        role: string;
+        content: string;
+      };
+    }>;
+  };
+  modelUsed: string;
+  wasBackup: boolean;
+  gateway: 'lovable' | 'direct-gemini-emergency';
+  attempts: number;
+  totalLatency: number;
+}
+
+const PRIMARY_MODEL = "google/gemini-2.5-pro";
+const BACKUP_MODEL = "google/gemini-2.5-flash";
 const SUPER_MODEL = 'google/gemini-2.5-pro';
+
+function calculateBackoff(attempt: number): number {
+  const baseDelay = 1000;
+  const maxDelay = 10000;
+  const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+  const jitter = Math.random() * 1000;
+  return exponentialDelay + jitter;
+}
+
+async function callAIWithFallback(
+  LOVABLE_API_KEY: string,
+  messages: AIMessage[],
+  options: {
+    preferredModel?: string;
+    temperature?: number;
+    maxRetries?: number;
+    enableEmergencyFallback?: boolean;
+  } = {}
+): Promise<AIResponse> {
+  const {
+    preferredModel,
+    temperature = 0.7,
+    maxRetries = 2,
+    enableEmergencyFallback = true
+  } = options;
+
+  const models = preferredModel 
+    ? [preferredModel, preferredModel === PRIMARY_MODEL ? BACKUP_MODEL : PRIMARY_MODEL]
+    : [PRIMARY_MODEL, BACKUP_MODEL];
+  
+  let lastError: Error | null = null;
+  let totalAttempts = 0;
+  const startTime = Date.now();
+
+  for (let modelIndex = 0; modelIndex < models.length; modelIndex++) {
+    const model = models[modelIndex];
+    const isBackup = modelIndex > 0;
+    
+    for (let retry = 0; retry <= maxRetries; retry++) {
+      totalAttempts++;
+      const isRetry = retry > 0;
+      
+      try {
+        console.log(
+          `${isBackup ? '🔄 Layer 2 (Backup)' : '🚀 Layer 1 (Primary)'} - ` +
+          `Model: ${model}${isRetry ? ` (Retry ${retry}/${maxRetries})` : ''}`
+        );
+        
+        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature,
+          }),
+        });
+
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : calculateBackoff(retry);
+          console.warn(`⚠️ Rate limited. Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+
+        if (response.status === 402) {
+          console.error('💳 Payment required - Lovable AI credits exhausted');
+          throw new Error('Payment required: Lovable AI credits exhausted.');
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ Lovable Gateway error (${response.status}): ${errorText}`);
+          throw new Error(`Lovable Gateway error (${response.status}): ${errorText}`);
+        }
+
+        const data = await response.json();
+        const totalLatency = Date.now() - startTime;
+        
+        console.log(
+          `✅ SUCCESS via Lovable Gateway ${isBackup ? '(backup)' : '(primary)'} - ` +
+          `Model: ${model}, Attempts: ${totalAttempts}, Latency: ${totalLatency}ms`
+        );
+        
+        return {
+          success: true,
+          data,
+          modelUsed: model,
+          wasBackup: isBackup,
+          gateway: 'lovable',
+          attempts: totalAttempts,
+          totalLatency
+        };
+      } catch (error: any) {
+        lastError = error;
+        console.error(
+          `❌ Attempt ${totalAttempts} failed - ${isBackup ? 'Backup' : 'Primary'} ${model}: ${error.message}`
+        );
+        
+        if (retry < maxRetries) {
+          const backoffTime = calculateBackoff(retry);
+          console.log(`⏳ Backing off ${backoffTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+          continue;
+        }
+        
+        if (modelIndex < models.length - 1) {
+          console.log(`⏭️ Moving to backup model...`);
+          break;
+        }
+      }
+    }
+  }
+
+  if (!enableEmergencyFallback) {
+    throw new Error(`All attempts exhausted after ${totalAttempts} attempts. Last error: ${lastError?.message}`);
+  }
+
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+  if (!GEMINI_API_KEY) {
+    throw new Error(`All Lovable Gateway attempts failed. Emergency fallback not configured.`);
+  }
+
+  console.log('🆘 Layer 3 (Emergency) - Attempting direct Gemini API fallback...');
+
+  for (let retry = 0; retry <= maxRetries; retry++) {
+    totalAttempts++;
+    
+    try {
+      if (retry > 0) {
+        const backoffTime = calculateBackoff(retry);
+        console.log(`⏳ Emergency retry ${retry}/${maxRetries} - waiting ${backoffTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, backoffTime));
+      }
+      
+      const geminiMessages = messages.map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      }));
+
+      const geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: geminiMessages,
+            generationConfig: {
+              temperature: temperature,
+              maxOutputTokens: 8000,
+            }
+          })
+        }
+      );
+
+      if (geminiResponse.status === 429) {
+        const waitTime = calculateBackoff(retry + 2);
+        console.warn(`⚠️ Gemini rate limited. Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+
+      if (!geminiResponse.ok) {
+        const errorText = await geminiResponse.text();
+        throw new Error(`Direct Gemini API error (${geminiResponse.status}): ${errorText}`);
+      }
+
+      const geminiData = await geminiResponse.json();
+      const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      
+      if (!content) {
+        throw new Error('Gemini API returned empty response');
+      }
+
+      const totalLatency = Date.now() - startTime;
+      
+      console.log(`🎉 EMERGENCY SUCCESS via direct Gemini API! Attempts: ${totalAttempts}, Latency: ${totalLatency}ms`);
+      
+      return {
+        success: true,
+        data: {
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: content
+            }
+          }]
+        },
+        modelUsed: 'gemini-2.0-flash-exp',
+        wasBackup: true,
+        gateway: 'direct-gemini-emergency',
+        attempts: totalAttempts,
+        totalLatency
+      };
+    } catch (error: any) {
+      console.error(`❌ Emergency attempt ${totalAttempts} failed: ${error.message}`);
+      
+      if (retry < maxRetries) {
+        continue;
+      }
+      
+      throw new Error(`All ${totalAttempts} AI attempts failed. Last error: ${error.message}`);
+    }
+  }
+
+  throw new Error('Unexpected error in AI fallback system');
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
