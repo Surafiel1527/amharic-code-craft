@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateReactProject } from "../_shared/codeValidator.ts";
+import type { ReactProjectValidation } from "../_shared/codeValidator.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -252,87 +254,140 @@ CRITICAL: You must use the generate_react_components tool to return your output.
 
 Guidelines:
 - Use TypeScript (.tsx files) and functional components
-- Include ALL necessary imports at the top
+- Include ALL necessary imports at the top (React, hooks, etc.)
+- ALWAYS export components (export default or named exports)
 - Use Tailwind CSS for styling
 - Use lucide-react for icons
 - Make components responsive and beautiful
+- Ensure ALL JSX tags are properly closed
+- Balance all braces, brackets, and parentheses
 - Follow React best practices`;
 
-  try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt }
-        ],
-        tools: [{
-          type: 'function',
-          function: {
-            name: 'generate_react_components',
-            description: 'Generate React component files',
-            parameters: {
-              type: 'object',
-              properties: {
-                entry_point: { 
-                  type: 'string',
-                  description: 'Main component file (e.g., ProductCard.tsx)'
+  const maxRetries = 2;
+  let retryCount = 0;
+  let validationResult: ReactProjectValidation | null = null;
+
+  while (retryCount <= maxRetries) {
+    try {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: retryCount > 0 ? `${prompt}\n\nPREVIOUS ATTEMPT HAD ERRORS - FIX THESE:\n${validationResult?.overallErrors.join('\n') || ''}\n\nREGENERATE FIXING ALL ERRORS.` : prompt }
+          ],
+          tools: [{
+            type: 'function',
+            function: {
+              name: 'generate_react_components',
+              description: 'Generate React component files',
+              parameters: {
+                type: 'object',
+                properties: {
+                  entry_point: { 
+                    type: 'string',
+                    description: 'Main component file (e.g., ProductCard.tsx)'
+                  },
+                  files: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        path: { type: 'string' },
+                        code: { type: 'string' },
+                        type: { type: 'string', enum: ['component', 'hook', 'util', 'style', 'config'] }
+                      },
+                      required: ['path', 'code', 'type'],
+                      additionalProperties: false
+                    }
+                  }
                 },
-                files: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      path: { type: 'string' },
-                      code: { type: 'string' },
-                      type: { type: 'string', enum: ['component', 'hook', 'util', 'style', 'config'] }
-                    },
-                    required: ['path', 'code', 'type'],
-                    additionalProperties: false
+                required: ['entry_point', 'files'],
+                additionalProperties: false
+              }
+            }
+          }],
+          tool_choice: { type: 'function', function: { name: 'generate_react_components' } },
+          temperature: retryCount > 0 ? 0.3 : 0.5 // Lower temp on retry for precision
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('AI Response:', JSON.stringify(data).substring(0, 500));
+      
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall) {
+        throw new Error('No tool call in response');
+      }
+
+      const args = typeof toolCall.function.arguments === 'string' 
+        ? JSON.parse(toolCall.function.arguments)
+        : toolCall.function.arguments;
+      
+      console.log('Parsed result:', { entry_point: args.entry_point, fileCount: args.files?.length });
+      
+      // ✅ VALIDATION PHASE
+      if (args.files && Array.isArray(args.files)) {
+        console.log('🔍 Validating React components...');
+        validationResult = validateReactProject(args.files);
+        
+        if (!validationResult.isValid) {
+          console.error('❌ React validation failed:', validationResult.overallErrors);
+          
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(`🔄 Retry ${retryCount}/${maxRetries}: Regenerating React components...`);
+            
+            // Log validation failure
+            try {
+              await supabase.functions.invoke('pattern-recognizer', {
+                body: {
+                  conversationId: null,
+                  codeContext: args.files[0]?.code?.substring(0, 500),
+                  errorType: 'react_validation_failed',
+                  patternSignature: `react_errors_${validationResult.overallErrors.length}`,
+                  success: false,
+                  metadata: {
+                    errors: validationResult.overallErrors,
+                    warnings: validationResult.overallWarnings,
+                    retryAttempt: retryCount
                   }
                 }
-              },
-              required: ['entry_point', 'files'],
-              additionalProperties: false
+              });
+            } catch (logError) {
+              console.error('⚠️ Failed to log validation error:', logError);
             }
+            
+            continue; // Retry generation
+          } else {
+            console.warn('⚠️ Max retries reached for React generation');
           }
-        }],
-        tool_choice: { type: 'function', function: { name: 'generate_react_components' } }
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('AI Response:', JSON.stringify(data).substring(0, 500));
-    
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) {
-      throw new Error('No tool call in response');
-    }
-
-    const args = typeof toolCall.function.arguments === 'string' 
-      ? JSON.parse(toolCall.function.arguments)
-      : toolCall.function.arguments;
-    
-    console.log('Parsed result:', { entry_point: args.entry_point, fileCount: args.files?.length });
-    return args;
-    
-  } catch (error) {
-    console.error('Generation error:', error);
-    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    return {
-      entry_point: 'ErrorComponent.tsx',
-      files: [{
-        path: 'ErrorComponent.tsx',
-        code: `export default function ErrorComponent() {
+        } else {
+          console.log('✅ React validation passed!');
+          if (validationResult.overallWarnings.length > 0) {
+            console.log('⚠️ Warnings:', validationResult.overallWarnings);
+          }
+        }
+      }
+      
+      return args;
+    } catch (error) {
+      console.error('Generation error:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        entry_point: 'ErrorComponent.tsx',
+        files: [{
+          path: 'ErrorComponent.tsx',
+          code: `export default function ErrorComponent() {
   return (
     <div className="p-8 max-w-md mx-auto mt-8 bg-red-50 border border-red-200 rounded-lg">
       <h2 className="text-xl font-bold text-red-800 mb-2">Generation Error</h2>
@@ -340,9 +395,10 @@ Guidelines:
     </div>
   );
 }`,
-        type: 'component'
-      }]
-    };
+          type: 'component'
+        }]
+      };
+    }
   }
 }
 

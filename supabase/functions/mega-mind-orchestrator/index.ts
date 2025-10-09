@@ -1,6 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { validateWebsite } from "../_shared/codeValidator.ts";
+import type { WebsiteValidation } from "../_shared/codeValidator.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1801,7 +1803,7 @@ async function generateSimpleWebsite(request: string, analysis: any, broadcast: 
 
   await broadcast('generation:thinking', { status: 'thinking', message: 'Analyzing your website requirements...', progress: 10 });
 
-  const prompt = `Generate a COMPLETE, BEAUTIFUL, PRODUCTION-READY website based on this EXACT request:
+  let prompt = `Generate a COMPLETE, BEAUTIFUL, PRODUCTION-READY website based on this EXACT request:
 
 **Request:** "${request}"
 **Goal:** ${analysis.mainGoal}
@@ -1934,81 +1936,87 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
   console.log('📝 AI Response content length:', content?.length || 0);
   
   let result;
-  try {
-    result = JSON.parse(content);
-  } catch (parseError) {
-    console.error('❌ JSON Parse Error:', parseError);
-    console.error('Error name:', parseError instanceof Error ? parseError.constructor.name : 'Unknown');
-    console.error('Error message:', parseError instanceof Error ? parseError.message : 'Unknown');
-    console.error('📝 Content length:', content?.length || 0);
-    console.error('📄 Content preview:', content?.substring(0, 500));
-    
-    // Log this error pattern for learning
+  let validationResult: WebsiteValidation | null = null;
+  const maxRetries = 2; // Allow 2 retries for validation failures
+  let retryCount = 0;
+  
+  // Retry loop for validation
+  while (retryCount <= maxRetries) {
     try {
-      const platformClient = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-      );
+      result = JSON.parse(content);
+    } catch (parseError) {
+      console.error('❌ JSON Parse Error:', parseError);
+      console.error('Error name:', parseError instanceof Error ? parseError.constructor.name : 'Unknown');
+      console.error('Error message:', parseError instanceof Error ? parseError.message : 'Unknown');
+      console.error('📝 Content length:', content?.length || 0);
+      console.error('📄 Content preview:', content?.substring(0, 500));
       
-      await platformClient.functions.invoke('pattern-recognizer', {
-        body: {
-          conversationId: null,
-          codeContext: content?.substring(0, 1000),
-          errorType: 'json_parse_error',
-          patternSignature: `json_parse_${parseError instanceof Error ? parseError.message : 'unknown'}`,
-          success: false,
-          metadata: {
-            errorMessage: parseError instanceof Error ? parseError.message : 'Unknown',
-            contentLength: content?.length || 0,
-            generationType: 'html_website'
-          }
-        }
-      });
-      console.log('✅ JSON parse error pattern logged for learning');
-    } catch (logError) {
-      console.error('⚠️ Failed to log error pattern:', logError);
-    }
-    
-    // Try to sanitize and fix the JSON
-    if (content) {
+      // Log this error pattern for learning
       try {
-        console.log('🔧 Attempting to sanitize JSON...');
+        const platformClient = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
         
-        // Fix common JSON escaping issues
-        let sanitized = content
-          // Fix unescaped backslashes first
-          .replace(/\\(?!["\\/bfnrtu])/g, '\\\\')
-          // Fix unescaped newlines in strings
-          .replace(/([^\\])\n/g, '$1\\n');
-        
-        result = JSON.parse(sanitized);
-        console.log('✅ Successfully sanitized and parsed JSON');
-        
-        // Log successful recovery pattern
-        try {
-          const platformClient = createClient(
-            Deno.env.get('SUPABASE_URL')!,
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-          );
-          
-          await platformClient.functions.invoke('pattern-recognizer', {
-            body: {
-              conversationId: null,
-              codeContext: 'json_sanitization_success',
-              errorType: 'json_parse_error_recovered',
-              patternSignature: 'json_sanitization_fixed',
-              success: true,
-              metadata: {
-                originalError: parseError instanceof Error ? parseError.message : 'Unknown',
-                recoveryMethod: 'sanitization'
-              }
+        await platformClient.functions.invoke('pattern-recognizer', {
+          body: {
+            conversationId: null,
+            codeContext: content?.substring(0, 1000),
+            errorType: 'json_parse_error',
+            patternSignature: `json_parse_${parseError instanceof Error ? parseError.message : 'unknown'}`,
+            success: false,
+            metadata: {
+              errorMessage: parseError instanceof Error ? parseError.message : 'Unknown',
+              contentLength: content?.length || 0,
+              generationType: 'html_website'
             }
-          });
-        } catch (logError) {
-          // Non-critical
-        }
-      } catch (sanitizeError) {
-        console.error('❌ Sanitization failed:', sanitizeError);
+          }
+        });
+        console.log('✅ JSON parse error pattern logged for learning');
+      } catch (logError) {
+        console.error('⚠️ Failed to log error pattern:', logError);
+      }
+      
+      // Try to sanitize and fix the JSON
+      if (content) {
+        try {
+          console.log('🔧 Attempting to sanitize JSON...');
+          
+          // Fix common JSON escaping issues
+          let sanitized = content
+            // Fix unescaped backslashes first
+            .replace(/\\(?!["\\/bfnrtu])/g, '\\\\')
+            // Fix unescaped newlines in strings
+            .replace(/([^\\])\n/g, '$1\\n');
+          
+          result = JSON.parse(sanitized);
+          console.log('✅ Successfully sanitized and parsed JSON');
+          
+          // Log successful recovery pattern
+          try {
+            const platformClient = createClient(
+              Deno.env.get('SUPABASE_URL')!,
+              Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+            );
+            
+            await platformClient.functions.invoke('pattern-recognizer', {
+              body: {
+                conversationId: null,
+                codeContext: 'json_sanitization_success',
+                errorType: 'json_parse_error_recovered',
+                patternSignature: 'json_sanitization_fixed',
+                success: true,
+                metadata: {
+                  originalError: parseError instanceof Error ? parseError.message : 'Unknown',
+                  recoveryMethod: 'sanitization'
+                }
+              }
+            });
+          } catch (logError) {
+            // Non-critical
+          }
+        } catch (sanitizeError) {
+          console.error('❌ Sanitization failed:', sanitizeError);
         
         // Last resort: try to extract and create fallback
         console.log('🔧 Using fallback response...');
@@ -2031,6 +2039,80 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
       const errorMsg = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
       throw new Error(`Failed to parse AI response: ${errorMsg}`);
     }
+  }
+  
+  // ✅ VALIDATION PHASE: Check generated code quality
+  if (result?.files && Array.isArray(result.files)) {
+    console.log('🔍 Validating generated code...');
+    await broadcast('generation:validating', { 
+      status: 'validating', 
+      message: 'Checking code quality...', 
+      progress: 75 
+    });
+    
+    validationResult = validateWebsite(result.files);
+    
+    if (!validationResult.isValid) {
+      console.error('❌ Validation failed:', validationResult.overallErrors);
+      
+      if (retryCount < maxRetries) {
+        retryCount++;
+        console.log(`🔄 Retry ${retryCount}/${maxRetries}: Regenerating due to validation errors...`);
+        
+        await broadcast('generation:retrying', { 
+          status: 'retrying', 
+          message: `Code had issues, retrying (${retryCount}/${maxRetries})...`, 
+          progress: 50 + (retryCount * 10)
+        });
+        
+        // Log the validation failure for learning
+        try {
+          const platformClient = createClient(
+            Deno.env.get('SUPABASE_URL')!,
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+          );
+          
+          await platformClient.functions.invoke('pattern-recognizer', {
+            body: {
+              conversationId: null,
+              codeContext: JSON.stringify(result.files[0]?.content?.substring(0, 500)),
+              errorType: 'code_validation_failed',
+              patternSignature: `validation_errors_${validationResult.overallErrors.length}`,
+              success: false,
+              metadata: {
+                errors: validationResult.overallErrors,
+                warnings: validationResult.overallWarnings,
+                retryAttempt: retryCount
+              }
+            }
+          });
+        } catch (logError) {
+          console.error('⚠️ Failed to log validation error:', logError);
+        }
+        
+        // Regenerate with error feedback
+        const errorFeedback = `\n\nPREVIOUS ATTEMPT HAD ERRORS - FIX THESE:\n${validationResult.overallErrors.join('\n')}\n\nREGENERATE THE CODE FIXING ALL THE ABOVE ERRORS.`;
+        
+        // Recursive retry with updated prompt
+        prompt = prompt + errorFeedback;
+        continue; // Continue to next iteration of retry loop
+      } else {
+        // Max retries reached, log warning but continue
+        console.warn('⚠️ Max retries reached, proceeding with warnings');
+        await broadcast('generation:warning', { 
+          message: `Code generated with ${validationResult.overallErrors.length} issues`, 
+          progress: 80 
+        });
+      }
+    } else {
+      console.log('✅ Code validation passed!');
+      if (validationResult.overallWarnings.length > 0) {
+        console.log('⚠️ Warnings:', validationResult.overallWarnings);
+      }
+    }
+  }
+  
+  break; // Exit retry loop on success or max retries
   }
   
   await broadcast('generation:editing', { status: 'editing', message: 'Polishing design and responsiveness...', progress: 85 });
