@@ -1852,12 +1852,12 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE HTML/CSS/JavaScript websites. Output ONLY valid, compact JSON. Keep CSS minimal. IMPORTANT: Keep total output under 8000 characters to avoid truncation. SECURITY: Never use alert() or console.log() to display user credentials (passwords, emails). Use proper UI feedback instead. AUTHENTICATION: If generating signup/login forms, use Supabase Auth (supabase.auth.signUp/signInWithPassword). Store user data in the "profiles" table which has columns: id (uuid), username (text), full_name (text), avatar_url (text), bio (text). After successful auth, redirect to main page. Handle errors gracefully with UI feedback.' },
+        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE HTML/CSS/JavaScript websites. Output ONLY valid, compact JSON. IMPORTANT: Generate complete but efficient code - use CDN links for libraries instead of embedding large code blocks. SECURITY: Never use alert() or console.log() to display user credentials (passwords, emails). Use proper UI feedback instead. AUTHENTICATION: If generating signup/login forms, use Supabase Auth (supabase.auth.signUp/signInWithPassword). Store user data in the "profiles" table which has columns: id (uuid), username (text), full_name (text), avatar_url (text), bio (text). After successful auth, redirect to main page. Handle errors gracefully with UI feedback.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" },
       temperature: 0.5,
-      max_tokens: 8192
+      max_tokens: 32768
     }),
   });
 
@@ -1908,9 +1908,40 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     result = JSON.parse(content);
   } catch (parseError) {
     console.error('❌ JSON Parse Error:', parseError);
+    console.error('Error name:', parseError instanceof Error ? parseError.constructor.name : 'Unknown');
+    console.error('Error message:', parseError instanceof Error ? parseError.message : 'Unknown');
+    console.error('Error stack:', parseError instanceof Error ? parseError.stack : 'N/A');
     console.error('📄 Content that failed to parse:', content?.substring(0, 500));
-    const errorMsg = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
-    throw new Error(`Failed to parse AI response: ${errorMsg}`);
+    console.error('📝 Content length:', content?.length || 0);
+    
+    // Try to fix common JSON issues
+    if (content) {
+      try {
+        // Attempt to close unterminated strings/objects
+        let fixedContent = content;
+        
+        // If content ends abruptly in a string, try to close it
+        if (content.match(/"[^"]*$/)) {
+          fixedContent = content + '"}]}';
+        } else if (content.match(/[^}\]]\s*$/)) {
+          fixedContent = content + '}]}';
+        }
+        
+        result = JSON.parse(fixedContent);
+        console.log('✅ Successfully recovered from truncated JSON');
+      } catch (recoveryError) {
+        console.error('❌ Recovery attempt failed:', recoveryError);
+        const errorMsg = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
+        await broadcast('generation:error', { 
+          message: 'AI response was incomplete', 
+          details: `Response length: ${content.length} chars. Try again or simplify your request.`
+        });
+        throw new Error(`Failed to parse AI response: ${errorMsg}`);
+      }
+    } else {
+      const errorMsg = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
+      throw new Error(`Failed to parse AI response: ${errorMsg}`);
+    }
   }
   
   await broadcast('generation:editing', { status: 'editing', message: 'Polishing design and responsiveness...', progress: 85 });
