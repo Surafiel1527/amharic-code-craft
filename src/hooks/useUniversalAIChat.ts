@@ -47,6 +47,7 @@ export interface UniversalAIChatOptions {
   enableStreaming?: boolean;
   enableTools?: boolean;
   projectContext?: any;
+  mode?: 'generate' | 'enhance'; // NEW: distinguish between generating new vs enhancing existing
 }
 
 export interface UniversalAIChatReturn {
@@ -93,7 +94,8 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
     onConversationChange,
     enableStreaming = false,
     enableTools = false,
-    projectContext
+    projectContext,
+    mode = 'enhance' // Default to enhance mode for workspace
   } = options;
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -295,7 +297,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
    * Routes the message to Smart Orchestrator
    */
   const routeToOrchestrator = useCallback(async (message: string, context: any): Promise<any> => {
-    logger.info('Routing to Mega Mind Orchestrator');
+    logger.info(`Routing to Mega Mind Orchestrator (${mode} mode)`);
 
     const startTime = Date.now();
     try {
@@ -305,6 +307,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
           body: {
             request: message,
             requestType: 'code-update',
+            mode, // Pass mode to orchestrator
             context: {
               conversationId: conversationId || projectId,
               projectId: projectId,
@@ -361,7 +364,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       
       throw error;
     }
-  }, [projectId, selectedFiles, autoLearn]);
+  }, [projectId, selectedFiles, autoLearn, mode]);
 
   /**
    * Applies code fixes automatically

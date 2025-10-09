@@ -46,6 +46,7 @@ export interface UniversalChatInterfaceProps {
   enableTools?: boolean;
   enableStreaming?: boolean;
   placeholder?: string;
+  operationMode?: 'generate' | 'enhance'; // Operation mode: generate new vs enhance existing
 }
 
 const MODE_CONFIGS = {
@@ -121,7 +122,8 @@ export function UniversalChatInterface({
   persistMessages = false,
   enableTools = false,
   enableStreaming = false,
-  placeholder = 'Type your message...'
+  placeholder = 'Type your message...',
+  operationMode = 'enhance' // Default to enhance for workspace
 }: UniversalChatInterfaceProps) {
   const [input, setInput] = useState("");
   const [contextMode, setContextMode] = useState<'selected' | 'all' | 'none'>('selected');
@@ -153,7 +155,8 @@ export function UniversalChatInterface({
     persistMessages,
     enableTools,
     enableStreaming,
-    projectContext
+    projectContext,
+    mode: operationMode // Pass operation mode to the hook
   });
 
   // Auto-scroll on new messages

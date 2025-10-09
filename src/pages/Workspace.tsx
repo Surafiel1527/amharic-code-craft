@@ -913,6 +913,7 @@ export default function Workspace() {
                   <TabsContent value="chat" className="h-[calc(100vh-200px)]">
                     <UniversalChatInterface
                       mode="panel"
+                      operationMode="enhance"
                       height="h-full"
                       projectId={projectId}
                       selectedFiles={selectedFiles}
@@ -1058,6 +1059,7 @@ export default function Workspace() {
               ) : (
                 <UniversalChatInterface
                   mode="sidebar"
+                  operationMode="enhance"
                   height="h-full"
                   conversationId={conversationId || undefined}
                   projectId={projectId}

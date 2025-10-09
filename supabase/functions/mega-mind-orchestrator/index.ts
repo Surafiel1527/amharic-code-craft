@@ -407,8 +407,8 @@ serve(async (req) => {
   try {
     console.log('🚀 Mega Mind Orchestrator - Request received');
     
-    const { request, requestType, framework = 'html', context = {}, jobId } = await req.json();
-    console.log('📦 Request parsed:', { requestType, framework, hasJobId: !!jobId, hasContext: !!context });
+    const { request, requestType, framework = 'html', context = {}, jobId, mode = 'enhance' } = await req.json();
+    console.log('📦 Request parsed:', { requestType, framework, mode, hasJobId: !!jobId, hasContext: !!context });
     
     // Extract projectId from context if available
     projectId = context.projectId || null;
@@ -706,7 +706,8 @@ serve(async (req) => {
     };
 
     // PHASE 0: Auto-setup authentication infrastructure if needed
-    const needsAuth = sanitizedRequest.toLowerCase().match(/\b(sign ?up|log ?in|auth|register|user|account|profile|password|email verification|reset password)\b/);
+    // FIX: Only detect auth when explicitly mentioned, not just "user/users" in normal context
+    const needsAuth = mode === 'generate' && sanitizedRequest.toLowerCase().match(/\b(sign ?up|log ?in|auth|authentication|register|account|profile|password|email verification|reset password|login page|signup form)\b/);
     if (needsAuth && projectId) {
       console.log('[PHASE 0] 🔐 Authentication detected in prompt, checking database infrastructure...');
       await updateJobProgress(10, 'Setting up authentication infrastructure...');
@@ -781,7 +782,7 @@ serve(async (req) => {
       console.log('⚠️ Pattern lookup failed:', error);
     }
     
-    const analysis = await analyzeRequest(sanitizedRequest, requestType, context);
+    const analysis = await analyzeRequest(sanitizedRequest, requestType, { ...context, mode });
     
     // Override outputType with user's framework choice
     if (requestType === 'code-generation' || requestType === 'website-generation') {
@@ -849,7 +850,7 @@ serve(async (req) => {
       message: analysis.outputType === 'html-website' ? 'Generating HTML/CSS/JS...' : 'Generating React components...' 
     });
     
-    const generation = await generateSolution(request, requestType, analysis, context, supabaseClient, orchestrationId, broadcast, userSupabaseConnection);
+    const generation = await generateSolution(request, requestType, analysis, { ...context, mode }, supabaseClient, orchestrationId, broadcast, userSupabaseConnection);
     
     await supabaseClient
       .from('mega_mind_orchestrations')
@@ -1382,14 +1383,36 @@ serve(async (req) => {
 });
 
 async function analyzeRequest(request: string, requestType: string, context: any): Promise<any> {
+  const mode = context.mode || 'enhance';
+  const isGenerateMode = mode === 'generate';
+  
   const prompt = `You are an expert system analyst with deep understanding of web applications, databases, and backend architecture.
 
 **Request to Analyze:** ${request}
 **Type:** ${requestType}
+**Mode:** ${mode} (${isGenerateMode ? 'Creating NEW project from scratch' : 'Enhancing EXISTING project'})
 **Context:** 
 - Has existing code: ${context.hasExistingCode || false}
+- Operation mode: ${mode}
 - Project context: ${JSON.stringify(context.projectContext || {})}
 - Known patterns: ${context.knownPatterns ? context.knownPatterns.length + ' similar patterns found' : 'None'}
+
+**CRITICAL: Understand the Operation Mode:**
+
+**GENERATE MODE** (mode=generate):
+- User is creating a BRAND NEW project from scratch
+- Start with a clean slate - no existing code to consider
+- Create complete, standalone application
+- Set up all infrastructure, tables, authentication if needed
+- Output complete HTML or React application
+
+**ENHANCE MODE** (mode=enhance):
+- User has an EXISTING project and wants to MODIFY/IMPROVE it
+- Load and analyze existing code first
+- Make SURGICAL changes only to what user requested
+- DO NOT recreate existing features
+- Focus on the specific enhancement requested
+- Respect existing architecture and patterns
 
 **CRITICAL: Determine Request Category:**
 
