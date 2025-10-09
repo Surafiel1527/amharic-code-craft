@@ -1377,11 +1377,11 @@ serve(async (req) => {
       }
     }
 
-     // Store conversation turn in enhance mode
-    if (mode === 'enhance' && conversationHistory !== null) {
+     // Store conversation turn (for learning and context)
+    if (mode === 'enhance' && (conversationId || projectId)) {
       try {
         await storeConversationTurn(supabaseClient, {
-          conversationId,
+          conversationId: conversationId || projectId, // Use projectId as fallback
           userId,
           userRequest: sanitizedRequest,
           intent: analysis.intent || {},
