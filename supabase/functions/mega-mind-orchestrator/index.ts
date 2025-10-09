@@ -195,6 +195,75 @@ async function processRequest(ctx: {
     return handleMetaRequest(request, conversationContext, broadcast);
   }
 
+  // ========== NEW: PRE-IMPLEMENTATION ANALYSIS ==========
+  // Only run for feature implementation requests, not simple fixes
+  const needsPlanning = !request.toLowerCase().includes('fix') && 
+                       !request.toLowerCase().includes('debug') &&
+                       !request.toLowerCase().includes('error') &&
+                       analysis.outputType !== 'conversation';
+
+  if (needsPlanning) {
+    const { analyzeCodebase } = await import('../_shared/codebaseAnalyzer.ts');
+    const { generateDetailedPlan, formatPlanForDisplay } = await import('../_shared/implementationPlanner.ts');
+    
+    await broadcast('generation:planning', { 
+      status: 'analyzing_codebase', 
+      message: '🔍 Analyzing existing codebase...', 
+      progress: 10 
+    });
+
+    // Analyze existing codebase
+    const codebaseAnalysis = await analyzeCodebase(
+      request,
+      analysis,
+      conversationContext,
+      platformSupabase
+    );
+
+    console.log(`📁 Codebase analysis: ${codebaseAnalysis.totalFiles} files, ${codebaseAnalysis.similarFunctionality.length} similar`);
+
+    await broadcast('generation:planning', { 
+      status: 'creating_plan', 
+      message: '📋 Creating detailed implementation plan...', 
+      progress: 20 
+    });
+
+    // Generate detailed plan
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')!;
+    const detailedPlan = await generateDetailedPlan(
+      request,
+      analysis,
+      codebaseAnalysis,
+      LOVABLE_API_KEY
+    );
+
+    // Format and present plan
+    const formattedPlan = formatPlanForDisplay(detailedPlan);
+    
+    await broadcast('generation:plan_ready', { 
+      status: 'awaiting_approval', 
+      message: '📋 Implementation plan ready for review', 
+      progress: 25,
+      plan: {
+        summary: detailedPlan.summary,
+        approach: detailedPlan.approach,
+        codebaseAnalysis: {
+          totalFiles: codebaseAnalysis.totalFiles,
+          similarFunctionality: codebaseAnalysis.similarFunctionality,
+          duplicates: codebaseAnalysis.duplicates,
+          recommendations: codebaseAnalysis.recommendations
+        },
+        implementationPlan: detailedPlan,
+        formattedPlan
+      }
+    });
+
+    // Store plan for reference
+    analysis._implementationPlan = detailedPlan;
+    analysis._codebaseAnalysis = codebaseAnalysis;
+  }
+  // ========== END PRE-IMPLEMENTATION ANALYSIS ==========
+
   // Step 3: Setup backend if needed
   if (analysis.backendRequirements?.needsDatabase && userSupabase) {
     await setupDatabaseTables(
