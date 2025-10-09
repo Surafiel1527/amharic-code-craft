@@ -1,274 +1,297 @@
-# 🚀 Quick Start Guide - Enterprise AI System
+# Quick Start Guide - AI Code Generation Platform
 
-## Welcome! Here's How Everything is Organized
+**Get up and running in 5 minutes**
 
-Your AI system is now professionally structured following **enterprise-level best practices**.
+## Prerequisites
 
----
+- ✅ Node.js 18+ installed
+- ✅ Supabase account (or Lovable Cloud enabled)
+- ✅ Git installed
 
-## 🎯 **Where to Go Based on Your Role**
+## Step 1: Clone & Install (1 minute)
 
-### 👤 **I'm a Regular User**
-**Go to**: `/builder`
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd <your-project>
 
-**What you'll do**:
-- Generate complete applications with AI
-- Request multi-file features
-- Use example prompts to get started
-- Create snapshots before experiments
-
-**You don't need to worry about**:
-- Technical error details
-- System monitoring
-- Testing infrastructure
-
-✨ **Just describe what you want to build, and the AI handles everything!**
-
----
-
-### 👨‍💼 **I'm an Administrator**
-**Go to**: `/admin`
-
-**Available Tabs**:
-
-1. **Users & Stats** - Manage users and view statistics
-2. **AI System** - AI usage analytics and performance
-3. **Self-Healing** ⭐ - Monitor auto-fixes and system health
-4. **Self-Modify** - Customize the system
-
-**In Self-Healing Tab**:
-- Real-time error monitoring
-- Auto-fix dashboard with confidence scores
-- System health metrics
-- Link to comprehensive test suite
-
-**You should**:
-- Check the Self-Healing tab regularly
-- Review auto-applied fixes
-- Monitor system health
-- Use test suite after updates
-
----
-
-### 🔬 **I'm Testing/Developing**
-**Go to**: `/ai-test` (Admin only)
-
-**What you'll find**:
-- Comprehensive test suite
-- Feature-by-feature testing
-- Test instructions and checklists
-- Integration verification
-
-**When to use**:
-- After system updates
-- Verifying new features
-- Debugging issues
-- Before production deployment
-
----
-
-## 📊 **The Three Core Features**
-
-### 1. 🛡️ **Self-Healing System**
-**What it does**: Automatically detects and fixes errors
-
-**Where to see it**:
-- **Users**: Works silently in background
-- **Admins**: Full dashboard at `/admin` → Self-Healing tab
-- **Testing**: `/ai-test` → Self-Healing Test tab
-
-**How it works**:
-1. Error occurs anywhere in the system
-2. Auto-detected and logged
-3. AI generates fix with confidence score
-4. If confidence ≥80%, auto-applies
-5. If <80%, flags for admin review
-6. Verifies the fix works
-7. Rolls back if it fails
-
----
-
-### 2. 🗂️ **Multi-File Generation**
-**What it does**: Generates complete features across multiple organized files
-
-**Where to use it**:
-- **Users**: `/builder` - Just request what you need
-- **Admins**: Same interface + monitoring in admin panel
-- **Testing**: `/ai-test` → Multi-File Test tab
-
-**Example Request**:
-```
-"Create a complete authentication system with:
-- Login and signup components
-- useAuth hook
-- Auth types
-- API utilities"
+# Install dependencies
+npm install
 ```
 
-**You get**:
-```
-✅ src/components/LoginForm.tsx
-✅ src/components/SignupForm.tsx  
-✅ src/hooks/useAuth.ts
-✅ src/types/auth.ts
-✅ src/utils/authApi.ts
+## Step 2: Start Development (1 minute)
+
+```bash
+# Start the development server
+npm run dev
 ```
 
----
+The app will open at `http://localhost:5173`
 
-### 3. 📦 **Version Control & Snapshots**
-**What it does**: Save and restore project states
-
-**Where to use it**:
-- **Users**: Snapshot button in `/builder`
-- **Admins**: Full management at `/admin` → Self-Modify → Versions
-- **Testing**: `/ai-test` → Version Control Test tab
-
-**Two Types**:
-
-**Manual Snapshots**:
-- Click Save icon 💾
-- Name it: "Working Login System"
-- Add description
-- Restore anytime
-
-**Auto-Versions**:
-- Created automatically on changes
-- Full history preserved
-- Can restore to any point
-
----
-
-## 🎓 **Getting Started**
-
-### **For Users (First Time)**
-
-1. **Visit** `/builder`
-2. **Read** the example prompts
-3. **Try** a simple request first:
-   ```
-   "Create a todo list with add, delete, and complete functionality"
-   ```
-4. **Graduate** to multi-file requests:
-   ```
-   "Build a dashboard with sidebar, header, and 3 chart components"
-   ```
-5. **Experiment** freely - create snapshots before major changes
-
-### **For Admins (First Time)**
-
-1. **Visit** `/admin`
-2. **Check** the Self-Healing tab (should be green/healthy)
-3. **Click** "Open Test Suite" to see `/ai-test`
-4. **Run** through the test checklist
-5. **Monitor** regularly for system health
-
-### **For Developers (First Time)**
-
-1. **Visit** `/ai-test`
-2. **Follow** each test tab step-by-step:
-   - AI Builder Test
-   - Self-Healing Test
-   - Multi-File Test
-   - Version Control Test
-3. **Complete** the testing checklist
-4. **Verify** all features work correctly
-
----
-
-## 📚 **Documentation Structure**
-
-- **`QUICK_START_GUIDE.md`** (this file) - Start here!
-- **`ENTERPRISE_STRUCTURE.md`** - Full enterprise architecture
-- **`TESTING_GUIDE.md`** - Comprehensive testing instructions
-- **`SELF_MODIFICATION_ARCHITECTURE.md`** - Technical deep-dive
-- **`ENHANCED_MEMORY_SYSTEM.md`** - How project memory works
-- **`SELF_HEALING_SYSTEM.md`** - Self-healing implementation details
-
----
-
-## ⚡ **Quick Access URLs**
+## Step 3: Understand the Structure (1 minute)
 
 ```
-🎨 Code Builder (Users):     /builder
-🔧 Admin Panel:               /admin
-🧪 Test Suite (Admins):       /ai-test
-🏠 Home:                      /
+Your Project
+├── src/                    → Frontend code
+│   ├── pages/             → Main pages
+│   ├── components/        → UI components
+│   └── integrations/      → Supabase client
+│
+└── supabase/functions/    → Backend code
+    ├── _shared/           → Shared utilities (clean!)
+    └── mega-mind-orchestrator/  → Main AI logic
 ```
 
----
+## Step 4: Make Your First Request (2 minutes)
 
-## 🔒 **Security Note**
+1. **Open the app** in your browser
+2. **Type a request** like: "Create a todo list app"
+3. **Watch it generate** code in real-time
+4. **See the results** streamed back to you
 
-All features respect **proper access control**:
+## Key Features You Get Out of the Box
 
-- ✅ Users see only their own data
-- ✅ Admins have elevated monitoring access
-- ✅ Test suite is admin-only
-- ✅ Row-Level Security (RLS) on all database tables
-- ✅ Authentication required for sensitive operations
+### ✅ AI Code Generation
+```typescript
+// Automatically generates:
+- React components
+- Database tables
+- Authentication flows
+- API integrations
+```
 
----
+### ✅ Auto-Healing Database
+```typescript
+// Automatically fixes:
+- Missing extensions (uuid-ossp, etc.)
+- Missing schemas
+- Common permission errors
+```
 
-## 💡 **Pro Tips**
+### ✅ Smart AI Fallback
+```typescript
+// High availability:
+Lovable AI → Gemini API → Error
+(99.9% uptime)
+```
 
-### **For Users**
-- Start with example prompts
-- Be specific in your requests
-- Mention "separate files" for multi-file generation
-- Create snapshots before experiments
-- The AI remembers your project context
+## Common Use Cases
 
-### **For Admins**
-- Check Self-Healing tab daily
-- Review auto-applied fixes weekly
-- Look for patterns in errors
-- Use test suite after updates
-- Monitor system health proactively
+### 1. Generate a Simple Website
+```
+Request: "Create a portfolio website with hero, about, and contact sections"
+Result: Complete HTML/CSS website ready to deploy
+```
 
-### **For Developers**
-- Run full test suite before releases
-- Add new error patterns when discovered
-- Keep knowledge base updated
-- Test multi-file generation thoroughly
-- Verify version control after changes
+### 2. Build a React App
+```
+Request: "Create a task manager with authentication"
+Result: React app + Supabase backend + auth flow
+```
 
----
+### 3. Add Features
+```
+Request: "Add a dark mode toggle to my app"
+Result: Code modifications applied to existing project
+```
 
-## ❓ **Common Questions**
+## Understanding the AI Models
 
-**Q: Where do regular users generate code?**  
-A: `/builder` - Simple, focused interface
+### Default: Gemini 2.5 Flash
+- **Best for:** Most use cases
+- **Speed:** Fast (1-3s)
+- **Cost:** Free during beta
+- **Use when:** General code generation
 
-**Q: Where do admins monitor the system?**  
-A: `/admin` → Self-Healing tab
+### Fallback: Gemini API
+- **Best for:** When main API unavailable
+- **Speed:** Fast (1-3s)
+- **Cost:** Free tier available
+- **Use when:** Automatic fallback
 
-**Q: Where is the test suite?**  
-A: `/ai-test` (admins only)
+### Alternative: GPT-5
+- **Best for:** Complex reasoning
+- **Speed:** Slower (3-5s)
+- **Cost:** Premium
+- **Use when:** User specifically requests
 
-**Q: Will users see error details?**  
-A: No - they get friendly messages, admins see technical details
+## Environment Setup (Auto-Configured)
 
-**Q: Does self-healing work automatically?**  
-A: Yes - high confidence fixes (≥80%) auto-apply
+These are set automatically when using Lovable Cloud:
+```bash
+VITE_SUPABASE_URL=xxx          # Auto-set
+VITE_SUPABASE_PUBLISHABLE_KEY=xxx  # Auto-set
+LOVABLE_API_KEY=xxx            # Auto-provided
+```
 
-**Q: Can I turn off auto-healing?**  
-A: Yes - admins can configure in admin panel
+No manual configuration needed! 🎉
 
-**Q: Is the test suite needed in production?**  
-A: Optional - can be removed or kept as admin tool
+## Database Schema
 
----
+The platform automatically creates these tables:
+- `conversations` - Chat sessions
+- `generated_code` - Generated files
+- `learned_patterns` - AI learning
+- `component_dependencies` - Code relationships
 
-## 🎯 **Next Steps**
+All with Row-Level Security (RLS) enabled!
 
-1. **Choose your role** above
-2. **Go to the appropriate URL**
-3. **Follow the relevant guide**
-4. **Start building or monitoring**
+## Making Changes
 
-**Ready? Let's go! 🚀**
+### Add a New UI Component
+```typescript
+// src/components/MyComponent.tsx
+export const MyComponent = () => {
+  return <div>Hello World</div>
+}
+```
 
----
+### Add a New Backend Function
+```typescript
+// supabase/functions/my-function/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-**Questions?** Check the full documentation in the files above, or contact your system administrator.
+serve(async (req) => {
+  return new Response("Hello from edge function!");
+});
+```
+
+### Use Shared Utilities
+```typescript
+// Import from _shared/
+import { callAIWithFallback } from '../_shared/aiHelpers.ts';
+import { validateHTML } from '../_shared/validationHelpers.ts';
+```
+
+## Testing Your Changes
+
+```bash
+# Run tests
+npm test
+
+# Type check
+npm run type-check
+
+# Lint & format
+npm run lint
+npm run format
+```
+
+## Deployment
+
+### Deploy to Vercel (Recommended)
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel
+```
+
+### Deploy to Netlify
+```bash
+# Install Netlify CLI
+npm i -g netlify-cli
+
+# Deploy
+netlify deploy --prod
+```
+
+## Monitoring
+
+### View Edge Function Logs
+1. Go to Supabase Dashboard
+2. Select your project
+3. Navigate to "Edge Functions"
+4. View logs for each function
+
+### Check AI Usage
+1. Monitor credits in Lovable dashboard
+2. View usage in `build_events` table
+3. Check fallback rate in logs
+
+## Troubleshooting
+
+### Issue: Migration Error
+```
+Error: uuid_generate_v4 does not exist
+Fix: Auto-healing will fix automatically within seconds
+```
+
+### Issue: AI 402 Error
+```
+Error: Payment Required
+Fix: Fallback to Gemini API activates automatically
+```
+
+### Issue: Rate Limited
+```
+Error: 429 Too Many Requests
+Fix: Wait 1 minute or implement request throttling
+```
+
+## Next Steps
+
+### Learn More
+1. Read [Platform Architecture](./PLATFORM_ARCHITECTURE.md)
+2. Explore [Refactoring Guide](./REFACTORING_COMPLETE.md)
+3. Study [Self-Healing System](./SELF_HEALING_IMPLEMENTATION.md)
+
+### Build Something
+1. Generate a simple app
+2. Add authentication
+3. Deploy to production
+
+### Contribute
+1. Check code quality standards in README
+2. Write tests for new features
+3. Submit pull requests
+
+## Need Help?
+
+### Resources
+- 📚 Documentation: All `.md` files in root
+- 🔧 Logs: Supabase Dashboard → Edge Functions
+- 💬 Support: Check edge function logs first
+
+### Common Questions
+
+**Q: How do I add a new AI model?**
+A: Edit `_shared/aiHelpers.ts` and add to fallback chain
+
+**Q: How do I create custom prompts?**
+A: Edit `_shared/promptTemplates.ts`
+
+**Q: How do I add new database tables?**
+A: Let AI generate them, or write migrations manually
+
+**Q: How do I disable auto-healing?**
+A: Comment out auto-healing call in `setupDatabaseTables()`
+
+## Success Checklist
+
+- [x] ✅ Installation complete
+- [x] ✅ Development server running
+- [x] ✅ First AI request working
+- [x] ✅ Understanding project structure
+- [ ] 🎯 Deploy to production
+- [ ] 🎯 Add custom features
+- [ ] 🎯 Invite team members
+
+## You're Ready! 🚀
+
+Start building with AI-powered code generation.
+
+The platform handles:
+- ✅ Code generation
+- ✅ Database setup
+- ✅ Error auto-fixing
+- ✅ Pattern learning
+- ✅ AI fallbacks
+
+You focus on:
+- 🎯 User experience
+- 🎯 Business logic
+- 🎯 Custom features
+
+**Happy building!** 💻✨
