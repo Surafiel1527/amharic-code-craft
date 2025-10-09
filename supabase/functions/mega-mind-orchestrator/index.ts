@@ -2055,13 +2055,26 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     if (!validationResult.isValid) {
       console.error('❌ Validation failed:', validationResult.overallErrors);
       
+      // Show detailed errors to user
+      const errorSummary = validationResult.overallErrors.slice(0, 3).join('; ');
+      const moreErrors = validationResult.overallErrors.length > 3 ? ` (+${validationResult.overallErrors.length - 3} more)` : '';
+      
+      await broadcast('generation:validation_failed', { 
+        status: 'validation_failed',
+        message: `⚠️ Found ${validationResult.overallErrors.length} error(s): ${errorSummary}${moreErrors}`,
+        errors: validationResult.overallErrors,
+        warnings: validationResult.overallWarnings,
+        progress: 70
+      });
+      
       if (retryCount < maxRetries) {
         retryCount++;
         console.log(`🔄 Retry ${retryCount}/${maxRetries}: Regenerating due to validation errors...`);
         
         await broadcast('generation:retrying', { 
           status: 'retrying', 
-          message: `Code had issues, retrying (${retryCount}/${maxRetries})...`, 
+          message: `🔧 Fixing errors automatically (attempt ${retryCount}/${maxRetries})...`, 
+          fixingErrors: validationResult.overallErrors.slice(0, 5),
           progress: 50 + (retryCount * 10)
         });
         
@@ -2097,15 +2110,24 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
         prompt = prompt + errorFeedback;
         continue; // Continue to next iteration of retry loop
       } else {
-        // Max retries reached, log warning but continue
+        // Max retries reached, show detailed warning
         console.warn('⚠️ Max retries reached, proceeding with warnings');
-        await broadcast('generation:warning', { 
-          message: `Code generated with ${validationResult.overallErrors.length} issues`, 
+        const remainingErrors = validationResult.overallErrors.slice(0, 5).join('; ');
+        await broadcast('generation:max_retries', { 
+          status: 'max_retries',
+          message: `⚠️ Generated with ${validationResult.overallErrors.length} known issue(s). Remaining: ${remainingErrors}`,
+          remainingErrors: validationResult.overallErrors,
           progress: 80 
         });
       }
     } else {
       console.log('✅ Code validation passed!');
+      await broadcast('generation:validated', {
+        status: 'validated',
+        message: '✅ Code validation passed! All syntax checks successful.',
+        warnings: validationResult.overallWarnings.length > 0 ? validationResult.overallWarnings.slice(0, 3) : [],
+        progress: 80
+      });
       if (validationResult.overallWarnings.length > 0) {
         console.log('⚠️ Warnings:', validationResult.overallWarnings);
       }

@@ -342,6 +342,8 @@ Guidelines:
         
         if (!validationResult.isValid) {
           console.error('❌ React validation failed:', validationResult.overallErrors);
+          console.log(`📋 Errors found: ${validationResult.overallErrors.join(', ')}`);
+          console.log(`🔄 Retry ${retryCount + 1}/${maxRetries}: Auto-fixing these issues...`);
           
           if (retryCount < maxRetries) {
             retryCount++;
