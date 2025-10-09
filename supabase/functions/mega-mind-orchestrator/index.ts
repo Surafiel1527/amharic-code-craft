@@ -3,6 +3,15 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { validateWebsite } from "../_shared/codeValidator.ts";
 import type { WebsiteValidation } from "../_shared/codeValidator.ts";
+import { 
+  loadConversationHistory, 
+  storeConversationTurn, 
+  buildConversationSummary 
+} from "../_shared/conversationMemory.ts";
+import { 
+  analyzeFileDependencies, 
+  buildDependencySummary 
+} from "../_shared/fileDependencies.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -705,10 +714,18 @@ serve(async (req) => {
       }
     };
 
-    // Load project context for enhance mode (Game Changer!)
+    // Load conversation memory for enhance mode
+    const conversationHistory = mode === 'enhance' && conversationId
+      ? await loadConversationHistory(supabaseClient, conversationId, 5)
+      : null;
+
+    // Load project context for enhance mode with full intelligence
     let projectContext: any = {};
+    let fileDependencies: any = null;
+    let conversationSummary = '';
+    
     if (mode === 'enhance' && projectId) {
-      console.log('🔍 ENHANCE MODE: Loading existing project context...');
+      console.log('🔍 ENHANCE MODE: Loading full project context + conversation history...');
       try {
         const { data: project, error: projectError } = await supabaseClient
           .from('projects')
@@ -734,19 +751,35 @@ serve(async (req) => {
             existingFeatures.push('navigation');
           }
 
+          // Analyze file dependencies
+          fileDependencies = analyzeFileDependencies(code);
+          const dependencySummary = buildDependencySummary(fileDependencies);
+
+          // Build conversation summary
+          if (conversationHistory) {
+            conversationSummary = buildConversationSummary(conversationHistory);
+          }
+
           projectContext = {
             projectName: project.title,
             projectType: project.project_type,
             htmlCode: code,
             codeLength: code.length,
+            fileCount: fileDependencies.length,
             existingFeatures,
-            hasExistingCode: true
+            hasExistingCode: true,
+            dependencySummary,
+            conversationSummary,
+            conversationTurns: conversationHistory?.totalTurns || 0,
+            previouslyModifiedFiles: conversationHistory?.modifiedFiles || []
           };
           
-          console.log('✅ Loaded project context:', {
+          console.log('✅ Full context loaded:', {
             name: project.title,
             codeSize: `${Math.round(code.length / 1024)}KB`,
-            features: existingFeatures
+            files: fileDependencies.length,
+            features: existingFeatures.length,
+            conversationTurns: conversationHistory?.totalTurns || 0
           });
         }
       } catch (err) {
@@ -1280,6 +1313,33 @@ serve(async (req) => {
         console.warn('⚠️ Failed to insert assistant message:', assistantMsgError);
       } else {
         console.log('✅ Assistant message inserted successfully');
+      }
+    }
+
+    // Store conversation turn in enhance mode
+    if (mode === 'enhance' && conversationHistory !== null) {
+      const turnNumber = conversationHistory.totalTurns + 1;
+      
+      try {
+        await storeConversationTurn(supabaseClient, {
+          conversationId,
+          projectId: projectId || undefined,
+          turnNumber,
+          userRequest: sanitizedRequest,
+          aiResponse: generation.instructions || 'Code generated successfully',
+          featuresAdded: analysis.intent?.features || [],
+          filesModified: generation.files?.map((f: any) => f.path) || [],
+          contextUsed: {
+            existingFeatures: projectContext.existingFeatures || [],
+            fileCount: projectContext.fileCount || 0,
+            conversationTurns: conversationHistory.totalTurns,
+            mode
+          }
+        });
+
+        console.log(`💾 Stored conversation turn ${turnNumber} with memory`);
+      } catch (memoryError) {
+        console.warn('⚠️ Failed to store conversation memory (non-critical):', memoryError);
       }
     }
 
