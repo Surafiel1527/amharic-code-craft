@@ -12,6 +12,17 @@ import {
   analyzeFileDependencies, 
   buildDependencySummary 
 } from "../_shared/fileDependencies.ts";
+import {
+  findRelevantPatterns,
+  buildPromptWithPatterns,
+  storeSuccessfulPattern,
+  detectPatternCategory
+} from "../_shared/patternLearning.ts";
+import {
+  generateProactiveSuggestions,
+  formatSuggestionsForPrompt,
+  formatSuggestionsForUser
+} from "../_shared/proactiveSuggestions.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -787,11 +798,59 @@ serve(async (req) => {
       }
     }
 
+    // PHASE 2 INTELLIGENCE: Pattern Learning & Proactive Suggestions
+    let relevantPatterns: any[] = [];
+    let proactiveSuggestions: any[] = [];
+    let patternsPrompt = '';
+    let suggestionsPrompt = '';
+
+    if (mode === 'enhance' && projectContext.existingFeatures) {
+      console.log('🧠 PHASE 2 INTELLIGENCE: Loading patterns & generating suggestions...');
+      
+      try {
+        // Detect pattern category from request
+        const category = detectPatternCategory(sanitizedRequest);
+        
+        // Load relevant patterns from past successful generations
+        relevantPatterns = await findRelevantPatterns(
+          supabaseClient, 
+          sanitizedRequest,
+          category
+        );
+        
+        if (relevantPatterns.length > 0) {
+          patternsPrompt = buildPromptWithPatterns(relevantPatterns);
+          console.log(`✨ Found ${relevantPatterns.length} relevant patterns`);
+        }
+
+        // Generate proactive suggestions based on project context
+        proactiveSuggestions = generateProactiveSuggestions(
+          projectContext.existingFeatures,
+          sanitizedRequest,
+          {
+            fileCount: projectContext.fileCount,
+            conversationTurns: projectContext.conversationTurns
+          }
+        );
+
+        if (proactiveSuggestions.length > 0) {
+          suggestionsPrompt = formatSuggestionsForPrompt(proactiveSuggestions);
+          console.log(`💡 Generated ${proactiveSuggestions.length} proactive suggestions`);
+        }
+      } catch (intelligenceError) {
+        console.warn('⚠️ Intelligence features failed (non-critical):', intelligenceError);
+      }
+    }
+
     // Merge project context into request context
     const enhancedContext = {
       ...context,
       ...projectContext,
-      mode
+      mode,
+      patternsPrompt,
+      suggestionsPrompt,
+      relevantPatterns,
+      proactiveSuggestions
     };
 
     // PHASE 0: Auto-setup authentication infrastructure if needed
@@ -1316,7 +1375,7 @@ serve(async (req) => {
       }
     }
 
-    // Store conversation turn in enhance mode
+     // Store conversation turn in enhance mode
     if (mode === 'enhance' && conversationHistory !== null) {
       const turnNumber = conversationHistory.totalTurns + 1;
       
@@ -1343,6 +1402,42 @@ serve(async (req) => {
       }
     }
 
+    // Store successful pattern for future reuse
+    if (generation.files && generation.files.length > 0) {
+      try {
+        const category = detectPatternCategory(sanitizedRequest);
+        if (category) {
+          // Extract the main file as template
+          const mainFile = generation.files.find((f: any) => 
+            f.path.includes('index') || f.path.includes('main') || generation.files.length === 1
+          ) || generation.files[0];
+
+          await storeSuccessfulPattern(supabaseClient, {
+            category,
+            patternName: `${category}-${Date.now()}`,
+            useCase: sanitizedRequest.substring(0, 200),
+            codeTemplate: mainFile.content.substring(0, 5000), // Store first 5KB as template
+            context: {
+              outputType: analysis.outputType,
+              filesGenerated: generation.files.length,
+              hadBackend: !!backendGeneration,
+              features: analysis.intent?.features || []
+            }
+          });
+
+          console.log(`✨ Stored successful pattern for category "${category}"`);
+        }
+      } catch (patternError) {
+        console.warn('⚠️ Failed to store pattern (non-critical):', patternError);
+      }
+    }
+
+    // Include proactive suggestions in response if available
+    let userSuggestions = '';
+    if (proactiveSuggestions.length > 0) {
+      userSuggestions = formatSuggestionsForUser(proactiveSuggestions);
+    }
+
     // Final broadcast with completion status
     await broadcast('generation:complete', {
       status: 'idle',
@@ -1364,7 +1459,7 @@ serve(async (req) => {
         orchestrationId,
         generatedCode,
         html: generatedCode,
-        message: generation.instructions || `✨ Successfully ${analysis.outputType === 'modification' ? 'updated' : 'generated'} your code`,
+        message: (generation.instructions || `✨ Successfully ${analysis.outputType === 'modification' ? 'updated' : 'generated'} your code`) + userSuggestions,
         explanation: generation.instructions || 'Your changes have been applied successfully.',
         summary: generation.instructions,
         result: {
@@ -1384,7 +1479,9 @@ serve(async (req) => {
         quickVerification,
         filesGenerated: generation.files?.length || 0,
         outputType: analysis.outputType,
-        requestType: requestType
+        requestType: requestType,
+        proactiveSuggestions: proactiveSuggestions || [],
+        learnedPatterns: relevantPatterns.length || 0
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -1556,6 +1653,10 @@ ${mode === 'enhance' && context.hasExistingCode ? `
 - DO NOT recreate existing features
 - Focus on the specific enhancement requested
 `}
+
+${context.patternsPrompt || ''}
+
+${context.suggestionsPrompt || ''}
 
 **CRITICAL: Determine Request Category:**
 
