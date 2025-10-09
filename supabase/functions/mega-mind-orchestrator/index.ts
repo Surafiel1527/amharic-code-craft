@@ -1799,47 +1799,69 @@ async function generateSimpleWebsite(request: string, analysis: any, broadcast: 
 
   await broadcast('generation:thinking', { status: 'thinking', message: 'Analyzing your website requirements...', progress: 10 });
 
-  const prompt = `Generate a COMPLETE, BEAUTIFUL, PRODUCTION-READY HTML/CSS/JavaScript website based on this EXACT request:
+  const prompt = `Generate a COMPLETE, BEAUTIFUL, PRODUCTION-READY website based on this EXACT request:
 
 **Request:** "${request}"
 **Goal:** ${analysis.mainGoal}
 **Sections:** ${JSON.stringify(analysis.requiredSections || [])}
 
-CRITICAL: Use the content and theme from the request above. DO NOT use placeholder text like "A Creative Developer" or generic content. Generate REAL, RELEVANT content that matches the user's request.
+CRITICAL: Use the content and theme from the request above. DO NOT use placeholder text. Generate REAL, RELEVANT content that matches the user's request.
 
-**CRITICAL REQUIREMENTS - MODERN BEAUTIFUL DESIGN:**
-1. Generate ONE complete HTML file with embedded CSS and JavaScript
-2. Use modern, clean design with proper spacing and typography
-3. Beautiful color scheme with gradients and smooth animations that match the request theme
-4. Fully responsive (mobile-first approach)
-5. Smooth scroll navigation with working anchor links
-6. Professional hover effects and transitions
-7. Modern CSS Grid and Flexbox layouts
-8. Attractive hero section with call-to-action based on the request
-9. Clean, readable fonts (Google Fonts)
-10. Professional portfolio-quality design
-11. IMPORTANT: All text content must be relevant to the user's request - NO generic placeholder text
+**CRITICAL REQUIREMENTS - SCALABLE MULTI-FILE ARCHITECTURE:**
 
-**DESIGN GUIDELINES:**
-- Use a cohesive color palette that matches the request theme
-- Add subtle gradients and shadows for depth
-- Include smooth transitions on all interactive elements
-- Use modern CSS variables for consistency
-- Add animations for scroll reveals and hover states
-- Ensure proper contrast for accessibility
-- Professional spacing and visual hierarchy
+1. **SEPARATE FILES** - Generate 3 separate files for scalability:
+   - index.html (structure only, link to external CSS/JS)
+   - styles.css (all styling)
+   - script.js (all JavaScript)
+
+2. **MODERN BEAUTIFUL DESIGN:**
+   - Clean, professional layout with proper spacing
+   - Beautiful color scheme with gradients matching the theme
+   - Fully responsive (mobile-first approach)
+   - Smooth animations and transitions
+   - Modern CSS Grid and Flexbox layouts
+   - Professional typography (Google Fonts via CDN)
+   - Hero section with call-to-action
+
+3. **CODE EFFICIENCY:**
+   - Use CDN links for external libraries (don't embed large code)
+   - Keep CSS modular with clear sections
+   - Use modern ES6+ JavaScript
+   - Add comments for major sections
+   - Minify mindset: efficient, clean code
+
+4. **EXTERNAL RESOURCES VIA CDN:**
+   - Google Fonts: <link href="https://fonts.googleapis.com/css2?family=..." rel="stylesheet">
+   - Icons: Font Awesome, Bootstrap Icons, or similar via CDN
+   - Libraries: jQuery, AOS, etc. via CDN if needed
 
 **Output JSON:**
 {
   "files": [
     {
       "path": "index.html",
-      "content": "<!-- COMPLETE HTML with embedded CSS and JS -->",
-      "description": "Website description"
+      "content": "<!DOCTYPE html>... (HTML structure with <link rel='stylesheet' href='styles.css'> and <script src='script.js'>)",
+      "description": "Main HTML structure"
+    },
+    {
+      "path": "styles.css",
+      "content": "/* All CSS styles */",
+      "description": "Stylesheet"
+    },
+    {
+      "path": "script.js",
+      "content": "// All JavaScript",
+      "description": "JavaScript functionality"
     }
   ],
   "instructions": "Website is ready to use"
-}`;
+}
+
+**IMPORTANT FOR COMPLEX SITES:**
+- If the site is very complex, prioritize core sections first
+- Use efficient CSS (CSS variables, reusable classes)
+- Keep JavaScript modular and well-commented
+- Focus on quality over quantity`;
 
   await broadcast('generation:reading', { status: 'reading', message: 'Understanding design requirements...', progress: 30 });
 
@@ -1852,7 +1874,7 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE HTML/CSS/JavaScript websites. Output ONLY valid, compact JSON. IMPORTANT: Generate complete but efficient code - use CDN links for libraries instead of embedding large code blocks. SECURITY: Never use alert() or console.log() to display user credentials (passwords, emails). Use proper UI feedback instead. AUTHENTICATION: If generating signup/login forms, use Supabase Auth (supabase.auth.signUp/signInWithPassword). Store user data in the "profiles" table which has columns: id (uuid), username (text), full_name (text), avatar_url (text), bio (text). After successful auth, redirect to main page. Handle errors gracefully with UI feedback.' },
+        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE, MODULAR websites with SEPARATE HTML, CSS, and JS files. Output ONLY valid, compact JSON. ALWAYS split into 3 files: index.html (structure only), styles.css (all styles), script.js (all JavaScript). Use CDN links for libraries. Keep code efficient and well-organized. SECURITY: Never display credentials with alert(). Use proper UI. AUTH: Use Supabase Auth (supabase.auth.signUp/signInWithPassword) with profiles table (id, username, full_name, avatar_url, bio). Handle errors gracefully.' },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" },
@@ -1958,6 +1980,17 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
       htmlFile.content = injectSupabaseClient(htmlFile.content, userSupabaseConnection);
       console.log(`✅ Injected Supabase client for project: ${userSupabaseConnection.project_name}`);
     }
+  }
+  
+  // Validate we have the expected multi-file structure
+  const hasHTML = result.files.some((f: any) => f.path.endsWith('.html'));
+  const hasCSS = result.files.some((f: any) => f.path.endsWith('.css'));
+  const hasJS = result.files.some((f: any) => f.path.endsWith('.js'));
+  
+  console.log(`📦 Generated files: HTML=${hasHTML}, CSS=${hasCSS}, JS=${hasJS}`);
+  
+  if (!hasHTML) {
+    console.warn('⚠️ No HTML file generated, this may cause issues');
   }
   
   return result;
