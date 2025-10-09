@@ -9,7 +9,8 @@ import {
   buildConversationSummary 
 } from "../_shared/conversationMemory.ts";
 import { 
-  analyzeFileDependencies, 
+  loadFileDependencies, 
+  storeFileDependency,
   buildDependencySummary 
 } from "../_shared/fileDependencies.ts";
 import {
@@ -762,8 +763,10 @@ serve(async (req) => {
             existingFeatures.push('navigation');
           }
 
-          // Analyze file dependencies
-          fileDependencies = analyzeFileDependencies(code);
+          // Load file dependencies from database
+          fileDependencies = conversationId 
+            ? await loadFileDependencies(supabaseClient, conversationId)
+            : [];
           const dependencySummary = buildDependencySummary(fileDependencies);
 
           // Build conversation summary
@@ -781,8 +784,7 @@ serve(async (req) => {
             hasExistingCode: true,
             dependencySummary,
             conversationSummary,
-            conversationTurns: conversationHistory?.totalTurns || 0,
-            previouslyModifiedFiles: conversationHistory?.modifiedFiles || []
+            conversationTurns: conversationHistory?.totalTurns || 0
           };
           
           console.log('✅ Full context loaded:', {
@@ -1377,26 +1379,24 @@ serve(async (req) => {
 
      // Store conversation turn in enhance mode
     if (mode === 'enhance' && conversationHistory !== null) {
-      const turnNumber = conversationHistory.totalTurns + 1;
-      
       try {
         await storeConversationTurn(supabaseClient, {
           conversationId,
-          projectId: projectId || undefined,
-          turnNumber,
+          userId,
           userRequest: sanitizedRequest,
-          aiResponse: generation.instructions || 'Code generated successfully',
-          featuresAdded: analysis.intent?.features || [],
-          filesModified: generation.files?.map((f: any) => f.path) || [],
-          contextUsed: {
-            existingFeatures: projectContext.existingFeatures || [],
+          intent: analysis.intent || {},
+          executionPlan: {
+            instructions: generation.instructions,
+            files: generation.files?.map((f: any) => f.path) || [],
+            features: analysis.intent?.features || [],
+            existingContext: projectContext.existingFeatures || [],
             fileCount: projectContext.fileCount || 0,
             conversationTurns: conversationHistory.totalTurns,
             mode
           }
         });
 
-        console.log(`💾 Stored conversation turn ${turnNumber} with memory`);
+        console.log(`💾 Stored conversation turn with memory (${conversationHistory.totalTurns + 1} total turns)`);
       } catch (memoryError) {
         console.warn('⚠️ Failed to store conversation memory (non-critical):', memoryError);
       }

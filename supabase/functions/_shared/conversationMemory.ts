@@ -3,30 +3,24 @@
  * Handles loading and storing conversation history for intelligent context
  */
 
+// Uses existing conversation_context_log table
 export interface ConversationTurn {
-  turn_number: number;
-  user_request: string;
-  ai_response?: string;
-  code_changes: Array<{
-    file_path: string;
-    change_type: string;
-    summary: string;
-  }>;
-  features_added: string[];
-  files_modified: string[];
-  context_used: any;
+  id: string;
+  conversation_id: string;
+  user_id: string;
+  request: string;
+  intent: any;
+  execution_plan: any;
   created_at: string;
 }
 
 export interface ConversationContext {
   recentTurns: ConversationTurn[];
-  allFeatures: string[];
-  modifiedFiles: string[];
   totalTurns: number;
 }
 
 /**
- * Load recent conversation history for context
+ * Load recent conversation history using existing conversation_context_log table
  */
 export async function loadConversationHistory(
   supabase: any,
@@ -34,68 +28,47 @@ export async function loadConversationHistory(
   limit: number = 5
 ): Promise<ConversationContext> {
   const { data: turns, error } = await supabase
-    .from('conversation_memory')
+    .from('conversation_context_log')
     .select('*')
     .eq('conversation_id', conversationId)
-    .order('turn_number', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   if (error) {
     console.error('Error loading conversation history:', error);
     return {
       recentTurns: [],
-      allFeatures: [],
-      modifiedFiles: [],
       totalTurns: 0
     };
   }
 
-  // Aggregate all features and files across conversation
-  const allFeatures = new Set<string>();
-  const modifiedFiles = new Set<string>();
-
-  turns?.forEach((turn: any) => {
-    turn.features_added?.forEach((f: string) => allFeatures.add(f));
-    turn.files_modified?.forEach((f: string) => modifiedFiles.add(f));
-  });
-
   return {
     recentTurns: turns || [],
-    allFeatures: Array.from(allFeatures),
-    modifiedFiles: Array.from(modifiedFiles),
     totalTurns: turns?.length || 0
   };
 }
 
 /**
- * Store conversation turn after processing
+ * Store conversation turn using existing conversation_context_log table
  */
 export async function storeConversationTurn(
   supabase: any,
   data: {
     conversationId: string;
-    projectId?: string;
-    turnNumber: number;
+    userId: string;
     userRequest: string;
-    aiResponse?: string;
-    codeChanges?: any[];
-    featuresAdded?: string[];
-    filesModified?: string[];
-    contextUsed?: any;
+    intent?: any;
+    executionPlan?: any;
   }
 ): Promise<void> {
   const { error } = await supabase
-    .from('conversation_memory')
-    .upsert({
+    .from('conversation_context_log')
+    .insert({
       conversation_id: data.conversationId,
-      project_id: data.projectId,
-      turn_number: data.turnNumber,
-      user_request: data.userRequest,
-      ai_response: data.aiResponse,
-      code_changes: data.codeChanges || [],
-      features_added: data.featuresAdded || [],
-      files_modified: data.filesModified || [],
-      context_used: data.contextUsed || {}
+      user_id: data.userId,
+      request: data.userRequest,
+      intent: data.intent || {},
+      execution_plan: data.executionPlan || {}
     });
 
   if (error) {
@@ -113,7 +86,7 @@ export function buildConversationSummary(context: ConversationContext): string {
 
   const recentRequests = context.recentTurns
     .slice(0, 3)
-    .map(t => `- ${t.user_request}`)
+    .map(t => `- ${t.request}`)
     .join('\n');
 
   return `
@@ -121,9 +94,6 @@ CONVERSATION HISTORY (${context.totalTurns} previous turns):
 
 Recent Requests:
 ${recentRequests}
-
-Features Built So Far: ${context.allFeatures.join(', ') || 'None'}
-Files Previously Modified: ${context.modifiedFiles.slice(0, 10).join(', ') || 'None'}
 
 IMPORTANT: User can reference "that component" or "the feature we built" - check the conversation history above to understand what they're referring to.
 `.trim();
