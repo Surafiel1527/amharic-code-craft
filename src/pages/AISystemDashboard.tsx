@@ -25,6 +25,7 @@ import { ConversationSearchPanel } from "@/components/ConversationSearchPanel";
 import { PhaseCompletionDashboard } from "@/components/PhaseCompletionDashboard";
 import { UniversalErrorLearningDashboard } from "@/components/UniversalErrorLearningDashboard";
 import { MegaMindDashboard } from "@/components/MegaMindDashboard";
+import { IntelligenceDashboard } from "@/components/IntelligenceDashboard";
 
 export default function AISystemDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -232,11 +233,13 @@ export default function AISystemDashboard() {
         </TabsContent>
 
         <TabsContent value="analytics">
-          <AIAnalyticsDashboard />
+          <IntelligenceDashboard />
         </TabsContent>
 
         <TabsContent value="error-learning">
-          <UniversalErrorLearningDashboard />
+          <div className="text-center text-muted-foreground py-8">
+            Error learning is now part of the Intelligence Dashboard (Analytics tab)
+          </div>
         </TabsContent>
 
         <TabsContent value="search">
