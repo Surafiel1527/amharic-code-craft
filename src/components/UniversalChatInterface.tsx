@@ -29,6 +29,7 @@ export interface UniversalChatInterfaceProps {
   onCodeApply?: (code: string, filePath: string) => Promise<void>;
   onConversationChange?: (id: string) => void;
   projectContext?: any;
+  context?: any; // Additional context to pass to orchestrator
   
   // UI customization
   mode?: 'fullscreen' | 'sidebar' | 'panel' | 'inline';
@@ -110,6 +111,7 @@ export function UniversalChatInterface({
   onCodeApply,
   onConversationChange,
   projectContext,
+  context, // Additional context
   mode = 'panel',
   showContext = true,
   showHeader = true,
@@ -155,7 +157,7 @@ export function UniversalChatInterface({
     persistMessages,
     enableTools,
     enableStreaming,
-    projectContext,
+    projectContext: { ...projectContext, ...(context || {}) }, // Merge contexts
     mode: operationMode // Pass operation mode to the hook
   });
 

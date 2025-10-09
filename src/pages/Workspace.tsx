@@ -918,6 +918,7 @@ export default function Workspace() {
                       projectId={projectId}
                       selectedFiles={selectedFiles}
                       projectFiles={projectFiles}
+                      context={{ projectId }}
                       onCodeApply={async (code, filePath) => {
                         const fileExists = projectFiles.some(f => f.file_path === filePath);
                         if (fileExists) {
@@ -1064,6 +1065,7 @@ export default function Workspace() {
                   conversationId={conversationId || undefined}
                   projectId={projectId}
                   selectedFiles={['main-project']}
+                  context={{ projectId }}
                   projectFiles={project ? [{
                     file_path: 'main-project',
                     file_content: project.html_code

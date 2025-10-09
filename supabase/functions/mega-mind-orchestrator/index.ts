@@ -412,7 +412,7 @@ serve(async (req) => {
     
     // Extract projectId from context if available
     projectId = context.projectId || null;
-    console.log('📌 Project ID:', projectId);
+    console.log('📌 Project ID:', projectId, 'Mode:', mode);
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -705,9 +705,67 @@ serve(async (req) => {
       }
     };
 
+    // Load project context for enhance mode (Game Changer!)
+    let projectContext: any = {};
+    if (mode === 'enhance' && projectId) {
+      console.log('🔍 ENHANCE MODE: Loading existing project context...');
+      try {
+        const { data: project, error: projectError } = await supabaseClient
+          .from('projects')
+          .select('*')
+          .eq('id', projectId)
+          .single();
+
+        if (project && !projectError) {
+          // Extract features from existing code
+          const existingFeatures: string[] = [];
+          const code = project.html_code || '';
+          
+          if (code.includes('auth') || code.includes('login') || code.includes('signup')) {
+            existingFeatures.push('authentication');
+          }
+          if (code.includes('supabase') || code.includes('database')) {
+            existingFeatures.push('database');
+          }
+          if (code.includes('form') || code.includes('input')) {
+            existingFeatures.push('forms');
+          }
+          if (code.includes('nav') || code.includes('header')) {
+            existingFeatures.push('navigation');
+          }
+
+          projectContext = {
+            projectName: project.title,
+            projectType: project.project_type,
+            htmlCode: code,
+            codeLength: code.length,
+            existingFeatures,
+            hasExistingCode: true
+          };
+          
+          console.log('✅ Loaded project context:', {
+            name: project.title,
+            codeSize: `${Math.round(code.length / 1024)}KB`,
+            features: existingFeatures
+          });
+        }
+      } catch (err) {
+        console.error('⚠️ Failed to load project context:', err);
+      }
+    }
+
+    // Merge project context into request context
+    const enhancedContext = {
+      ...context,
+      ...projectContext,
+      mode
+    };
+
     // PHASE 0: Auto-setup authentication infrastructure if needed
-    // FIX: Only detect auth when explicitly mentioned, not just "user/users" in normal context
-    const needsAuth = mode === 'generate' && sanitizedRequest.toLowerCase().match(/\b(sign ?up|log ?in|auth|authentication|register|account|profile|password|email verification|reset password|login page|signup form)\b/);
+    // CRITICAL FIX: Only detect auth in generate mode, NOT when "user" mentioned in enhance mode
+    const needsAuth = mode === 'generate' && 
+      !projectContext.existingFeatures?.includes('authentication') &&
+      sanitizedRequest.toLowerCase().match(/\b(sign ?up|log ?in|auth|authentication|register|account|profile|password|email verification|reset password|login page|signup form)\b/);
     if (needsAuth && projectId) {
       console.log('[PHASE 0] 🔐 Authentication detected in prompt, checking database infrastructure...');
       await updateJobProgress(10, 'Setting up authentication infrastructure...');
@@ -776,13 +834,13 @@ serve(async (req) => {
       
       if (patterns && patterns.length > 0) {
         console.log(`🧠 Found ${patterns.length} similar patterns in cache`);
-        context.knownPatterns = patterns;
+        enhancedContext.knownPatterns = patterns;
       }
     } catch (error) {
       console.log('⚠️ Pattern lookup failed:', error);
     }
     
-    const analysis = await analyzeRequest(sanitizedRequest, requestType, { ...context, mode });
+    const analysis = await analyzeRequest(sanitizedRequest, requestType, enhancedContext);
     
     // Override outputType with user's framework choice
     if (requestType === 'code-generation' || requestType === 'website-generation') {
@@ -850,7 +908,7 @@ serve(async (req) => {
       message: analysis.outputType === 'html-website' ? 'Generating HTML/CSS/JS...' : 'Generating React components...' 
     });
     
-    const generation = await generateSolution(request, requestType, analysis, { ...context, mode }, supabaseClient, orchestrationId, broadcast, userSupabaseConnection);
+    const generation = await generateSolution(request, requestType, analysis, enhancedContext, supabaseClient, orchestrationId, broadcast, userSupabaseConnection);
     
     await supabaseClient
       .from('mega_mind_orchestrations')
@@ -1386,16 +1444,32 @@ async function analyzeRequest(request: string, requestType: string, context: any
   const mode = context.mode || 'enhance';
   const isGenerateMode = mode === 'generate';
   
+  // Build existing project context information
+  let existingProjectInfo = '';
+  if (mode === 'enhance' && context.hasExistingCode) {
+    existingProjectInfo = `
+**🎯 EXISTING PROJECT CONTEXT (DO NOT RECREATE THESE!):**
+- Project Name: ${context.projectName || 'Unknown'}
+- Project Type: ${context.projectType || 'Unknown'}  
+- Code Size: ${Math.round(context.codeLength / 1024)}KB
+- Existing Features: ${context.existingFeatures?.join(', ') || 'None detected'}
+
+⚠️ **CRITICAL FOR ENHANCE MODE:**
+- This project ALREADY EXISTS with ${Math.round(context.codeLength / 1024)}KB of code
+- DO NOT regenerate these features: ${context.existingFeatures?.join(', ') || 'none'}
+- ONLY analyze what the user is REQUESTING to add/modify
+- Make SURGICAL changes - integrate with existing code
+- DO NOT create a new project from scratch
+`;
+  }
+  
   const prompt = `You are an expert system analyst with deep understanding of web applications, databases, and backend architecture.
 
 **Request to Analyze:** ${request}
 **Type:** ${requestType}
 **Mode:** ${mode} (${isGenerateMode ? 'Creating NEW project from scratch' : 'Enhancing EXISTING project'})
-**Context:** 
-- Has existing code: ${context.hasExistingCode || false}
-- Operation mode: ${mode}
-- Project context: ${JSON.stringify(context.projectContext || {})}
-- Known patterns: ${context.knownPatterns ? context.knownPatterns.length + ' similar patterns found' : 'None'}
+
+${existingProjectInfo}
 
 **CRITICAL: Understand the Operation Mode:**
 
@@ -1407,12 +1481,21 @@ async function analyzeRequest(request: string, requestType: string, context: any
 - Output complete HTML or React application
 
 **ENHANCE MODE** (mode=enhance):
+${mode === 'enhance' && context.hasExistingCode ? `
+- User has an EXISTING project (${Math.round(context.codeLength / 1024)}KB of code)
+- Existing features: ${context.existingFeatures?.join(', ') || 'None detected'}
+- User wants to: ${request}
+- Make SURGICAL changes only to what user requested
+- DO NOT recreate: ${context.existingFeatures?.join(', ') || 'anything that exists'}
+- Focus ONLY on the new feature/modification requested
+- Respect existing architecture and patterns
+` : `
 - User has an EXISTING project and wants to MODIFY/IMPROVE it
 - Load and analyze existing code first
 - Make SURGICAL changes only to what user requested
 - DO NOT recreate existing features
 - Focus on the specific enhancement requested
-- Respect existing architecture and patterns
+`}
 
 **CRITICAL: Determine Request Category:**
 
