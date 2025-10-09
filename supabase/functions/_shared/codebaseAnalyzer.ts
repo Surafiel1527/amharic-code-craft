@@ -8,6 +8,8 @@
  * - Integration points
  */
 
+import { validateReactProject } from './codeValidator.ts';
+
 interface CodebaseFile {
   path: string;
   content: string;
@@ -110,6 +112,19 @@ export async function analyzeCodebase(
   }));
 
   console.log(`📁 Found ${codebaseFiles.length} existing files in project`);
+
+  // Validate React files using codeValidator
+  const reactFiles = codebaseFiles.filter(f => 
+    f.path.endsWith('.tsx') || f.path.endsWith('.jsx')
+  );
+  if (reactFiles.length > 0 && reactFiles[0].content) {
+    const validation = validateReactProject(
+      reactFiles.map(f => ({ path: f.path, code: f.content }))
+    );
+    if (!validation.isValid) {
+      console.warn('⚠️ Validation warnings found:', validation.overallWarnings);
+    }
+  }
 
   // Detect similar functionality
   const similarFunctionality = await detectSimilarFunctionality(
