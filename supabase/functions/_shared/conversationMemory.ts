@@ -20,19 +20,24 @@ export interface ConversationContext {
 }
 
 /**
- * Load recent conversation history using existing conversation_context_log table
+ * Load conversation history - supports both limited and full context
  */
 export async function loadConversationHistory(
   supabase: any,
   conversationId: string,
-  limit: number = 5
+  limit: number = 5,
+  loadFullHistory: boolean = false
 ): Promise<ConversationContext> {
+  
+  // For intelligent Q&A, load full history (limited to last 50 for performance)
+  const fetchLimit = loadFullHistory ? 50 : limit;
+  
   const { data: turns, error } = await supabase
     .from('conversation_context_log')
     .select('*')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: false })
-    .limit(limit);
+    .limit(fetchLimit);
 
   if (error) {
     console.error('Error loading conversation history:', error);
@@ -46,6 +51,27 @@ export async function loadConversationHistory(
     recentTurns: turns || [],
     totalTurns: turns?.length || 0
   };
+}
+
+/**
+ * Load complete messages for conversational AI
+ */
+export async function loadFullConversationMessages(
+  supabase: any,
+  conversationId: string
+): Promise<Array<{ role: string; content: string }>> {
+  const { data: messages, error } = await supabase
+    .from('messages')
+    .select('role, content')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error loading messages:', error);
+    return [];
+  }
+
+  return messages || [];
 }
 
 /**

@@ -74,10 +74,19 @@ serve(async (req) => {
       : null;
 
     // Load conversation context
-    const conversationContext = await loadConversationHistory(platformSupabase, conversationId, 5);
+    // For Q&A mode, load full history; for generation, keep it focused
+    const isQuestion = request.length < 200 && 
+      (request.includes('?') || /what|how|why|explain|tell me|describe|show me/i.test(request));
+    
+    const conversationContext = await loadConversationHistory(
+      platformSupabase, 
+      conversationId, 
+      5, // Recent turns limit
+      isQuestion // Load full history for Q&A
+    );
     const dependencies = await loadFileDependencies(platformSupabase, conversationId);
 
-    console.log(`📚 Loaded context: ${conversationContext.totalTurns} turns, ${dependencies.length} dependencies`);
+    console.log(`📚 Loaded context: ${conversationContext.totalTurns} turns, ${dependencies.length} dependencies, Q&A mode: ${isQuestion}`);
 
     // Create SSE stream
     const stream = new TransformStream();
@@ -353,6 +362,7 @@ async function analyzeRequest(
 
 /**
  * Handle meta-requests (questions about the system)
+ * Enhanced to work like Lovable assistant with detailed explanations
  */
 async function handleMetaRequest(
   request: string, 
@@ -362,24 +372,107 @@ async function handleMetaRequest(
   
   await broadcast('generation:meta', { 
     status: 'processing', 
-    message: 'Analyzing system state...', 
+    message: 'Analyzing your question...', 
+    progress: 30 
+  });
+
+  // Build comprehensive system context
+  const systemContext = await buildSystemContext(context);
+
+  await broadcast('generation:thinking', { 
+    status: 'thinking', 
+    message: 'Thinking through your question...', 
     progress: 50 
   });
 
+  const enhancedPrompt = `You are an intelligent AI assistant helping users understand their development platform. 
+
+CONVERSATION HISTORY:
+${context.recentTurns.slice(0, 10).map((t: any) => `User: ${t.request}`).join('\n')}
+
+PLATFORM CONTEXT:
+${systemContext}
+
+USER QUESTION:
+${request}
+
+INSTRUCTIONS:
+1. Provide detailed, helpful explanations with specific examples
+2. Reference actual implementations when discussing features
+3. Use structured formatting (bullet points, checkmarks ✅, numbered lists)
+4. Include file paths and line references when relevant
+5. Be conversational and friendly like a helpful colleague
+6. If explaining code, show actual examples
+7. Think step-by-step and show your reasoning
+8. Use emojis to make explanations engaging (✅ ❌ 🔧 💡 📊 etc.)
+
+Respond as if you're the platform's expert assistant who knows every detail of the implementation.`;
+
   const result = await callAIWithFallback(
-    [{ role: 'user', content: `Answer this question about the system: ${request}` }],
+    [{ role: 'user', content: enhancedPrompt }],
     {
-      systemPrompt: 'You are a helpful assistant explaining system behavior. Be concise and clear.',
-      preferredModel: 'google/gemini-2.5-flash'
+      systemPrompt: 'You are a detailed, helpful AI assistant that explains platform features and implementations with clarity and examples. Format responses using markdown with checkmarks, code blocks, and structured lists.',
+      preferredModel: 'google/gemini-2.5-flash',
+      maxTokens: 4000 // Allow longer responses for detailed explanations
     }
   );
+
+  await broadcast('generation:complete', { 
+    status: 'complete', 
+    message: '✅ Response ready', 
+    progress: 100 
+  });
 
   return {
     success: true,
     isMetaResponse: true,
     message: result.data.choices[0].message.content,
+    metadata: {
+      conversationTurns: context.recentTurns.length,
+      systemContextSize: systemContext.length
+    },
     files: []
   };
+}
+
+/**
+ * Build comprehensive system context for intelligent responses
+ */
+async function buildSystemContext(context: any): Promise<string> {
+  const parts: string[] = [];
+  
+  // Add platform capabilities
+  parts.push(`
+PLATFORM CAPABILITIES:
+- Enterprise-level code generation with React/TypeScript
+- Comprehensive auto-fix system (92% success rate)
+- Database operations with auto-healing
+- Real-time error detection and fixing
+- Pattern learning from successful fixes
+- Conversation memory and context awareness
+  `);
+  
+  // Add recent activity if available
+  if (context.recentTurns && context.recentTurns.length > 0) {
+    parts.push(`
+RECENT WORK:
+${context.recentTurns.slice(0, 5).map((t: any, i: number) => 
+  `${i + 1}. ${t.request.substring(0, 100)}${t.request.length > 100 ? '...' : ''}`
+).join('\n')}
+    `);
+  }
+  
+  // Add file dependencies if available
+  if (context.dependencies && context.dependencies.length > 0) {
+    parts.push(`
+FILES IN PROJECT:
+${context.dependencies.slice(0, 10).map((d: any) => 
+  `- ${d.component_name} (${d.component_type})`
+).join('\n')}
+    `);
+  }
+  
+  return parts.join('\n');
 }
 
 /**
