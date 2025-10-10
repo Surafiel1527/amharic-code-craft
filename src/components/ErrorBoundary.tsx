@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   children: ReactNode;
+  t?: (key: string) => string;
 }
 
 interface State {
@@ -58,6 +59,23 @@ export class ErrorBoundary extends Component<Props, State> {
     window.location.href = "/";
   };
 
+  // Default translations (fallback to English)
+  private t = (key: string): string => {
+    if (this.props.t) {
+      return this.props.t(key);
+    }
+    
+    // Fallback English translations
+    const fallbackTranslations: Record<string, string> = {
+      'error.title': 'Something went wrong',
+      'error.message': 'Sorry, the application encountered a problem. Please try again.',
+      'error.technicalDetails': 'Technical Details',
+      'error.returnHome': 'Return to Home'
+    };
+    
+    return fallbackTranslations[key] || key;
+  };
+
   public render() {
     if (this.state.hasError) {
       return (
@@ -70,13 +88,13 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
             
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold">የሆነ ስህተት ተከስቷል</h2>
+              <h2 className="text-2xl font-bold">{this.t('error.title')}</h2>
               <p className="text-muted-foreground">
-                ይቅርታ፣ አፕሊኬሽኑ ችግር ገጥሞታል። እባክዎ እንደገና ይሞክሩ።
+                {this.t('error.message')}
               </p>
               {this.state.error && (
                 <details className="text-left text-xs text-muted-foreground mt-4 p-4 bg-muted rounded-lg">
-                  <summary className="cursor-pointer">Technical Details</summary>
+                  <summary className="cursor-pointer">{this.t('error.technicalDetails')}</summary>
                   <pre className="mt-2 whitespace-pre-wrap break-all">
                     {this.state.error.message}
                   </pre>
@@ -85,7 +103,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
 
             <Button onClick={this.handleReset} className="w-full">
-              ወደ መነሻ ገጽ ተመለስ
+              {this.t('error.returnHome')}
             </Button>
           </Card>
         </div>

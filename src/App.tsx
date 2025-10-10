@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { BackgroundJobsIndicator } from "./components/BackgroundJobsIndicator";
+import { useLanguage } from "./contexts/LanguageContext";
 
 // Critical pages - loaded immediately
 import Index from "./pages/Index";
@@ -32,8 +33,10 @@ const LoadingFallback = () => (
 );
 
 const App = () => {
+  const { t } = useLanguage();
+  
   return (
-    <ErrorBoundary>
+    <ErrorBoundary t={t}>
       <BackgroundJobsIndicator />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>

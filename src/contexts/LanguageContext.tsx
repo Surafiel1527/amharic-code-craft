@@ -131,6 +131,12 @@ const translations = {
     "toast.roleUpdateError": "Error updating role",
     "toast.errorOccurred": "An error occurred",
     
+    // Error Boundary
+    "error.title": "Something went wrong",
+    "error.message": "Sorry, the application encountered a problem. Please try again.",
+    "error.technicalDetails": "Technical Details",
+    "error.returnHome": "Return to Home",
+    
     // Network
     "network.online": "Back online",
     "network.offline": "You are offline",
@@ -737,6 +743,17 @@ const translations = {
     "toast.dataFetchError": "መረጃ በማምጣት ላይ ስህተት ተፈጥሯል",
     "toast.roleUpdated": "የተጠቃሚ ሚና ተቀይሯል",
     "toast.roleUpdateError": "ሚና በመቀየር ላይ ስህተት ተፈጥሯል",
+    "toast.errorOccurred": "የሆነ ስህተት ተከስቷል",
+    
+    // Error Boundary
+    "error.title": "የሆነ ስህተት ተከስቷል",
+    "error.message": "ይቅርታ፣ አፕሊኬሽኑ ችግር ገጥሞታል። እባክዎ እንደገና ይሞክሩ።",
+    "error.technicalDetails": "ቴክኒካል ዝርዝሮች",
+    "error.returnHome": "ወደ መነሻ ገጽ ተመለስ",
+    
+    // Network
+    "network.online": "መስመሩ ተመልሷል",
+    "network.offline": "ከመስመር ውጪ ነዎት",
     
     // Sections
     "section.backup": "ምትኪ እና መመለሻ",
