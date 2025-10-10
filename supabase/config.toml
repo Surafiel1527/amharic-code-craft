@@ -49,6 +49,14 @@ verify_jwt = true
 [functions.conversation-intelligence]
 verify_jwt = true
 
+[functions.auto-test-runner]
+verify_jwt = false
+
+[cron.auto_test_runner]
+# Run production tests every 6 hours
+schedule = "0 */6 * * *"
+function_name = "auto-test-runner"
+
 [functions.progressive-enhancer]
 verify_jwt = true
 

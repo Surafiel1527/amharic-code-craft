@@ -32,6 +32,11 @@ import {
   buildWebsitePrompt 
 } from '../_shared/promptTemplates.ts';
 import { autoFixGeneratedCode } from './autoFixIntegration.ts';
+import { 
+  logGenerationFailure, 
+  classifyError, 
+  extractStackTrace 
+} from './productionMonitoring.ts';
 
 // Enterprise modules (Phases 1-3)
 import { FeatureOrchestrator } from '../_shared/featureOrchestrator.ts';
@@ -132,6 +137,21 @@ serve(async (req) => {
       await writer.close();
     }).catch(async (error) => {
       console.error('❌ Generation failed:', error);
+      
+      // Log failure to production monitoring system
+      const errorClassification = classifyError(error);
+      await logGenerationFailure(platformSupabase, {
+        errorType: error.name || 'GenerationError',
+        errorMessage: error.message || 'Unknown error occurred',
+        userRequest: request,
+        context: { framework, projectId, conversationId },
+        stackTrace: extractStackTrace(error),
+        framework,
+        userId,
+        severity: errorClassification.severity,
+        category: errorClassification.category
+      });
+      
       await broadcast('generation:error', { 
         error: error.message || 'Unknown error occurred' 
       });

@@ -920,6 +920,71 @@ export type Database = {
           },
         ]
       }
+      auto_generated_tests: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          created_from_failure_id: string | null
+          expected_behavior: Json
+          expected_files: string[] | null
+          fail_count: number | null
+          framework: string
+          id: string
+          is_active: boolean | null
+          last_run_at: string | null
+          pass_count: number | null
+          run_count: number | null
+          tags: string[] | null
+          test_name: string
+          test_prompt: string
+          test_type: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          created_from_failure_id?: string | null
+          expected_behavior: Json
+          expected_files?: string[] | null
+          fail_count?: number | null
+          framework: string
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          pass_count?: number | null
+          run_count?: number | null
+          tags?: string[] | null
+          test_name: string
+          test_prompt: string
+          test_type: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          created_from_failure_id?: string | null
+          expected_behavior?: Json
+          expected_files?: string[] | null
+          fail_count?: number | null
+          framework?: string
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          pass_count?: number | null
+          run_count?: number | null
+          tags?: string[] | null
+          test_name?: string
+          test_prompt?: string
+          test_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_generated_tests_created_from_failure_id_fkey"
+            columns: ["created_from_failure_id"]
+            isOneToOne: false
+            referencedRelation: "generation_failures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auto_rollback_logs: {
         Row: {
           completed_at: string | null
@@ -3609,6 +3674,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      generation_failures: {
+        Row: {
+          created_at: string
+          error_message: string
+          error_type: string
+          failure_category: string
+          framework: string
+          id: string
+          last_occurred_at: string | null
+          occurrence_count: number | null
+          request_context: Json | null
+          severity: string
+          stack_trace: string | null
+          test_generated: boolean | null
+          test_id: string | null
+          user_id: string | null
+          user_request: string
+        }
+        Insert: {
+          created_at?: string
+          error_message: string
+          error_type: string
+          failure_category?: string
+          framework: string
+          id?: string
+          last_occurred_at?: string | null
+          occurrence_count?: number | null
+          request_context?: Json | null
+          severity?: string
+          stack_trace?: string | null
+          test_generated?: boolean | null
+          test_id?: string | null
+          user_id?: string | null
+          user_request: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string
+          error_type?: string
+          failure_category?: string
+          framework?: string
+          id?: string
+          last_occurred_at?: string | null
+          occurrence_count?: number | null
+          request_context?: Json | null
+          severity?: string
+          stack_trace?: string | null
+          test_generated?: boolean | null
+          test_id?: string | null
+          user_id?: string | null
+          user_request?: string
+        }
+        Relationships: []
       }
       generation_iterations: {
         Row: {
@@ -6692,6 +6811,53 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      test_execution_results: {
+        Row: {
+          actual_output: Json | null
+          duration_ms: number
+          environment: string
+          error_message: string | null
+          executed_at: string
+          expected_output: Json | null
+          id: string
+          passed: boolean
+          test_id: string
+          triggered_by: string
+        }
+        Insert: {
+          actual_output?: Json | null
+          duration_ms: number
+          environment?: string
+          error_message?: string | null
+          executed_at?: string
+          expected_output?: Json | null
+          id?: string
+          passed: boolean
+          test_id: string
+          triggered_by?: string
+        }
+        Update: {
+          actual_output?: Json | null
+          duration_ms?: number
+          environment?: string
+          error_message?: string | null
+          executed_at?: string
+          expected_output?: Json | null
+          id?: string
+          passed?: boolean
+          test_id?: string
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_execution_results_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "auto_generated_tests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       test_generation_requests: {
         Row: {
