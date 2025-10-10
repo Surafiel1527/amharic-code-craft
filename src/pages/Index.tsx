@@ -296,6 +296,23 @@ const Index = () => {
     setIsGenerating(true);
     
     try {
+      // Create or use active conversation
+      let conversationId = activeConversation;
+      if (!conversationId) {
+        const { data: newConversation, error: convError } = await supabase
+          .from("conversations")
+          .insert({
+            user_id: user.id,
+            title: prompt.substring(0, 100)
+          })
+          .select()
+          .single();
+        
+        if (convError) throw convError;
+        conversationId = newConversation.id;
+        setActiveConversation(conversationId);
+      }
+
       // Create project immediately with generating status
       const title = prompt.length > 50 ? prompt.substring(0, 50) + "..." : prompt;
       const { data: project, error: createError } = await supabase
@@ -331,6 +348,8 @@ const Index = () => {
         },
         body: { 
           request: prompt,
+          conversationId: conversationId, // Add conversationId
+          userId: user.id, // Add userId at root level
           requestType: 'website-generation',
           context: {
             userId: user.id,

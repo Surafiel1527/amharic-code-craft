@@ -20,6 +20,12 @@ export async function loadFileDependencies(
   supabase: any,
   conversationId: string
 ): Promise<FileInfo[]> {
+  // Gracefully handle undefined/null conversationId
+  if (!conversationId || !supabase) {
+    console.warn('⚠️ No conversationId or supabase client, returning empty dependencies');
+    return [];
+  }
+
   const { data: deps, error } = await supabase
     .from('component_dependencies')
     .select('*')
@@ -48,6 +54,12 @@ export async function storeFileDependency(
     criticality?: string;
   }
 ): Promise<void> {
+  // Gracefully handle undefined/null values
+  if (!data.conversationId || !supabase) {
+    console.warn('⚠️ Missing conversationId or supabase client, skipping dependency storage');
+    return;
+  }
+
   const { error } = await supabase
     .from('component_dependencies')
     .upsert({

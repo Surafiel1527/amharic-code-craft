@@ -29,6 +29,15 @@ export async function loadConversationHistory(
   loadFullHistory: boolean = false
 ): Promise<ConversationContext> {
   
+  // Gracefully handle undefined/null conversationId
+  if (!conversationId || !supabase) {
+    console.warn('⚠️ No conversationId or supabase client, returning empty context');
+    return {
+      recentTurns: [],
+      totalTurns: 0
+    };
+  }
+  
   // For intelligent Q&A, load full history (limited to last 50 for performance)
   const fetchLimit = loadFullHistory ? 50 : limit;
   
@@ -87,6 +96,12 @@ export async function storeConversationTurn(
     executionPlan?: any;
   }
 ): Promise<void> {
+  // Gracefully handle undefined/null values
+  if (!data.conversationId || !data.userId || !supabase) {
+    console.warn('⚠️ Missing required fields for conversation turn, skipping storage');
+    return;
+  }
+
   const { error } = await supabase
     .from('conversation_context_log')
     .insert({

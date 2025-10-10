@@ -34,13 +34,19 @@ export async function storeSuccessfulPattern(
   }
 ): Promise<void> {
   try {
+    // Gracefully handle undefined supabase client
+    if (!supabase) {
+      console.warn('⚠️ Supabase client not available, skipping pattern storage');
+      return;
+    }
+
     // Check if pattern already exists
     const { data: existing } = await supabase
       .from('learned_patterns')
       .select('*')
       .eq('pattern_name', data.patternName)
       .eq('category', data.category)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       // Update existing pattern (increment usage, update success rate)
@@ -86,6 +92,12 @@ export async function findRelevantPatterns(
   category?: string
 ): Promise<PatternMatch[]> {
   try {
+    // Gracefully handle undefined supabase client
+    if (!supabase) {
+      console.warn('⚠️ Supabase client not available, skipping pattern matching');
+      return [];
+    }
+
     const query = supabase
       .from('learned_patterns')
       .select('*')
