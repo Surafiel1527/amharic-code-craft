@@ -25,6 +25,8 @@ const Marketplace = lazy(() => import("./pages/Marketplace"));
 const ProjectsDashboard = lazy(() => import("./pages/ProjectsDashboard"));
 const SupabaseConnections = lazy(() => import("./pages/SupabaseConnections"));
 const IntelligenceHub = lazy(() => import("./pages/IntelligenceHub"));
+const PlatformAnalytics = lazy(() => import("./pages/PlatformAnalytics"));
+const AdminInsights = lazy(() => import("./pages/AdminInsights"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -58,6 +60,8 @@ const App = () => {
           <Route path="/projects" element={<ProjectsDashboard />} />
           <Route path="/supabase-connections" element={<SupabaseConnections />} />
           <Route path="/intelligence" element={<IntelligenceHub />} />
+          <Route path="/platform-analytics" element={<PlatformAnalytics />} />
+          <Route path="/admin/insights" element={<AdminInsights />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

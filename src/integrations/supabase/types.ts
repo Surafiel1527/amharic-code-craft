@@ -4992,6 +4992,102 @@ export type Database = {
           },
         ]
       }
+      platform_generation_stats: {
+        Row: {
+          complexity_score: number | null
+          conversation_id: string
+          created_at: string | null
+          error_message: string | null
+          error_type: string | null
+          feature_count: number | null
+          framework: string
+          generation_id: string | null
+          generation_time_ms: number | null
+          id: string
+          project_id: string | null
+          success: boolean
+          total_lines_generated: number | null
+          user_id: string
+        }
+        Insert: {
+          complexity_score?: number | null
+          conversation_id: string
+          created_at?: string | null
+          error_message?: string | null
+          error_type?: string | null
+          feature_count?: number | null
+          framework?: string
+          generation_id?: string | null
+          generation_time_ms?: number | null
+          id?: string
+          project_id?: string | null
+          success: boolean
+          total_lines_generated?: number | null
+          user_id: string
+        }
+        Update: {
+          complexity_score?: number | null
+          conversation_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          error_type?: string | null
+          feature_count?: number | null
+          framework?: string
+          generation_id?: string | null
+          generation_time_ms?: number | null
+          id?: string
+          project_id?: string | null
+          success?: boolean
+          total_lines_generated?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      platform_storage_metrics: {
+        Row: {
+          conversation_id: string | null
+          created_at: string | null
+          file_breakdown: Json | null
+          file_count: number
+          framework: string
+          generation_id: string | null
+          id: string
+          largest_file_bytes: number | null
+          largest_file_name: string | null
+          project_id: string | null
+          total_size_bytes: number
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string | null
+          file_breakdown?: Json | null
+          file_count?: number
+          framework?: string
+          generation_id?: string | null
+          id?: string
+          largest_file_bytes?: number | null
+          largest_file_name?: string | null
+          project_id?: string | null
+          total_size_bytes?: number
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string | null
+          file_breakdown?: Json | null
+          file_count?: number
+          framework?: string
+          generation_id?: string | null
+          id?: string
+          largest_file_bytes?: number | null
+          largest_file_name?: string | null
+          project_id?: string | null
+          total_size_bytes?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_tests: {
         Row: {
           created_at: string | null
@@ -7806,6 +7902,18 @@ export type Database = {
           total_uninstalls: number
         }[]
       }
+      get_platform_statistics: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          avg_generation_time_sec: number
+          most_popular_framework: string
+          success_rate: number
+          total_files_generated: number
+          total_generations: number
+          total_storage_gb: number
+          total_users: number
+        }[]
+      }
       get_privacy_audit: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -7813,6 +7921,17 @@ export type Database = {
           public_count: number
           table_name: string
           total_count: number
+        }[]
+      }
+      get_user_storage_summary: {
+        Args: { p_user_id: string }
+        Returns: {
+          avg_generation_size_kb: number
+          largest_project_mb: number
+          last_generated_at: string
+          total_files: number
+          total_projects: number
+          total_storage_mb: number
         }[]
       }
       has_role: {

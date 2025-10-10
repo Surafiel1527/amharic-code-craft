@@ -285,6 +285,7 @@ async function executeGeneration(ctx: {
   userSupabase: any;
   userSupabaseConnection: any;
   broadcast: (event: string, data: any) => Promise<void>;
+  startTime?: number;
 }): Promise<any> {
   const { 
     request, 
@@ -298,6 +299,9 @@ async function executeGeneration(ctx: {
     userSupabaseConnection,
     broadcast 
   } = ctx;
+  
+  // Track start time for metrics
+  const startTime = ctx.startTime || Date.now();
 
   // Step 1: Analyze request
   await broadcast('generation:thinking', { 
@@ -699,6 +703,41 @@ async function executeGeneration(ctx: {
     }
   }
 
+  // Step 11: Track storage and generation metrics
+  const generationEndTime = Date.now();
+  const generationTimeMs = generationEndTime - startTime;
+
+  // Import storage tracker
+  const { trackPlatformMetrics } = await import('../_shared/storageTracker.ts');
+  
+  // Prepare files object for tracking
+  const filesObject: Record<string, string> = {};
+  for (const file of generatedCode.files) {
+    filesObject[file.path] = file.content;
+  }
+
+  // Track both storage and generation metrics
+  const generationId = crypto.randomUUID();
+  await trackPlatformMetrics(platformSupabase, {
+    userId,
+    projectId: projectId || undefined,
+    conversationId,
+    generationId,
+    framework: generatedCode.framework,
+    files: filesObject,
+    generationMetrics: {
+      generationTimeMs,
+      success: validationResult.errors.length === 0,
+      featureCount: analysis.subTasks?.length || 1,
+      totalLinesGenerated: Object.values(filesObject).reduce((sum, content) => sum + content.split('\n').length, 0),
+      complexityScore: 0, // Will be calculated in tracker
+      errorType: validationResult.errors.length > 0 ? 'validation_error' : undefined,
+      errorMessage: validationResult.errors.join(', ')
+    }
+  });
+
+  console.log('📊 Platform metrics tracked successfully');
+
   return {
     success: true,
     files: generatedCode.files,
@@ -712,7 +751,12 @@ async function executeGeneration(ctx: {
       errors: autoFixResult.errors,
       warnings: autoFixResult.warnings
     },
-    backendSetup: analysis.backendRequirements
+    backendSetup: analysis.backendRequirements,
+    metrics: {
+      generationId,
+      generationTimeMs,
+      filesGenerated: generatedCode.files.length
+    }
   };
 }
 
