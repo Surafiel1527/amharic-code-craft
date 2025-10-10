@@ -60,14 +60,21 @@ serve(async (req) => {
       conversationId, 
       userId, 
       requestType = 'generation',
+      context = {},
       userSupabaseConnection 
     } = await req.json();
+
+    // Extract framework from context (default: react)
+    const framework = context.framework || 'react';
+    const projectId = context.projectId || null;
 
     console.log('🚀 Mega Mind Orchestrator started', { 
       request: request.substring(0, 100), 
       conversationId, 
       userId, 
-      requestType 
+      requestType,
+      framework,
+      projectId
     });
 
     // Initialize Supabase clients
@@ -112,6 +119,8 @@ serve(async (req) => {
       conversationId,
       userId,
       requestType,
+      framework, // Pass framework through
+      projectId, // Pass projectId through
       conversationContext,
       dependencies,
       platformSupabase,
@@ -158,6 +167,8 @@ async function processRequest(ctx: {
   conversationId: string;
   userId: string;
   requestType: string;
+  framework: string; // Add framework
+  projectId: string | null; // Add projectId
   conversationContext: any;
   dependencies: any[];
   platformSupabase: any;
@@ -169,7 +180,9 @@ async function processRequest(ctx: {
   const { 
     request, 
     conversationId, 
-    userId, 
+    userId,
+    framework,
+    projectId, 
     conversationContext,
     platformSupabase,
     userSupabase,
@@ -184,7 +197,7 @@ async function processRequest(ctx: {
     progress: 5 
   });
 
-  const analysis = await analyzeRequest(request, conversationContext, broadcast);
+  const analysis = await analyzeRequest(request, conversationContext, framework, broadcast);
   
   console.log('📊 Analysis complete:', JSON.stringify(analysis, null, 2));
 
@@ -390,33 +403,40 @@ async function processRequest(ctx: {
     const progressiveBuilder = new ProgressiveBuilder();
     const phaseResults = await progressiveBuilder.buildInPhases(analysis._implementationPlan);
     
+    // Map file language based on framework
+    const fileLanguage = framework === 'html' ? 'html' : 
+                        framework === 'vue' ? 'vue' : 
+                        'typescript';
+    
     const allFiles = phaseResults
       .filter(r => r.success)
       .flatMap(r => r.filesGenerated.map(path => ({
         path,
         content: '', // Would be actual generated content
-        language: 'typescript',
+        language: fileLanguage,
         imports: []
       })));
 
     generatedCode = {
       files: allFiles,
-      description: `Generated ${allFiles.length} files in ${phaseResults.length} phases`
+      description: `Generated ${allFiles.length} ${framework.toUpperCase()} files in ${phaseResults.length} phases`,
+      framework // Store framework info
     };
 
-    await broadcast('generation:progressive_complete', {
+  await broadcast('generation:progressive_complete', {
       status: 'success',
-      message: `✅ Built ${phaseResults.length} phases with ${allFiles.length} files`,
+      message: `✅ Built ${phaseResults.length} phases with ${allFiles.length} ${framework.toUpperCase()} files`,
       progress: 65,
       details: {
         phases: phaseResults.length,
         files: allFiles.length,
+        framework,
         failedPhases: phaseResults.filter(r => !r.success).length
       }
     });
   } else {
     // Standard code generation for smaller apps
-    generatedCode = await generateCode(analysis, request, broadcast);
+    generatedCode = await generateCode(analysis, request, framework, broadcast);
   }
 
   // Step 5: AUTO-FIX - Validate and fix code automatically
@@ -503,9 +523,34 @@ async function processRequest(ctx: {
     progress: 90 
   });
 
+  // Step 8: Update project with generated code (if projectId provided)
+  if (projectId && generatedCode.files.length > 0) {
+    console.log(`📝 Updating project ${projectId} with ${framework} code`);
+    
+    // Combine all files into html_code field for storage
+    const combinedCode = generatedCode.files.map((f: any) => 
+      `<!-- File: ${f.path} -->\n${f.content}`
+    ).join('\n\n');
+    
+    const { error: updateError } = await platformSupabase
+      .from('projects')
+      .update({
+        html_code: combinedCode,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', projectId);
+    
+    if (updateError) {
+      console.error('❌ Failed to update project:', updateError);
+    } else {
+      console.log('✅ Project updated successfully');
+    }
+  }
+
   return {
     success: true,
     files: generatedCode.files,
+    framework, // Include framework in response
     analysis,
     autoFix: {
       success: autoFixResult.success,
@@ -523,7 +568,8 @@ async function processRequest(ctx: {
  */
 async function analyzeRequest(
   request: string, 
-  context: any, 
+  context: any,
+  framework: string, 
   broadcast: any
 ): Promise<any> {
   
@@ -555,7 +601,14 @@ async function analyzeRequest(
     { outputType: 'react-app', mainGoal: request, subTasks: [] }
   );
 
-  console.log(`✅ Analysis completed with ${result.modelUsed}${result.wasFallback ? ' (fallback)' : ''}`);
+  // ✅ CRITICAL: Map framework to outputType - ensures HTML gets same features as React
+  analysis.outputType = framework === 'html' ? 'html-website' : 
+                        framework === 'vue' ? 'vue-app' : 
+                        'react-app';
+  
+  analysis.framework = framework; // Store for later use
+
+  console.log(`✅ Analysis completed with ${result.modelUsed}${result.wasFallback ? ' (fallback)' : ''} - Framework: ${framework} → ${analysis.outputType}`);
   
   return analysis;
 }
@@ -680,16 +733,24 @@ ${context.dependencies.slice(0, 10).map((d: any) =>
  */
 async function generateCode(
   analysis: any, 
-  originalRequest: string, 
+  originalRequest: string,
+  framework: string, 
   broadcast: any
 ): Promise<any> {
   
-  const prompt = buildWebsitePrompt(originalRequest, analysis);
+  // Build framework-specific prompt
+  const frameworkContext = framework === 'html' 
+    ? 'Generate production-ready HTML/CSS/JavaScript code using modern vanilla JS, responsive design, and best practices.' 
+    : framework === 'vue'
+    ? 'Generate production-ready Vue 3 code with Composition API, TypeScript, and modern Vue best practices.'
+    : 'Generate production-ready React code with TypeScript, hooks, and modern React best practices.';
+
+  const prompt = `${frameworkContext}\n\n${buildWebsitePrompt(originalRequest, analysis)}`;
 
   const result = await callAIWithFallback(
     [{ role: 'user', content: prompt }],
     {
-      systemPrompt: 'You are an expert web developer. Generate clean, production-ready code.',
+      systemPrompt: `You are an expert ${framework === 'html' ? 'vanilla JavaScript' : framework} developer. Generate clean, production-ready code.`,
       preferredModel: 'google/gemini-2.5-flash',
       maxTokens: 8000
     }
@@ -698,7 +759,7 @@ async function generateCode(
   const generatedCode = result.data.choices[0].message.content;
 
   // Parse generated files
-  const files = parseGeneratedCode(generatedCode, analysis);
+  const files = parseGeneratedCode(generatedCode, analysis, framework);
 
   return { files, modelUsed: result.modelUsed };
 }
@@ -706,25 +767,37 @@ async function generateCode(
 /**
  * Parse AI-generated code into structured files
  */
-function parseGeneratedCode(code: string, analysis: any): any[] {
-  // Simple parser - in production, this would be more sophisticated
+function parseGeneratedCode(code: string, analysis: any, framework: string): any[] {
+  // Framework-agnostic parser - works for HTML, React, and Vue equally
   const files = [];
 
-  if (analysis.outputType === 'html-website') {
-    files.push({
+  // Map framework to appropriate file structure
+  const fileConfigs: Record<string, { path: string; language: string; imports: string[] }> = {
+    html: {
       path: 'index.html',
-      content: code,
       language: 'html',
       imports: []
-    });
-  } else if (analysis.outputType === 'react-app') {
-    files.push({
+    },
+    react: {
       path: 'src/App.tsx',
-      content: code,
       language: 'typescript',
       imports: ['react']
-    });
-  }
+    },
+    vue: {
+      path: 'src/App.vue',
+      language: 'vue',
+      imports: ['vue']
+    }
+  };
+
+  const config = fileConfigs[framework] || fileConfigs.react;
+
+  files.push({
+    path: config.path,
+    content: code,
+    language: config.language,
+    imports: config.imports
+  });
 
   return files;
 }
