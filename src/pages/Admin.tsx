@@ -16,7 +16,8 @@ import { ArrowLeft, Users, FileText, MessageSquare, Shield, Brain, Sparkles, Log
 import { toast } from "sonner";
 import { AIAnalytics } from "@/components/AIAnalytics";
 import { NotificationCenter } from "@/components/NotificationCenter";
-import { SelfHealingMonitor } from "@/components/SelfHealingMonitor";
+import SelfHealingDashboard from "@/components/self-healing/SelfHealingDashboard";
+import AutonomousLearningPanel from "@/components/self-healing/AutonomousLearningPanel";
 import { ProductionTestingDashboard } from "@/components/ProductionTestingDashboard";
 import AdminSelfModifyChat from "@/components/AdminSelfModifyChat";
 import AdminCustomizationsList from "@/components/AdminCustomizationsList";
@@ -550,32 +551,8 @@ function AdminContent() {
 
           <TabsContent value="healing">
             <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="w-5 h-5" />
-                    {t("adminPage.selfHealingTitle")}
-                  </CardTitle>
-                  <CardDescription>
-                    {t("adminPage.selfHealingDesc")}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex gap-2">
-                    <DynamicComponent name="Button-TestSuite">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => navigate("/ai-test")}
-                        className="gap-2"
-                      >
-                        <Brain className="w-4 h-4" />
-                        Open Test Suite
-                      </Button>
-                    </DynamicComponent>
-                  </div>
-                </CardContent>
-              </Card>
-              <SelfHealingMonitor />
+              <SelfHealingDashboard />
+              <AutonomousLearningPanel />
               <ProductionTestingDashboard />
             </div>
           </TabsContent>
