@@ -3602,11 +3602,13 @@ export type Database = {
           generated_code: string
           generation_time_ms: number | null
           id: string
-          model_used: string
+          metadata: Json | null
+          model_used: string | null
           modifications_made: string | null
           project_id: string | null
           prompt_version: string
           status: Database["public"]["Enums"]["generation_status"]
+          success: boolean | null
           system_prompt: string
           time_to_accept_seconds: number | null
           tokens_used: number | null
@@ -3614,6 +3616,7 @@ export type Database = {
           user_id: string | null
           user_modified: boolean | null
           user_prompt: string
+          user_request: string | null
           user_satisfaction_score: number | null
         }
         Insert: {
@@ -3628,11 +3631,13 @@ export type Database = {
           generated_code: string
           generation_time_ms?: number | null
           id?: string
-          model_used: string
+          metadata?: Json | null
+          model_used?: string | null
           modifications_made?: string | null
           project_id?: string | null
           prompt_version?: string
           status: Database["public"]["Enums"]["generation_status"]
+          success?: boolean | null
           system_prompt: string
           time_to_accept_seconds?: number | null
           tokens_used?: number | null
@@ -3640,6 +3645,7 @@ export type Database = {
           user_id?: string | null
           user_modified?: boolean | null
           user_prompt: string
+          user_request?: string | null
           user_satisfaction_score?: number | null
         }
         Update: {
@@ -3654,11 +3660,13 @@ export type Database = {
           generated_code?: string
           generation_time_ms?: number | null
           id?: string
-          model_used?: string
+          metadata?: Json | null
+          model_used?: string | null
           modifications_made?: string | null
           project_id?: string | null
           prompt_version?: string
           status?: Database["public"]["Enums"]["generation_status"]
+          success?: boolean | null
           system_prompt?: string
           time_to_accept_seconds?: number | null
           tokens_used?: number | null
@@ -3666,6 +3674,7 @@ export type Database = {
           user_id?: string | null
           user_modified?: boolean | null
           user_prompt?: string
+          user_request?: string | null
           user_satisfaction_score?: number | null
         }
         Relationships: [

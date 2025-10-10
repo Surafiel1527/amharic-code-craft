@@ -742,103 +742,106 @@ async function executeGeneration(ctx: {
     }
   }
 
-  // Step 11: Track storage and generation metrics (NON-FATAL)
+  // Step 11: Complete ALL operations with proper sequencing and timeouts
   const generationEndTime = Date.now();
   const generationTimeMs = generationEndTime - startTime;
   const generationId = crypto.randomUUID();
 
-  // ✅ FIX 3: Make analytics tracking non-fatal
-  try {
-    // Import storage tracker
-    const { trackPlatformMetrics } = await import('../_shared/storageTracker.ts');
-    
-    // Prepare files object for tracking
-    const filesObject: Record<string, string> = {};
-    for (const file of generatedCode.files) {
-      filesObject[file.path] = file.content;
+  // ✅ ENTERPRISE FIX: Use Promise.allSettled to wait for ALL operations
+  // None of these should block completion, but we wait for them to finish or timeout
+  console.log('📊 Finalizing all operations (with timeouts)...');
+  
+  const finalOperations = await Promise.allSettled([
+    // Operation 1: Track platform metrics (10s timeout)
+    Promise.race([
+      (async () => {
+        const { trackPlatformMetrics } = await import('../_shared/storageTracker.ts');
+        const filesObject: Record<string, string> = {};
+        for (const file of generatedCode.files) {
+          filesObject[file.path] = file.content;
+        }
+        await trackPlatformMetrics(platformSupabase, {
+          userId,
+          projectId: projectId || undefined,
+          conversationId,
+          generationId,
+          framework: generatedCode.framework,
+          files: filesObject,
+          generationMetrics: {
+            generationTimeMs,
+            success: validationResult.errors.length === 0,
+            featureCount: analysis.subTasks?.length || 1,
+            totalLinesGenerated: Object.values(filesObject).reduce((sum, content) => sum + content.split('\n').length, 0),
+            complexityScore: 0,
+            errorType: validationResult.errors.length > 0 ? 'validation_error' : undefined,
+            errorMessage: validationResult.errors.join(', ')
+          }
+        });
+        console.log('✅ Platform metrics tracked');
+      })(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Metrics timeout after 10s')), 10000))
+    ]),
+
+    // Operation 2: Store pattern (5s timeout)
+    Promise.race([
+      (async () => {
+        if (generatedCode.files.length > 0) {
+          await storeSuccessfulPattern(platformSupabase, {
+            category: analysis.outputType,
+            patternName: `${analysis.mainGoal} pattern`,
+            useCase: request,
+            codeTemplate: JSON.stringify(generatedCode.files[0]),
+            context: { 
+              analysis,
+              framework: generatedCode.framework,
+              autoFix: {
+                success: autoFixResult.success,
+                attempts: autoFixResult.totalAttempts,
+                fixedTypes: autoFixResult.fixedErrorTypes
+              }
+            }
+          });
+          console.log('✅ Pattern stored');
+        }
+      })(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Pattern timeout after 5s')), 5000))
+    ]),
+
+    // Operation 3: Store dependencies (8s timeout for all files)
+    Promise.race([
+      (async () => {
+        for (const file of generatedCode.files) {
+          await storeFileDependency(platformSupabase, {
+            conversationId,
+            componentName: file.path,
+            componentType: file.path.match(/\.(tsx|ts|jsx|js)$/) ? 'component' : 'file',
+            dependsOn: file.imports || [],
+            usedBy: [],
+            complexityScore: Math.floor(file.content.length / 100),
+            criticality: 'medium'
+          });
+        }
+        console.log('✅ Dependencies stored');
+      })(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Dependencies timeout after 8s')), 8000))
+    ])
+  ]);
+
+  // Log results of all operations
+  finalOperations.forEach((result, index) => {
+    const opNames = ['Metrics', 'Pattern', 'Dependencies'];
+    if (result.status === 'rejected') {
+      console.warn(`⚠️ ${opNames[index]} operation failed: ${result.reason}`);
     }
+  });
 
-    // Track both storage and generation metrics
-    await trackPlatformMetrics(platformSupabase, {
-      userId,
-      projectId: projectId || undefined,
-      conversationId,
-      generationId,
-      framework: generatedCode.framework,
-      files: filesObject,
-      generationMetrics: {
-        generationTimeMs,
-        success: validationResult.errors.length === 0,
-        featureCount: analysis.subTasks?.length || 1,
-        totalLinesGenerated: Object.values(filesObject).reduce((sum, content) => sum + content.split('\n').length, 0),
-        complexityScore: 0, // Will be calculated in tracker
-        errorType: validationResult.errors.length > 0 ? 'validation_error' : undefined,
-        errorMessage: validationResult.errors.join(', ')
-      }
-    });
-
-    console.log('📊 Platform metrics tracked successfully');
-  } catch (error) {
-    console.error('⚠️ Analytics tracking failed (non-fatal):', error);
-    // Don't throw - analytics failure shouldn't block user success
-  }
-
-  // ✅ FIX 4: Always broadcast 100% completion BEFORE return
+  // ✅ NOW broadcast 100% - everything is done or timed out
   await updateJobProgress(100, 'Completed', []);
   await broadcast('generation:complete', {
     status: 'complete',
     message: '✅ Generation complete!',
     progress: 100
   });
-
-  // 🔥 NEW: Non-critical operations wrapped in try-catch
-  // These won't block completion if they fail
-  try {
-    console.log('📊 Storing patterns and dependencies (non-critical)');
-
-    // Store successful pattern (best effort)
-    if (generatedCode.files.length > 0) {
-      await Promise.race([
-        storeSuccessfulPattern(platformSupabase, {
-          category: analysis.outputType,
-          patternName: `${analysis.mainGoal} pattern`,
-          useCase: request,
-          codeTemplate: JSON.stringify(generatedCode.files[0]),
-          context: { 
-            analysis,
-            framework: generatedCode.framework,
-            autoFix: {
-              success: autoFixResult.success,
-              attempts: autoFixResult.totalAttempts,
-              fixedTypes: autoFixResult.fixedErrorTypes
-            }
-          }
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Pattern storage timeout')), 5000))
-      ]);
-    }
-
-    // Store file dependencies (best effort, with timeout per file)
-    for (const file of generatedCode.files) {
-      await Promise.race([
-        storeFileDependency(platformSupabase, {
-          conversationId,
-          componentName: file.path,
-          componentType: file.path.match(/\.(tsx|ts|jsx|js)$/) ? 'component' : 'file',
-          dependsOn: file.imports || [],
-          usedBy: [],
-          complexityScore: Math.floor(file.content.length / 100),
-          criticality: 'medium'
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Dependency storage timeout')), 2000))
-      ]);
-    }
-
-    console.log('✅ Patterns and dependencies stored successfully');
-  } catch (error) {
-    console.error('⚠️ Pattern/dependency storage failed (non-fatal):', error);
-    // Don't throw - user already has their files
-  }
 
   return {
     success: true,

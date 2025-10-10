@@ -145,21 +145,99 @@ export async function autoFixCode(
 
     result.attempts.push(attempt);
 
-    // If no fix was applied, break early
+    // ✅ IMPROVED: Don't give up on first failure - try different strategies  
     if (!attempt.fixApplied) {
-      console.log('⚠️ Unable to apply fixes, stopping retry loop');
-      break;
+      console.log(`⚠️ No progress in attempt ${attemptNumber}, errors persist`);
+      
+      // If we're on our last attempt, try aggressive fallback fixes
+      if (attemptNumber === maxAttempts) {
+        console.log('🔥 Last attempt - trying aggressive fallback fixes');
+        
+        try {
+          const aggressiveFixed = applyAggressiveFixes(currentFiles, allErrors);
+          if (aggressiveFixed.some((f, i) => f.content !== currentFiles[i].content)) {
+            currentFiles = aggressiveFixed;
+            result.fixed = true;
+            result.fixedErrorTypes.push('aggressive_fallback');
+            attempt.fixApplied = true;
+            attempt.fixDescription = 'Applied aggressive fallback fixes';
+            console.log('✅ Aggressive fixes applied');
+          }
+        } catch (error) {
+          console.error('⚠️ Aggressive fix failed:', error);
+        }
+      }
     }
   }
 
   result.fixedFiles = currentFiles;
   
-  if (!result.success) {
-    console.log(`❌ Failed to fix code after ${attemptNumber} attempts`);
-    result.errors = validateAllFiles(currentFiles).syntaxErrors;
+  // Final validation
+  const finalValidation = validateAllFiles(currentFiles);
+  if (finalValidation.isValid) {
+    result.success = true;
+    result.warnings = finalValidation.warnings;
+    console.log(`✅ Code fixed after ${attemptNumber} attempts`);
+  } else {
+    result.success = false;
+    result.errors = [
+      ...finalValidation.syntaxErrors,
+      ...finalValidation.importErrors,
+      ...finalValidation.typeErrors,
+      ...finalValidation.structureErrors
+    ];
+    console.log(`❌ Code still has errors after ${attemptNumber} attempts`);
   }
 
   return result;
+}
+
+/**
+ * Apply aggressive fallback fixes when normal fixing fails
+ */
+function applyAggressiveFixes(
+  files: CodeFile[],
+  errors: string[]
+): CodeFile[] {
+  const errorText = errors.join(' ').toLowerCase();
+  
+  return files.map(file => {
+    let content = file.content;
+    
+    // Fix CSS unbalanced braces by auto-balancing
+    if (file.language === 'css' && errorText.includes('brace')) {
+      const openBraces = (content.match(/\{/g) || []).length;
+      const closeBraces = (content.match(/\}/g) || []).length;
+      
+      if (openBraces > closeBraces) {
+        // Add missing closing braces
+        content += '\n' + '}'.repeat(openBraces - closeBraces);
+        console.log(`🔧 Added ${openBraces - closeBraces} missing closing braces to ${file.path}`);
+      } else if (closeBraces > openBraces) {
+        // Remove extra closing braces from end
+        const toRemove = closeBraces - openBraces;
+        for (let i = 0; i < toRemove; i++) {
+          content = content.replace(/\}\s*$/, '');
+        }
+        console.log(`🔧 Removed ${toRemove} extra closing braces from ${file.path}`);
+      }
+    }
+    
+    // Fix HTML unclosed tags
+    if (file.language === 'html' && errorText.includes('unclosed')) {
+      const unclosedTags = ['div', 'span', 'p', 'section', 'main', 'nav', 'header', 'footer'];
+      unclosedTags.forEach(tag => {
+        const openCount = (content.match(new RegExp(`<${tag}[^>]*>`, 'g')) || []).length;
+        const closeCount = (content.match(new RegExp(`</${tag}>`, 'g')) || []).length;
+        if (openCount > closeCount) {
+          content += '\n' + `</${tag}>`.repeat(openCount - closeCount);
+          console.log(`🔧 Closed ${openCount - closeCount} unclosed <${tag}> tags`);
+        }
+      });
+    }
+    
+    return { ...file, content };
+  });
 }
 
 /**
