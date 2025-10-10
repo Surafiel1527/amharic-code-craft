@@ -387,16 +387,27 @@ async function processRequest(ctx: {
   let generatedCode;
   
   // ========== PHASE 3: PROGRESSIVE IMPLEMENTATION ==========
-  // For large apps (100+ files), use progressive building
-  const estimatedFileCount = analysis._orchestrationPlan?.totalFiles || 
+  /**
+   * Threshold-based generation strategy:
+   * - Small projects (< 5 files): Single AI call for speed (e.g., simple landing pages)
+   * - Complex projects (>= 5 files): ProgressiveBuilder with full context
+   *   - Breaks into phases (max 20 files/phase)
+   *   - Each file generated with complete app context
+   *   - Validates each phase before continuing
+   * 
+   * Why 5 files? Analysis showed social media app = 20 files, would fail with single call.
+   * ProgressiveBuilder already has full context (originalRequest + analysis) from our fixes.
+   */
+  const estimatedFileCount = analysis.estimatedFiles || 
+                            analysis._orchestrationPlan?.totalFiles || 
                             (analysis.backendRequirements?.databaseTables?.length || 0) * 3;
   
-  if (estimatedFileCount >= 100 && analysis._implementationPlan) {
+  if (estimatedFileCount >= 5 && analysis._implementationPlan) {
     console.log('🏗️ Progressive build: breaking into phases for', estimatedFileCount, 'files');
     
     await broadcast('generation:progressive', {
       status: 'progressive',
-      message: `Building large app progressively (${estimatedFileCount} files)...`,
+      message: `Building app with ${estimatedFileCount} files in validated phases...`,
       progress: 52
     });
 
@@ -426,7 +437,7 @@ async function processRequest(ctx: {
 
   await broadcast('generation:progressive_complete', {
       status: 'success',
-      message: `✅ Built ${phaseResults.length} phases with ${allFiles.length} ${framework.toUpperCase()} files`,
+      message: `✅ Built ${phaseResults.length} phases with ${allFiles.length} files`,
       progress: 65,
       details: {
         phases: phaseResults.length,
@@ -436,7 +447,7 @@ async function processRequest(ctx: {
       }
     });
   } else {
-    // Standard code generation for smaller apps
+    // Simple code generation for small apps (< 5 files)
     generatedCode = await generateCode(analysis, request, framework, broadcast);
   }
 
