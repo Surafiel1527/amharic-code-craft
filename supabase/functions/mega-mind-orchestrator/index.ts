@@ -654,38 +654,6 @@ async function executeGeneration(ctx: {
   // ✅ FIX 2: Update progress - Auto-fix complete
   await updateJobProgress(90, 'Auto-fix complete', []);
 
-  // Step 7: Learn from success
-  if (generatedCode.files.length > 0) {
-    await storeSuccessfulPattern(platformSupabase, {
-      category: analysis.outputType,
-      patternName: `${analysis.mainGoal} pattern`,
-      useCase: request,
-      codeTemplate: JSON.stringify(generatedCode.files[0]),
-      context: { 
-        analysis,
-        framework: generatedCode.framework,
-        autoFix: {
-          success: autoFixResult.success,
-          attempts: autoFixResult.totalAttempts,
-          fixedTypes: autoFixResult.fixedErrorTypes
-        }
-      }
-    });
-  }
-
-  // Step 8: Store file dependencies
-  for (const file of generatedCode.files) {
-    await storeFileDependency(platformSupabase, {
-      conversationId,
-      componentName: file.path,
-      componentType: file.path.match(/\.(tsx|ts|jsx|js)$/) ? 'component' : 'file',
-      dependsOn: file.imports || [],
-      usedBy: [],
-      complexityScore: Math.floor(file.content.length / 100),
-      criticality: 'medium'
-    });
-  }
-
   await broadcast('generation:finalizing', { 
     status: 'finalizing', 
     message: '📦 Packaging your project...', 
@@ -780,6 +748,55 @@ async function executeGeneration(ctx: {
     message: '✅ Generation complete!',
     progress: 100
   });
+
+  // 🔥 NEW: Non-critical operations wrapped in try-catch
+  // These won't block completion if they fail
+  try {
+    console.log('📊 Storing patterns and dependencies (non-critical)');
+
+    // Store successful pattern (best effort)
+    if (generatedCode.files.length > 0) {
+      await Promise.race([
+        storeSuccessfulPattern(platformSupabase, {
+          category: analysis.outputType,
+          patternName: `${analysis.mainGoal} pattern`,
+          useCase: request,
+          codeTemplate: JSON.stringify(generatedCode.files[0]),
+          context: { 
+            analysis,
+            framework: generatedCode.framework,
+            autoFix: {
+              success: autoFixResult.success,
+              attempts: autoFixResult.totalAttempts,
+              fixedTypes: autoFixResult.fixedErrorTypes
+            }
+          }
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Pattern storage timeout')), 5000))
+      ]);
+    }
+
+    // Store file dependencies (best effort, with timeout per file)
+    for (const file of generatedCode.files) {
+      await Promise.race([
+        storeFileDependency(platformSupabase, {
+          conversationId,
+          componentName: file.path,
+          componentType: file.path.match(/\.(tsx|ts|jsx|js)$/) ? 'component' : 'file',
+          dependsOn: file.imports || [],
+          usedBy: [],
+          complexityScore: Math.floor(file.content.length / 100),
+          criticality: 'medium'
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Dependency storage timeout')), 2000))
+      ]);
+    }
+
+    console.log('✅ Patterns and dependencies stored successfully');
+  } catch (error) {
+    console.error('⚠️ Pattern/dependency storage failed (non-fatal):', error);
+    // Don't throw - user already has their files
+  }
 
   return {
     success: true,
