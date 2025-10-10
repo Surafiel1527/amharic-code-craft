@@ -146,6 +146,58 @@ export default function Workspace() {
     setShowConversations(false);
   };
 
+  // 🆕 AUTO-DIAGNOSIS: Check for failed jobs and run diagnosis automatically
+  const checkAndRunDiagnosis = async (conversationId: string) => {
+    if (!conversationId) return;
+    
+    try {
+      // Check if there's a failed job for this conversation that hasn't been diagnosed
+      const { data: failedJob } = await supabase
+        .from('ai_generation_jobs')
+        .select('id, status, diagnostic_run, error_message, input_data')
+        .eq('conversation_id', conversationId)
+        .eq('status', 'failed')
+        .eq('diagnostic_run', false)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (failedJob) {
+        console.log('🔍 Found failed job without diagnosis, triggering auto-diagnosis...', failedJob.id);
+        
+        // Show a toast to let user know we're analyzing
+        toast.info("🔍 Analyzing what went wrong...", {
+          duration: 3000
+        });
+        
+        // Call the unified-healing-engine to run conversational diagnosis
+        const { data: { user } } = await supabase.auth.getUser();
+        const response = await supabase.functions.invoke('unified-healing-engine', {
+          body: {
+            operation: 'conversational_diagnosis',
+            params: {
+              jobId: failedJob.id,
+              conversationId,
+              errorMessage: failedJob.error_message,
+              context: failedJob.input_data
+            }
+          }
+        });
+        
+        if (response.error) {
+          console.error('❌ Auto-diagnosis failed:', response.error);
+          // Still show the conversation even if diagnosis fails
+        } else {
+          console.log('✅ Auto-diagnosis completed:', response.data);
+          toast.success("✅ Analysis complete! Check the chat for details.");
+        }
+      }
+    } catch (error) {
+      console.error('Error in auto-diagnosis:', error);
+      // Don't block workspace loading if diagnosis fails
+    }
+  };
+
   const handleRestoreVersion = async (htmlCode: string) => {
     if (!project) return;
     
@@ -283,6 +335,9 @@ export default function Workspace() {
 
       if (convId) {
         setConversationId(convId);
+        
+        // 🆕 AUTO-DIAGNOSIS: Check if there's a failed job that needs diagnosis
+        await checkAndRunDiagnosis(convId);
       }
       
       // Load all conversations for this project
@@ -560,8 +615,9 @@ export default function Workspace() {
     );
   }
 
-  // Show generating state with live progress
-  if (isGenerating || (project && !project.html_code)) {
+  // 🆕 ONLY show generating progress if actively generating, not if failed
+  // This allows users to access workspace for failed projects to see diagnosis and fix
+  if (isGenerating) {
     return (
       <div className="min-h-screen bg-background">
         <LiveGenerationProgress 
