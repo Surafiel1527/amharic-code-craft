@@ -217,6 +217,9 @@ export type Database = {
           conversation_id: string | null
           created_at: string
           current_step: string | null
+          diagnostic_explanation: string | null
+          diagnostic_fixes: Json | null
+          diagnostic_run: boolean | null
           error_message: string | null
           estimated_completion_at: string | null
           id: string
@@ -241,6 +244,9 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string
           current_step?: string | null
+          diagnostic_explanation?: string | null
+          diagnostic_fixes?: Json | null
+          diagnostic_run?: boolean | null
           error_message?: string | null
           estimated_completion_at?: string | null
           id?: string
@@ -265,6 +271,9 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string
           current_step?: string | null
+          diagnostic_explanation?: string | null
+          diagnostic_fixes?: Json | null
+          diagnostic_run?: boolean | null
           error_message?: string | null
           estimated_completion_at?: string | null
           id?: string

@@ -178,6 +178,36 @@ serve(async (req) => {
         }
       }
       
+      // 🆕 PHASE 1: Trigger conversational diagnosis
+      try {
+        console.log('🔍 Triggering conversational diagnosis...');
+        const { data: job } = await platformSupabase
+          .from('ai_generation_jobs')
+          .select('id')
+          .eq('conversation_id', conversationId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (job) {
+          await platformSupabase.functions.invoke('unified-healing-engine', {
+            body: {
+              operation: 'conversational_diagnosis',
+              params: {
+                jobId: job.id,
+                conversationId,
+                errorMessage: error.message,
+                stackTrace: extractStackTrace(error),
+                context: { framework, projectId }
+              }
+            }
+          });
+          console.log('✅ Conversational diagnosis triggered');
+        }
+      } catch (diagError) {
+        console.error('❌ Diagnosis failed:', diagError);
+      }
+      
       await broadcast('generation:failed', {
         status: 'error',
         error: error.message || 'Unknown error occurred',
