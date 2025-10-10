@@ -678,3 +678,135 @@ ${fixData.files.map((f: any) => `- ${f.path}`).join('\n')}
     filesModified: fixData.files.length
   };
 }
+
+/**
+ * Handle autonomous fix with AGI decision-making
+ * Analyzes context and decides whether to auto-apply or suggest fix
+ */
+async function handleAutonomousFix(
+  data: any,
+  supabase: SupabaseClient,
+  requestId: string
+): Promise<any> {
+  const { jobId, conversationId, userId, errorMessage, errorType } = data;
+
+  try {
+    // Analyze context
+    const contextAnalysis = await analyzeContext(
+      supabase,
+      conversationId,
+      userId,
+      errorMessage
+    );
+
+    // Check for learned patterns
+    const { data: patterns } = await supabase
+      .from('universal_error_patterns')
+      .select('*')
+      .eq('error_type', errorType)
+      .gte('confidence_score', 0.7)
+      .order('confidence_score', { ascending: false })
+      .limit(1);
+
+    const hasLearnedPattern = patterns && patterns.length > 0;
+
+    // Make intelligent decision
+    const decision = makeIntelligentDecision(
+      contextAnalysis,
+      'medium',
+      hasLearnedPattern
+    );
+
+    console.log('AGI Decision:', decision);
+
+    // Execute based on decision
+    if (decision.action === 'auto_fix' && hasLearnedPattern) {
+      // Auto-apply the fix
+      const pattern = patterns[0];
+      
+      await supabase
+        .from('ai_generation_jobs')
+        .update({
+          status: 'processing',
+          current_step: 'auto_fixing',
+          output_data: {
+            auto_fix_applied: true,
+            pattern_used: pattern.pattern_name,
+            confidence: decision.confidence,
+            reasoning: decision.reasoning
+          }
+        })
+        .eq('id', jobId);
+
+      // Insert message explaining the auto-fix
+      await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          role: 'assistant',
+          content: `🤖 **Autonomous Fix Applied**
+
+I detected a known issue and applied a fix automatically based on learned patterns.
+
+**Issue:** ${errorMessage}
+
+**Fix Applied:** ${pattern.fix_approach}
+
+**Confidence:** ${(decision.confidence * 100).toFixed(0)}%
+
+**Reasoning:** ${decision.reasoning}
+
+The system will now retry the operation with the fix applied.`
+        });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          action: 'auto_fix',
+          pattern: pattern.pattern_name,
+          confidence: decision.confidence
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else {
+      // Suggest fix to user
+      await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          role: 'assistant',
+          content: `🤔 **Fix Suggestion**
+
+I've analyzed the issue but need your confirmation before proceeding.
+
+**Issue:** ${errorMessage}
+
+**Suggested Approach:** ${decision.suggestedApproach || 'Manual investigation recommended'}
+
+**Confidence:** ${(decision.confidence * 100).toFixed(0)}%
+
+**Reasoning:** ${decision.reasoning}
+
+${decision.alternativeApproaches ? `\n**Alternative Approaches:**\n${decision.alternativeApproaches.map((a: string, i: number) => `${i + 1}. ${a}`).join('\n')}` : ''}
+
+Would you like me to ${decision.action === 'suggest_fix' ? 'apply this fix' : 'proceed with one of these approaches'}?`
+        });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          action: decision.action,
+          confidence: decision.confidence,
+          requiresUserInput: decision.requiresUserInput
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+  } catch (error: any) {
+    console.error('Autonomous fix error:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
