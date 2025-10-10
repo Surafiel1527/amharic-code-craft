@@ -85,7 +85,8 @@ export class RollbackManager {
             filesDeleted++;
           }
         } catch (error) {
-          errors.push(`Failed to rollback ${file.path}: ${error.message}`);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          errors.push(`Failed to rollback ${file.path}: ${errorMessage}`);
         }
       }
 
@@ -93,7 +94,8 @@ export class RollbackManager {
       try {
         await this.rollbackDatabase(rollbackPoint.databaseState);
       } catch (error) {
-        errors.push(`Database rollback error: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        errors.push(`Database rollback error: ${errorMessage}`);
       }
 
       // Clear rollback point
@@ -102,7 +104,8 @@ export class RollbackManager {
       console.log(`Rolled back phase ${phaseId}: ${filesRestored} restored, ${filesDeleted} deleted`);
 
     } catch (error) {
-      errors.push(`Rollback failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      errors.push(`Rollback failed: ${errorMessage}`);
     }
 
     return {

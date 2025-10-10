@@ -48,7 +48,8 @@ export class IntegrationTester {
         warnings.push(...result.warnings);
       } catch (error) {
         allPassed = false;
-        errors.push(`Test "${test.name}" failed: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        errors.push(`Test "${test.name}" failed: ${errorMessage}`);
       }
     }
 

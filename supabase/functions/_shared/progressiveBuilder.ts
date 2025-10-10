@@ -196,7 +196,8 @@ export class ProgressiveBuilder {
           // File would be generated here
           filesGenerated.push(file.path);
         } catch (error) {
-          errors.push(`Failed to generate ${file.path}: ${error.message}`);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          errors.push(`Failed to generate ${file.path}: ${errorMessage}`);
         }
       }
 
@@ -215,7 +216,8 @@ export class ProgressiveBuilder {
       }
 
     } catch (error) {
-      errors.push(`Phase build error: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      errors.push(`Phase build error: ${errorMessage}`);
     }
 
     return {

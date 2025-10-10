@@ -5,8 +5,6 @@
  * relationships, indexes, and triggers for large-scale applications.
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-
 export interface TableColumn {
   name: string;
   type: string;
@@ -66,7 +64,7 @@ export interface Relationship {
 }
 
 export class SchemaArchitect {
-  constructor(private supabase: ReturnType<typeof createClient>) {}
+  constructor(private supabase: any) {}
 
   /**
    * Generates complete database schema from features
