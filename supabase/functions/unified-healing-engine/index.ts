@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface HealingOperation {
-  operation: 'detect_error' | 'generate_fix' | 'apply_fix' | 'verify_fix' | 'rollback_fix' | 'learn_pattern' | 'get_healing_history' | 'conversational_diagnosis';
+  operation: 'detect_error' | 'generate_fix' | 'apply_fix' | 'verify_fix' | 'rollback_fix' | 'learn_pattern' | 'get_healing_history' | 'conversational_diagnosis' | 'apply_diagnostic_fix';
   params: any;
 }
 
@@ -53,6 +53,9 @@ serve(async (req) => {
         break;
       case 'conversational_diagnosis':
         result = await handleConversationalDiagnosis(payload.params, supabase, requestId);
+        break;
+      case 'apply_diagnostic_fix':
+        result = await handleApplyDiagnosticFix(payload.params, supabase, requestId);
         break;
       default:
         throw new Error(`Unknown operation: ${payload.operation}`);
@@ -543,5 +546,135 @@ ${diagnosis.nextSteps}
     success: true,
     diagnosis,
     postedToChat: true
+  };
+}
+
+async function handleApplyDiagnosticFix(params: any, supabase: any, requestId: string) {
+  const { jobId, fixIndex = 0, conversationId } = params;
+  
+  if (!jobId || !conversationId) {
+    throw new Error('jobId and conversationId are required');
+  }
+
+  console.log(`[${requestId}] Applying diagnostic fix for job: ${jobId}, fix index: ${fixIndex}`);
+
+  // Fetch the job with diagnostic fixes
+  const { data: job, error: jobError } = await supabase
+    .from('ai_generation_jobs')
+    .select('*')
+    .eq('id', jobId)
+    .single();
+
+  if (jobError) throw jobError;
+
+  if (!job.diagnostic_fixes || job.diagnostic_fixes.length === 0) {
+    throw new Error('No diagnostic fixes available for this job');
+  }
+
+  if (fixIndex >= job.diagnostic_fixes.length) {
+    throw new Error(`Fix index ${fixIndex} out of range. Available fixes: ${job.diagnostic_fixes.length}`);
+  }
+
+  const selectedFix = job.diagnostic_fixes[fixIndex];
+  
+  // Use Lovable AI to generate the actual code fix
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) {
+    throw new Error('LOVABLE_API_KEY not configured');
+  }
+
+  const fixPrompt = `You are a code fixing AI. Apply this fix to the codebase:
+
+ORIGINAL REQUEST:
+${job.input_data?.request || 'Unknown request'}
+
+ERROR THAT OCCURRED:
+${job.error_message || 'No error message'}
+
+FIX TO APPLY:
+${selectedFix.fix}
+
+APPROACH:
+${selectedFix.approach}
+
+INSTRUCTIONS:
+1. Generate the minimal code changes needed to implement this fix
+2. Only modify what's directly related to the fix
+3. Preserve all existing functionality that works
+4. Return JSON with the structure:
+{
+  "files": [
+    { "path": "src/...", "content": "full file content", "action": "update" }
+  ],
+  "explanation": "what was changed and why"
+}`;
+
+  const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [{ role: 'user', content: fixPrompt }],
+    }),
+  });
+
+  if (!aiResponse.ok) {
+    const errorText = await aiResponse.text();
+    throw new Error(`AI fix generation failed: ${errorText}`);
+  }
+
+  const aiData = await aiResponse.json();
+  const content = aiData.choices[0].message.content;
+  const fixData = JSON.parse(content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+
+  // Update job status to show fix is being applied
+  await supabase
+    .from('ai_generation_jobs')
+    .update({
+      status: 'processing',
+      current_step: 'applying_diagnostic_fix',
+      output_data: {
+        ...job.output_data,
+        diagnostic_fix_applied: true,
+        fix_index: fixIndex
+      }
+    })
+    .eq('id', jobId);
+
+  // Post confirmation to chat
+  await supabase
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      role: 'assistant',
+      content: `## ✅ Applying Fix
+
+I'm implementing: **${selectedFix.fix}**
+
+**Changes being made:**
+${fixData.explanation}
+
+**Files being modified:**
+${fixData.files.map((f: any) => `- ${f.path}`).join('\n')}
+
+*This will only modify what's needed to fix the issue.*`,
+      metadata: {
+        fixApplied: true,
+        jobId,
+        fixIndex,
+        selectedFix
+      }
+    });
+
+  console.log(`[${requestId}] Diagnostic fix applied and posted to chat`);
+  
+  return {
+    success: true,
+    fixData,
+    explanation: fixData.explanation,
+    filesModified: fixData.files.length
   };
 }

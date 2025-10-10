@@ -208,6 +208,51 @@ serve(async (req) => {
         console.error('❌ Diagnosis failed:', diagError);
       }
       
+      // 🆕 PHASE 1: Check if user wants to apply a diagnostic fix
+      const userMessage = request.toLowerCase();
+      const isFixRequest = 
+        userMessage.includes('apply') || 
+        userMessage.includes('implement') || 
+        userMessage.includes('fix it') ||
+        userMessage.includes('use that') ||
+        userMessage.includes('try that') ||
+        userMessage.includes('go ahead') ||
+        userMessage.includes('do it');
+      
+      if (isFixRequest) {
+        try {
+          console.log('🔧 User requested fix application...');
+          const { data: job } = await platformSupabase
+            .from('ai_generation_jobs')
+            .select('id, diagnostic_fixes')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (job && job.diagnostic_fixes && job.diagnostic_fixes.length > 0) {
+            // Extract fix index if user specified (e.g., "apply fix 2")
+            const fixIndexMatch = userMessage.match(/(?:fix|suggestion)\s+(\d+)/);
+            const fixIndex = fixIndexMatch ? parseInt(fixIndexMatch[1]) - 1 : 0;
+            
+            await platformSupabase.functions.invoke('unified-healing-engine', {
+              body: {
+                operation: 'apply_diagnostic_fix',
+                params: {
+                  jobId: job.id,
+                  conversationId,
+                  fixIndex
+                }
+              }
+            });
+            
+            console.log('✅ Diagnostic fix application triggered');
+          }
+        } catch (fixError) {
+          console.error('❌ Fix application failed:', fixError);
+        }
+      }
+      
       await broadcast('generation:failed', {
         status: 'error',
         error: error.message || 'Unknown error occurred',
