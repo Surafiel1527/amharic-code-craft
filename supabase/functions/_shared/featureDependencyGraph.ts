@@ -100,10 +100,13 @@ export class FeatureDependencyGraph {
       errors.push(`Circular dependencies detected: ${circularDeps.join(' -> ')}`);
     }
 
-    // Check for missing dependencies
+    // Check for missing dependencies (check if depId exists as a feature name in any node)
     this.nodes.forEach(node => {
       node.feature.dependencies.forEach(depId => {
-        if (!this.nodes.has(depId)) {
+        const depExists = Array.from(this.nodes.values()).some(n => 
+          n.feature.id === depId || n.feature.name.toLowerCase().includes(depId.toLowerCase())
+        );
+        if (!depExists) {
           errors.push(`Feature "${node.feature.name}" depends on missing feature "${depId}"`);
         }
       });

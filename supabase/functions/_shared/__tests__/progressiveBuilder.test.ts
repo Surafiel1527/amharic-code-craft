@@ -11,7 +11,8 @@ Deno.test('ProgressiveBuilder - breaks large app into phases', async () => {
     mainGoal: 'Build social media app',
     requiredSections: ['video upload', 'feed', 'comments', 'likes', 'search']
   };
-  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react');
+  const mockBroadcast = async () => {}; // Mock broadcast function
+  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react', mockBroadcast);
   
   // Mock plan with 50 files
   const mockPlan = {
@@ -39,7 +40,8 @@ Deno.test('ProgressiveBuilder - validates phase completion', async () => {
     mainGoal: 'Task management',
     requiredSections: ['task list', 'task form']
   };
-  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react');
+  const mockBroadcast = async () => {}; // Mock broadcast function
+  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react', mockBroadcast);
   
   const mockPlan = {
     files: Array.from({ length: 15 }, (_, i) => ({
@@ -63,7 +65,8 @@ Deno.test('ProgressiveBuilder - groups files by type', async () => {
     mainGoal: 'Component library',
     requiredSections: ['components', 'utilities']
   };
-  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react');
+  const mockBroadcast = async () => {}; // Mock broadcast function
+  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react', mockBroadcast);
   
   const mockPlan = {
     files: [
@@ -86,7 +89,8 @@ Deno.test('ProgressiveBuilder - limits files per phase', async () => {
     mainGoal: 'E-commerce platform',
     requiredSections: ['products', 'cart', 'checkout', 'user profile']
   };
-  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react');
+  const mockBroadcast = async () => {}; // Mock broadcast function
+  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react', mockBroadcast);
   
   const mockPlan = {
     files: Array.from({ length: 60 }, (_, i) => ({

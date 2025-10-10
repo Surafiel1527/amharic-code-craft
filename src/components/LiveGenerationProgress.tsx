@@ -12,6 +12,11 @@ interface GenerationUpdate {
   progress: number;
   message: string;
   timestamp: string;
+  file?: string;
+  fileNumber?: number;
+  totalFiles?: number;
+  phaseNumber?: number;
+  totalPhases?: number;
 }
 
 interface LiveGenerationProgressProps {
@@ -244,15 +249,23 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
           </AnimatePresence>
         </div>
 
-        {!error && (
+        {!error && !isComplete && updates.length > 0 && updates[updates.length - 1].fileNumber && (
           <motion.div
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
             className="text-center text-sm text-muted-foreground"
           >
-            {isComplete 
-              ? `Verifying completion... (${retryCount}/${MAX_RETRIES})`
-              : 'Building your components... Please wait'}
+            Building file {updates[updates.length - 1].fileNumber} of {updates[updates.length - 1].totalFiles}...
+          </motion.div>
+        )}
+        
+        {!error && isComplete && (
+          <motion.div
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="text-center text-sm text-muted-foreground"
+          >
+            Finalizing project...
           </motion.div>
         )}
 

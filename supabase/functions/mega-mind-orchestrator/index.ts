@@ -411,8 +411,8 @@ async function processRequest(ctx: {
       progress: 52
     });
 
-    // Pass full context to ProgressiveBuilder
-    const progressiveBuilder = new ProgressiveBuilder(request, analysis, framework);
+    // Pass full context to ProgressiveBuilder including broadcast function
+    const progressiveBuilder = new ProgressiveBuilder(request, analysis, framework, broadcast);
     const phaseResults = await progressiveBuilder.buildInPhases(analysis._implementationPlan);
     
     // Map file language based on framework

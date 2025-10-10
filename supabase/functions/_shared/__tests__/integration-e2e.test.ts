@@ -59,7 +59,8 @@ Deno.test('E2E - TikTok Clone Full Flow', async () => {
     mainGoal: 'Social media app',
     requiredSections: ['video upload', 'feed', 'comments', 'likes']
   };
-  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react');
+  const mockBroadcast = async () => {}; // Mock broadcast function
+  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react', mockBroadcast);
   const mockFiles = Array.from({ length: plan.totalFiles }, (_, i) => ({
     path: `src/file${i}.tsx`,
     content: 'export default function Component() {}',

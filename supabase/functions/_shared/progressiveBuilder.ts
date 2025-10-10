@@ -50,11 +50,18 @@ export class ProgressiveBuilder {
   private originalRequest: string;
   private analysis: any;
   private framework: string;
+  private broadcast: (event: string, data: any) => Promise<void>;
 
-  constructor(originalRequest: string, analysis: any, framework: string) {
+  constructor(
+    originalRequest: string, 
+    analysis: any, 
+    framework: string,
+    broadcast: (event: string, data: any) => Promise<void>
+  ) {
     this.originalRequest = originalRequest;
     this.analysis = analysis;
     this.framework = framework;
+    this.broadcast = broadcast;
   }
 
   /**
@@ -63,23 +70,51 @@ export class ProgressiveBuilder {
   async buildInPhases(plan: any): Promise<PhaseResult[]> {
     const phases = this.breakdownIntoPhases(plan);
     const results: PhaseResult[] = [];
+    const totalFiles = phases.reduce((sum, p) => sum + p.files.length, 0);
+    let completedFiles = 0;
 
-    for (const phase of phases) {
-      console.log(`Starting Phase ${phase.phaseNumber}: ${phase.name}`);
+    for (let i = 0; i < phases.length; i++) {
+      const phase = phases[i];
+      console.log(`📦 Starting Phase ${phase.phaseNumber}/${phases.length}: ${phase.name}`);
       
+      await this.broadcast('generation:phase_start', {
+        status: 'generating',
+        message: `📦 Phase ${phase.phaseNumber}/${phases.length}: ${phase.name}`,
+        progress: Math.round((completedFiles / totalFiles) * 100),
+        phase: phase.name,
+        phaseNumber: phase.phaseNumber,
+        totalPhases: phases.length,
+        filesInPhase: phase.files.length
+      });
+
       const startTime = Date.now();
-      const result = await this.buildPhase(phase);
+      const result = await this.buildPhase(phase, completedFiles, totalFiles);
       const duration = Date.now() - startTime;
 
       result.duration = duration;
       results.push(result);
+      completedFiles += phase.files.length;
 
       if (!result.success) {
-        console.error(`Phase ${phase.phaseNumber} failed:`, result.errors);
+        console.error(`❌ Phase ${phase.phaseNumber} failed:`, result.errors);
+        await this.broadcast('generation:phase_failed', {
+          status: 'error',
+          message: `Failed: ${result.errors[0]}`,
+          progress: Math.round((completedFiles / totalFiles) * 100),
+          phase: phase.name
+        });
         break;
       }
 
-      console.log(`Phase ${phase.phaseNumber} completed in ${duration}ms`);
+      await this.broadcast('generation:phase_complete', {
+        status: 'generating',
+        message: `✅ Completed Phase ${phase.phaseNumber}: ${phase.name}`,
+        progress: Math.round((completedFiles / totalFiles) * 100),
+        phase: phase.name,
+        filesCompleted: result.filesGenerated.length
+      });
+
+      console.log(`✅ Phase ${phase.phaseNumber} completed in ${duration}ms`);
     }
 
     return results;
@@ -196,14 +231,31 @@ export class ProgressiveBuilder {
   /**
    * Builds a single phase
    */
-  private async buildPhase(phase: BuildPhase): Promise<PhaseResult> {
+  private async buildPhase(
+    phase: BuildPhase, 
+    completedFiles: number, 
+    totalFiles: number
+  ): Promise<PhaseResult> {
     const errors: string[] = [];
     const filesGenerated: string[] = [];
     const validationResults: ValidationResult[] = [];
 
     try {
       // Generate files using AI with FULL CONTEXT
-      for (const file of phase.files) {
+      for (let i = 0; i < phase.files.length; i++) {
+        const file = phase.files[i];
+        const fileNumber = completedFiles + i + 1;
+        
+        // Broadcast file-level progress
+        await this.broadcast('generation:file_start', {
+          status: 'generating',
+          message: `🏗️ Building ${file.path} (${fileNumber}/${totalFiles})`,
+          progress: Math.round((fileNumber / totalFiles) * 100),
+          file: file.path,
+          fileType: file.type,
+          fileNumber,
+          totalFiles
+        });
         try {
           // Build framework-specific context
           const frameworkContext = this.framework === 'html' 
@@ -242,9 +294,24 @@ Return ONLY the code, no markdown, no explanations.`;
           // Store generated content in the file object
           file.content = result.data.choices[0].message.content;
           filesGenerated.push(file.path);
+          
+          // Broadcast file completion
+          await this.broadcast('generation:file_complete', {
+            status: 'generating',
+            message: `✨ Completed ${file.path}`,
+            progress: Math.round((fileNumber / totalFiles) * 100),
+            file: file.path
+          });
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           errors.push(`Failed to generate ${file.path}: ${errorMessage}`);
+          
+          await this.broadcast('generation:file_error', {
+            status: 'error',
+            message: `Failed: ${file.path}`,
+            progress: Math.round((fileNumber / totalFiles) * 100),
+            error: errorMessage
+          });
         }
       }
 
