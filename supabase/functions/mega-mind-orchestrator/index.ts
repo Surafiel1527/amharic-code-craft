@@ -252,7 +252,7 @@ async function processRequest(ctx: {
 
   try {
     return await Promise.race([
-      executeGeneration(ctx),
+      executeGeneration({ ...ctx, startTime: Date.now() }), // ✅ FIX 1: Pass startTime
       timeoutPromise
     ]);
   } catch (error: unknown) {
@@ -300,8 +300,25 @@ async function executeGeneration(ctx: {
     broadcast 
   } = ctx;
   
-  // Track start time for metrics
-  const startTime = ctx.startTime || Date.now();
+  // Track start time for metrics (guaranteed to be set from processRequest)
+  const startTime = ctx.startTime!;
+
+  // Helper: Update job progress in database
+  const updateJobProgress = async (progress: number, currentStep: string, phases: any[] = []) => {
+    if (!projectId) return; // Only update if we have a projectId/jobId
+    
+    try {
+      await platformSupabase.from('ai_generation_jobs').update({
+        progress,
+        current_step: currentStep,
+        phases,
+        updated_at: new Date().toISOString()
+      }).eq('project_id', projectId).eq('user_id', userId);
+    } catch (error) {
+      console.error('⚠️ Failed to update job progress:', error);
+      // Non-fatal - don't block generation
+    }
+  };
 
   // Step 1: Analyze request
   await broadcast('generation:thinking', { 
@@ -322,6 +339,9 @@ async function executeGeneration(ctx: {
     intent: analysis,
     executionPlan: { steps: analysis.subTasks }
   });
+
+  // ✅ FIX 2: Update progress - Analysis complete
+  await updateJobProgress(25, 'Analysis complete', []);
 
   // Step 2: Handle meta-requests (questions about system)
   if (analysis.isMetaRequest) {
@@ -490,6 +510,9 @@ async function executeGeneration(ctx: {
     await ensureAuthInfrastructure(userSupabase);
   }
 
+  // ✅ FIX 2: Update progress - Database setup complete
+  await updateJobProgress(50, 'Database setup complete', analysis._orchestrationPlan?.phases || []);
+
   // Step 4: Generate code using framework-specific builders
   await broadcast('generation:coding', { 
     status: 'generating', 
@@ -525,6 +548,9 @@ async function executeGeneration(ctx: {
   // Step 4c: Generate files (framework-specific)
   const generatedCode = await frameworkBuilder.generateFiles(buildContext, generationPlan);
   console.log(`✅ Generated ${generatedCode.files.length} files using ${generatedCode.framework} builder`);
+
+  // ✅ FIX 2: Update progress - Code generation complete
+  await updateJobProgress(75, 'Code generation complete', []);
 
   // Step 5: Validate files (framework-specific validation)
   await broadcast('generation:validating', { 
@@ -625,6 +651,9 @@ async function executeGeneration(ctx: {
     }
   }
 
+  // ✅ FIX 2: Update progress - Auto-fix complete
+  await updateJobProgress(90, 'Auto-fix complete', []);
+
   // Step 7: Learn from success
   if (generatedCode.files.length > 0) {
     await storeSuccessfulPattern(platformSupabase, {
@@ -703,40 +732,54 @@ async function executeGeneration(ctx: {
     }
   }
 
-  // Step 11: Track storage and generation metrics
+  // Step 11: Track storage and generation metrics (NON-FATAL)
   const generationEndTime = Date.now();
   const generationTimeMs = generationEndTime - startTime;
+  const generationId = crypto.randomUUID();
 
-  // Import storage tracker
-  const { trackPlatformMetrics } = await import('../_shared/storageTracker.ts');
-  
-  // Prepare files object for tracking
-  const filesObject: Record<string, string> = {};
-  for (const file of generatedCode.files) {
-    filesObject[file.path] = file.content;
+  // ✅ FIX 3: Make analytics tracking non-fatal
+  try {
+    // Import storage tracker
+    const { trackPlatformMetrics } = await import('../_shared/storageTracker.ts');
+    
+    // Prepare files object for tracking
+    const filesObject: Record<string, string> = {};
+    for (const file of generatedCode.files) {
+      filesObject[file.path] = file.content;
+    }
+
+    // Track both storage and generation metrics
+    await trackPlatformMetrics(platformSupabase, {
+      userId,
+      projectId: projectId || undefined,
+      conversationId,
+      generationId,
+      framework: generatedCode.framework,
+      files: filesObject,
+      generationMetrics: {
+        generationTimeMs,
+        success: validationResult.errors.length === 0,
+        featureCount: analysis.subTasks?.length || 1,
+        totalLinesGenerated: Object.values(filesObject).reduce((sum, content) => sum + content.split('\n').length, 0),
+        complexityScore: 0, // Will be calculated in tracker
+        errorType: validationResult.errors.length > 0 ? 'validation_error' : undefined,
+        errorMessage: validationResult.errors.join(', ')
+      }
+    });
+
+    console.log('📊 Platform metrics tracked successfully');
+  } catch (error) {
+    console.error('⚠️ Analytics tracking failed (non-fatal):', error);
+    // Don't throw - analytics failure shouldn't block user success
   }
 
-  // Track both storage and generation metrics
-  const generationId = crypto.randomUUID();
-  await trackPlatformMetrics(platformSupabase, {
-    userId,
-    projectId: projectId || undefined,
-    conversationId,
-    generationId,
-    framework: generatedCode.framework,
-    files: filesObject,
-    generationMetrics: {
-      generationTimeMs,
-      success: validationResult.errors.length === 0,
-      featureCount: analysis.subTasks?.length || 1,
-      totalLinesGenerated: Object.values(filesObject).reduce((sum, content) => sum + content.split('\n').length, 0),
-      complexityScore: 0, // Will be calculated in tracker
-      errorType: validationResult.errors.length > 0 ? 'validation_error' : undefined,
-      errorMessage: validationResult.errors.join(', ')
-    }
+  // ✅ FIX 4: Always broadcast 100% completion BEFORE return
+  await updateJobProgress(100, 'Completed', []);
+  await broadcast('generation:complete', {
+    status: 'complete',
+    message: '✅ Generation complete!',
+    progress: 100
   });
-
-  console.log('📊 Platform metrics tracked successfully');
 
   return {
     success: true,

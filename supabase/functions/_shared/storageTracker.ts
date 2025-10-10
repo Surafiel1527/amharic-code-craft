@@ -148,6 +148,12 @@ export async function trackGenerationStats(
 ): Promise<void> {
   const { userId, projectId, conversationId, generationId, framework, files, metrics } = params;
   
+  // ✅ FIX 5: Validate metrics before inserting
+  if (isNaN(metrics.generationTimeMs) || metrics.generationTimeMs < 0) {
+    console.error('❌ Invalid generationTimeMs:', metrics.generationTimeMs, '- Skipping stats tracking');
+    throw new Error(`Invalid generationTimeMs: ${metrics.generationTimeMs}`);
+  }
+  
   const complexityScore = calculateComplexityScore(files);
   const totalLines = Object.values(files).reduce(
     (sum, content) => sum + content.split('\n').length, 
@@ -161,7 +167,7 @@ export async function trackGenerationStats(
       project_id: projectId,
       conversation_id: conversationId,
       generation_id: generationId,
-      generation_time_ms: metrics.generationTimeMs,
+      generation_time_ms: Math.round(metrics.generationTimeMs), // Ensure integer
       success: metrics.success,
       framework,
       feature_count: metrics.featureCount,
@@ -173,6 +179,7 @@ export async function trackGenerationStats(
   
   if (error) {
     console.error('Failed to track generation stats:', error);
+    throw error; // Re-throw to be caught by try-catch in orchestrator
   } else {
     console.log(`📈 Generation stats tracked: ${metrics.success ? '✅ Success' : '❌ Failed'}, ${totalLines} lines`);
   }
