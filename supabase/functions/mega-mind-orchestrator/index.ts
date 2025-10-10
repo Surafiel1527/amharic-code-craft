@@ -303,6 +303,21 @@ async function executeGeneration(ctx: {
   // Track start time for metrics (guaranteed to be set from processRequest)
   const startTime = ctx.startTime!;
 
+  // 🔄 RETRY LOGIC: Check if this is a retry with existing progress
+  const isRetry = conversationContext.isRetry || false;
+  const resumeProgress = conversationContext.resumeFromProgress || 0;
+  const existingFiles = conversationContext.existingFiles || [];
+
+  if (isRetry && resumeProgress > 0) {
+    console.log(`🔄 RETRY MODE: Resuming from ${resumeProgress}% with ${existingFiles.length} existing files`);
+    
+    await broadcast('generation:retrying', {
+      status: 'retrying',
+      message: `🔄 Resuming generation from ${resumeProgress}%...`,
+      progress: resumeProgress
+    });
+  }
+
   // Helper: Update job progress in database
   const updateJobProgress = async (progress: number, currentStep: string, phases: any[] = []) => {
     if (!projectId) return; // Only update if we have a projectId/jobId
@@ -320,28 +335,39 @@ async function executeGeneration(ctx: {
     }
   };
 
-  // Step 1: Analyze request
-  await broadcast('generation:thinking', { 
-    status: 'analyzing', 
-    message: '🔍 Understanding your request...', 
-    progress: 5 
-  });
+  // Step 1: Analyze request (skip if resuming from >25%)
+  if (!isRetry || resumeProgress < 25) {
+    await broadcast('generation:thinking', { 
+      status: 'analyzing', 
+      message: '🔍 Understanding your request...', 
+      progress: 5 
+    });
 
-  const analysis = await analyzeRequest(request, conversationContext, framework, broadcast);
-  
-  console.log('📊 Analysis complete:', JSON.stringify(analysis, null, 2));
+    const analysis = await analyzeRequest(request, conversationContext, framework, broadcast);
+    
+    console.log('📊 Analysis complete:', JSON.stringify(analysis, null, 2));
 
-  // Store conversation turn
-  await storeConversationTurn(platformSupabase, {
-    conversationId,
-    userId,
-    userRequest: request,
-    intent: analysis,
-    executionPlan: { steps: analysis.subTasks }
-  });
+    // Store conversation turn
+    await storeConversationTurn(platformSupabase, {
+      conversationId,
+      userId,
+      userRequest: request,
+      intent: analysis,
+      executionPlan: { steps: analysis.subTasks }
+    });
 
-  // ✅ FIX 2: Update progress - Analysis complete
-  await updateJobProgress(25, 'Analysis complete', []);
+    // ✅ FIX 2: Update progress - Analysis complete
+    await updateJobProgress(25, 'Analysis complete', []);
+    
+    // Store analysis in context for later steps
+    conversationContext._analysis = analysis;
+  } else {
+    console.log('⏭️ Skipping analysis - already completed');
+    // Try to recover analysis from context or regenerate quickly
+    conversationContext._analysis = conversationContext._analysis || await analyzeRequest(request, conversationContext, framework, broadcast);
+  }
+
+  const analysis = conversationContext._analysis;
 
   // Step 2: Handle meta-requests (questions about system)
   if (analysis.isMetaRequest) {
@@ -458,8 +484,8 @@ async function executeGeneration(ctx: {
   }
   // ========== END PRE-IMPLEMENTATION ANALYSIS ==========
 
-  // Step 3: Setup backend if needed
-  if (analysis.backendRequirements?.needsDatabase && userSupabase) {
+  // Step 3: Setup backend if needed (skip if resuming from >50%)
+  if ((!isRetry || resumeProgress < 50) && analysis.backendRequirements?.needsDatabase && userSupabase) {
     // ========== PHASE 2: COMPLEX SCHEMA GENERATION ==========
     const tableCount = analysis.backendRequirements?.databaseTables?.length || 0;
     
@@ -506,51 +532,67 @@ async function executeGeneration(ctx: {
     }
   }
 
-  if (analysis.backendRequirements?.needsAuth && userSupabase) {
+  if ((!isRetry || resumeProgress < 50) && analysis.backendRequirements?.needsAuth && userSupabase) {
     await ensureAuthInfrastructure(userSupabase);
   }
 
   // ✅ FIX 2: Update progress - Database setup complete
-  await updateJobProgress(50, 'Database setup complete', analysis._orchestrationPlan?.phases || []);
+  if (!isRetry || resumeProgress < 50) {
+    await updateJobProgress(50, 'Database setup complete', analysis._orchestrationPlan?.phases || []);
+  }
 
-  // Step 4: Generate code using framework-specific builders
-  await broadcast('generation:coding', { 
-    status: 'generating', 
-    message: '🔧 Initializing framework-specific builder...', 
-    progress: 50 
-  });
-
-  console.log(`🏗️ Using ${framework} builder for code generation`);
+  // Step 4: Generate code using framework-specific builders (skip if resuming from >75% with existing files)
+  let generatedCode;
+  let frameworkBuilder; // Declare here so it's accessible later
   
-  // Create framework-specific builder
-  const frameworkBuilder = FrameworkBuilderFactory.createBuilder(framework);
-  
-  // Build context for the builder
-  const buildContext = {
-    request,
-    analysis,
-    projectId,
-    userId,
-    conversationId,
-    platformSupabase,
-    userSupabase,
-    broadcast
-  };
+  if (isRetry && resumeProgress >= 75 && existingFiles.length > 0) {
+    console.log('⏭️ Skipping code generation - using existing files');
+    generatedCode = {
+      files: existingFiles,
+      framework: framework,
+      description: 'Resumed from existing files'
+    };
+    // Still create builder for validation/packaging
+    frameworkBuilder = FrameworkBuilderFactory.createBuilder(framework);
+  } else {
+    await broadcast('generation:coding', { 
+      status: 'generating', 
+      message: '🔧 Initializing framework-specific builder...', 
+      progress: 50 
+    });
 
-  // Step 4a: Analyze request (framework-specific)
-  const frameworkAnalysis = await frameworkBuilder.analyzeRequest(buildContext);
-  Object.assign(analysis, frameworkAnalysis); // Merge framework analysis
+    console.log(`🏗️ Using ${framework} builder for code generation`);
+    
+    // Create framework-specific builder
+    frameworkBuilder = FrameworkBuilderFactory.createBuilder(framework);
+    
+    // Build context for the builder
+    const buildContext = {
+      request,
+      analysis,
+      projectId,
+      userId,
+      conversationId,
+      platformSupabase,
+      userSupabase,
+      broadcast
+    };
 
-  // Step 4b: Plan generation (framework-specific)
-  const generationPlan = await frameworkBuilder.planGeneration(buildContext, analysis);
-  console.log(`📋 Generation plan: ${generationPlan.strategy} strategy with ${generationPlan.estimatedFiles || generationPlan.files?.length || 0} files`);
+    // Step 4a: Analyze request (framework-specific)
+    const frameworkAnalysis = await frameworkBuilder.analyzeRequest(buildContext);
+    Object.assign(analysis, frameworkAnalysis); // Merge framework analysis
 
-  // Step 4c: Generate files (framework-specific)
-  const generatedCode = await frameworkBuilder.generateFiles(buildContext, generationPlan);
-  console.log(`✅ Generated ${generatedCode.files.length} files using ${generatedCode.framework} builder`);
+    // Step 4b: Plan generation (framework-specific)
+    const generationPlan = await frameworkBuilder.planGeneration(buildContext, analysis);
+    console.log(`📋 Generation plan: ${generationPlan.strategy} strategy with ${generationPlan.estimatedFiles || generationPlan.files?.length || 0} files`);
 
-  // ✅ FIX 2: Update progress - Code generation complete
-  await updateJobProgress(75, 'Code generation complete', []);
+    // Step 4c: Generate files (framework-specific)
+    generatedCode = await frameworkBuilder.generateFiles(buildContext, generationPlan);
+    console.log(`✅ Generated ${generatedCode.files.length} files using ${generatedCode.framework} builder`);
+
+    // ✅ FIX 2: Update progress - Code generation complete
+    await updateJobProgress(75, 'Code generation complete', []);
+  }
 
   // Step 5: Validate files (framework-specific validation)
   await broadcast('generation:validating', { 

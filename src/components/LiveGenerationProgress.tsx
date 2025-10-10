@@ -32,6 +32,7 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
   const MAX_RETRIES = 30; // 30 retries × 2 seconds = 1 minute max
   
   // Store the latest onComplete callback in a ref to avoid re-subscriptions
@@ -39,6 +40,91 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
+
+  const handleRetry = async () => {
+    setIsRetrying(true);
+    setError(null);
+    
+    try {
+      // Get the failed job details
+      const { data: job, error: jobError } = await supabase
+        .from('ai_generation_jobs')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (jobError || !job) {
+        console.error('Failed to fetch job:', jobError);
+        setError('Could not retrieve generation details. Please try starting a new generation.');
+        setIsRetrying(false);
+        return;
+      }
+
+      console.log('🔄 Retrying from job:', job);
+
+      // Parse JSON data safely
+      const inputData = job.input_data as Record<string, any>;
+      const outputData = job.output_data as Record<string, any>;
+
+      // Reset the job status to retry
+      const { error: updateError } = await supabase
+        .from('ai_generation_jobs')
+        .update({
+          status: 'queued',
+          error_message: null,
+          retry_count: (job.retry_count || 0) + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', job.id);
+
+      if (updateError) {
+        console.error('Failed to update job:', updateError);
+        setError('Could not restart generation. Please try again.');
+        setIsRetrying(false);
+        return;
+      }
+
+      // Call the orchestrator to resume
+      const { error: invokeError } = await supabase.functions.invoke('mega-mind-orchestrator', {
+        body: {
+          request: inputData.request || 'Continue from where we left off',
+          conversationId: job.conversation_id,
+          userId: job.user_id,
+          requestType: job.job_type || 'generation',
+          context: {
+            ...(inputData.context || {}),
+            projectId: projectId,
+            resumeFromProgress: job.progress || 0,
+            existingFiles: outputData?.files || [],
+            isRetry: true
+          }
+        }
+      });
+
+      if (invokeError) {
+        console.error('Failed to invoke orchestrator:', invokeError);
+        setError('Failed to restart generation. Please try again.');
+        setIsRetrying(false);
+        return;
+      }
+
+      // Reset UI state
+      setUpdates([]);
+      setCurrentPhase('starting');
+      setProgress(job.progress || 0);
+      setIsComplete(false);
+      setRetryCount(0);
+      setIsRetrying(false);
+      
+      console.log('✅ Generation restarted successfully');
+    } catch (err) {
+      console.error('Retry error:', err);
+      setError('An unexpected error occurred. Please try again.');
+      setIsRetrying(false);
+    }
+  };
 
   // Poll for actual project data to verify generation is complete
   useEffect(() => {
@@ -229,8 +315,10 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
         {error && (
           <Alert variant="destructive">
             <XCircle className="h-4 w-4" />
-            <AlertDescription className="ml-2">
-              <strong>Generation Failed:</strong> {error}
+            <AlertDescription className="ml-2 flex items-center justify-between">
+              <div>
+                <strong>Generation Failed:</strong> {error}
+              </div>
             </AlertDescription>
           </Alert>
         )}
@@ -355,10 +443,29 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
         )}
 
         {error && (
-          <div className="flex justify-center pt-4">
+          <div className="flex justify-center gap-3 pt-4">
             <Button
               variant="default"
+              onClick={handleRetry}
+              disabled={isRetrying}
+              className="gap-2"
+            >
+              {isRetrying ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Retrying...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Retry Generation
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => window.location.href = '/'}
+              disabled={isRetrying}
             >
               Return to Home
             </Button>
