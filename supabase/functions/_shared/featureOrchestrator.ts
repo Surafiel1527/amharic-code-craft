@@ -265,11 +265,13 @@ export class FeatureOrchestrator {
 
   /**
    * Topological sort to order features by dependencies
+   * Only validates dependencies that exist in current feature set
    */
   private topologicalSort(graph: Map<string, Feature>): Feature[] {
     const sorted: Feature[] = [];
     const visited = new Set<string>();
     const visiting = new Set<string>();
+    const availableFeatures = new Set(graph.keys());
 
     const visit = (featureId: string) => {
       if (visited.has(featureId)) return;
@@ -281,7 +283,12 @@ export class FeatureOrchestrator {
       const feature = graph.get(featureId);
       
       if (feature) {
-        feature.dependencies.forEach(depId => {
+        // Only process dependencies that exist in current feature set
+        const validDependencies = feature.dependencies.filter(depId => 
+          availableFeatures.has(depId)
+        );
+        
+        validDependencies.forEach(depId => {
           if (graph.has(depId)) {
             visit(depId);
           }

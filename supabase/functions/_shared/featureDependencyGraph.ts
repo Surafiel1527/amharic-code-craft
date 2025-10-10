@@ -100,14 +100,19 @@ export class FeatureDependencyGraph {
       errors.push(`Circular dependencies detected: ${circularDeps.join(' -> ')}`);
     }
 
-    // Check for missing dependencies (check if depId exists as a feature name in any node)
+    // Check for missing dependencies - only fail on critical dependencies
+    const criticalDependencies = ['database', 'authentication'];
     this.nodes.forEach(node => {
       node.feature.dependencies.forEach(depId => {
         const depExists = Array.from(this.nodes.values()).some(n => 
           n.feature.id === depId || n.feature.name.toLowerCase().includes(depId.toLowerCase())
         );
         if (!depExists) {
-          errors.push(`Feature "${node.feature.name}" depends on missing feature "${depId}"`);
+          if (criticalDependencies.includes(depId)) {
+            errors.push(`Feature "${node.feature.name}" depends on missing critical feature "${depId}"`);
+          } else {
+            warnings.push(`Feature "${node.feature.name}" references optional feature "${depId}" (not critical)`);
+          }
         }
       });
     });
