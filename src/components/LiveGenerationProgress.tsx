@@ -128,9 +128,39 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
         
         // Enhance message with file or phase information
         if (newUpdate.file && newUpdate.fileNumber && newUpdate.totalFiles) {
-          newUpdate.message = `🏗️ Building ${newUpdate.file} (${newUpdate.fileNumber}/${newUpdate.totalFiles})`;
+          const fileEmojis: { [key: string]: string } = {
+            'index': '🏠',
+            'component': '🧩',
+            'page': '📄',
+            'style': '🎨',
+            'config': '⚙️',
+            'hook': '🪝',
+            'util': '🔧',
+            'api': '🌐',
+            'test': '✅'
+          };
+          
+          const fileType = Object.keys(fileEmojis).find(type => 
+            newUpdate.file!.toLowerCase().includes(type)
+          ) || 'component';
+          
+          newUpdate.message = `${fileEmojis[fileType]} Building ${newUpdate.file} (${newUpdate.fileNumber}/${newUpdate.totalFiles})`;
         } else if (newUpdate.phaseNumber && newUpdate.totalPhases) {
-          newUpdate.message = `📦 Phase ${newUpdate.phaseNumber}/${newUpdate.totalPhases}: ${newUpdate.message}`;
+          const phaseEmojis = ['🔍', '🏗️', '✨', '🎨', '🔧', '✅'];
+          const emoji = phaseEmojis[Math.min(newUpdate.phaseNumber - 1, phaseEmojis.length - 1)] || '📦';
+          newUpdate.message = `${emoji} Phase ${newUpdate.phaseNumber}/${newUpdate.totalPhases}: ${newUpdate.message}`;
+        } else if (!newUpdate.message.startsWith('🔍') && !newUpdate.message.startsWith('✨')) {
+          // Add appropriate emoji if not already present
+          const statusEmojis: { [key: string]: string } = {
+            'analyzing': '🔍',
+            'generating': '✨',
+            'finalizing': '🎨',
+            'complete': '🎉'
+          };
+          const emoji = statusEmojis[phase] || '⚡';
+          if (!newUpdate.message.match(/^[🔍✨🎨🎉⚡]/)) {
+            newUpdate.message = `${emoji} ${newUpdate.message}`;
+          }
         }
         
         setUpdates(prev => [...prev, newUpdate]);
@@ -147,6 +177,11 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
       .on('broadcast', { event: 'generation:error' }, ({ payload }) => {
         console.error('❌ Generation error received:', payload);
         setError(payload.error || 'An error occurred during generation');
+        setIsComplete(true);
+      })
+      .on('broadcast', { event: 'generation:timeout' }, ({ payload }) => {
+        console.error('⏰ Generation timeout received:', payload);
+        setError('Generation timed out after 5 minutes. This might be due to a complex project or system load. Please try again.');
         setIsComplete(true);
       })
       .subscribe((status) => {
@@ -263,13 +298,32 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
           </AnimatePresence>
         </div>
 
-        {!error && !isComplete && updates.length > 0 && updates[updates.length - 1].fileNumber && (
+        {!error && !isComplete && updates.length > 0 && (
           <motion.div
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="text-center text-sm text-muted-foreground"
+            className="text-center p-4 rounded-lg bg-primary/5 border border-primary/10"
           >
-            Building file {updates[updates.length - 1].fileNumber} of {updates[updates.length - 1].totalFiles}...
+            <div className="flex items-center justify-center gap-2 text-sm font-medium">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span>
+                {updates[updates.length - 1].fileNumber && updates[updates.length - 1].totalFiles
+                  ? `Building file ${updates[updates.length - 1].fileNumber} of ${updates[updates.length - 1].totalFiles}`
+                  : currentPhase === 'analyzing'
+                  ? 'Analyzing your request...'
+                  : currentPhase === 'generating'
+                  ? 'Generating project files...'
+                  : 'Processing...'}
+              </span>
+            </div>
+            {progress > 0 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                {progress < 30 && '🔍 Understanding your requirements...'}
+                {progress >= 30 && progress < 60 && '🏗️ Building your project structure...'}
+                {progress >= 60 && progress < 90 && '✨ Creating components and features...'}
+                {progress >= 90 && '🎨 Adding final touches...'}
+              </p>
+            )}
           </motion.div>
         )}
         
@@ -277,9 +331,12 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
           <motion.div
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="text-center text-sm text-muted-foreground"
+            className="text-center p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20"
           >
-            Finalizing project...
+            <div className="flex items-center justify-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+              <CheckCircle className="h-4 w-4" />
+              <span>✅ All files generated, finalizing project...</span>
+            </div>
           </motion.div>
         )}
 
