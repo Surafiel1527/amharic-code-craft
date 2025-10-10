@@ -72,6 +72,106 @@ export async function logGenerationFailure(
 }
 
 /**
+ * Logs a successful generation to the database for monitoring
+ */
+export async function logGenerationSuccess(
+  supabase: any,
+  details: {
+    projectId: string;
+    userRequest: string;
+    framework: string;
+    fileCount?: number;
+    duration?: number;
+    phases?: any[];
+    userId?: string;
+  }
+): Promise<void> {
+  try {
+    console.log('📊 Logging generation success:', details.projectId);
+    
+    const { error } = await supabase
+      .from('generation_analytics')
+      .insert({
+        project_id: details.projectId,
+        user_id: details.userId,
+        user_request: details.userRequest,
+        success: true,
+        framework: details.framework,
+        metadata: {
+          fileCount: details.fileCount,
+          duration: details.duration,
+          phases: details.phases,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+    if (error) {
+      console.error('❌ Failed to log generation success:', error);
+    } else {
+      console.log('✅ Generation success logged successfully');
+    }
+  } catch (error) {
+    // Don't let monitoring errors break generation
+    console.error('⚠️ Production monitoring error:', error);
+  }
+}
+
+/**
+ * Checks overall system health metrics
+ */
+export async function checkHealthMetrics(supabase: any): Promise<{
+  failureRate: number;
+  totalAttempts: number;
+  failures: number;
+  successes: number;
+} | null> {
+  try {
+    console.log('🏥 Checking system health metrics...');
+    
+    // Get failure rate for last hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    
+    const { data: recentFailures, error: failError } = await supabase
+      .from('generation_failures')
+      .select('id')
+      .gte('created_at', oneHourAgo);
+
+    const { data: recentSuccesses, error: successError } = await supabase
+      .from('generation_analytics')
+      .select('id')
+      .eq('success', true)
+      .gte('created_at', oneHourAgo);
+
+    if (failError || successError) {
+      console.error('❌ Failed to check health metrics');
+      return null;
+    }
+
+    const totalAttempts = (recentFailures?.length || 0) + (recentSuccesses?.length || 0);
+    const failureRate = totalAttempts > 0 
+      ? ((recentFailures?.length || 0) / totalAttempts) * 100 
+      : 0;
+
+    console.log(`📈 Health metrics - Failure rate: ${failureRate.toFixed(2)}% (${recentFailures?.length}/${totalAttempts})`);
+
+    // Alert if failure rate is high
+    if (failureRate > 50 && totalAttempts >= 5) {
+      console.warn(`⚠️ HIGH FAILURE RATE DETECTED: ${failureRate.toFixed(2)}%`);
+    }
+
+    return {
+      failureRate,
+      totalAttempts,
+      failures: recentFailures?.length || 0,
+      successes: recentSuccesses?.length || 0
+    };
+  } catch (error) {
+    console.error('❌ Exception checking health metrics:', error);
+    return null;
+  }
+}
+
+/**
  * Classifies error type for categorization
  */
 export function classifyError(error: any): { 

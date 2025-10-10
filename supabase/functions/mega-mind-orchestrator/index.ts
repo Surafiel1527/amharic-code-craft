@@ -34,6 +34,8 @@ import {
 import { autoFixGeneratedCode } from './autoFixIntegration.ts';
 import { 
   logGenerationFailure, 
+  logGenerationSuccess,
+  checkHealthMetrics,
   classifyError, 
   extractStackTrace 
 } from './productionMonitoring.ts';
@@ -138,7 +140,7 @@ serve(async (req) => {
     }).catch(async (error) => {
       console.error('❌ Generation failed:', error);
       
-      // Log failure to production monitoring system
+      // Log failure to production monitoring system with comprehensive details
       const errorClassification = classifyError(error);
       await logGenerationFailure(platformSupabase, {
         errorType: error.name || 'GenerationError',
@@ -152,8 +154,20 @@ serve(async (req) => {
         category: errorClassification.category
       });
       
+      // Check overall system health after error
+      const healthMetrics = await checkHealthMetrics(platformSupabase);
+      if (healthMetrics) {
+        console.log('📊 Current system health:', healthMetrics);
+        
+        // Alert if system health is degraded
+        if (healthMetrics.failureRate > 50) {
+          console.error(`🚨 CRITICAL: System failure rate is ${healthMetrics.failureRate.toFixed(2)}%`);
+        }
+      }
+      
       await broadcast('generation:error', { 
-        error: error.message || 'Unknown error occurred' 
+        error: error.message || 'Unknown error occurred',
+        errorType: errorClassification.category 
       });
       await writer.close();
     });
@@ -631,6 +645,17 @@ async function executeGeneration(ctx: {
       console.error('❌ Failed to update project:', updateError);
     } else {
       console.log('✅ Project updated successfully');
+      
+      // Log successful generation to monitoring
+      await logGenerationSuccess(platformSupabase, {
+        projectId,
+        userRequest: request,
+        framework,
+        fileCount: generatedCode.files.length,
+        duration: Math.round((Date.now() - Date.now()) / 1000), // Will be calculated from start time
+        phases: analysis._orchestrationPlan?.phases || [],
+        userId
+      });
     }
   }
 
