@@ -5,6 +5,16 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Send, Code2, Sparkles, Loader2, Copy, 
   CheckCircle2, Brain, Target, FileCode, AlertCircle
@@ -130,6 +140,7 @@ export function UniversalChatInterface({
 }: UniversalChatInterfaceProps) {
   const [input, setInput] = useState("");
   const [contextMode, setContextMode] = useState<'selected' | 'all' | 'none'>('selected');
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
 
@@ -185,6 +196,12 @@ export function UniversalChatInterface({
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     toast.success('Code copied to clipboard');
+  };
+
+  const handleCancelGeneration = () => {
+    stopGeneration();
+    setShowCancelDialog(false);
+    toast.info('Generation cancelled');
   };
 
   const getContextFiles = () => {
@@ -456,7 +473,7 @@ export function UniversalChatInterface({
           className="flex-1"
         />
         {isLoading ? (
-          <Button onClick={stopGeneration} variant="destructive" size="icon">
+          <Button onClick={() => setShowCancelDialog(true)} variant="destructive" size="icon">
             <AlertCircle className="w-4 h-4" />
           </Button>
         ) : (
@@ -465,6 +482,24 @@ export function UniversalChatInterface({
           </Button>
         )}
       </div>
+
+      {/* Cancel Confirmation Dialog */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Generation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel the current generation? This action cannot be undone and you'll lose all progress.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continue Generation</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelGeneration} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Yes, Cancel
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Footer */}
       {showFooter && (
