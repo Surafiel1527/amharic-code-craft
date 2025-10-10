@@ -89,9 +89,12 @@ export async function logGenerationSuccess(
   try {
     console.log('📊 Logging generation success:', details.projectId);
     
-    const { error } = await supabase
-      .from('generation_analytics')
-      .insert({
+    // Use resilient insert to handle schema mismatches
+    const { resilientInsert } = await import('../_shared/resilientDb.ts');
+    
+    const result = await resilientInsert(supabase, {
+      tableName: 'generation_analytics',
+      data: {
         project_id: details.projectId,
         user_id: details.userId,
         user_request: details.userRequest,
@@ -103,11 +106,20 @@ export async function logGenerationSuccess(
           phases: details.phases,
           timestamp: new Date().toISOString()
         }
-      });
+      },
+      autoFix: true, // Attempt to auto-fix missing columns
+      critical: false // Don't fail if some fields can't be logged
+    });
 
-    if (error) {
-      console.error('❌ Failed to log generation success:', error);
+    if (!result.success) {
+      console.error('❌ Failed to log generation success:', result.error);
     } else {
+      if (result.warning) {
+        console.warn(`⚠️ Logged with warnings: ${result.warning}`);
+      }
+      if (result.autoFixedColumns && result.autoFixedColumns.length > 0) {
+        console.log(`🔧 Auto-fixed columns: ${result.autoFixedColumns.join(', ')}`);
+      }
       console.log('✅ Generation success logged successfully');
     }
   } catch (error) {
