@@ -45,7 +45,7 @@ import { FeatureOrchestrator } from '../_shared/featureOrchestrator.ts';
 import { FeatureDependencyGraph } from '../_shared/featureDependencyGraph.ts';
 import { PhaseValidator } from '../_shared/phaseValidator.ts';
 import { SchemaArchitect } from '../_shared/schemaArchitect.ts';
-import { ProgressiveBuilder } from '../_shared/progressiveBuilder.ts';
+import { FrameworkBuilderFactory } from '../_shared/frameworkBuilders/FrameworkBuilderFactory.ts';
 
 // CORS headers
 const corsHeaders = {
@@ -466,128 +466,142 @@ async function executeGeneration(ctx: {
     await ensureAuthInfrastructure(userSupabase);
   }
 
-  // Step 4: Generate code
+  // Step 4: Generate code using framework-specific builders
   await broadcast('generation:coding', { 
     status: 'generating', 
-    message: 'Generating your code...', 
+    message: '🔧 Initializing framework-specific builder...', 
     progress: 50 
   });
 
-  let generatedCode;
+  console.log(`🏗️ Using ${framework} builder for code generation`);
   
-  // ========== PHASE 3: PROGRESSIVE IMPLEMENTATION ==========
-  /**
-   * Threshold-based generation strategy:
-   * - Small projects (< 5 files): Single AI call for speed (e.g., simple landing pages)
-   * - Complex projects (>= 5 files): ProgressiveBuilder with full context
-   *   - Breaks into phases (max 20 files/phase)
-   *   - Each file generated with complete app context
-   *   - Validates each phase before continuing
-   * 
-   * Why 5 files? Analysis showed social media app = 20 files, would fail with single call.
-   * ProgressiveBuilder already has full context (originalRequest + analysis) from our fixes.
-   */
-  const estimatedFileCount = analysis.estimatedFiles || 
-                            analysis._orchestrationPlan?.totalFiles || 
-                            (analysis.backendRequirements?.databaseTables?.length || 0) * 3;
+  // Create framework-specific builder
+  const frameworkBuilder = FrameworkBuilderFactory.createBuilder(framework);
   
-  if (estimatedFileCount >= 5 && analysis._implementationPlan) {
-    console.log('🏗️ Progressive build: breaking into phases for', estimatedFileCount, 'files');
-    
-    await broadcast('generation:progressive', {
-      status: 'progressive',
-      message: `Building app with ${estimatedFileCount} files in validated phases...`,
-      progress: 52
-    });
+  // Build context for the builder
+  const buildContext = {
+    request,
+    analysis,
+    projectId,
+    userId,
+    conversationId,
+    platformSupabase,
+    userSupabase,
+    broadcast
+  };
 
-    // Pass full context to ProgressiveBuilder including broadcast function
-    const progressiveBuilder = new ProgressiveBuilder(request, analysis, framework, broadcast);
-    const phaseResults = await progressiveBuilder.buildInPhases(analysis._implementationPlan);
-    
-    // Map file language based on framework
-    const fileLanguage = framework === 'html' ? 'html' : 
-                        framework === 'vue' ? 'vue' : 
-                        'typescript';
-    
-    const allFiles = phaseResults
-      .filter(r => r.success)
-      .flatMap(r => r.phase.files.map(file => ({
-        path: file.path,
-        content: file.content, // Use actual generated content from AI
-        language: fileLanguage,
-        imports: file.dependencies
-      })));
+  // Step 4a: Analyze request (framework-specific)
+  const frameworkAnalysis = await frameworkBuilder.analyzeRequest(buildContext);
+  Object.assign(analysis, frameworkAnalysis); // Merge framework analysis
 
-    generatedCode = {
-      files: allFiles,
-      description: `Generated ${allFiles.length} ${framework.toUpperCase()} files in ${phaseResults.length} phases`,
-      framework // Store framework info
-    };
+  // Step 4b: Plan generation (framework-specific)
+  const generationPlan = await frameworkBuilder.planGeneration(buildContext, analysis);
+  console.log(`📋 Generation plan: ${generationPlan.strategy} strategy with ${generationPlan.estimatedFiles || generationPlan.files?.length || 0} files`);
 
-  await broadcast('generation:progressive_complete', {
-      status: 'success',
-      message: `✅ Built ${phaseResults.length} phases with ${allFiles.length} files`,
-      progress: 65,
-      details: {
-        phases: phaseResults.length,
-        files: allFiles.length,
-        framework,
-        failedPhases: phaseResults.filter(r => !r.success).length
-      }
-    });
-  } else {
-    // Simple code generation for small apps (< 5 files)
-    generatedCode = await generateCode(analysis, request, framework, broadcast);
-  }
+  // Step 4c: Generate files (framework-specific)
+  const generatedCode = await frameworkBuilder.generateFiles(buildContext, generationPlan);
+  console.log(`✅ Generated ${generatedCode.files.length} files using ${generatedCode.framework} builder`);
 
-  // Step 5: AUTO-FIX - Validate and fix code automatically
+  // Step 5: Validate files (framework-specific validation)
   await broadcast('generation:validating', { 
-    status: 'auto_fixing', 
-    message: 'Validating and auto-fixing code...', 
+    status: 'validating', 
+    message: '🔍 Validating generated files...', 
     progress: 70 
   });
 
-  const autoFixResult = await autoFixGeneratedCode(
-    generatedCode.files, 
-    platformSupabase, 
-    userId,
-    broadcast
-  );
-
-  // Use fixed files if auto-fix succeeded
-  if (autoFixResult.success && autoFixResult.fixed) {
-    console.log(`✅ Auto-fixed ${autoFixResult.fixedErrorTypes.length} error types in ${autoFixResult.totalAttempts} attempts`);
-    generatedCode.files = autoFixResult.fixedFiles.map(f => ({
-      path: f.path,
-      content: f.content,
-      language: f.language === 'typescript' ? 'typescript' : 'javascript',
-      imports: [] // Will be extracted later
-    }));
-    
-    await broadcast('generation:auto_fixed', {
-      status: 'success',
-      message: `✅ Auto-fixed ${autoFixResult.fixedErrorTypes.join(', ')} errors`,
-      progress: 75,
-      details: {
-        attempts: autoFixResult.totalAttempts,
-        fixedTypes: autoFixResult.fixedErrorTypes
-      }
-    });
-  } else if (!autoFixResult.success) {
-    console.warn('⚠️ Auto-fix could not resolve all errors:', autoFixResult.errors);
+  const validationResult = await frameworkBuilder.validateFiles(generatedCode.files);
+  
+  if (!validationResult.success) {
+    console.warn('⚠️ Validation warnings:', validationResult.warnings);
+    console.error('❌ Validation errors:', validationResult.errors);
     
     await broadcast('generation:validation_warning', {
       status: 'warning',
-      message: '⚠️ Some errors remain - please review',
+      message: `⚠️ ${validationResult.errors.length} validation issue(s) found`,
+      progress: 72,
+      details: {
+        errors: validationResult.errors,
+        warnings: validationResult.warnings
+      }
+    });
+  } else if (validationResult.warnings.length > 0) {
+    console.warn('⚠️ Validation passed with warnings:', validationResult.warnings);
+    
+    await broadcast('generation:validation_success', {
+      status: 'success',
+      message: `✅ Validation passed (${validationResult.warnings.length} warnings)`,
       progress: 75,
       details: {
-        errors: autoFixResult.errors,
-        warnings: autoFixResult.warnings
+        warnings: validationResult.warnings
       }
+    });
+  } else {
+    console.log('✅ Validation passed with no issues');
+    
+    await broadcast('generation:validation_success', {
+      status: 'success',
+      message: '✅ All validation checks passed',
+      progress: 75
     });
   }
 
-  // Step 6: Learn from success
+  // Step 6: AUTO-FIX (only for critical errors, skip for warnings)
+  interface AutoFixResult {
+    success: boolean;
+    fixed: boolean;
+    totalAttempts: number;
+    fixedErrorTypes: string[];
+    errors: string[];
+    warnings: string[];
+    fixedFiles?: Array<{ path: string; content: string; language: string; imports?: string[] }>;
+  }
+  
+  let autoFixResult: AutoFixResult = { 
+    success: true, 
+    fixed: false, 
+    totalAttempts: 0, 
+    fixedErrorTypes: [], 
+    errors: [], 
+    warnings: [] 
+  };
+  
+  if (validationResult.errors.length > 0) {
+    await broadcast('generation:auto_fixing', { 
+      status: 'auto_fixing', 
+      message: '🔧 Auto-fixing validation errors...', 
+      progress: 76 
+    });
+
+    autoFixResult = await autoFixGeneratedCode(
+      generatedCode.files, 
+      platformSupabase, 
+      userId,
+      broadcast
+    );
+
+    // Use fixed files if auto-fix succeeded
+    if (autoFixResult.success && autoFixResult.fixed && autoFixResult.fixedFiles) {
+      console.log(`✅ Auto-fixed ${autoFixResult.fixedErrorTypes.length} error types in ${autoFixResult.totalAttempts} attempts`);
+      generatedCode.files = autoFixResult.fixedFiles.map((f: any) => ({
+        path: f.path,
+        content: f.content,
+        language: f.language === 'typescript' ? 'typescript' : f.language,
+        imports: f.imports || []
+      }));
+      
+      await broadcast('generation:auto_fixed', {
+        status: 'success',
+        message: `✅ Auto-fixed ${autoFixResult.fixedErrorTypes.join(', ')}`,
+        progress: 80,
+        details: {
+          attempts: autoFixResult.totalAttempts,
+          fixedTypes: autoFixResult.fixedErrorTypes
+        }
+      });
+    }
+  }
+
+  // Step 7: Learn from success
   if (generatedCode.files.length > 0) {
     await storeSuccessfulPattern(platformSupabase, {
       category: analysis.outputType,
@@ -595,7 +609,8 @@ async function executeGeneration(ctx: {
       useCase: request,
       codeTemplate: JSON.stringify(generatedCode.files[0]),
       context: { 
-        analysis, 
+        analysis,
+        framework: generatedCode.framework,
         autoFix: {
           success: autoFixResult.success,
           attempts: autoFixResult.totalAttempts,
@@ -605,12 +620,12 @@ async function executeGeneration(ctx: {
     });
   }
 
-  // Step 7: Store file dependencies
+  // Step 8: Store file dependencies
   for (const file of generatedCode.files) {
     await storeFileDependency(platformSupabase, {
       conversationId,
       componentName: file.path,
-      componentType: file.path.endsWith('.tsx') ? 'component' : 'file',
+      componentType: file.path.match(/\.(tsx|ts|jsx|js)$/) ? 'component' : 'file',
       dependsOn: file.imports || [],
       usedBy: [],
       complexityScore: Math.floor(file.content.length / 100),
@@ -620,39 +635,44 @@ async function executeGeneration(ctx: {
 
   await broadcast('generation:finalizing', { 
     status: 'finalizing', 
-    message: 'Preparing your code...', 
-    progress: 90 
+    message: '📦 Packaging your project...', 
+    progress: 85 
   });
 
-  // Step 8: Update project with generated code (if projectId provided)
+  // Step 9: Package output (framework-specific)
+  const packagedCode = await frameworkBuilder.packageOutput(generatedCode);
+
+  // Step 10: Update project with generated code (if projectId provided)
   if (projectId && generatedCode.files.length > 0) {
-    console.log(`📝 Updating project ${projectId} with ${framework} code`);
-    
-    // Combine all files into html_code field for storage
-    const combinedCode = generatedCode.files.map((f: any) => 
-      `<!-- File: ${f.path} -->\n${f.content}`
-    ).join('\n\n');
+    console.log(`📝 Saving project ${projectId} with ${generatedCode.files.length} ${framework} files`);
     
     const { error: updateError } = await platformSupabase
       .from('projects')
       .update({
-        html_code: combinedCode,
+        html_code: packagedCode,
         updated_at: new Date().toISOString()
       })
       .eq('id', projectId);
     
     if (updateError) {
       console.error('❌ Failed to update project:', updateError);
+      throw new Error(`Failed to save project: ${updateError.message}`);
     } else {
-      console.log('✅ Project updated successfully');
+      console.log('✅ Project saved successfully to database');
+      
+      await broadcast('generation:saved', {
+        status: 'success',
+        message: '💾 Project saved successfully',
+        progress: 95
+      });
       
       // Log successful generation to monitoring
       await logGenerationSuccess(platformSupabase, {
         projectId,
         userRequest: request,
-        framework,
+        framework: generatedCode.framework,
         fileCount: generatedCode.files.length,
-        duration: Math.round((Date.now() - Date.now()) / 1000), // Will be calculated from start time
+        duration: 0, // Will be calculated
         phases: analysis._orchestrationPlan?.phases || [],
         userId
       });
@@ -662,8 +682,9 @@ async function executeGeneration(ctx: {
   return {
     success: true,
     files: generatedCode.files,
-    framework, // Include framework in response
+    framework: generatedCode.framework,
     analysis,
+    validation: validationResult,
     autoFix: {
       success: autoFixResult.success,
       fixed: autoFixResult.fixed,
