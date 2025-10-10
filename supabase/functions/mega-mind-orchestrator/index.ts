@@ -387,11 +387,11 @@ async function processRequest(ctx: {
   let generatedCode;
   
   // ========== PHASE 3: PROGRESSIVE IMPLEMENTATION ==========
-  // For large apps (25+ files), use progressive building
+  // For large apps (100+ files), use progressive building
   const estimatedFileCount = analysis._orchestrationPlan?.totalFiles || 
                             (analysis.backendRequirements?.databaseTables?.length || 0) * 3;
   
-  if (estimatedFileCount >= 25 && analysis._implementationPlan) {
+  if (estimatedFileCount >= 100 && analysis._implementationPlan) {
     console.log('🏗️ Progressive build: breaking into phases for', estimatedFileCount, 'files');
     
     await broadcast('generation:progressive', {
@@ -410,11 +410,11 @@ async function processRequest(ctx: {
     
     const allFiles = phaseResults
       .filter(r => r.success)
-      .flatMap(r => r.filesGenerated.map(path => ({
-        path,
-        content: '', // Would be actual generated content
+      .flatMap(r => r.phase.files.map(file => ({
+        path: file.path,
+        content: file.content, // Use actual generated content from AI
         language: fileLanguage,
-        imports: []
+        imports: file.dependencies
       })));
 
     generatedCode = {

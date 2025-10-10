@@ -5,6 +5,9 @@
  * Validates each phase before proceeding to next.
  */
 
+import { callAIWithFallback } from './aiHelpers.ts';
+import { buildWebsitePrompt } from './promptTemplates.ts';
+
 export interface BuildPhase {
   phaseNumber: number;
   name: string;
@@ -190,10 +193,27 @@ export class ProgressiveBuilder {
     const validationResults: ValidationResult[] = [];
 
     try {
-      // Generate files
+      // Generate files using AI
       for (const file of phase.files) {
         try {
-          // File would be generated here
+          // Build prompt for this specific file
+          const filePrompt = `Generate ${file.type} code for: ${file.path}
+Dependencies: ${file.dependencies.join(', ')}
+Phase: ${phase.name}
+
+Create production-ready, clean code following best practices.`;
+
+          const result = await callAIWithFallback(
+            [{ role: 'user', content: filePrompt }],
+            {
+              systemPrompt: 'You are an expert developer. Generate clean, production-ready code. Return ONLY the code, no markdown, no explanations.',
+              preferredModel: 'google/gemini-2.5-flash',
+              maxTokens: 4000
+            }
+          );
+
+          // Store generated content in the file object
+          file.content = result.data.choices[0].message.content;
           filesGenerated.push(file.path);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
