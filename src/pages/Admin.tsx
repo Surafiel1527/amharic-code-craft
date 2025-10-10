@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { AIAnalytics } from "@/components/AIAnalytics";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { SelfHealingMonitor } from "@/components/SelfHealingMonitor";
+import { ProductionTestingDashboard } from "@/components/ProductionTestingDashboard";
 import AdminSelfModifyChat from "@/components/AdminSelfModifyChat";
 import AdminCustomizationsList from "@/components/AdminCustomizationsList";
 import { AdminSecurityDashboard } from "@/components/AdminSecurityDashboard";
@@ -548,7 +549,7 @@ function AdminContent() {
           </TabsContent>
 
           <TabsContent value="healing">
-            <div className="space-y-4">
+            <div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -575,6 +576,7 @@ function AdminContent() {
                 </CardContent>
               </Card>
               <SelfHealingMonitor />
+              <ProductionTestingDashboard />
             </div>
           </TabsContent>
 
