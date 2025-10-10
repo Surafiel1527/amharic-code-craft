@@ -3598,6 +3598,7 @@ export type Database = {
           error_message: string | null
           existing_code_context: string | null
           feedback_type: Database["public"]["Enums"]["feedback_type"] | null
+          framework: string | null
           generated_code: string
           generation_time_ms: number | null
           id: string
@@ -3623,6 +3624,7 @@ export type Database = {
           error_message?: string | null
           existing_code_context?: string | null
           feedback_type?: Database["public"]["Enums"]["feedback_type"] | null
+          framework?: string | null
           generated_code: string
           generation_time_ms?: number | null
           id?: string
@@ -3648,6 +3650,7 @@ export type Database = {
           error_message?: string | null
           existing_code_context?: string | null
           feedback_type?: Database["public"]["Enums"]["feedback_type"] | null
+          framework?: string | null
           generated_code?: string
           generation_time_ms?: number | null
           id?: string
