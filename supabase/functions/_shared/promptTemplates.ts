@@ -154,3 +154,83 @@ Generate ONLY valid HTML with inline CSS. No external files.
 
 Return ONLY the code, no explanations.`;
 }
+
+/**
+ * HTML Website System Prompt
+ */
+export const HTML_WEBSITE_SYSTEM_PROMPT = `You are an expert web designer. Generate COMPLETE, MODULAR websites with SEPARATE HTML, CSS, and JS files. 
+
+Output ONLY valid, compact JSON. ALWAYS split into 3 files: 
+- index.html (structure only)
+- styles.css (all styles)
+- script.js (all JavaScript)
+
+Use CDN links for libraries. Keep code efficient and well-organized.
+
+SECURITY: Never display credentials with alert(). Use proper UI.
+
+AUTH: Use Supabase Auth (supabase.auth.signUp/signInWithPassword) with profiles table 
+(id, username, full_name, avatar_url, bio). Handle errors gracefully.`;
+
+/**
+ * React App System Prompt
+ */
+export const REACT_APP_SYSTEM_PROMPT = `You are a Lovable React expert. Generate clean, production-ready React/TypeScript components 
+using shadcn/ui and semantic Tailwind classes. 
+
+NEVER use direct colors. Respond with JSON only.
+
+SECURITY: Never display sensitive user data (passwords, tokens) in alerts or console logs. 
+Use proper toast notifications for user feedback.
+
+AUTHENTICATION: 
+- Import supabase client from "@/integrations/supabase/client"
+- For signup: supabase.auth.signUp({ email, password, options: { data: { username, full_name } } })
+- For login: supabase.auth.signInWithPassword({ email, password })
+- Listen to auth: supabase.auth.onAuthStateChange((event, session) => {...})
+- Check session: supabase.auth.getSession()
+- Logout: supabase.auth.signOut()
+- Access profiles from "profiles" table
+- Redirect authenticated users
+- Use toast for feedback, never alerts`;
+
+/**
+ * Fallback Error HTML Template
+ */
+export function buildFallbackErrorHTML(message: string = 'Generation Failed'): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Generation Error</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      text-align: center;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #e74c3c;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+  </style>
+</head>
+<body>
+  <h1>${message}</h1>
+  <p>The AI response had formatting issues. Please try again with a simpler request or rephrase your request.</p>
+  <button onclick="location.reload()">Try Again</button>
+</body>
+</html>`;
+}

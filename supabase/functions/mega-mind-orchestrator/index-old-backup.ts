@@ -2,6 +2,13 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
+// Import prompt templates
+import { 
+  HTML_WEBSITE_SYSTEM_PROMPT, 
+  REACT_APP_SYSTEM_PROMPT,
+  buildFallbackErrorHTML 
+} from '../_shared/promptTemplates.ts';
+
 // Inlined from codeValidator.ts
 interface ValidationResult {
   isValid: boolean;
@@ -2497,7 +2504,7 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert web designer. Generate COMPLETE, MODULAR websites with SEPARATE HTML, CSS, and JS files. Output ONLY valid, compact JSON. ALWAYS split into 3 files: index.html (structure only), styles.css (all styles), script.js (all JavaScript). Use CDN links for libraries. Keep code efficient and well-organized. SECURITY: Never display credentials with alert(). Use proper UI. AUTH: Use Supabase Auth (supabase.auth.signUp/signInWithPassword) with profiles table (id, username, full_name, avatar_url, bio). Handle errors gracefully.' },
+        { role: 'system', content: HTML_WEBSITE_SYSTEM_PROMPT },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" },
@@ -2636,7 +2643,7 @@ CRITICAL: Use the content and theme from the request above. DO NOT use placehold
         result = {
           files: [{
             path: 'index.html',
-            content: '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Generation Error</title><style>body{font-family:Arial,sans-serif;padding:40px;text-align:center;background:#f5f5f5;}h1{color:#e74c3c;}</style></head><body><h1>Generation Failed</h1><p>The AI response had formatting issues. Please try again with a simpler request or rephrase your request.</p><button onclick="location.reload()">Try Again</button></body></html>',
+            content: buildFallbackErrorHTML('Generation Failed'),
             description: 'Fallback HTML'
           }],
           instructions: 'Generation encountered issues, please try again'
@@ -2898,7 +2905,7 @@ async function generateSolution(request: string, requestType: string, analysis: 
     body: JSON.stringify({
       model: 'google/gemini-2.5-pro',
       messages: [
-        { role: 'system', content: 'You are a Lovable React expert. Generate clean, production-ready React/TypeScript components using shadcn/ui and semantic Tailwind classes. NEVER use direct colors. Respond with JSON only. SECURITY: Never display sensitive user data (passwords, tokens) in alerts or console logs. Use proper toast notifications for user feedback. AUTHENTICATION: Import supabase client from "@/integrations/supabase/client". For signup: supabase.auth.signUp({ email, password, options: { data: { username, full_name } } }). For login: supabase.auth.signInWithPassword({ email, password }). Listen to auth: supabase.auth.onAuthStateChange((event, session) => {...}). Check session: supabase.auth.getSession(). Logout: supabase.auth.signOut(). Access profiles from "profiles" table. Redirect authenticated users. Use toast for feedback, never alerts.' },
+        { role: 'system', content: REACT_APP_SYSTEM_PROMPT },
         { role: 'user', content: prompt }
       ],
       response_format: { type: "json_object" }

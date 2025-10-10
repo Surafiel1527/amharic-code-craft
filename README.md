@@ -73,6 +73,7 @@ Visit `http://localhost:5173` to see your app running!
 - **[Quick Start Guide](./QUICK_START_GUIDE.md)** - Get started in 5 minutes
 - **[Mega Mind Architecture](./MEGA_MIND_ARCHITECTURE.md)** - Orchestrator design & workflows
 - **[Self-Healing System](./SELF_HEALING_SYSTEM.md)** - Auto-fix & recovery capabilities
+- **[Code Standards](./CODE_STANDARDS.md)** - Coding standards & best practices
 - **[Generation Flow](./GENERATION_FLOW.md)** - Complete user journey end-to-end
 - **[Platform Status](./PLATFORM_STATUS.md)** - Current state & monitoring
 - **[Phase Review](./PHASE_REVIEW.md)** - Implementation achievements
