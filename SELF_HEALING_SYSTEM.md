@@ -1,14 +1,21 @@
 # Self-Healing System Architecture
 
-**Version:** 1.0  
+**Version:** 3.0 (Intelligence-Integrated)  
 **Last Updated:** 2025-01-10  
-**Status:** Production & Active
+**Status:** Production & Active with Autonomous Healing
 
 ---
 
 ## 🎯 Overview
 
-The Self-Healing System is an autonomous recovery mechanism that detects, analyzes, and fixes errors automatically without human intervention. It operates across multiple layers to ensure maximum reliability and uptime.
+The Self-Healing System is an **autonomous, context-aware recovery mechanism** that detects, analyzes, and fixes errors automatically without human intervention. It integrates with the **Intelligence Engine** to make intelligent decisions about when to auto-fix (≥75% confidence with learned patterns) versus when to suggest fixes or ask for clarification.
+
+**Key Enhancement**: Now includes **context-aware decisions** that:
+- Analyze error severity, user intent, and project state
+- Match errors against learned patterns
+- Autonomously trigger fixes when confidence is high
+- Evolve patterns through Bayesian learning
+- Broadcast healing events for UI updates
 
 ---
 
@@ -17,21 +24,33 @@ The Self-Healing System is an autonomous recovery mechanism that detects, analyz
 ```mermaid
 graph TD
     A[Error Detection] --> B[Classification]
-    B --> C[Pattern Matching]
-    C --> D{Known Pattern?}
+    B --> C[🧠 Context Analysis]
+    C --> D{Pattern Matching}
     
-    D -->|Yes| E[Apply Learned Fix]
-    D -->|No| F[AI Analysis]
+    D -->|Known Pattern| E[Check Confidence]
+    D -->|No Pattern| F[AI Analysis]
     
-    E --> G[Validate Fix]
-    F --> H[Generate Fix]
-    H --> G
+    E -->|≥75% + Learned| G[🤖 Auto-Apply Fix]
+    E -->|≥70%| H[Suggest Fixes]
+    E -->|<70%| I[Provide Options]
     
-    G -->|Success| I[Learn Pattern]
-    G -->|Fail| J[Escalate]
+    F --> J[Generate Fix]
+    J --> H
     
-    I --> K[Update Knowledge Base]
-    J --> L[Human Review Queue]
+    G --> K[Validate Fix]
+    H --> L[User Selection]
+    I --> L
+    
+    K -->|Success| M[📊 Pattern Evolution]
+    K -->|Fail| N[Escalate]
+    L --> K
+    
+    M --> O[Update Knowledge Base]
+    N --> P[Human Review Queue]
+    
+    style C fill:#e1f5ff
+    style G fill:#c8e6c9
+    style M fill:#c8e6c9
 ```
 
 ---

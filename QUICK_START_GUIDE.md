@@ -51,6 +51,25 @@ Your Project
 
 ## Key Features You Get Out of the Box
 
+### ✅ Intelligence & Learning
+```typescript
+// Context-aware analysis before every generation:
+- Analyzes user intent (fix, generate, modify, etc.)
+- Assesses complexity (simple, moderate, complex)
+- Calculates confidence scores
+- Learns from successful fixes
+- Evolves patterns automatically
+```
+
+### ✅ Autonomous Healing
+```typescript
+// Automatically fixes errors:
+- Auto-fix when confidence ≥75% + learned pattern
+- Suggests fixes for 70%+ confidence
+- Provides options for complex cases
+- Asks for clarification when unclear
+```
+
 ### ✅ AI Code Generation
 ```typescript
 // Automatically generates:
@@ -233,9 +252,10 @@ Fix: Wait 1 minute or implement request throttling
 ## Next Steps
 
 ### Learn More
-1. Read [Platform Architecture](./PLATFORM_ARCHITECTURE.md)
-2. Explore [Refactoring Guide](./REFACTORING_COMPLETE.md)
-3. Study [Self-Healing System](./SELF_HEALING_IMPLEMENTATION.md)
+1. Read [Mega Mind Architecture](./MEGA_MIND_ARCHITECTURE.md)
+2. Explore [Self-Healing System](./SELF_HEALING_SYSTEM.md)
+3. Study [Intelligence Integration](./PHASE_REVIEW.md)
+4. Review [Complete Flow](./GENERATION_FLOW.md)
 
 ### Build Something
 1. Generate a simple app
@@ -286,7 +306,9 @@ The platform handles:
 - ✅ Code generation
 - ✅ Database setup
 - ✅ Error auto-fixing
-- ✅ Pattern learning
+- ✅ Pattern learning & evolution
+- ✅ Autonomous healing
+- ✅ Context-aware decisions
 - ✅ AI fallbacks
 
 You focus on:

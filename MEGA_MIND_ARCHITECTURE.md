@@ -1,14 +1,20 @@
 # Mega Mind Orchestrator - Complete Architecture
 
-**Version:** 1.0  
+**Version:** 3.0 (Intelligence-Integrated)  
 **Last Updated:** 2025-01-10  
-**Status:** Production
+**Status:** Production with Autonomous Healing
 
 ---
 
 ## 🎯 Overview
 
-The Mega Mind Orchestrator is the central intelligence system that coordinates all AI-powered code generation workflows. It acts as the brain of the platform, making decisions about how to handle user requests, managing complex multi-phase builds, and ensuring reliable delivery.
+The Mega Mind Orchestrator is the central intelligence system that coordinates all AI-powered code generation workflows. It integrates **context-aware analysis** and **autonomous decision-making** to intelligently handle user requests, manage complex multi-phase builds, and automatically fix errors with high confidence.
+
+**Key Enhancement**: Now includes **Intelligence Engine** integration that:
+- Analyzes context before every generation
+- Makes intelligent decisions about auto-fix vs suggestions
+- Learns from every interaction through pattern evolution
+- Autonomously triggers healing when confidence is high (≥75%)
 
 ---
 
@@ -19,39 +25,55 @@ The Mega Mind Orchestrator is the central intelligence system that coordinates a
 ```mermaid
 graph TD
     A[User Request] --> B[Mega Mind Orchestrator]
-    B --> C{Request Analysis}
-    C -->|Q&A| D[Conversational Response]
-    C -->|Simple| E[Single-Pass Generation]
-    C -->|Complex| F[Progressive Builder]
+    B --> C[🧠 Intelligence Engine]
+    C --> D{Context Analysis}
+    D --> E{Request Analysis}
     
-    E --> G[Auto-Fix Engine]
-    F --> H[Phase-by-Phase Build]
-    H --> G
+    E -->|Q&A| F[Conversational Response]
+    E -->|Simple| G[Single-Pass Generation]
+    E -->|Complex| H[Progressive Builder]
     
-    G --> I[Validation]
-    I -->|Pass| J[Save to Database]
-    I -->|Fail| K[Error Recovery]
-    K --> G
+    G --> I[Auto-Fix Engine]
+    H --> J[Phase-by-Phase Build]
+    J --> I
     
-    J --> L[Success Logging]
-    K --> M[Failure Logging]
+    I --> K[Validation]
+    K -->|Pass| L[Save to Database]
+    K -->|Fail| M[Error Classification]
     
-    L --> N[Broadcast Complete]
-    M --> O[Auto-Test Generation]
+    M --> N{🧠 Intelligent Decision}
+    N -->|auto_fix 85%+| O[🤖 Autonomous Healing]
+    N -->|suggest_fix 70%+| P[Suggest Fixes]
+    N -->|options| Q[Provide Options]
+    N -->|clarify| R[Ask User]
+    
+    O --> S[Pattern Evolution]
+    L --> T[Success Logging]
+    M --> U[Failure Logging]
+    
+    T --> V[Broadcast Complete]
+    U --> W[🧠 Check for Auto-Heal]
+    W --> N
+    
+    style C fill:#e1f5ff
+    style N fill:#e1f5ff
+    style O fill:#c8e6c9
 ```
 
 ### Module Structure
 
 ```
 mega-mind-orchestrator/
-├── index.ts                    # Main orchestration logic
+├── index.ts                    # Main orchestration (~1,300 lines with intelligence)
 ├── autoFixIntegration.ts       # Code validation & fixes
 ├── productionMonitoring.ts     # Success/failure tracking
 └── _shared/
     ├── aiHelpers.ts           # AI calls with fallback
+    ├── intelligenceEngine.ts  # 🧠 Context analysis + AGI decisions
     ├── implementationPlanner.ts # Plan generation + JSON parsing
     ├── progressiveBuilder.ts   # Multi-phase building
     ├── codeValidator.ts       # Syntax & structure validation
+    ├── patternLearning.ts     # Pattern evolution (Bayesian)
     └── conversationMemory.ts  # Context management
 ```
 
@@ -495,6 +517,163 @@ flowchart TD
     V --> W[Check Auto-Test Trigger]
     W --> X[Broadcast Error]
 ```
+
+---
+
+## 🧠 Intelligence Engine Layer (NEW)
+
+### Overview
+
+The Intelligence Engine adds **context-aware decision making** and **autonomous healing** to the orchestrator. It analyzes every request, makes intelligent decisions about error handling, and learns from every interaction.
+
+**Location:** `supabase/functions/_shared/intelligenceEngine.ts`
+
+### Context Analysis Function
+
+**Purpose:** Analyze user intent, project state, and patterns before making decisions
+
+```typescript
+interface ContextAnalysis {
+  userIntent: 'fix' | 'generate' | 'modify' | 'question' | 'explore';
+  complexity: 'simple' | 'moderate' | 'complex';
+  confidenceScore: number;  // 0-1
+  projectState: {
+    hasAuth: boolean;
+    hasDatabase: boolean;
+    recentErrors: number;
+    successRate: number;
+    generationHistory: any[];
+  };
+  patterns: {
+    commonIssues: string[];
+    userPreferences: string[];
+    successfulApproaches: string[];
+  };
+  contextQuality: number;  // 0-100
+}
+
+// Called in orchestrator (lines 536-558)
+const contextAnalysis = await analyzeContext(
+  platformSupabase,
+  conversationId,
+  userId,
+  request,
+  projectId
+);
+
+// Stored for later use
+(conversationContext as any)._contextAnalysis = contextAnalysis;
+```
+
+### Intelligent Decision Function
+
+**Purpose:** Decide the best action based on context and error state
+
+```typescript
+interface IntelligentDecision {
+  action: 'auto_fix' | 'suggest_fix' | 'provide_options' | 'ask_clarification';
+  confidence: number;        // 0-1
+  reasoning: string;
+  requiresUserInput: boolean;
+  suggestedApproaches: string[];
+  estimatedComplexity: 'low' | 'medium' | 'high';
+  riskLevel: 'low' | 'medium' | 'high';
+  alternativeApproaches: string[];
+}
+
+// Called when error occurs (lines 234-238)
+const decision = makeIntelligentDecision(
+  contextAnalysis,
+  errorSeverity,      // 'low' | 'medium' | 'high'
+  hasLearnedPattern   // boolean
+);
+```
+
+### Decision Logic
+
+```typescript
+Decision Criteria:
+├─ Confidence ≥ 85% + Learned Pattern → auto_fix
+├─ Confidence ≥ 70% → suggest_fix
+├─ Complexity = complex OR Confidence < 70% → provide_options
+└─ Intent unclear → ask_clarification
+
+Confidence Calculation:
+- Base: context quality / 100
+- +20% if learned pattern exists
+- +10% if recent successes high
+- -10% per recent error
+- -20% if complexity = complex
+```
+
+### Integration with Orchestrator
+
+**1. Request Analysis (Lines 536-558)**
+```typescript
+// Run context analysis BEFORE generation
+const contextAnalysis = await analyzeContext(...);
+(conversationContext as any)._contextAnalysis = contextAnalysis;
+
+console.log('📊 Context Analysis:', {
+  intent: contextAnalysis.userIntent,
+  complexity: contextAnalysis.complexity,
+  confidence: contextAnalysis.confidenceScore
+});
+```
+
+**2. Error Handling (Lines 182-294)**
+```typescript
+// When generation fails:
+catch (error) {
+  // Classify error
+  const errorClassification = classifyError(error);
+  
+  // Check for learned patterns
+  const { data: matchingPatterns } = await platformSupabase
+    .from('universal_error_patterns')
+    .select('*')
+    .eq('error_category', errorClassification.category)
+    .gte('confidence_score', 0.7);
+  
+  const hasLearnedPattern = !!(matchingPatterns?.length);
+  
+  // Get context (from earlier analysis or fetch fresh)
+  const contextAnalysis = (conversationContext as any)._contextAnalysis || 
+    await analyzeContext(...);
+  
+  // Make intelligent decision
+  const decision = makeIntelligentDecision(
+    contextAnalysis,
+    errorSeverity,
+    hasLearnedPattern
+  );
+  
+  // If confident, trigger autonomous fix
+  if (decision.action === 'auto_fix' && decision.confidence >= 0.75) {
+    await platformSupabase.functions.invoke('unified-healing-engine', {
+      body: {
+        operation: 'autonomous_fix',
+        params: { errorId, userId, projectId, ... }
+      }
+    });
+    
+    // Notify UI
+    await broadcast('healing:triggered', {
+      status: 'healing',
+      message: '🤖 AI is autonomously fixing the issue...',
+      decision
+    });
+  }
+}
+```
+
+### Benefits
+
+1. **Context-Aware**: Decisions based on project state, user intent, patterns
+2. **Autonomous**: Auto-fixes errors when confident (≥75%)
+3. **Learning**: Gets smarter with every fix through pattern evolution
+4. **Transparent**: Reasoning provided for every decision
+5. **Safe**: Risk levels prevent dangerous auto-fixes
 
 ---
 

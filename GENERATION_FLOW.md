@@ -128,6 +128,42 @@ useEffect(() => {
 
 ## 🔄 Phase 2: Backend Processing
 
+### Step 2.0: Context Analysis (NEW - Intelligence Engine)
+
+**Purpose:** Analyze context BEFORE generation for intelligent decisions
+
+**Location:** `supabase/functions/mega-mind-orchestrator/index.ts` (lines 536-558)
+
+```typescript
+// Run Intelligence Engine analysis
+const contextAnalysis = await analyzeContext(
+  platformSupabase,
+  conversationId,
+  userId,
+  request,
+  projectId
+);
+
+console.log('📊 Context Analysis:', {
+  intent: contextAnalysis.userIntent,        // fix, generate, modify, etc.
+  complexity: contextAnalysis.complexity,     // simple, moderate, complex
+  confidence: contextAnalysis.confidenceScore, // 0-1
+  contextQuality: contextAnalysis.contextQuality // 0-100
+});
+
+// Store for error handling later
+(conversationContext as any)._contextAnalysis = contextAnalysis;
+```
+
+**Broadcast to Frontend:**
+```typescript
+await broadcastStatus(projectId, {
+  status: 'analyzing',
+  progress: 3,
+  message: '🧠 Analyzing context and intent...'
+});
+```
+
 ### Step 2.1: Request Reception
 
 **Location:** `supabase/functions/mega-mind-orchestrator/index.ts`
