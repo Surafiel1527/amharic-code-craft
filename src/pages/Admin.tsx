@@ -25,6 +25,7 @@ import { AdminSecurityDashboard } from "@/components/AdminSecurityDashboard";
 import { HealingActionsPanel } from "@/components/healing/HealingActionsPanel";
 import { LearningIntelligencePanel } from "@/components/healing/LearningIntelligencePanel";
 import { PredictiveOptimizationPanel } from "@/components/healing/PredictiveOptimizationPanel";
+import { SelfHealingMonitor } from "@/components/SelfHealingMonitor";
 import { SecureAPIKeyManager } from "@/components/SecureAPIKeyManager";
 import { SessionManager } from "@/components/SessionManager";
 import { PreviewModeToggle } from "@/components/PreviewModeToggle";
@@ -553,14 +554,19 @@ function AdminContent() {
           </TabsContent>
 
           <TabsContent value="healing">
-            <Tabs defaultValue="actions" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-5">
+            <Tabs defaultValue="monitor" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger value="monitor">🎯 Monitor</TabsTrigger>
                 <TabsTrigger value="actions">🤖 Actions</TabsTrigger>
                 <TabsTrigger value="learning">📚 Learning</TabsTrigger>
                 <TabsTrigger value="predictive">🔮 Predictive</TabsTrigger>
                 <TabsTrigger value="dashboard">📊 Dashboard</TabsTrigger>
                 <TabsTrigger value="testing">🧪 Testing</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="monitor">
+                <SelfHealingMonitor />
+              </TabsContent>
 
               <TabsContent value="actions">
                 <HealingActionsPanel />

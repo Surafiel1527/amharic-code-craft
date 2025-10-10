@@ -39,6 +39,7 @@ import {
   classifyError, 
   extractStackTrace 
 } from './productionMonitoring.ts';
+import { analyzeContext, makeIntelligentDecision } from '../_shared/intelligenceEngine.ts';
 
 // Enterprise modules (Phases 1-3)
 import { FeatureOrchestrator } from '../_shared/featureOrchestrator.ts';
@@ -176,6 +177,120 @@ serve(async (req) => {
         if (healthMetrics.failureRate > 50) {
           console.error(`🚨 CRITICAL: System failure rate is ${healthMetrics.failureRate.toFixed(2)}%`);
         }
+      }
+      
+      // 🧠 NEW: Intelligent autonomous fix decision
+      try {
+        console.log('🧠 Analyzing error for autonomous fix possibility...');
+        
+        // Check for learned patterns
+        const { data: matchingPatterns } = await platformSupabase
+          .from('universal_error_patterns')
+          .select('*')
+          .eq('error_category', errorClassification.category)
+          .gte('confidence_score', 0.7)
+          .order('success_count', { ascending: false })
+          .limit(1);
+        
+        const hasLearnedPattern = !!(matchingPatterns && matchingPatterns.length > 0);
+        
+        // Get context analysis (might be from earlier in the flow)
+        let contextAnalysis: any;
+        try {
+          contextAnalysis = (conversationContext as any)._contextAnalysis || await analyzeContext(
+            platformSupabase as any,
+            conversationId,
+            userId,
+            request,
+            projectId || undefined
+          );
+        } catch (analysisError) {
+          console.error('Context analysis failed, using defaults:', analysisError);
+          // Use default context
+          contextAnalysis = {
+            userIntent: 'fix',
+            complexity: 'moderate',
+            confidenceScore: 0.5,
+            projectState: {
+              hasAuth: false,
+              hasDatabase: false,
+              recentErrors: 0,
+              successRate: 0.5,
+              generationHistory: []
+            },
+            patterns: {
+              commonIssues: [],
+              userPreferences: [],
+              successfulApproaches: []
+            },
+            contextQuality: 50
+          };
+        }
+        
+        // Map critical severity to high for decision making
+        const mappedSeverity = errorClassification.severity === 'critical' ? 'high' : errorClassification.severity as 'low' | 'medium' | 'high';
+        
+        // Make intelligent decision
+        const decision = makeIntelligentDecision(
+          contextAnalysis,
+          mappedSeverity,
+          hasLearnedPattern
+        );
+        
+        console.log('🎯 Autonomous Decision:', {
+          action: decision.action,
+          confidence: decision.confidence,
+          reasoning: decision.reasoning,
+          requiresUserInput: decision.requiresUserInput
+        });
+        
+        // If decision is to auto-fix, trigger autonomous healing
+        if (decision.action === 'auto_fix' && decision.confidence >= 0.75) {
+          console.log('🔧 Triggering autonomous fix...');
+          
+          const { data: job } = await platformSupabase
+            .from('ai_generation_jobs')
+            .select('id')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (job) {
+            // Trigger autonomous healing
+            await platformSupabase.functions.invoke('unified-healing-engine', {
+              body: {
+                operation: 'autonomous_fix',
+                params: {
+                  errorId: job.id,
+                  userId,
+                  projectId,
+                  conversationId,
+                  errorMessage: error.message,
+                  errorType: errorClassification.category,
+                  code: '', // Will be retrieved from context
+                  context: {
+                    framework,
+                    request,
+                    severity: errorClassification.severity,
+                    decision: decision
+                  }
+                }
+              }
+            });
+            
+            console.log('✅ Autonomous healing triggered');
+            
+            // Notify user
+            await broadcast('healing:triggered', {
+              status: 'healing',
+              message: '🤖 AI is autonomously fixing the issue...',
+              decision: decision
+            });
+          }
+        }
+      } catch (healingError) {
+        console.error('❌ Autonomous healing decision failed:', healingError);
       }
       
       // 🆕 PHASE 1: Trigger conversational diagnosis
@@ -417,6 +532,30 @@ async function executeGeneration(ctx: {
       message: '🔍 Understanding your request...', 
       progress: 5 
     });
+
+    // 🧠 NEW: Use Intelligence Engine for context analysis
+    console.log('🧠 Running Intelligence Engine analysis...');
+    try {
+      const contextAnalysis = await analyzeContext(
+        platformSupabase as any,
+        conversationId,
+        userId,
+        request,
+        projectId || undefined
+      );
+      
+      console.log('📊 Context Analysis:', {
+        intent: contextAnalysis.userIntent,
+        complexity: contextAnalysis.complexity,
+        confidence: contextAnalysis.confidenceScore,
+        contextQuality: contextAnalysis.contextQuality
+      });
+
+      // Store context analysis for decision-making (using any to bypass type checking)
+      (conversationContext as any)._contextAnalysis = contextAnalysis;
+    } catch (analysisError) {
+      console.error('Context analysis failed, continuing without it:', analysisError);
+    }
 
     const analysis = await analyzeRequest(request, conversationContext, framework, broadcast);
     
