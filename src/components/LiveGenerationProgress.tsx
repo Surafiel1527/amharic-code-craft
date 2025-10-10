@@ -26,6 +26,8 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
   const [progress, setProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 30; // 30 retries × 2 seconds = 1 minute max
   
   // Store the latest onComplete callback in a ref to avoid re-subscriptions
   const onCompleteRef = useRef(onComplete);
@@ -49,6 +51,7 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
 
         if (error) {
           console.error('❌ Error checking project:', error);
+          setError('Failed to verify project status. Please refresh the page.');
           return;
         }
 
@@ -63,17 +66,26 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
             onCompleteRef.current?.();
           }, 1500);
         } else {
-          console.log('⏳ Still waiting for project data to save...');
-          // Check again in 2 seconds
-          setTimeout(checkProjectComplete, 2000);
+          const newRetryCount = retryCount + 1;
+          setRetryCount(newRetryCount);
+          
+          if (newRetryCount >= MAX_RETRIES) {
+            console.error('❌ Max retries reached - generation appears to have failed');
+            setError('Generation timed out. The project may not have been created properly. Please try again or contact support.');
+          } else {
+            console.log(`⏳ Still waiting for project data to save... (${newRetryCount}/${MAX_RETRIES})`);
+            // Check again in 2 seconds
+            setTimeout(checkProjectComplete, 2000);
+          }
         }
       } catch (err) {
         console.error('❌ Exception checking project:', err);
+        setError('An unexpected error occurred. Please refresh the page and try again.');
       }
     };
 
     checkProjectComplete();
-  }, [isComplete, projectId]);
+  }, [isComplete, projectId, retryCount]);
 
   useEffect(() => {
     console.log('🔌 LiveGenerationProgress subscribing to:', `ai-status-${projectId}`);
@@ -232,17 +244,19 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
           </AnimatePresence>
         </div>
 
-        {!isComplete && !error && (
+        {!error && (
           <motion.div
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
             className="text-center text-sm text-muted-foreground"
           >
-            Building your components... Please wait
+            {isComplete 
+              ? `Verifying completion... (${retryCount}/${MAX_RETRIES})`
+              : 'Building your components... Please wait'}
           </motion.div>
         )}
 
-        {!isComplete && !error && onCancel && (
+        {!error && onCancel && (
           <div className="flex justify-center pt-4">
             <Button
               variant="outline"
