@@ -6,7 +6,12 @@ import { assertEquals, assertExists } from 'https://deno.land/std@0.220.0/testin
 import { ProgressiveBuilder } from '../progressiveBuilder.ts';
 
 Deno.test('ProgressiveBuilder - breaks large app into phases', async () => {
-  const builder = new ProgressiveBuilder();
+  const mockRequest = 'Build a social media app with video upload, feed, comments, likes, search';
+  const mockAnalysis = {
+    mainGoal: 'Build social media app',
+    requiredSections: ['video upload', 'feed', 'comments', 'likes', 'search']
+  };
+  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react');
   
   // Mock plan with 50 files
   const mockPlan = {
@@ -29,7 +34,12 @@ Deno.test('ProgressiveBuilder - breaks large app into phases', async () => {
 });
 
 Deno.test('ProgressiveBuilder - validates phase completion', async () => {
-  const builder = new ProgressiveBuilder();
+  const mockRequest = 'Build a task management app';
+  const mockAnalysis = {
+    mainGoal: 'Task management',
+    requiredSections: ['task list', 'task form']
+  };
+  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react');
   
   const mockPlan = {
     files: Array.from({ length: 15 }, (_, i) => ({
@@ -48,7 +58,12 @@ Deno.test('ProgressiveBuilder - validates phase completion', async () => {
 });
 
 Deno.test('ProgressiveBuilder - groups files by type', async () => {
-  const builder = new ProgressiveBuilder();
+  const mockRequest = 'Build a simple component library';
+  const mockAnalysis = {
+    mainGoal: 'Component library',
+    requiredSections: ['components', 'utilities']
+  };
+  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react');
   
   const mockPlan = {
     files: [
@@ -66,7 +81,12 @@ Deno.test('ProgressiveBuilder - groups files by type', async () => {
 });
 
 Deno.test('ProgressiveBuilder - limits files per phase', async () => {
-  const builder = new ProgressiveBuilder();
+  const mockRequest = 'Build a large e-commerce platform';
+  const mockAnalysis = {
+    mainGoal: 'E-commerce platform',
+    requiredSections: ['products', 'cart', 'checkout', 'user profile']
+  };
+  const builder = new ProgressiveBuilder(mockRequest, mockAnalysis, 'react');
   
   const mockPlan = {
     files: Array.from({ length: 60 }, (_, i) => ({

@@ -47,6 +47,15 @@ export interface ValidationResult {
 
 export class ProgressiveBuilder {
   private readonly MAX_FILES_PER_PHASE = 20;
+  private originalRequest: string;
+  private analysis: any;
+  private framework: string;
+
+  constructor(originalRequest: string, analysis: any, framework: string) {
+    this.originalRequest = originalRequest;
+    this.analysis = analysis;
+    this.framework = framework;
+  }
 
   /**
    * Builds large app in phases
@@ -193,20 +202,38 @@ export class ProgressiveBuilder {
     const validationResults: ValidationResult[] = [];
 
     try {
-      // Generate files using AI
+      // Generate files using AI with FULL CONTEXT
       for (const file of phase.files) {
         try {
-          // Build prompt for this specific file
-          const filePrompt = `Generate ${file.type} code for: ${file.path}
-Dependencies: ${file.dependencies.join(', ')}
-Phase: ${phase.name}
+          // Build framework-specific context
+          const frameworkContext = this.framework === 'html' 
+            ? 'Generate production-ready HTML/CSS/JavaScript code using modern vanilla JS, responsive design, and best practices.' 
+            : this.framework === 'vue'
+            ? 'Generate production-ready Vue 3 code with Composition API, TypeScript, and modern Vue best practices.'
+            : 'Generate production-ready React code with TypeScript, hooks, and modern React best practices.';
 
-Create production-ready, clean code following best practices.`;
+          // Build smart prompt with FULL context about the app
+          const contextualPrompt = `${frameworkContext}
+
+**Original User Request:** "${this.originalRequest}"
+
+**App Requirements:**
+${this.analysis.requiredSections?.map((s: string) => `- ${s} section`).join('\n') || 'Build according to request'}
+
+**Current Phase:** ${phase.name}
+**File to Generate:** ${file.path}
+**File Type:** ${file.type}
+**Dependencies:** ${file.dependencies.join(', ')}
+
+Generate ONLY the code for this file. Make sure it integrates properly with the overall app structure.
+The code should be production-ready, clean, and follow best practices.
+
+Return ONLY the code, no markdown, no explanations.`;
 
           const result = await callAIWithFallback(
-            [{ role: 'user', content: filePrompt }],
+            [{ role: 'user', content: contextualPrompt }],
             {
-              systemPrompt: 'You are an expert developer. Generate clean, production-ready code. Return ONLY the code, no markdown, no explanations.',
+              systemPrompt: `You are an expert ${this.framework === 'html' ? 'vanilla JavaScript' : this.framework} developer. Generate clean, production-ready code that fits the overall app architecture.`,
               preferredModel: 'google/gemini-2.5-flash',
               maxTokens: 4000
             }
