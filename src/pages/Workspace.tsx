@@ -570,6 +570,10 @@ export default function Workspace() {
             // Reload project data when generation completes
             window.location.reload();
           }}
+          onCancel={() => {
+            // Navigate back to home on cancel
+            navigate('/');
+          }}
         />
       </div>
     );

@@ -44,6 +44,124 @@ export interface OrchestrationPlan {
 }
 
 export class FeatureOrchestrator {
+  private readonly featureConfigs: Record<string, Partial<Feature>> = {
+    database: {
+      name: 'Database Schema',
+      description: 'Core database tables and relationships',
+      dependencies: [],
+      estimatedFiles: 1,
+      complexity: 'medium',
+      priority: 1,
+    },
+    authentication: {
+      name: 'Authentication',
+      description: 'User signup, login, and session management',
+      dependencies: ['database'],
+      estimatedFiles: 5,
+      complexity: 'medium',
+      priority: 2,
+    },
+    userProfiles: {
+      name: 'User Profiles',
+      description: 'User profile management and display',
+      dependencies: ['authentication', 'database'],
+      estimatedFiles: 4,
+      complexity: 'low',
+      priority: 3,
+    },
+    videoUpload: {
+      name: 'Video Upload',
+      description: 'Video file upload and storage',
+      dependencies: ['authentication', 'database'],
+      estimatedFiles: 6,
+      complexity: 'high',
+      requiredAPIs: ['Cloudinary', 'AWS S3'],
+      databaseTables: ['videos', 'video_metadata'],
+      priority: 4,
+    },
+    videoProcessing: {
+      name: 'Video Processing',
+      description: 'Video transcoding and optimization',
+      dependencies: ['videoUpload'],
+      estimatedFiles: 4,
+      complexity: 'high',
+      requiredAPIs: ['Cloudinary', 'Mux'],
+      priority: 5,
+    },
+    feed: {
+      name: 'Content Feed',
+      description: 'Main content feed with infinite scroll',
+      dependencies: ['authentication', 'videoUpload', 'database'],
+      estimatedFiles: 8,
+      complexity: 'high',
+      databaseTables: ['feed_items', 'user_interactions'],
+      priority: 6,
+    },
+    comments: {
+      name: 'Comments System',
+      description: 'Commenting and replies',
+      dependencies: ['authentication', 'feed'],
+      estimatedFiles: 5,
+      complexity: 'medium',
+      databaseTables: ['comments', 'comment_replies'],
+      priority: 7,
+    },
+    likes: {
+      name: 'Likes & Reactions',
+      description: 'Like and reaction system',
+      dependencies: ['authentication', 'feed'],
+      estimatedFiles: 3,
+      complexity: 'low',
+      databaseTables: ['likes', 'reactions'],
+      priority: 7,
+    },
+    search: {
+      name: 'Search',
+      description: 'Content and user search',
+      dependencies: ['database', 'feed'],
+      estimatedFiles: 6,
+      complexity: 'medium',
+      priority: 8,
+    },
+    notifications: {
+      name: 'Notifications',
+      description: 'Real-time notifications',
+      dependencies: ['authentication'],
+      estimatedFiles: 5,
+      complexity: 'medium',
+      databaseTables: ['notifications'],
+      priority: 9,
+    },
+    messaging: {
+      name: 'Messaging',
+      description: 'Direct messaging between users',
+      dependencies: ['authentication'],
+      estimatedFiles: 7,
+      complexity: 'high',
+      databaseTables: ['messages', 'conversations'],
+      priority: 10,
+    },
+    payments: {
+      name: 'Payments',
+      description: 'Payment processing and billing',
+      dependencies: ['authentication'],
+      estimatedFiles: 8,
+      complexity: 'high',
+      requiredAPIs: ['Stripe'],
+      databaseTables: ['payments', 'subscriptions'],
+      priority: 11,
+    },
+    analytics: {
+      name: 'Analytics',
+      description: 'Usage tracking and insights',
+      dependencies: ['database'],
+      estimatedFiles: 5,
+      complexity: 'medium',
+      databaseTables: ['analytics_events'],
+      priority: 12,
+    },
+  };
+
   /**
    * Main orchestration method - breaks complex requests into phased features
    */
@@ -94,6 +212,17 @@ export class FeatureOrchestrator {
     // Add implicit features (e.g., database always needed)
     if (features.length > 0) {
       features.unshift(this.createFeature('database', request));
+      
+      // Auto-add authentication if any feature requires it
+      const needsAuth = features.some(f => {
+        const featureName = f.id || f.name.toLowerCase().replace(/\s+/g, '');
+        const config = this.featureConfigs[featureName];
+        return config?.dependencies?.includes('authentication');
+      });
+      
+      if (needsAuth && !features.some(f => f.id === 'authentication')) {
+        features.splice(1, 0, this.createFeature('authentication', request));
+      }
     }
 
     return features;
@@ -103,126 +232,7 @@ export class FeatureOrchestrator {
    * Creates a feature object with metadata
    */
   private createFeature(featureName: string, request: string): Feature {
-    const featureConfigs: Record<string, Partial<Feature>> = {
-      database: {
-        name: 'Database Schema',
-        description: 'Core database tables and relationships',
-        dependencies: [],
-        estimatedFiles: 1,
-        complexity: 'medium',
-        priority: 1,
-      },
-      authentication: {
-        name: 'Authentication',
-        description: 'User signup, login, and session management',
-        dependencies: ['database'],
-        estimatedFiles: 5,
-        complexity: 'medium',
-        priority: 2,
-      },
-      userProfiles: {
-        name: 'User Profiles',
-        description: 'User profile management and display',
-        dependencies: ['authentication', 'database'],
-        estimatedFiles: 4,
-        complexity: 'low',
-        priority: 3,
-      },
-      videoUpload: {
-        name: 'Video Upload',
-        description: 'Video file upload and storage',
-        dependencies: ['authentication', 'database'],
-        estimatedFiles: 6,
-        complexity: 'high',
-        requiredAPIs: ['Cloudinary', 'AWS S3'],
-        databaseTables: ['videos', 'video_metadata'],
-        priority: 4,
-      },
-      videoProcessing: {
-        name: 'Video Processing',
-        description: 'Video transcoding and optimization',
-        dependencies: ['videoUpload'],
-        estimatedFiles: 4,
-        complexity: 'high',
-        requiredAPIs: ['Cloudinary', 'Mux'],
-        priority: 5,
-      },
-      feed: {
-        name: 'Content Feed',
-        description: 'Main content feed with infinite scroll',
-        dependencies: ['authentication', 'videoUpload', 'database'],
-        estimatedFiles: 8,
-        complexity: 'high',
-        databaseTables: ['feed_items', 'user_interactions'],
-        priority: 6,
-      },
-      comments: {
-        name: 'Comments System',
-        description: 'Commenting and replies',
-        dependencies: ['authentication', 'feed'],
-        estimatedFiles: 5,
-        complexity: 'medium',
-        databaseTables: ['comments', 'comment_replies'],
-        priority: 7,
-      },
-      likes: {
-        name: 'Likes & Reactions',
-        description: 'Like and reaction system',
-        dependencies: ['authentication', 'feed'],
-        estimatedFiles: 3,
-        complexity: 'low',
-        databaseTables: ['likes', 'reactions'],
-        priority: 7,
-      },
-      search: {
-        name: 'Search',
-        description: 'Content and user search',
-        dependencies: ['database', 'feed'],
-        estimatedFiles: 6,
-        complexity: 'medium',
-        priority: 8,
-      },
-      notifications: {
-        name: 'Notifications',
-        description: 'Real-time notifications',
-        dependencies: ['authentication'],
-        estimatedFiles: 5,
-        complexity: 'medium',
-        databaseTables: ['notifications'],
-        priority: 9,
-      },
-      messaging: {
-        name: 'Messaging',
-        description: 'Direct messaging between users',
-        dependencies: ['authentication'],
-        estimatedFiles: 7,
-        complexity: 'high',
-        databaseTables: ['messages', 'conversations'],
-        priority: 10,
-      },
-      payments: {
-        name: 'Payments',
-        description: 'Payment processing',
-        dependencies: ['authentication'],
-        estimatedFiles: 8,
-        complexity: 'high',
-        requiredAPIs: ['Stripe'],
-        databaseTables: ['transactions', 'subscriptions'],
-        priority: 11,
-      },
-      analytics: {
-        name: 'Analytics',
-        description: 'User and content analytics',
-        dependencies: ['authentication'],
-        estimatedFiles: 6,
-        complexity: 'medium',
-        requiredAPIs: ['PostHog', 'Google Analytics'],
-        databaseTables: ['analytics_events'],
-        priority: 12,
-      },
-    };
-
-    const config = featureConfigs[featureName] || {
+    const config = this.featureConfigs[featureName] || {
       name: featureName,
       description: `${featureName} functionality`,
       dependencies: [],

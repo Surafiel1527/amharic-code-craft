@@ -1,8 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Code2, Package, CheckCircle, Loader2 } from "lucide-react";
+import { Sparkles, Code2, Package, CheckCircle, Loader2, XCircle, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 
 interface GenerationUpdate {
@@ -15,13 +17,15 @@ interface GenerationUpdate {
 interface LiveGenerationProgressProps {
   projectId: string;
   onComplete?: () => void;
+  onCancel?: () => void;
 }
 
-export function LiveGenerationProgress({ projectId, onComplete }: LiveGenerationProgressProps) {
+export function LiveGenerationProgress({ projectId, onComplete, onCancel }: LiveGenerationProgressProps) {
   const [updates, setUpdates] = useState<GenerationUpdate[]>([]);
   const [currentPhase, setCurrentPhase] = useState<string>('starting');
   const [progress, setProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Store the latest onComplete callback in a ref to avoid re-subscriptions
   const onCompleteRef = useRef(onComplete);
@@ -109,6 +113,11 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
           setIsComplete(true);
         }
       })
+      .on('broadcast', { event: 'generation:error' }, ({ payload }) => {
+        console.error('❌ Generation error received:', payload);
+        setError(payload.error || 'An error occurred during generation');
+        setIsComplete(true);
+      })
       .subscribe((status) => {
         console.log('📡 Channel subscription status:', status);
       });
@@ -151,6 +160,15 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
   return (
     <div className="flex items-center justify-center min-h-[60vh] p-4">
       <Card className="w-full max-w-2xl p-8 space-y-6 bg-gradient-to-br from-background via-background to-primary/5">
+        {error && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertDescription className="ml-2">
+              <strong>Generation Failed:</strong> {error}
+            </AlertDescription>
+          </Alert>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -158,19 +176,21 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
         >
           <div className="flex items-center justify-center gap-2 mb-4">
             <motion.div
-              animate={{ rotate: isComplete ? 0 : 360 }}
-              transition={{ duration: 2, repeat: isComplete ? 0 : Infinity, ease: "linear" }}
+              animate={{ rotate: (isComplete && !error) ? 0 : 360 }}
+              transition={{ duration: 2, repeat: (isComplete && !error) ? 0 : Infinity, ease: "linear" }}
             >
-              {getPhaseIcon(currentPhase)}
+              {error ? <XCircle className="h-5 w-5 text-destructive" /> : getPhaseIcon(currentPhase)}
             </motion.div>
             <h2 className="text-2xl font-bold">
-              {isComplete ? '🎉 Project Ready!' : '🚀 Generating Your Project'}
+              {error ? '❌ Generation Failed' : (isComplete ? '🎉 Project Ready!' : '🚀 Generating Your Project')}
             </h2>
           </div>
           <p className="text-muted-foreground">
-            {isComplete 
-              ? 'Your project is ready! Redirecting to workspace...'
-              : 'Watch your project come to life in real-time'}
+            {error 
+              ? 'Please check the error message above and try again'
+              : (isComplete 
+                ? 'Your project is ready! Redirecting to workspace...'
+                : 'Watch your project come to life in real-time')}
           </p>
         </motion.div>
 
@@ -212,7 +232,7 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
           </AnimatePresence>
         </div>
 
-        {!isComplete && (
+        {!isComplete && !error && (
           <motion.div
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
@@ -220,6 +240,31 @@ export function LiveGenerationProgress({ projectId, onComplete }: LiveGeneration
           >
             Building your components... Please wait
           </motion.div>
+        )}
+
+        {!isComplete && !error && onCancel && (
+          <div className="flex justify-center pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onCancel}
+              className="gap-2"
+            >
+              <X className="h-4 w-4" />
+              Cancel Generation
+            </Button>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex justify-center pt-4">
+            <Button
+              variant="default"
+              onClick={() => window.location.href = '/'}
+            >
+              Return to Home
+            </Button>
+          </div>
         )}
       </Card>
     </div>
