@@ -114,12 +114,26 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
         const phase = phaseMap[payload.status] || 'generating';
         const progress = payload.progress || 0;
         
-        setUpdates(prev => [...prev, {
+        const newUpdate = {
           phase,
           progress,
           message: payload.message || '',
-          timestamp: payload.timestamp || new Date().toISOString()
-        }]);
+          timestamp: payload.timestamp || new Date().toISOString(),
+          file: payload.file,
+          fileNumber: payload.fileNumber,
+          totalFiles: payload.totalFiles,
+          phaseNumber: payload.phaseNumber,
+          totalPhases: payload.totalPhases
+        };
+        
+        // Enhance message with file or phase information
+        if (newUpdate.file && newUpdate.fileNumber && newUpdate.totalFiles) {
+          newUpdate.message = `🏗️ Building ${newUpdate.file} (${newUpdate.fileNumber}/${newUpdate.totalFiles})`;
+        } else if (newUpdate.phaseNumber && newUpdate.totalPhases) {
+          newUpdate.message = `📦 Phase ${newUpdate.phaseNumber}/${newUpdate.totalPhases}: ${newUpdate.message}`;
+        }
+        
+        setUpdates(prev => [...prev, newUpdate]);
         
         setCurrentPhase(phase);
         setProgress(progress);

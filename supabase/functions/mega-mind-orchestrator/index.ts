@@ -180,7 +180,7 @@ serve(async (req) => {
 });
 
 /**
- * Core processing pipeline
+ * Core processing pipeline with timeout protection
  */
 async function processRequest(ctx: {
   request: string;
@@ -210,10 +210,65 @@ async function processRequest(ctx: {
     broadcast 
   } = ctx;
 
+  // Timeout protection: maximum 5 minutes for generation
+  const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Generation timeout: Process exceeded 5 minutes')), TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([
+      executeGeneration(ctx),
+      timeoutPromise
+    ]);
+  } catch (error: unknown) {
+    const err = error as Error;
+    if (err.message.includes('timeout')) {
+      console.error('❌ Generation timeout after 5 minutes');
+      await broadcast('generation:timeout', {
+        status: 'error',
+        message: '⏱️ Generation timed out after 5 minutes. Please try a simpler request or contact support.',
+        progress: 0
+      });
+    }
+    throw error;
+  }
+}
+
+/**
+ * Execute the actual generation process
+ */
+async function executeGeneration(ctx: {
+  request: string;
+  conversationId: string;
+  userId: string;
+  requestType: string;
+  framework: string;
+  projectId: string | null;
+  conversationContext: any;
+  dependencies: any[];
+  platformSupabase: any;
+  userSupabase: any;
+  userSupabaseConnection: any;
+  broadcast: (event: string, data: any) => Promise<void>;
+}): Promise<any> {
+  const { 
+    request, 
+    conversationId, 
+    userId,
+    framework,
+    projectId, 
+    conversationContext,
+    platformSupabase,
+    userSupabase,
+    userSupabaseConnection,
+    broadcast 
+  } = ctx;
+
   // Step 1: Analyze request
   await broadcast('generation:thinking', { 
     status: 'analyzing', 
-    message: 'Understanding your request...', 
+    message: '🔍 Understanding your request...', 
     progress: 5 
   });
 

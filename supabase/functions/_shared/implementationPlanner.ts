@@ -214,7 +214,7 @@ Return ONLY valid JSON in this exact format:
 NEVER include markdown, explanations, or anything except the JSON object.`;
 
 /**
- * Parse AI response into structured plan
+ * Parse AI response into structured plan with multiple fallback strategies
  */
 function parseAIResponse(
   aiResponse: any,
@@ -222,28 +222,86 @@ function parseAIResponse(
   analysis: any,
   codebaseAnalysis: any
 ): DetailedPlan {
+  const content = aiResponse.choices[0].message.content;
+  
+  // Strategy 1: Try standard JSON parsing
   try {
-    const content = aiResponse.choices[0].message.content;
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    
-    if (!jsonMatch) {
-      throw new Error('No JSON found in AI response');
+    if (jsonMatch) {
+      const plan = JSON.parse(jsonMatch[0]);
+      if (plan.summary && plan.approach && plan.steps) {
+        console.log('✅ Successfully parsed plan using Strategy 1 (standard)');
+        return plan as DetailedPlan;
+      }
     }
-
-    const plan = JSON.parse(jsonMatch[0]);
-    
-    // Validate required fields
-    if (!plan.summary || !plan.approach || !plan.steps) {
-      throw new Error('Missing required plan fields');
-    }
-
-    return plan as DetailedPlan;
-  } catch (error) {
-    console.error('Failed to parse AI plan:', error);
-    
-    // Fallback to basic plan
-    return generateFallbackPlan(request, analysis, codebaseAnalysis);
+  } catch (e: unknown) {
+    const error = e as Error;
+    console.warn('⚠️ Strategy 1 failed:', error.message);
   }
+
+  // Strategy 2: Try with JSON repair (fix common issues)
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      let jsonStr = jsonMatch[0]
+        .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
+        .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":') // Fix unquoted keys
+        .replace(/\n/g, ' '); // Remove newlines
+      
+      const plan = JSON.parse(jsonStr);
+      if (plan.summary && plan.approach && plan.steps) {
+        console.log('✅ Successfully parsed plan using Strategy 2 (repair)');
+        return plan as DetailedPlan;
+      }
+    }
+  } catch (e: unknown) {
+    const error = e as Error;
+    console.warn('⚠️ Strategy 2 failed:', error.message);
+  }
+
+  // Strategy 3: Try extracting JSON from markdown code blocks
+  try {
+    const codeBlockMatch = content.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+    if (codeBlockMatch) {
+      const plan = JSON.parse(codeBlockMatch[1]);
+      if (plan.summary && plan.approach && plan.steps) {
+        console.log('✅ Successfully parsed plan using Strategy 3 (code block)');
+        return plan as DetailedPlan;
+      }
+    }
+  } catch (e: unknown) {
+    const error = e as Error;
+    console.warn('⚠️ Strategy 3 failed:', error.message);
+  }
+
+  // Strategy 4: Try parsing chunks (in case JSON is split)
+  try {
+    const allJsonChunks = content.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
+    if (allJsonChunks && allJsonChunks.length > 0) {
+      // Try the largest chunk first
+      const sortedChunks = allJsonChunks.sort((a: string, b: string) => b.length - a.length);
+      for (const chunk of sortedChunks) {
+        try {
+          const plan = JSON.parse(chunk);
+          if (plan.summary && plan.approach && plan.steps) {
+            console.log('✅ Successfully parsed plan using Strategy 4 (chunks)');
+            return plan as DetailedPlan;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+    }
+  } catch (e: unknown) {
+    const error = e as Error;
+    console.warn('⚠️ Strategy 4 failed:', error.message);
+  }
+
+  console.error('❌ All parsing strategies failed. Content preview:', content.substring(0, 500));
+  console.log('🔧 Falling back to generated plan based on analysis');
+  
+  // Fallback to basic plan
+  return generateFallbackPlan(request, analysis, codebaseAnalysis);
 }
 
 /**
