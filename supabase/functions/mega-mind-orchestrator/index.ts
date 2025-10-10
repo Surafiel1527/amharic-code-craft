@@ -109,25 +109,34 @@ serve(async (req) => {
 
     console.log(`📚 Loaded context: ${conversationContext.totalTurns} turns, ${dependencies.length} dependencies, Q&A mode: ${isQuestion}`);
 
-    // Create SSE stream
-    const stream = new TransformStream();
-    const writer = stream.writable.getWriter();
-    const encoder = new TextEncoder();
-
-    // Helper to send SSE events
+    // Helper to broadcast via Supabase Realtime Channels
     const broadcast = async (event: string, data: any) => {
-      const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-      await writer.write(encoder.encode(message));
+      try {
+        const channel = platformSupabase.channel(`ai-status-${projectId}`);
+        await channel.send({
+          type: 'broadcast',
+          event: 'status-update',
+          payload: {
+            ...data,
+            event,
+            projectId,
+            timestamp: new Date().toISOString()
+          }
+        });
+        console.log(`📡 Broadcast sent: ${event}`, data.message || data.status);
+      } catch (error) {
+        console.error('❌ Broadcast error:', error);
+      }
     };
 
-    // Start processing in background
+    // Start processing and return immediate response
     processRequest({
       request,
       conversationId,
       userId,
       requestType,
-      framework, // Pass framework through
-      projectId, // Pass projectId through
+      framework,
+      projectId,
       conversationContext,
       dependencies,
       platformSupabase,
@@ -135,12 +144,16 @@ serve(async (req) => {
       userSupabaseConnection,
       broadcast
     }).then(async (result) => {
-      await broadcast('generation:complete', result);
-      await writer.close();
+      await broadcast('generation:complete', { 
+        status: 'complete', 
+        message: '✅ Generation complete!',
+        progress: 100,
+        ...result 
+      });
     }).catch(async (error) => {
       console.error('❌ Generation failed:', error);
       
-      // Log failure to production monitoring system with comprehensive details
+      // Log failure to production monitoring system
       const errorClassification = classifyError(error);
       await logGenerationFailure(platformSupabase, {
         errorType: error.name || 'GenerationError',
@@ -165,21 +178,28 @@ serve(async (req) => {
         }
       }
       
-      await broadcast('generation:error', { 
+      await broadcast('generation:failed', {
+        status: 'error',
         error: error.message || 'Unknown error occurred',
-        errorType: errorClassification.category 
+        classification: errorClassification,
+        progress: 0
       });
-      await writer.close();
     });
 
-    return new Response(stream.readable, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
+    // Return immediate response - processing happens in background via channels
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'Generation started',
+        projectId,
+        conversationId 
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
   } catch (error: any) {
     console.error('❌ Request error:', error);
