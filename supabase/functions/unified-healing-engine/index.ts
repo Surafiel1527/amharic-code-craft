@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { analyzeContext, makeIntelligentDecision } from "../_shared/intelligenceEngine.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -708,7 +709,7 @@ async function handleAutonomousFix(
       .order('confidence_score', { ascending: false })
       .limit(1);
 
-    const hasLearnedPattern = patterns && patterns.length > 0;
+    const hasLearnedPattern = !!(patterns && patterns.length > 0);
 
     // Make intelligent decision
     const decision = makeIntelligentDecision(
