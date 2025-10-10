@@ -22,6 +22,9 @@ import { ProductionTestingDashboard } from "@/components/ProductionTestingDashbo
 import AdminSelfModifyChat from "@/components/AdminSelfModifyChat";
 import AdminCustomizationsList from "@/components/AdminCustomizationsList";
 import { AdminSecurityDashboard } from "@/components/AdminSecurityDashboard";
+import { HealingActionsPanel } from "@/components/healing/HealingActionsPanel";
+import { LearningIntelligencePanel } from "@/components/healing/LearningIntelligencePanel";
+import { PredictiveOptimizationPanel } from "@/components/healing/PredictiveOptimizationPanel";
 import { SecureAPIKeyManager } from "@/components/SecureAPIKeyManager";
 import { SessionManager } from "@/components/SessionManager";
 import { PreviewModeToggle } from "@/components/PreviewModeToggle";
@@ -550,11 +553,38 @@ function AdminContent() {
           </TabsContent>
 
           <TabsContent value="healing">
-            <div className="space-y-6">
-              <SelfHealingDashboard />
-              <AutonomousLearningPanel />
-              <ProductionTestingDashboard />
-            </div>
+            <Tabs defaultValue="actions" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="actions">🤖 Actions</TabsTrigger>
+                <TabsTrigger value="learning">📚 Learning</TabsTrigger>
+                <TabsTrigger value="predictive">🔮 Predictive</TabsTrigger>
+                <TabsTrigger value="dashboard">📊 Dashboard</TabsTrigger>
+                <TabsTrigger value="testing">🧪 Testing</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="actions">
+                <HealingActionsPanel />
+              </TabsContent>
+
+              <TabsContent value="learning">
+                <LearningIntelligencePanel />
+              </TabsContent>
+
+              <TabsContent value="predictive">
+                <PredictiveOptimizationPanel />
+              </TabsContent>
+
+              <TabsContent value="dashboard">
+                <div className="space-y-6">
+                  <SelfHealingDashboard />
+                  <AutonomousLearningPanel />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="testing">
+                <ProductionTestingDashboard />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="customize" className="space-y-4">
