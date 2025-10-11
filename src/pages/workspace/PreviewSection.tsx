@@ -7,7 +7,6 @@ interface PreviewSectionProps {
   conversationId: string | null;
   htmlCode: string;
   framework: 'react' | 'html' | 'vue';
-  mode?: 'generation' | 'modification' | 'question';
 }
 
 export function PreviewSection({ 
@@ -15,7 +14,6 @@ export function PreviewSection({
   conversationId, 
   htmlCode,
   framework,
-  mode = 'modification'
 }: PreviewSectionProps) {
   
   return (
@@ -28,7 +26,7 @@ export function PreviewSection({
             <UniversalChatInterface
               conversationId={conversationId}
               projectId={projectId}
-              mode={mode}
+              mode="panel"
               context={{
                 currentCode: htmlCode,
                 projectId,
@@ -43,7 +41,7 @@ export function PreviewSection({
       {/* Live Preview */}
       <Card className="p-4">
         <h2 className="text-lg font-semibold mb-4">Live Preview</h2>
-        <DevicePreview htmlCode={htmlCode} />
+        <DevicePreview generatedCode={htmlCode} />
       </Card>
     </div>
   );

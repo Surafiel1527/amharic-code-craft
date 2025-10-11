@@ -161,14 +161,20 @@ export function EditorSection({
             <TabsContent value="metrics" className="h-[calc(100vh-200px)] overflow-auto">
               {selectedFiles[0] && projectFiles.find(f => f.file_path === selectedFiles[0]) && (
                 <CodeMetrics
+                  code={projectFiles.find(f => f.file_path === selectedFiles[0])?.file_content || ''}
                   filePath={selectedFiles[0]}
-                  fileContent={projectFiles.find(f => f.file_path === selectedFiles[0])?.file_content || ''}
                 />
               )}
             </TabsContent>
 
             <TabsContent value="tools" className="h-[calc(100vh-200px)] overflow-auto p-4 space-y-4">
-              <IntelligentRefactoring projectId={projectId} />
+              {selectedFiles[0] && projectFiles.find(f => f.file_path === selectedFiles[0]) && (
+                <IntelligentRefactoring
+                  code={projectFiles.find(f => f.file_path === selectedFiles[0])?.file_content || ''}
+                  filePath={selectedFiles[0]}
+                  onApplySuggestion={(newCode) => handleSaveFile(newCode)}
+                />
+              )}
               <ProactiveAIAssistant projectId={projectId} />
             </TabsContent>
           </Tabs>
