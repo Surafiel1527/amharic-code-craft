@@ -217,11 +217,16 @@ async function detectSymptoms(supabase: any, decision: any, outcomeData: any): P
   const symptoms = [];
 
   // Check if user explicitly complained
-  if (outcomeData.userFeedback && 
-      (outcomeData.userFeedback.toLowerCase().includes('wrong') ||
-       outcomeData.userFeedback.toLowerCase().includes('didn\'t') ||
-       outcomeData.userFeedback.toLowerCase().includes('not what i wanted'))) {
-    symptoms.push('explicit_user_complaint');
+  if (outcomeData.userFeedback) {
+    const feedback = outcomeData.userFeedback.toLowerCase();
+    const negativeKeywords = [
+      'wrong', 'incorrect', 'didn\'t', 'not what', 'should have',
+      'instead', 'actually', 'meant to', 'supposed to', 'expected'
+    ];
+    
+    if (negativeKeywords.some(keyword => feedback.includes(keyword))) {
+      symptoms.push('explicit_user_complaint');
+    }
   }
 
   // Check if classification confidence was low
@@ -232,7 +237,7 @@ async function detectSymptoms(supabase: any, decision: any, outcomeData: any): P
   // Check if this is a repeated request (user had to ask again)
   const { data: recentDecisions } = await supabase
     .from('decision_logs')
-    .select('id')
+    .select('id, user_request')
     .eq('user_id', decision.user_id)
     .eq('conversation_id', decision.conversation_id)
     .gte('created_at', new Date(Date.now() - 60000).toISOString()) // Last minute
@@ -240,6 +245,17 @@ async function detectSymptoms(supabase: any, decision: any, outcomeData: any): P
 
   if (recentDecisions && recentDecisions.length > 2) {
     symptoms.push('repeated_requests_in_conversation');
+    
+    // Check for semantic similarity (user rephrasing same request)
+    const currentRequest = decision.user_request.toLowerCase();
+    const similarRequests = recentDecisions.filter((r: any) => {
+      const similarity = calculateSimilarity(currentRequest, r.user_request.toLowerCase());
+      return similarity > 0.6;
+    });
+    
+    if (similarRequests.length > 0) {
+      symptoms.push('user_rephrasing_request');
+    }
   }
 
   // Check if execution failed
@@ -256,5 +272,36 @@ async function detectSymptoms(supabase: any, decision: any, outcomeData: any): P
     }
   }
 
+  // Check if user provided actual intent (strong signal)
+  if (outcomeData.actualIntent && outcomeData.actualIntent !== decision.classified_as) {
+    symptoms.push('explicit_intent_mismatch');
+  }
+
+  // Check if the request keywords don't match classification
+  const requestKeywords = extractKeywords(decision.user_request);
+  const classificationKeywords = extractKeywords(decision.classified_as);
+  const keywordOverlap = requestKeywords.filter(k => classificationKeywords.includes(k)).length;
+  
+  if (keywordOverlap === 0 && requestKeywords.length > 2) {
+    symptoms.push('keyword_mismatch');
+  }
+
   return symptoms;
+}
+
+// Helper function to calculate string similarity
+function calculateSimilarity(str1: string, str2: string): number {
+  const words1 = new Set(str1.split(/\s+/));
+  const words2 = new Set(str2.split(/\s+/));
+  const intersection = new Set([...words1].filter(x => words2.has(x)));
+  const union = new Set([...words1, ...words2]);
+  return intersection.size / union.size;
+}
+
+// Helper function to extract meaningful keywords
+function extractKeywords(text: string): string[] {
+  const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
+  return text.toLowerCase()
+    .split(/\s+/)
+    .filter(word => word.length > 3 && !stopWords.includes(word));
 }

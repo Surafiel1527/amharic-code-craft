@@ -216,10 +216,11 @@ export async function validateOutcome(
     userFeedback?: string;
     actualOutcome?: any;
     expectedOutcome?: any;
+    symptoms?: string[];
   }
-): Promise<void> {
+): Promise<{ wasCorrect: boolean; triggeredLearning: boolean }> {
   try {
-    await fetch(
+    const response = await fetch(
       `${Deno.env.get('SUPABASE_URL')}/functions/v1/decision-validator`,
       {
         method: 'POST',
@@ -238,15 +239,28 @@ export async function validateOutcome(
             detectionConfidence: 0.8,
             errorSeverity: ctx.executionSuccess ? 'low' : 'medium',
             actualOutcome: ctx.actualOutcome,
-            expectedOutcome: ctx.expectedOutcome
+            expectedOutcome: ctx.expectedOutcome,
+            symptoms: ctx.symptoms || []
           }
         })
       }
     );
 
-    console.log('✅ Outcome validated');
+    if (!response.ok) {
+      console.warn('Failed to validate outcome');
+      return { wasCorrect: true, triggeredLearning: false };
+    }
+
+    const result = await response.json();
+    console.log('✅ Outcome validated:', result.wasCorrect ? 'Correct' : 'Learning triggered');
+    
+    return {
+      wasCorrect: result.wasCorrect,
+      triggeredLearning: !result.wasCorrect
+    };
   } catch (error) {
     console.error('Error validating outcome:', error);
+    return { wasCorrect: true, triggeredLearning: false };
   }
 }
 
