@@ -508,17 +508,42 @@ async function executeGeneration(ctx: {
     });
   }
 
-  // Helper: Update job progress in database
-  const updateJobProgress = async (progress: number, currentStep: string, phases: any[] = []) => {
+  // Helper: Update job progress in database and project title
+  const updateJobProgress = async (progress: number, currentStep: string, phaseName: string, phases: any[] = []) => {
     if (!projectId) return; // Only update if we have a projectId/jobId
     
     try {
+      // Update job progress
       await platformSupabase.from('ai_generation_jobs').update({
         progress,
         current_step: currentStep,
         phases,
         updated_at: new Date().toISOString()
       }).eq('project_id', projectId).eq('user_id', userId);
+
+      // Update project title with current phase (get original title first)
+      const { data: project } = await platformSupabase
+        .from('projects')
+        .select('title')
+        .eq('id', projectId)
+        .single();
+      
+      if (project) {
+        // Extract original title (remove any existing phase indicators)
+        const originalTitle = project.title
+          .replace(/\[Generating\.\.\.\]/g, '')
+          .replace(/- (Analyzing|Building|Creating|Setting up|Finalizing).*$/g, '')
+          .trim();
+        
+        // Create new title with phase
+        const newTitle = `${originalTitle} - ${phaseName}`;
+        
+        await platformSupabase.from('projects').update({
+          title: newTitle
+        }).eq('id', projectId);
+        
+        console.log(`📝 Updated project title: "${newTitle}"`);
+      }
     } catch (error) {
       console.error('⚠️ Failed to update job progress:', error);
       // Non-fatal - don't block generation
@@ -530,8 +555,12 @@ async function executeGeneration(ctx: {
     await broadcast('generation:thinking', { 
       status: 'analyzing', 
       message: '🔍 Understanding your request...', 
-      progress: 5 
+      progress: 5,
+      currentOperation: 'Analyzing requirements and planning architecture',
+      phaseName: 'Analyzing Requirements'
     });
+    
+    await updateJobProgress(5, 'Analyzing requirements', 'Analyzing Requirements', []);
 
     // 🧠 NEW: Use Intelligence Engine for context analysis
     console.log('🧠 Running Intelligence Engine analysis...');
@@ -571,7 +600,7 @@ async function executeGeneration(ctx: {
     });
 
     // ✅ FIX 2: Update progress - Analysis complete
-    await updateJobProgress(25, 'Analysis complete', []);
+    await updateJobProgress(25, 'Analysis complete', 'Planning Components', []);
     
     // Store analysis in context for later steps
     conversationContext._analysis = analysis;
@@ -602,7 +631,9 @@ async function executeGeneration(ctx: {
     await broadcast('generation:planning', { 
       status: 'analyzing_codebase', 
       message: '🔍 Analyzing existing codebase...', 
-      progress: 10 
+      progress: 10,
+      currentOperation: 'Scanning project files and dependencies',
+      phaseName: 'Analyzing Codebase'
     });
 
     // Analyze existing codebase
@@ -618,7 +649,9 @@ async function executeGeneration(ctx: {
     await broadcast('generation:planning', { 
       status: 'creating_plan', 
       message: '📋 Creating detailed implementation plan...', 
-      progress: 20 
+      progress: 20,
+      currentOperation: 'Breaking down features and dependencies',
+      phaseName: 'Planning Implementation'
     });
 
     // Generate detailed plan
@@ -664,7 +697,9 @@ async function executeGeneration(ctx: {
       await broadcast('orchestration:analyzing', {
         status: 'orchestrating',
         message: `Orchestrating ${featureCount} features with dependency resolution...`,
-        progress: 35
+        progress: 35,
+        currentOperation: `Analyzing dependencies for ${featureCount} features`,
+        phaseName: 'Orchestrating Features'
       });
 
       const orchestrator = new FeatureOrchestrator();
@@ -752,7 +787,7 @@ async function executeGeneration(ctx: {
 
   // ✅ FIX 2: Update progress - Database setup complete
   if (!isRetry || resumeProgress < 50) {
-    await updateJobProgress(50, 'Database setup complete', analysis._orchestrationPlan?.phases || []);
+    await updateJobProgress(50, 'Database setup complete', 'Setting up Backend', analysis._orchestrationPlan?.phases || []);
   }
 
   // Step 4: Generate code using framework-specific builders (skip if resuming from >75% with existing files)
@@ -805,14 +840,16 @@ async function executeGeneration(ctx: {
     console.log(`✅ Generated ${generatedCode.files.length} files using ${generatedCode.framework} builder`);
 
     // ✅ FIX 2: Update progress - Code generation complete
-    await updateJobProgress(75, 'Code generation complete', []);
+    await updateJobProgress(75, 'Code generation complete', 'Building Components', []);
   }
 
   // Step 5: Validate files (framework-specific validation)
   await broadcast('generation:validating', { 
     status: 'validating', 
     message: '🔍 Validating generated files...', 
-    progress: 70 
+    progress: 70,
+    currentOperation: 'Checking code quality and dependencies',
+    phaseName: 'Validating Code'
   });
 
   const validationResult = await frameworkBuilder.validateFiles(generatedCode.files);
@@ -908,12 +945,14 @@ async function executeGeneration(ctx: {
   }
 
   // ✅ FIX 2: Update progress - Auto-fix complete
-  await updateJobProgress(90, 'Auto-fix complete', []);
+  await updateJobProgress(90, 'Auto-fix complete', 'Finalizing Project', []);
 
   await broadcast('generation:finalizing', { 
     status: 'finalizing', 
     message: '📦 Packaging your project...', 
-    progress: 85 
+    progress: 85,
+    currentOperation: 'Finalizing project structure and assets',
+    phaseName: 'Finalizing Project'
   });
 
   // Step 9: Package output (framework-specific)
@@ -1050,11 +1089,13 @@ async function executeGeneration(ctx: {
   });
 
   // ✅ NOW broadcast 100% - everything is done or timed out
-  await updateJobProgress(100, 'Completed', []);
+  await updateJobProgress(100, 'Completed', 'Project Ready', []);
   await broadcast('generation:complete', {
     status: 'complete',
     message: '✅ Generation complete!',
-    progress: 100
+    progress: 100,
+    currentOperation: 'Project ready to use',
+    phaseName: 'Complete'
   });
 
   return {

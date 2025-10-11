@@ -608,12 +608,12 @@ export default function Workspace() {
   const [isGenerating, setIsGenerating] = useState(false);
   
   useEffect(() => {
-    if (!project || !project.title.includes('[Generating...]')) {
+    if (!project) {
       setIsGenerating(false);
       return;
     }
     
-    // Title has [Generating...], but check if there's actually an active job
+    // Check if there's actually an active job
     const checkJobStatus = async () => {
       const { data: jobs } = await supabase
         .from('ai_generation_jobs')

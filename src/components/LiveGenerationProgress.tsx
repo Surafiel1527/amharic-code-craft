@@ -17,6 +17,8 @@ interface GenerationUpdate {
   totalFiles?: number;
   phaseNumber?: number;
   totalPhases?: number;
+  phaseName?: string;
+  currentOperation?: string;
 }
 
 interface LiveGenerationProgressProps {
@@ -28,6 +30,8 @@ interface LiveGenerationProgressProps {
 export function LiveGenerationProgress({ projectId, onComplete, onCancel }: LiveGenerationProgressProps) {
   const [updates, setUpdates] = useState<GenerationUpdate[]>([]);
   const [currentPhase, setCurrentPhase] = useState<string>('starting');
+  const [currentPhaseName, setCurrentPhaseName] = useState<string>('Starting');
+  const [currentOperation, setCurrentOperation] = useState<string>('');
   const [progress, setProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -200,6 +204,14 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
         const phase = phaseMap[payload.status] || 'generating';
         const progress = payload.progress || 0;
         
+        // Update phase name and operation from payload
+        if (payload.phaseName) {
+          setCurrentPhaseName(payload.phaseName);
+        }
+        if (payload.currentOperation) {
+          setCurrentOperation(payload.currentOperation);
+        }
+        
         const newUpdate = {
           phase,
           progress,
@@ -209,7 +221,9 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
           fileNumber: payload.fileNumber,
           totalFiles: payload.totalFiles,
           phaseNumber: payload.phaseNumber,
-          totalPhases: payload.totalPhases
+          totalPhases: payload.totalPhases,
+          phaseName: payload.phaseName,
+          currentOperation: payload.currentOperation
         };
         
         // Enhance message with file or phase information
@@ -223,14 +237,31 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
             'hook': '🪝',
             'util': '🔧',
             'api': '🌐',
-            'test': '✅'
+            'test': '✅',
+            'auth': '🔐',
+            'header': '📋',
+            'footer': '📍',
+            'sidebar': '📑',
+            'navbar': '🗂️',
+            'button': '🔘',
+            'card': '🃏'
           };
           
           const fileType = Object.keys(fileEmojis).find(type => 
             newUpdate.file!.toLowerCase().includes(type)
           ) || 'component';
           
-          newUpdate.message = `${fileEmojis[fileType]} Building ${newUpdate.file} (${newUpdate.fileNumber}/${newUpdate.totalFiles})`;
+          // Extract readable component name from path
+          const fileName = newUpdate.file.split('/').pop()?.replace(/\.(tsx?|jsx?|vue|html)$/, '') || newUpdate.file;
+          const readableName = fileName
+            .replace(/([A-Z])/g, ' $1') // Add space before capitals
+            .replace(/[-_]/g, ' ') // Replace dashes/underscores with spaces
+            .trim();
+          
+          newUpdate.message = `${fileEmojis[fileType]} Creating ${readableName} (${newUpdate.fileNumber}/${newUpdate.totalFiles})`;
+          
+          // Set as current operation for display
+          setCurrentOperation(`Creating ${readableName} component`);
         } else if (newUpdate.phaseNumber && newUpdate.totalPhases) {
           const phaseEmojis = ['🔍', '🏗️', '✨', '🎨', '🔧', '✅'];
           const emoji = phaseEmojis[Math.min(newUpdate.phaseNumber - 1, phaseEmojis.length - 1)] || '📦';
@@ -344,8 +375,13 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
               ? 'Please check the error message above and try again'
               : (isComplete 
                 ? 'Your project is ready! Redirecting to workspace...'
-                : 'Watch your project come to life in real-time')}
+                : currentOperation || 'Watch your project come to life in real-time')}
           </p>
+          {!error && !isComplete && currentPhaseName && (
+            <p className="text-sm font-medium text-primary mt-1">
+              {currentPhaseName}
+            </p>
+          )}
         </motion.div>
 
         <div className="space-y-2">
@@ -375,8 +411,13 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium capitalize">{update.phase}</p>
+                  <p className="font-medium capitalize">{update.phaseName || update.phase}</p>
                   <p className="text-sm text-muted-foreground">{update.message}</p>
+                  {update.currentOperation && (
+                    <p className="text-xs text-muted-foreground/80 mt-0.5 italic">
+                      → {update.currentOperation}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground mt-1">
                     {new Date(update.timestamp).toLocaleTimeString()}
                   </p>
@@ -395,21 +436,20 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
             <div className="flex items-center justify-center gap-2 text-sm font-medium">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
               <span>
-                {updates[updates.length - 1].fileNumber && updates[updates.length - 1].totalFiles
-                  ? `Building file ${updates[updates.length - 1].fileNumber} of ${updates[updates.length - 1].totalFiles}`
-                  : currentPhase === 'analyzing'
-                  ? 'Analyzing your request...'
-                  : currentPhase === 'generating'
-                  ? 'Generating project files...'
-                  : 'Processing...'}
+                {currentOperation || (
+                  updates[updates.length - 1].fileNumber && updates[updates.length - 1].totalFiles
+                    ? `Building file ${updates[updates.length - 1].fileNumber} of ${updates[updates.length - 1].totalFiles}`
+                    : currentPhase === 'analyzing'
+                    ? 'Analyzing your request...'
+                    : currentPhase === 'generating'
+                    ? 'Generating project files...'
+                    : 'Processing...'
+                )}
               </span>
             </div>
-            {progress > 0 && (
-              <p className="text-xs text-muted-foreground mt-2">
-                {progress < 30 && '🔍 Understanding your requirements...'}
-                {progress >= 30 && progress < 60 && '🏗️ Building your project structure...'}
-                {progress >= 60 && progress < 90 && '✨ Creating components and features...'}
-                {progress >= 90 && '🎨 Adding final touches...'}
+            {progress > 0 && currentPhaseName && (
+              <p className="text-xs text-primary/80 font-medium mt-2">
+                {currentPhaseName}
               </p>
             )}
           </motion.div>
