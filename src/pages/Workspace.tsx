@@ -643,6 +643,7 @@ export default function Workspace() {
       handleNewConversation={handleNewConversation}
       loadConversations={loadConversations}
       mobileTab={mobileTab}
+      setMobileTab={setMobileTab}
     >
       {viewMode === 'multi' ? (
         <EditorSection

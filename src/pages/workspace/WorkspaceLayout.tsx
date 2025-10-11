@@ -54,6 +54,7 @@ interface WorkspaceLayoutProps {
   handleNewConversation: () => void;
   loadConversations: () => void;
   mobileTab?: 'chat' | 'preview' | 'code';
+  setMobileTab?: (tab: 'chat' | 'preview' | 'code') => void;
   children: React.ReactNode;
 }
 
@@ -82,6 +83,7 @@ export function WorkspaceLayout({
   handleNewConversation,
   loadConversations,
   mobileTab: externalMobileTab,
+  setMobileTab: externalSetMobileTab,
   children
 }: WorkspaceLayoutProps) {
   const navigate = useNavigate();
@@ -92,7 +94,7 @@ export function WorkspaceLayout({
   
   // Use external control if provided, otherwise use internal state
   const mobileTab = externalMobileTab || internalMobileTab;
-  const setMobileTab = externalMobileTab ? () => {} : setInternalMobileTab;
+  const setMobileTab = externalSetMobileTab || setInternalMobileTab;
   
   useEffect(() => {
     if (!project) {
