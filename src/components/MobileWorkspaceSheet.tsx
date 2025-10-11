@@ -18,6 +18,7 @@ interface MobileWorkspaceSheetProps {
   projectFiles?: Array<{ file_path: string; file_content: string }>;
   projectId?: string;
   projectStatus?: 'success' | 'failed' | 'generating';
+  framework?: 'react' | 'html' | 'vue'; // Add framework prop
 }
 
 export function MobileWorkspaceSheet({
@@ -29,7 +30,8 @@ export function MobileWorkspaceSheet({
   onConversationChange,
   projectFiles = [],
   projectId,
-  projectStatus = 'success'
+  projectStatus = 'success',
+  framework = 'react' // Add framework with default
 }: MobileWorkspaceSheetProps) {
   const [deviceMode, setDeviceMode] = useState<"desktop" | "tablet" | "mobile">("mobile");
   const [activeTab, setActiveTab] = useState("chat");
@@ -116,7 +118,7 @@ export function MobileWorkspaceSheet({
                   file_path: 'main-project',
                   file_content: currentCode
                 }] : [])}
-                context={{ projectId, projectStatus }}
+                context={{ projectId, projectStatus, framework }} // Add framework to context
                 onCodeApply={async (code) => {
                   onCodeGenerated(code);
                 }}

@@ -70,6 +70,7 @@ interface Project {
   user_id: string;
   created_at: string;
   updated_at: string;
+  framework?: 'react' | 'html' | 'vue'; // Add framework field
 }
 
 export default function Workspace() {
@@ -256,7 +257,12 @@ export default function Workspace() {
         return;
       }
 
-      setProject(data);
+      // Cast to proper Project type with framework
+      const typedProject: Project = {
+        ...data,
+        framework: (data.framework as 'react' | 'html' | 'vue') || 'react'
+      };
+      setProject(typedProject);
       
       // Create or load conversation
       let convId: string | undefined;
@@ -1150,7 +1156,10 @@ export default function Workspace() {
                   conversationId={conversationId || undefined}
                   projectId={projectId}
                   selectedFiles={['main-project']}
-                  context={{ projectId }}
+                  context={{ 
+                    projectId,
+                    framework: project?.framework || 'react' // Pass framework to AI
+                  }}
                   projectFiles={project ? [{
                     file_path: 'main-project',
                     file_content: project.html_code

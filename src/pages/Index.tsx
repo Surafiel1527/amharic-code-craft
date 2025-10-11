@@ -322,6 +322,7 @@ const Index = () => {
           prompt: prompt,
           html_code: '',
           user_id: user.id,
+          framework: framework, // Save framework to database
         })
         .select()
         .single();

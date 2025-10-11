@@ -5804,6 +5804,7 @@ export type Database = {
           created_at: string
           description: string | null
           forked_from: string | null
+          framework: string | null
           html_code: string
           id: string
           is_favorite: boolean | null
@@ -5822,6 +5823,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           forked_from?: string | null
+          framework?: string | null
           html_code: string
           id?: string
           is_favorite?: boolean | null
@@ -5840,6 +5842,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           forked_from?: string | null
+          framework?: string | null
           html_code?: string
           id?: string
           is_favorite?: boolean | null

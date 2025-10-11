@@ -11,6 +11,7 @@ interface MobileWorkspaceTriggerProps {
   projectFiles?: Array<{ file_path: string; file_content: string }>;
   projectId?: string;
   projectStatus?: 'success' | 'failed' | 'generating';
+  framework?: 'react' | 'html' | 'vue'; // Add framework prop
   defaultTab?: "chat" | "preview" | "files";
 }
 
@@ -22,6 +23,7 @@ export function MobileWorkspaceTrigger({
   projectFiles,
   projectId,
   projectStatus,
+  framework = 'react', // Add framework with default
   defaultTab = "chat"
 }: MobileWorkspaceTriggerProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -50,6 +52,7 @@ export function MobileWorkspaceTrigger({
         projectFiles={projectFiles}
         projectId={projectId}
         projectStatus={projectStatus}
+        framework={framework} // Pass framework to sheet
       />
     </>
   );
