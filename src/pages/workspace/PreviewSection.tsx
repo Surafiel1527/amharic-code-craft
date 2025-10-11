@@ -8,6 +8,7 @@ import { Download, FileCode } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import JSZip from "jszip";
 import { toast } from "sonner";
+import { useState, useMemo } from "react";
 
 interface PreviewSectionProps {
   projectId: string;
@@ -27,6 +28,119 @@ export function PreviewSection({
   projectTitle = 'project'
 }: PreviewSectionProps) {
   const isMobile = useIsMobile();
+  const [selectedFile, setSelectedFile] = useState<string>(framework === 'react' ? 'src/App.tsx' : 'index.html');
+  
+  // Generate all file contents
+  const fileContents = useMemo(() => {
+    const files: Record<string, string> = {};
+    
+    if (framework === 'react') {
+      files['src/App.tsx'] = htmlCode;
+      files['src/main.tsx'] = `import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.tsx'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)`;
+      files['src/index.css'] = `body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}`;
+      files['package.json'] = JSON.stringify({
+        name: projectTitle.toLowerCase().replace(/\s+/g, '-'),
+        version: "1.0.0",
+        type: "module",
+        scripts: {
+          dev: "vite",
+          build: "vite build",
+          preview: "vite preview"
+        },
+        dependencies: {
+          "react": "^18.3.1",
+          "react-dom": "^18.3.1"
+        },
+        devDependencies: {
+          "@types/react": "^18.3.1",
+          "@types/react-dom": "^18.3.1",
+          "@vitejs/plugin-react": "^4.3.1",
+          "typescript": "^5.2.2",
+          "vite": "^5.0.0"
+        }
+      }, null, 2);
+      files['vite.config.ts'] = `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+})`;
+      files['tsconfig.json'] = JSON.stringify({
+        compilerOptions: {
+          target: "ES2020",
+          useDefineForClassFields: true,
+          lib: ["ES2020", "DOM", "DOM.Iterable"],
+          module: "ESNext",
+          skipLibCheck: true,
+          moduleResolution: "bundler",
+          allowImportingTsExtensions: true,
+          resolveJsonModule: true,
+          isolatedModules: true,
+          noEmit: true,
+          jsx: "react-jsx",
+          strict: true,
+          noUnusedLocals: true,
+          noUnusedParameters: true,
+          noFallthroughCasesInSwitch: true
+        },
+        include: ["src"],
+        references: [{ path: "./tsconfig.node.json" }]
+      }, null, 2);
+      files['index.html'] = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${projectTitle}</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>`;
+      files['README.md'] = `# ${projectTitle}
+
+Generated with Amharic Code Craft
+
+## Getting Started
+
+1. Install dependencies:
+\`\`\`bash
+npm install
+\`\`\`
+
+2. Run development server:
+\`\`\`bash
+npm run dev
+\`\`\`
+
+3. Build for production:
+\`\`\`bash
+npm run build
+\`\`\`
+`;
+    } else {
+      files['index.html'] = htmlCode;
+    }
+    
+    return files;
+  }, [htmlCode, framework, projectTitle]);
   
   const handleDownloadZip = async () => {
     try {
@@ -222,21 +336,66 @@ npm run build
                 
                 {framework === 'react' ? (
                   <div className="ml-4 space-y-1 text-sm">
-                    <div className="text-muted-foreground">📄 package.json</div>
-                    <div className="text-muted-foreground">📄 vite.config.ts</div>
-                    <div className="text-muted-foreground">📄 tsconfig.json</div>
-                    <div className="text-muted-foreground">📄 index.html</div>
-                    <div className="text-muted-foreground">📄 README.md</div>
+                    <button 
+                      onClick={() => setSelectedFile('package.json')}
+                      className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'package.json' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
+                    >
+                      📄 package.json
+                    </button>
+                    <button 
+                      onClick={() => setSelectedFile('vite.config.ts')}
+                      className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'vite.config.ts' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
+                    >
+                      📄 vite.config.ts
+                    </button>
+                    <button 
+                      onClick={() => setSelectedFile('tsconfig.json')}
+                      className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'tsconfig.json' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
+                    >
+                      📄 tsconfig.json
+                    </button>
+                    <button 
+                      onClick={() => setSelectedFile('index.html')}
+                      className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'index.html' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
+                    >
+                      📄 index.html
+                    </button>
+                    <button 
+                      onClick={() => setSelectedFile('README.md')}
+                      className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'README.md' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
+                    >
+                      📄 README.md
+                    </button>
                     <div className="font-medium text-muted-foreground mt-2">📁 src/</div>
                     <div className="ml-4 space-y-1">
-                      <div className="text-primary font-medium">📄 App.tsx</div>
-                      <div className="text-muted-foreground">📄 main.tsx</div>
-                      <div className="text-muted-foreground">📄 index.css</div>
+                      <button 
+                        onClick={() => setSelectedFile('src/App.tsx')}
+                        className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'src/App.tsx' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
+                      >
+                        📄 App.tsx
+                      </button>
+                      <button 
+                        onClick={() => setSelectedFile('src/main.tsx')}
+                        className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'src/main.tsx' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
+                      >
+                        📄 main.tsx
+                      </button>
+                      <button 
+                        onClick={() => setSelectedFile('src/index.css')}
+                        className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'src/index.css' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
+                      >
+                        📄 index.css
+                      </button>
                     </div>
                   </div>
                 ) : (
                   <div className="ml-4 text-sm">
-                    <div className="text-primary font-medium">📄 index.html</div>
+                    <button 
+                      onClick={() => setSelectedFile('index.html')}
+                      className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'index.html' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
+                    >
+                      📄 index.html
+                    </button>
                   </div>
                 )}
               </div>
@@ -244,11 +403,11 @@ npm run build
               {/* Code preview */}
               <div className="border rounded-lg overflow-hidden">
                 <div className="bg-muted px-3 py-2 text-sm font-medium flex items-center justify-between">
-                  <span>{framework === 'react' ? 'src/App.tsx' : 'index.html'}</span>
-                  <span className="text-xs text-muted-foreground">{htmlCode.length} chars</span>
+                  <span>{selectedFile}</span>
+                  <span className="text-xs text-muted-foreground">{fileContents[selectedFile]?.length || 0} chars</span>
                 </div>
                 <pre className="p-4 text-xs overflow-x-auto bg-background max-h-96">
-                  <code>{htmlCode}</code>
+                  <code>{fileContents[selectedFile] || 'File not found'}</code>
                 </pre>
               </div>
               
