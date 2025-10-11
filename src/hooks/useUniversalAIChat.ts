@@ -325,7 +325,9 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
               files: context.contextData,
               selectedFiles,
               autoRefine: true,
-              autoLearn: autoLearn
+              autoLearn: autoLearn,
+              // CRITICAL: Pass framework and any other project context
+              ...projectContext
             }
           }
         });
@@ -373,7 +375,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       
       throw error;
     }
-  }, [projectId, selectedFiles, autoLearn, mode]);
+  }, [projectId, selectedFiles, autoLearn, mode, projectContext]);
 
   /**
    * Applies code fixes automatically
