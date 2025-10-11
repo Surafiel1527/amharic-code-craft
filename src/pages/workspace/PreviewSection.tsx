@@ -17,6 +17,8 @@ interface PreviewSectionProps {
   framework: 'react' | 'html' | 'vue';
   mobileTab?: 'chat' | 'preview' | 'code';
   projectTitle?: string;
+  selectedFiles?: string[];
+  onFileSelect?: (path: string) => void;
 }
 
 export function PreviewSection({ 
@@ -25,7 +27,9 @@ export function PreviewSection({
   htmlCode,
   framework,
   mobileTab = 'preview',
-  projectTitle = 'project'
+  projectTitle = 'project',
+  selectedFiles = [],
+  onFileSelect
 }: PreviewSectionProps) {
   const isMobile = useIsMobile();
   const [selectedFile, setSelectedFile] = useState<string>(framework === 'react' ? 'src/App.tsx' : 'index.html');
@@ -292,6 +296,12 @@ npm run build
                 conversationId={conversationId}
                 projectId={projectId}
                 mode="panel"
+                persistMessages={true}
+                selectedFiles={selectedFiles}
+                projectFiles={Object.entries(fileContents).map(([path, content]) => ({
+                  file_path: path,
+                  file_content: typeof content === 'string' ? content : ''
+                }))}
                 context={{
                   currentCode: htmlCode,
                   projectId,
@@ -337,31 +347,46 @@ npm run build
                 {framework === 'react' ? (
                   <div className="ml-4 space-y-1 text-sm">
                     <button 
-                      onClick={() => setSelectedFile('package.json')}
+                      onClick={() => {
+                        setSelectedFile('package.json');
+                        onFileSelect?.('package.json');
+                      }}
                       className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'package.json' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
                     >
                       📄 package.json
                     </button>
                     <button 
-                      onClick={() => setSelectedFile('vite.config.ts')}
+                      onClick={() => {
+                        setSelectedFile('vite.config.ts');
+                        onFileSelect?.('vite.config.ts');
+                      }}
                       className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'vite.config.ts' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
                     >
                       📄 vite.config.ts
                     </button>
                     <button 
-                      onClick={() => setSelectedFile('tsconfig.json')}
+                      onClick={() => {
+                        setSelectedFile('tsconfig.json');
+                        onFileSelect?.('tsconfig.json');
+                      }}
                       className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'tsconfig.json' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
                     >
                       📄 tsconfig.json
                     </button>
                     <button 
-                      onClick={() => setSelectedFile('index.html')}
+                      onClick={() => {
+                        setSelectedFile('index.html');
+                        onFileSelect?.('index.html');
+                      }}
                       className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'index.html' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
                     >
                       📄 index.html
                     </button>
                     <button 
-                      onClick={() => setSelectedFile('README.md')}
+                      onClick={() => {
+                        setSelectedFile('README.md');
+                        onFileSelect?.('README.md');
+                      }}
                       className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'README.md' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
                     >
                       📄 README.md
@@ -369,19 +394,28 @@ npm run build
                     <div className="font-medium text-muted-foreground mt-2">📁 src/</div>
                     <div className="ml-4 space-y-1">
                       <button 
-                        onClick={() => setSelectedFile('src/App.tsx')}
+                        onClick={() => {
+                          setSelectedFile('src/App.tsx');
+                          onFileSelect?.('src/App.tsx');
+                        }}
                         className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'src/App.tsx' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
                       >
                         📄 App.tsx
                       </button>
                       <button 
-                        onClick={() => setSelectedFile('src/main.tsx')}
+                        onClick={() => {
+                          setSelectedFile('src/main.tsx');
+                          onFileSelect?.('src/main.tsx');
+                        }}
                         className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'src/main.tsx' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
                       >
                         📄 main.tsx
                       </button>
                       <button 
-                        onClick={() => setSelectedFile('src/index.css')}
+                        onClick={() => {
+                          setSelectedFile('src/index.css');
+                          onFileSelect?.('src/index.css');
+                        }}
                         className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'src/index.css' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
                       >
                         📄 index.css
@@ -391,7 +425,10 @@ npm run build
                 ) : (
                   <div className="ml-4 text-sm">
                     <button 
-                      onClick={() => setSelectedFile('index.html')}
+                      onClick={() => {
+                        setSelectedFile('index.html');
+                        onFileSelect?.('index.html');
+                      }}
                       className={`flex items-center gap-2 w-full text-left px-2 py-1 rounded hover:bg-accent transition-colors ${selectedFile === 'index.html' ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'}`}
                     >
                       📄 index.html

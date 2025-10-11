@@ -677,6 +677,8 @@ export default function Workspace() {
           framework={project.framework || 'react'}
           mobileTab={mobileTab}
           projectTitle={project.title}
+          selectedFiles={selectedFiles}
+          onFileSelect={handleSelectFile}
         />
       )}
     </WorkspaceLayout>
