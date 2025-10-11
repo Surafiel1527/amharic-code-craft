@@ -5,12 +5,12 @@ import { ConfidenceDialog } from "./ConfidenceDialog";
 import { useState } from "react";
 
 interface GenerationMonitorOverlayProps {
-  conversationId?: string;
+  projectId?: string;
   onClarificationSubmit?: (clarification: string) => void;
 }
 
 export function GenerationMonitorOverlay({ 
-  conversationId,
+  projectId,
   onClarificationSubmit 
 }: GenerationMonitorOverlayProps) {
   const {
@@ -20,7 +20,7 @@ export function GenerationMonitorOverlay({
     clarificationQuestions,
     isExecuting,
     executionStatus
-  } = useGenerationMonitor(conversationId);
+  } = useGenerationMonitor(projectId);
 
   const [showClarificationDialog, setShowClarificationDialog] = useState(true);
 

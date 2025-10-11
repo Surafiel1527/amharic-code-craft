@@ -17,7 +17,7 @@ interface UseGenerationMonitorResult {
   events: GenerationEvent[];
 }
 
-export function useGenerationMonitor(conversationId?: string): UseGenerationMonitorResult {
+export function useGenerationMonitor(projectId?: string): UseGenerationMonitorResult {
   const [currentDecision, setCurrentDecision] = useState<any | null>(null);
   const [currentCorrection, setCurrentCorrection] = useState<any | null>(null);
   const [needsClarification, setNeedsClarification] = useState(false);
@@ -27,12 +27,12 @@ export function useGenerationMonitor(conversationId?: string): UseGenerationMoni
   const [events, setEvents] = useState<GenerationEvent[]>([]);
 
   useEffect(() => {
-    if (!conversationId) return;
+    if (!projectId) return;
 
-    // Subscribe to generation events channel
-    const channel = supabase.channel(`generation:${conversationId}`);
+    // Subscribe to generation events channel (matches backend channel name)
+    const channel = supabase.channel(`ai-status-${projectId}`);
 
-    channel
+      channel
       .on('broadcast', { event: 'generation_event' }, ({ payload }) => {
         const event: GenerationEvent = {
           type: payload.type,
@@ -45,14 +45,22 @@ export function useGenerationMonitor(conversationId?: string): UseGenerationMoni
         // Handle different event types
         switch (payload.type) {
           case 'decision':
-            setCurrentDecision(payload.decision);
+            setCurrentDecision({
+              classification: payload.decision?.classification,
+              confidence: payload.decision?.confidence || payload.confidence,
+              intent: payload.decision?.intent,
+              reflectionReason: payload.decision?.reflectionReason,
+              timestamp: payload.timestamp
+            });
             setExecutionStatus('idle');
             break;
 
           case 'correction':
             setCurrentCorrection({
-              from: payload.originalClassification,
-              to: payload.correctedClassification,
+              from: payload.originalClassification || payload.correction?.from,
+              to: payload.correctedClassification || payload.correction?.to,
+              reasoning: payload.reasoning || payload.correction?.reasoning,
+              confidence: payload.confidence,
               timestamp: payload.timestamp
             });
             break;
@@ -60,6 +68,12 @@ export function useGenerationMonitor(conversationId?: string): UseGenerationMoni
           case 'clarification_needed':
             setNeedsClarification(true);
             setClarificationQuestions(payload.questions || []);
+            setCurrentDecision({
+              classification: payload.decision?.classification,
+              confidence: payload.confidence,
+              intent: payload.decision?.intent,
+              timestamp: payload.timestamp
+            });
             setExecutionStatus('idle');
             break;
 
@@ -75,14 +89,17 @@ export function useGenerationMonitor(conversationId?: string): UseGenerationMoni
             break;
 
           case 'execution_failed':
+            setIsExecuting(false);
             setExecutionStatus('failed');
             break;
 
           case 'correction_applied':
             setExecutionStatus('correcting');
             setCurrentCorrection({
-              from: 'error',
-              to: 'corrected',
+              from: payload.originalClassification || 'error',
+              to: payload.correctedClassification || 'corrected',
+              reasoning: payload.correction?.fix,
+              confidence: payload.correction?.confidence,
               timestamp: payload.timestamp
             });
             break;
@@ -93,9 +110,9 @@ export function useGenerationMonitor(conversationId?: string): UseGenerationMoni
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId]);
+  }, [projectId]);
 
-  // Reset when conversation changes
+  // Reset when project changes
   useEffect(() => {
     setCurrentDecision(null);
     setCurrentCorrection(null);
@@ -104,7 +121,7 @@ export function useGenerationMonitor(conversationId?: string): UseGenerationMoni
     setIsExecuting(false);
     setExecutionStatus('idle');
     setEvents([]);
-  }, [conversationId]);
+  }, [projectId]);
 
   return {
     currentDecision,

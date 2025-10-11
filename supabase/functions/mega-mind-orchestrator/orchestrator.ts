@@ -222,6 +222,11 @@ export async function executeGeneration(ctx: {
         message: '🤔 I need more information to proceed confidently',
         progress: 10,
         confidence: finalConfidence,
+        decision: {
+          classification: analysis.isMetaRequest ? 'meta_request' : analysis.outputType,
+          confidence: finalConfidence,
+          intent: contextAnalysis.userIntent
+        },
         questions: [
           'Could you provide more details about what you want to achieve?',
           'Are there specific features or components you want to focus on?',
@@ -250,7 +255,13 @@ export async function executeGeneration(ctx: {
         status: 'reflecting',
         message: '🤔 Validating my understanding through self-reflection...',
         progress: 12,
-        confidence: finalConfidence
+        confidence: finalConfidence,
+        decision: {
+          classification: analysis.isMetaRequest ? 'meta_request' : analysis.outputType,
+          confidence: finalConfidence,
+          intent: contextAnalysis.userIntent,
+          reflectionReason: 'Low confidence detected, validating decision'
+        }
       });
 
       const reflection = await reflectOnDecision(request, analysis);
@@ -282,6 +293,9 @@ export async function executeGeneration(ctx: {
             message: '✅ Self-correction applied - proceeding with higher confidence',
             progress: 15,
             confidence: correction.confidence,
+            originalClassification: analysis.isMetaRequest ? 'meta_request' : analysis.outputType,
+            correctedClassification: correction.suggestedClassification,
+            reasoning: correction.reasoning,
             correction: {
               from: analysis.isMetaRequest ? 'meta_request' : analysis.outputType,
               to: correction.suggestedClassification,
@@ -307,7 +321,12 @@ export async function executeGeneration(ctx: {
         status: 'confident',
         message: '✅ High confidence - proceeding with execution',
         progress: 15,
-        confidence: finalConfidence
+        confidence: finalConfidence,
+        decision: {
+          classification: analysis.isMetaRequest ? 'meta_request' : analysis.outputType,
+          confidence: finalConfidence,
+          intent: contextAnalysis.userIntent
+        }
       });
     }
 
@@ -546,15 +565,22 @@ async function monitorExecutionWithCorrection(ctx: {
   // If execution is successful, no correction needed
   if (success) {
     console.log(`✅ Step "${step}" completed successfully`);
+    
+    await broadcast('execution:complete', {
+      status: 'success',
+      message: `✅ ${step} completed successfully`,
+      step
+    });
+    
     return { shouldRetry: false };
   }
 
   // Execution failed - trigger real-time correction
   console.log(`❌ Step "${step}" failed:`, error);
 
-  await broadcast('correction:detecting', {
-    status: 'detecting',
-    message: '🔍 Detecting issue during execution...',
+  await broadcast('execution:monitoring', {
+    status: 'analyzing_failure',
+    message: '🔍 Analyzing execution failure...',
     step,
     error: error?.message
   });
@@ -588,6 +614,14 @@ async function monitorExecutionWithCorrection(ctx: {
 
     if (!correctionResponse.ok) {
       console.log('⚠️ No automatic correction available');
+      
+      await broadcast('correction:failed', {
+        status: 'failed',
+        message: '❌ Could not auto-correct - manual review needed',
+        step,
+        error: error?.message
+      });
+      
       return { shouldRetry: false };
     }
 
@@ -599,11 +633,14 @@ async function monitorExecutionWithCorrection(ctx: {
       await broadcast('correction:applied', {
         status: 'corrected',
         message: '✅ Issue detected and corrected - retrying automatically',
+        step,
         correction: {
           issue: error?.message,
           fix: correctionResult.correctionReasoning,
           confidence: correctionResult.confidence
-        }
+        },
+        originalClassification: analysis.isMetaRequest ? 'meta_request' : analysis.outputType,
+        correctedClassification: correctionResult.correctedClassification
       });
 
       // Validate outcome for learning

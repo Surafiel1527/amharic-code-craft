@@ -90,21 +90,59 @@ serve(async (req) => {
     const broadcast = async (event: string, data: any) => {
       try {
         const channel = platformSupabase.channel(`ai-status-${projectId}`);
-        await channel.send({
-          type: 'broadcast',
-          event: 'status-update',
-          payload: {
-            ...data,
-            event,
-            projectId,
-            timestamp: new Date().toISOString()
-          }
-        });
-        console.log(`📡 Broadcast sent: ${event}`, data.message || data.status);
+        
+        // Determine event type - AGI events vs general status updates
+        const isAGIEvent = ['confidence:low', 'confidence:reflecting', 'confidence:corrected', 
+                            'confidence:high', 'confidence:proceeding', 'execution:monitoring',
+                            'execution:complete', 'correction:detecting', 'correction:applied', 
+                            'correction:failed'].includes(event);
+        
+        if (isAGIEvent) {
+          // Send AGI events with generation_event format for useGenerationMonitor
+          const agiEventType = mapToAGIEventType(event, data);
+          await channel.send({
+            type: 'broadcast',
+            event: 'generation_event',
+            payload: {
+              type: agiEventType,
+              ...data,
+              projectId,
+              conversationId,
+              timestamp: new Date().toISOString()
+            }
+          });
+          console.log(`🧠 AGI Event: ${agiEventType}`, data.message || data.status);
+        } else {
+          // Send general status updates
+          await channel.send({
+            type: 'broadcast',
+            event: 'status-update',
+            payload: {
+              ...data,
+              event,
+              projectId,
+              timestamp: new Date().toISOString()
+            }
+          });
+          console.log(`📡 Status: ${event}`, data.message || data.status);
+        }
       } catch (error) {
         console.error('❌ Broadcast error:', error);
       }
     };
+
+    // Map orchestrator events to AGI event types
+    function mapToAGIEventType(event: string, data: any): string {
+      if (event === 'confidence:low') return 'clarification_needed';
+      if (event === 'confidence:reflecting') return 'decision';
+      if (event === 'confidence:corrected') return 'correction';
+      if (event === 'confidence:high' || event === 'confidence:proceeding') return 'decision';
+      if (event === 'execution:monitoring' || event === 'correction:detecting') return 'execution_start';
+      if (event === 'execution:complete') return 'execution_complete';
+      if (event === 'correction:applied') return 'correction_applied';
+      if (event === 'correction:failed') return 'execution_failed';
+      return 'decision';
+    }
 
     // Start processing and return immediate response
     processRequest({
