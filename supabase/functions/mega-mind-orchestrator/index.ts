@@ -144,8 +144,53 @@ serve(async (req) => {
         progress: 100,
         code: packagedCode
       });
+
+      // AGI: Validate outcome for successful generation
+      const decisionId = (orchestrationResult.conversationContext as any)._decisionId;
+      if (decisionId) {
+        console.log('✅ Validating successful generation outcome...');
+        
+        const { validateOutcome } = await import('../_shared/agiIntegration.ts');
+        await validateOutcome(decisionId, {
+          userId,
+          executionSuccess: true,
+          actualOutcome: {
+            codeGenerated: true,
+            completed: true
+          },
+          expectedOutcome: {
+            outputType: orchestrationResult.analysis.outputType,
+            backendSetup: orchestrationResult.analysis.backendRequirements?.needsDatabase
+          }
+        });
+
+        console.log('✅ Successful outcome validated and learned');
+      }
     }).catch(async (error) => {
       console.error('❌ Generation failed:', error);
+      
+      // AGI: Validate failed outcome for learning
+      const decisionId = (conversationContext as any)?._decisionId;
+      if (decisionId) {
+        console.log('❌ Validating failed generation outcome...');
+        
+        const { validateOutcome } = await import('../_shared/agiIntegration.ts');
+        await validateOutcome(decisionId, {
+          userId,
+          executionSuccess: false,
+          userFeedback: 'generation_failed',
+          symptoms: [error.name || 'unknown_error', error.message || 'no_message'],
+          actualOutcome: {
+            failed: true,
+            errorType: error.name
+          },
+          expectedOutcome: {
+            success: true
+          }
+        });
+
+        console.log('❌ Failed outcome validated - triggering learning');
+      }
       
       // Log failure to production monitoring system
       const errorClassification = classifyError(error);

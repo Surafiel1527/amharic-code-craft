@@ -178,26 +178,22 @@ export async function executeGeneration(ctx: {
     await updateJobProgress(5, 'Analyzing requirements', 'Analyzing Requirements', []);
 
     console.log('🧠 Running Intelligence Engine analysis...');
-    try {
-      const contextAnalysis = await analyzeContext(
-        platformSupabase as any,
-        conversationId,
-        userId,
-        request,
-        projectId || undefined
-      );
-      
-      console.log('📊 Context Analysis:', {
-        intent: contextAnalysis.userIntent,
-        complexity: contextAnalysis.complexity,
-        confidence: contextAnalysis.confidenceScore,
-        contextQuality: contextAnalysis.contextQuality
-      });
+    const contextAnalysis = await analyzeContext(
+      platformSupabase as any,
+      conversationId,
+      userId,
+      request,
+      projectId || undefined
+    );
+    
+    console.log('📊 Context Analysis:', {
+      intent: contextAnalysis.userIntent,
+      complexity: contextAnalysis.complexity,
+      confidence: contextAnalysis.confidenceScore,
+      contextQuality: contextAnalysis.contextQuality
+    });
 
-      (conversationContext as any)._contextAnalysis = contextAnalysis;
-    } catch (analysisError) {
-      console.error('Context analysis failed, continuing without it:', analysisError);
-    }
+    (conversationContext as any)._contextAnalysis = contextAnalysis;
 
     const analysis = await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase);
     
@@ -213,24 +209,109 @@ export async function executeGeneration(ctx: {
     });
     (conversationContext as any)._decisionId = decisionId;
 
-    // AGI: Self-reflection check
-    const reflection = await reflectOnDecision(request, analysis);
-    if (!reflection.isConfident) {
-      console.log('⚠️ Low confidence in classification, checking for corrections...');
-      const correction = await checkForCorrection(
-        request,
-        analysis.isMetaRequest ? 'meta_request' : analysis.outputType
-      );
+    // ============ CONFIDENCE GATE SYSTEM ============
+    const finalConfidence = contextAnalysis.confidenceScore * (analysis.confidence || 0.5);
+    console.log(`🎯 Final confidence: ${(finalConfidence * 100).toFixed(0)}%`);
+
+    // GATE 1: Very Low Confidence (<40%) - Ask User for Clarification
+    if (finalConfidence < 0.4) {
+      console.log('❌ CONFIDENCE TOO LOW - Requesting user clarification');
       
-      if (correction.needsCorrection && correction.confidence && correction.confidence > 0.7) {
-        console.log('🔄 Auto-correcting classification:', correction);
-        // Apply correction to analysis
-        if (correction.suggestedClassification === 'code_modification') {
-          analysis.outputType = 'modification';
-          analysis.isMetaRequest = false;
+      await broadcast('confidence:low', {
+        status: 'needs_clarification',
+        message: '🤔 I need more information to proceed confidently',
+        progress: 10,
+        confidence: finalConfidence,
+        questions: [
+          'Could you provide more details about what you want to achieve?',
+          'Are there specific features or components you want to focus on?',
+          'Do you have any examples or references that might help?'
+        ]
+      });
+
+      return {
+        needsClarification: true,
+        confidence: finalConfidence,
+        analysis,
+        conversationContext,
+        questions: [
+          'Could you provide more details about what you want to achieve?',
+          'Are there specific features or components you want to focus on?',
+          'Do you have any examples or references that might help?'
+        ]
+      };
+    }
+
+    // GATE 2: Low Confidence (40-60%) - AGI Self-Reflection
+    if (finalConfidence < 0.6) {
+      console.log('⚠️ LOW CONFIDENCE - Triggering AGI self-reflection');
+      
+      await broadcast('confidence:reflecting', {
+        status: 'reflecting',
+        message: '🤔 Validating my understanding through self-reflection...',
+        progress: 12,
+        confidence: finalConfidence
+      });
+
+      const reflection = await reflectOnDecision(request, analysis);
+      
+      if (!reflection.isConfident) {
+        console.log('🔄 Self-reflection suggests reclassification');
+        
+        const correction = await checkForCorrection(
+          request,
+          analysis.isMetaRequest ? 'meta_request' : analysis.outputType
+        );
+        
+        if (correction.needsCorrection && correction.confidence && correction.confidence > 0.7) {
+          console.log('✅ APPLYING CORRECTION:', correction);
+          
+          // Apply correction
+          if (correction.suggestedClassification === 'code_modification') {
+            analysis.outputType = 'modification';
+            analysis.isMetaRequest = false;
+          } else if (correction.suggestedClassification === 'meta_request') {
+            analysis.isMetaRequest = true;
+          }
+          
+          // Update confidence
+          analysis.confidence = correction.confidence;
+          
+          await broadcast('confidence:corrected', {
+            status: 'corrected',
+            message: '✅ Self-correction applied - proceeding with higher confidence',
+            progress: 15,
+            confidence: correction.confidence,
+            correction: {
+              from: analysis.isMetaRequest ? 'meta_request' : analysis.outputType,
+              to: correction.suggestedClassification,
+              reasoning: correction.reasoning
+            }
+          });
+        } else {
+          console.log('⚠️ No high-confidence correction available - proceeding with caution');
+          
+          await broadcast('confidence:proceeding', {
+            status: 'proceeding',
+            message: '⚠️ Proceeding with moderate confidence - monitoring closely',
+            progress: 15,
+            confidence: finalConfidence
+          });
         }
       }
+    } else {
+      // GATE 3: High Confidence (>60%) - Proceed with monitoring
+      console.log('✅ HIGH CONFIDENCE - Proceeding with real-time monitoring');
+      
+      await broadcast('confidence:high', {
+        status: 'confident',
+        message: '✅ High confidence - proceeding with execution',
+        progress: 15,
+        confidence: finalConfidence
+      });
     }
+
+    (conversationContext as any)._finalConfidence = finalConfidence;
 
     await storeConversationTurn(platformSupabase, {
       conversationId,
@@ -420,8 +501,152 @@ export async function executeGeneration(ctx: {
     analysis,
     conversationContext,
     updateJobProgress,
-    startTime
+    startTime,
+    // Real-time monitoring callback
+    monitorExecution: async (executionData: {
+      step: string;
+      progress: number;
+      success: boolean;
+      error?: any;
+      output?: any;
+    }) => {
+      return await monitorExecutionWithCorrection({
+        ...executionData,
+        userId,
+        conversationId,
+        decisionId: (conversationContext as any)._decisionId,
+        analysis,
+        broadcast
+      });
+    }
   };
+}
+
+/**
+ * Monitor execution in real-time and apply corrections if needed
+ */
+async function monitorExecutionWithCorrection(ctx: {
+  step: string;
+  progress: number;
+  success: boolean;
+  error?: any;
+  output?: any;
+  userId: string;
+  conversationId: string;
+  decisionId: string | null;
+  analysis: any;
+  broadcast: (event: string, data: any) => Promise<void>;
+}): Promise<{
+  shouldRetry: boolean;
+  correctedAnalysis?: any;
+  correctionReasoning?: string;
+}> {
+  const { step, success, error, analysis, broadcast, userId, conversationId, decisionId } = ctx;
+
+  // If execution is successful, no correction needed
+  if (success) {
+    console.log(`✅ Step "${step}" completed successfully`);
+    return { shouldRetry: false };
+  }
+
+  // Execution failed - trigger real-time correction
+  console.log(`❌ Step "${step}" failed:`, error);
+
+  await broadcast('correction:detecting', {
+    status: 'detecting',
+    message: '🔍 Detecting issue during execution...',
+    step,
+    error: error?.message
+  });
+
+  try {
+    // Check if autonomous corrector has a solution
+    const correctionResponse = await fetch(
+      `${Deno.env.get('SUPABASE_URL')}/functions/v1/autonomous-corrector`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+        },
+        body: JSON.stringify({
+          action: 'apply_correction',
+          correctionData: {
+            userId,
+            originalClassification: analysis.isMetaRequest ? 'meta_request' : analysis.outputType,
+            correctClassification: null, // Let corrector determine
+            userRequest: ctx.step,
+            errorContext: {
+              step,
+              error: error?.message,
+              stackTrace: error?.stack
+            }
+          }
+        })
+      }
+    );
+
+    if (!correctionResponse.ok) {
+      console.log('⚠️ No automatic correction available');
+      return { shouldRetry: false };
+    }
+
+    const correctionResult = await correctionResponse.json();
+
+    if (correctionResult.correctionApplied && correctionResult.shouldRetry) {
+      console.log('✅ REAL-TIME CORRECTION APPLIED:', correctionResult);
+
+      await broadcast('correction:applied', {
+        status: 'corrected',
+        message: '✅ Issue detected and corrected - retrying automatically',
+        correction: {
+          issue: error?.message,
+          fix: correctionResult.correctionReasoning,
+          confidence: correctionResult.confidence
+        }
+      });
+
+      // Validate outcome for learning
+      if (decisionId) {
+        await fetch(
+          `${Deno.env.get('SUPABASE_URL')}/functions/v1/decision-validator`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+            },
+            body: JSON.stringify({
+              action: 'validate_outcome',
+              outcomeData: {
+                decisionId,
+                userId,
+                executionFailed: true,
+                detectedBy: 'real_time_monitoring',
+                detectionConfidence: 0.9,
+                errorSeverity: 'medium',
+                symptoms: [error?.message || 'execution_failure'],
+                correctionApplied: true
+              }
+            })
+          }
+        );
+      }
+
+      return {
+        shouldRetry: true,
+        correctedAnalysis: correctionResult.correctedClassification,
+        correctionReasoning: correctionResult.correctionReasoning
+      };
+    }
+
+    console.log('⚠️ Correction attempted but not confident enough to retry');
+    return { shouldRetry: false };
+
+  } catch (correctionError) {
+    console.error('Error during real-time correction:', correctionError);
+    return { shouldRetry: false };
+  }
 }
 
 /**
