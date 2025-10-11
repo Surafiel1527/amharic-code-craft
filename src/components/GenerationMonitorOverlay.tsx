@@ -36,13 +36,7 @@ export function GenerationMonitorOverlay({
       {currentDecision && shouldShowThinking && (
         <AIThinkingPanel
           isVisible={true}
-          currentStep={
-            executionStatus === 'running' 
-              ? "Executing generation plan..." 
-              : executionStatus === 'correcting'
-              ? "Applying auto-correction..."
-              : "Analyzing request..."
-          }
+          currentStep={currentDecision.reasoning || "Processing request..."}
           confidence={currentDecision.confidence || 0.5}
           reasoning={currentDecision.reasoning || "Processing request..."}
           classificationResult={{
@@ -55,7 +49,8 @@ export function GenerationMonitorOverlay({
               step: "Analyze user intent", 
               status: "complete", 
               confidence: currentDecision.confidence,
-              timestamp: new Date() 
+              timestamp: new Date(),
+              reasoning: currentDecision.reasoning
             },
             { 
               step: "Execute generation", 
@@ -70,14 +65,14 @@ export function GenerationMonitorOverlay({
       {shouldShowCorrection && currentCorrection && (
         <CorrectionIndicator
           isVisible={true}
-          status="corrected"
+          status={executionStatus === 'failed' ? "failed" : "corrected"}
           correction={{
-            issue: `Original: ${currentCorrection.from?.type || currentCorrection.from || 'unknown'}`,
-            fix: `Corrected to: ${currentCorrection.to?.type || currentCorrection.to || 'unknown'}`,
-            confidence: currentCorrection.to?.confidence || 0.8,
-            from: currentCorrection.from?.type || currentCorrection.from,
-            to: currentCorrection.to?.type || currentCorrection.to,
-            reasoning: currentCorrection.to?.reasoning || "Auto-correction applied based on validation"
+            issue: `Original classification: ${currentCorrection.from || 'unknown'}`,
+            fix: `Corrected to: ${currentCorrection.to || 'unknown'}`,
+            confidence: currentCorrection.confidence || 0.8,
+            from: currentCorrection.from,
+            to: currentCorrection.to,
+            reasoning: currentCorrection.reasoning || "Auto-correction applied based on AGI self-reflection"
           }}
         />
       )}

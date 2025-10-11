@@ -46,9 +46,12 @@ export function useGenerationMonitor(projectId?: string): UseGenerationMonitorRe
         switch (payload.type) {
           case 'decision':
             setCurrentDecision({
-              classification: payload.decision?.classification,
+              type: payload.decision?.classification,
+              classified_as: payload.decision?.classification,
               confidence: payload.decision?.confidence || payload.confidence,
               intent: payload.decision?.intent,
+              reasoning: payload.message || payload.decision?.reflectionReason || '',
+              userRequest: payload.decision?.userRequest || '',
               reflectionReason: payload.decision?.reflectionReason,
               timestamp: payload.timestamp
             });
@@ -56,22 +59,39 @@ export function useGenerationMonitor(projectId?: string): UseGenerationMonitorRe
             break;
 
           case 'correction':
+          case 'correction_applied':
             setCurrentCorrection({
               from: payload.originalClassification || payload.correction?.from,
               to: payload.correctedClassification || payload.correction?.to,
-              reasoning: payload.reasoning || payload.correction?.reasoning,
-              confidence: payload.confidence,
+              reasoning: payload.reasoning || payload.correction?.reasoning || payload.message || '',
+              confidence: payload.confidence || payload.correction?.confidence,
               timestamp: payload.timestamp
             });
+            // Update decision with corrected classification
+            if (payload.correctedClassification) {
+              setCurrentDecision(prev => prev ? {
+                ...prev,
+                type: payload.correctedClassification,
+                classified_as: payload.correctedClassification,
+                confidence: payload.confidence || prev.confidence,
+                reasoning: payload.reasoning || prev.reasoning
+              } : null);
+            }
+            if (payload.type === 'correction_applied') {
+              setExecutionStatus('correcting');
+            }
             break;
 
           case 'clarification_needed':
             setNeedsClarification(true);
             setClarificationQuestions(payload.questions || []);
             setCurrentDecision({
-              classification: payload.decision?.classification,
-              confidence: payload.confidence,
+              type: payload.decision?.classification,
+              classified_as: payload.decision?.classification,
+              confidence: payload.confidence || payload.decision?.confidence,
               intent: payload.decision?.intent,
+              reasoning: payload.message || '',
+              userRequest: payload.decision?.userRequest || '',
               timestamp: payload.timestamp
             });
             setExecutionStatus('idle');
@@ -91,17 +111,6 @@ export function useGenerationMonitor(projectId?: string): UseGenerationMonitorRe
           case 'execution_failed':
             setIsExecuting(false);
             setExecutionStatus('failed');
-            break;
-
-          case 'correction_applied':
-            setExecutionStatus('correcting');
-            setCurrentCorrection({
-              from: payload.originalClassification || 'error',
-              to: payload.correctedClassification || 'corrected',
-              reasoning: payload.correction?.fix,
-              confidence: payload.correction?.confidence,
-              timestamp: payload.timestamp
-            });
             break;
         }
       })
