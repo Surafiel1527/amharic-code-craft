@@ -33,7 +33,7 @@ Visit `http://localhost:5173` to see your app running!
 │   │   ├── validationHelpers.ts → Code validation
 │   │   └── promptTemplates.ts  → AI prompts
 │   │
-│   └── mega-mind-orchestrator/ → Main AI orchestrator (400 lines)
+│   └── mega-mind-orchestrator/ → Main AI orchestrator (3 files: index, orchestrator, code-generator)
 │       └── index.ts            → Clean orchestration logic
 │
 └── supabase/migrations/         → Database schema
@@ -79,7 +79,10 @@ Visit `http://localhost:5173` to see your app running!
 - **[Phase Review](./PHASE_REVIEW.md)** - Implementation achievements
 
 ### Key Files
-- Main orchestrator: `supabase/functions/mega-mind-orchestrator/index.ts` (~1,300 lines)
+- Main orchestrator: `supabase/functions/mega-mind-orchestrator/` (split into 3 files: ~1,300 lines total)
+  - `index.ts` - Entry point & routing (~200 lines)
+  - `orchestrator.ts` - Core AI logic (~550 lines)
+  - `code-generator.ts` - Code generation (~550 lines)
 - Intelligence engine: `supabase/functions/_shared/intelligenceEngine.ts`
 - Healing engine: `supabase/functions/unified-healing-engine/index.ts`
 - Shared modules: `supabase/functions/_shared/`

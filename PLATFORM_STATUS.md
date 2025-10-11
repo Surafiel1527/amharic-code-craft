@@ -104,7 +104,10 @@ Lovable AI (primary)
 
 ### Edge Functions
 
-#### **mega-mind-orchestrator** (Main - ~1,300 lines)
+#### **mega-mind-orchestrator** (Refactored - 3 files, ~1,300 lines total)
+- `index.ts` - Entry point & routing (~200 lines)
+- `orchestrator.ts` - Core AI orchestration (~550 lines)
+- `code-generator.ts` - Code generation & formatting (~550 lines)
 - **Purpose**: Coordinates all AI generation workflows with intelligence
 - **Features**:
   - 🧠 Context analysis using Intelligence Engine
@@ -555,7 +558,9 @@ GROUP BY test_type;
 - `supabase/config.toml` - Supabase settings
 
 ### Core Logic
-- `supabase/functions/mega-mind-orchestrator/index.ts` - Main orchestrator
+- `supabase/functions/mega-mind-orchestrator/index.ts` - Entry point & routing
+- `supabase/functions/mega-mind-orchestrator/orchestrator.ts` - Core AI logic
+- `supabase/functions/mega-mind-orchestrator/code-generator.ts` - Code generation
 - `supabase/functions/mega-mind-orchestrator/productionMonitoring.ts` - Monitoring
 - `supabase/functions/_shared/implementationPlanner.ts` - Plan generation
 - `supabase/functions/_shared/progressiveBuilder.ts` - Phased building

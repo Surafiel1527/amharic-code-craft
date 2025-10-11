@@ -64,7 +64,9 @@ graph TD
 
 ```
 mega-mind-orchestrator/
-├── index.ts                    # Main orchestration (~1,300 lines with intelligence)
+├── index.ts                    # Entry point & routing (~200 lines)
+├── orchestrator.ts             # Core AI orchestration logic (~550 lines)
+├── code-generator.ts           # Code generation & formatting (~550 lines)
 ├── autoFixIntegration.ts       # Code validation & fixes
 ├── productionMonitoring.ts     # Success/failure tracking
 └── _shared/
@@ -76,6 +78,8 @@ mega-mind-orchestrator/
     ├── patternLearning.ts     # Pattern evolution (Bayesian)
     └── conversationMemory.ts  # Context management
 ```
+
+**Refactored (2025-01-11):** Previously a single 1,300-line file, now split into 3 focused modules for better maintainability.
 
 ---
 
@@ -116,7 +120,7 @@ interface RequestClassification {
 }
 ```
 
-**Implementation:** `supabase/functions/mega-mind-orchestrator/index.ts` (lines 50-120)
+**Implementation:** `supabase/functions/mega-mind-orchestrator/orchestrator.ts` (analyzeRequest function)
 
 ---
 

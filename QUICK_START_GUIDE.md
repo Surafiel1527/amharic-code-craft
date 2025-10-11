@@ -39,7 +39,7 @@ Your Project
 │
 └── supabase/functions/    → Backend code
     ├── _shared/           → Shared utilities (clean!)
-    └── mega-mind-orchestrator/  → Main AI logic
+    └── mega-mind-orchestrator/  → Main AI logic (3 files: index, orchestrator, code-generator)
 ```
 
 ## Step 4: Make Your First Request (2 minutes)

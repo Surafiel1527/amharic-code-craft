@@ -24,7 +24,7 @@
    - Generates actual code changes using AI
    - Posts confirmation and file changes to chat
 
-4. **User Intent Detection** (`mega-mind-orchestrator/index.ts`)
+4. **User Intent Detection** (`mega-mind-orchestrator/orchestrator.ts`)
    - Error handling now detects user intent from messages
    - Keywords: "apply", "implement", "fix it", "try that", "go ahead"
    - Automatically triggers fix application when user requests it
@@ -128,7 +128,7 @@ User Request → Generation Fails → Conversational Diagnosis
    - Context requirements display
    - Tag-based categorization
 
-#### 5. **Orchestrator Integration** (`mega-mind-orchestrator/index.ts`)
+#### 5. **Orchestrator Integration** (`mega-mind-orchestrator/orchestrator.ts`)
    - Context analysis runs BEFORE every generation
    - Intelligent decisions guide generation strategy
    - `evolvePatterns()` called in finalization (autonomous learning loop)

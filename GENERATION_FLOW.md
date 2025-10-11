@@ -132,7 +132,7 @@ useEffect(() => {
 
 **Purpose:** Analyze context BEFORE generation for intelligent decisions
 
-**Location:** `supabase/functions/mega-mind-orchestrator/index.ts` (lines 536-558)
+**Location:** `supabase/functions/mega-mind-orchestrator/orchestrator.ts` (analyzeContext function)
 
 ```typescript
 // Run Intelligence Engine analysis
@@ -166,7 +166,7 @@ await broadcastStatus(projectId, {
 
 ### Step 2.1: Request Reception
 
-**Location:** `supabase/functions/mega-mind-orchestrator/index.ts`
+**Location:** `supabase/functions/mega-mind-orchestrator/index.ts` (entry point)
 
 ```typescript
 serve(async (req) => {
@@ -898,10 +898,9 @@ function getContextualMessage(progress: number): string {
 - `src/hooks/useRealtimeOrchestration.ts` - WebSocket management
 
 ### Backend
-- `supabase/functions/mega-mind-orchestrator/index.ts` - Main orchestrator
-- `supabase/functions/_shared/implementationPlanner.ts` - Plan generation + parsing
-- `supabase/functions/_shared/progressiveBuilder.ts` - Phase-by-phase building
-- `supabase/functions/_shared/autoFixEngine.ts` - Validation & fixes
+- `supabase/functions/mega-mind-orchestrator/index.ts` - Entry point & routing
+- `supabase/functions/mega-mind-orchestrator/orchestrator.ts` - Core AI logic
+- `supabase/functions/mega-mind-orchestrator/code-generator.ts` - Code generation
 - `supabase/functions/mega-mind-orchestrator/productionMonitoring.ts` - Logging
 
 ### Database Tables

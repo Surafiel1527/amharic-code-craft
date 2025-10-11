@@ -294,7 +294,7 @@ async function generateWithTimeout(request: GenerationRequest) {
 4. **Log:** Record timeout for pattern analysis
 5. **Alert:** Notify admins if timeout rate is high
 
-**Location:** `supabase/functions/mega-mind-orchestrator/index.ts`
+**Location:** `supabase/functions/mega-mind-orchestrator/orchestrator.ts`
 
 ---
 
