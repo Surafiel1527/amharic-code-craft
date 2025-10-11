@@ -310,15 +310,23 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
     const startTime = Date.now();
     try {
+      // CRITICAL: Get current user ID
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        throw new Error('Not authenticated - user ID required');
+      }
+
       // Use retry logic for reliability
       const data = await retryWithBackoff(async () => {
         const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
           body: {
+            // CRITICAL: Pass userId and conversationId at TOP LEVEL
+            userId: currentUser.id,
+            conversationId: conversationId || projectId,
             request: message,
             requestType: 'code-update',
             mode, // Pass mode to orchestrator
             context: {
-              conversationId: conversationId || projectId,
               projectId: projectId,
               currentCode: context.currentCode,
               conversationHistory: context.conversationHistory,
