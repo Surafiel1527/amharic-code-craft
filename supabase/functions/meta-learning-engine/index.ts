@@ -14,10 +14,30 @@ serve(async (req) => {
   }
 
   try {
+    // Get JWT token from Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Create authenticated client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
     );
+
+    // Verify authentication
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     const { action, decisionId, outcomeId } = await req.json();
 
@@ -33,6 +53,14 @@ serve(async (req) => {
         .single();
 
       if (decisionError) throw decisionError;
+
+      // Validate user owns this decision
+      if (decision.user_id !== user.id) {
+        return new Response(JSON.stringify({ error: 'Forbidden: Cannot learn from another user\'s decision' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
 
       const { data: outcome, error: outcomeError } = await supabaseClient
         .from('decision_outcomes')

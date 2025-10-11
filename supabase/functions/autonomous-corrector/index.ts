@@ -14,10 +14,30 @@ serve(async (req) => {
   }
 
   try {
+    // Get JWT token from Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Create authenticated client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
     );
+
+    // Verify authentication
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     const { action, decisionId, userRequest, currentClassification } = await req.json();
 
@@ -33,6 +53,14 @@ serve(async (req) => {
         .single();
 
       if (decisionError) throw decisionError;
+
+      // Validate user owns this decision
+      if (decision.user_id !== user.id) {
+        return new Response(JSON.stringify({ error: 'Forbidden: Cannot correct another user\'s decision' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
 
       // Check for correction patterns
       const { data: patterns } = await supabaseClient
@@ -179,14 +207,14 @@ serve(async (req) => {
 
     // ACTION 3: Check if correction is needed
     if (action === 'check_needed') {
-      // Get meta-learning suggestions
+      // Get meta-learning suggestions with user's auth token
       const suggestionsResponse = await fetch(
         `${Deno.env.get('SUPABASE_URL')}/functions/v1/meta-learning-engine`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+            'Authorization': authHeader
           },
           body: JSON.stringify({
             action: 'get_correction_suggestions',

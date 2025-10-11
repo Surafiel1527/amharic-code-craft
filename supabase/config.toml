@@ -55,13 +55,13 @@ verify_jwt = true
 # ============================================
 
 [functions.decision-validator]
-verify_jwt = false
+verify_jwt = true
 
 [functions.meta-learning-engine]
-verify_jwt = false
+verify_jwt = true
 
 [functions.autonomous-corrector]
-verify_jwt = false
+verify_jwt = true
 
 [functions.auto-test-runner]
 verify_jwt = false

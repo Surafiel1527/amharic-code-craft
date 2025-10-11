@@ -12,10 +12,30 @@ serve(async (req) => {
   }
 
   try {
+    // Get JWT token from Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Create authenticated client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
     );
+
+    // Verify authentication
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     const { 
       action,
@@ -24,6 +44,15 @@ serve(async (req) => {
       userRequest,
       conversationId
     } = await req.json();
+
+    // Validate user_id matches authenticated user
+    const requestUserId = decisionData?.userId || outcomeData?.userId;
+    if (requestUserId && requestUserId !== user.id) {
+      return new Response(JSON.stringify({ error: 'Forbidden: User ID mismatch' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     console.log('Decision Validator Action:', action);
 
@@ -104,14 +133,14 @@ serve(async (req) => {
       if (!wasCorrect) {
         console.log('❌ Decision was incorrect, triggering meta-learning...');
         
-        // Call meta-learning-engine
+        // Call meta-learning-engine with user's auth token
         const learningResponse = await fetch(
           `${Deno.env.get('SUPABASE_URL')}/functions/v1/meta-learning-engine`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+              'Authorization': authHeader
             },
             body: JSON.stringify({
               action: 'learn_from_mistake',
