@@ -8189,7 +8189,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      agi_live_metrics: {
+        Row: {
+          avg_confidence: number | null
+          learning_confidence: number | null
+          learning_patterns: number | null
+          successful_corrections: number | null
+          total_corrections: number | null
+          total_decisions: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_job_eta: {
