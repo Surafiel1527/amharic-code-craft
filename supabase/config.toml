@@ -49,6 +49,20 @@ verify_jwt = true
 [functions.conversation-intelligence]
 verify_jwt = true
 
+# ============================================
+# AGI SELF-CORRECTING SYSTEM (3)
+# Autonomous decision validation and learning
+# ============================================
+
+[functions.decision-validator]
+verify_jwt = false
+
+[functions.meta-learning-engine]
+verify_jwt = false
+
+[functions.autonomous-corrector]
+verify_jwt = false
+
 [functions.auto-test-runner]
 verify_jwt = false
 

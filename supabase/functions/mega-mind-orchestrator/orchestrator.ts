@@ -25,6 +25,7 @@ import { analyzeContext, makeIntelligentDecision } from '../_shared/intelligence
 import { 
   logGenerationSuccess,
 } from './productionMonitoring.ts';
+import { logDecision, reflectOnDecision, checkForCorrection } from '../_shared/agiIntegration.ts';
 
 // Enterprise modules
 import { FeatureOrchestrator } from '../_shared/featureOrchestrator.ts';
@@ -201,6 +202,35 @@ export async function executeGeneration(ctx: {
     const analysis = await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase);
     
     console.log('📊 Analysis complete:', JSON.stringify(analysis, null, 2));
+
+    // AGI: Log decision for learning
+    const decisionId = await logDecision(analysis, {
+      userId,
+      conversationId,
+      jobId: projectId || undefined,
+      userRequest: request,
+      processingTimeMs: Date.now() - startTime
+    });
+    (conversationContext as any)._decisionId = decisionId;
+
+    // AGI: Self-reflection check
+    const reflection = await reflectOnDecision(request, analysis);
+    if (!reflection.isConfident) {
+      console.log('⚠️ Low confidence in classification, checking for corrections...');
+      const correction = await checkForCorrection(
+        request,
+        analysis.isMetaRequest ? 'meta_request' : analysis.outputType
+      );
+      
+      if (correction.needsCorrection && correction.confidence && correction.confidence > 0.7) {
+        console.log('🔄 Auto-correcting classification:', correction);
+        // Apply correction to analysis
+        if (correction.suggestedClassification === 'code_modification') {
+          analysis.outputType = 'modification';
+          analysis.isMetaRequest = false;
+        }
+      }
+    }
 
     await storeConversationTurn(platformSupabase, {
       conversationId,

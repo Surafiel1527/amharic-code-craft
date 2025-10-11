@@ -820,6 +820,75 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_corrections: {
+        Row: {
+          corrected_at: string | null
+          corrected_classification: string
+          correction_confidence: number | null
+          correction_method: string
+          correction_reasoning: string | null
+          id: string
+          original_classification: string
+          original_decision_id: string | null
+          pattern_id: string | null
+          re_executed: boolean | null
+          re_execution_result: Json | null
+          user_id: string
+          validated_at: string | null
+          validation_result: Json | null
+          was_successful: boolean | null
+        }
+        Insert: {
+          corrected_at?: string | null
+          corrected_classification: string
+          correction_confidence?: number | null
+          correction_method: string
+          correction_reasoning?: string | null
+          id?: string
+          original_classification: string
+          original_decision_id?: string | null
+          pattern_id?: string | null
+          re_executed?: boolean | null
+          re_execution_result?: Json | null
+          user_id: string
+          validated_at?: string | null
+          validation_result?: Json | null
+          was_successful?: boolean | null
+        }
+        Update: {
+          corrected_at?: string | null
+          corrected_classification?: string
+          correction_confidence?: number | null
+          correction_method?: string
+          correction_reasoning?: string | null
+          id?: string
+          original_classification?: string
+          original_decision_id?: string | null
+          pattern_id?: string | null
+          re_executed?: boolean | null
+          re_execution_result?: Json | null
+          user_id?: string
+          validated_at?: string | null
+          validation_result?: Json | null
+          was_successful?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_corrections_original_decision_id_fkey"
+            columns: ["original_decision_id"]
+            isOneToOne: false
+            referencedRelation: "decision_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_corrections_pattern_id_fkey"
+            columns: ["pattern_id"]
+            isOneToOne: false
+            referencedRelation: "misclassification_patterns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auto_fix_suggestions: {
         Row: {
           applied: boolean | null
@@ -1829,6 +1898,57 @@ export type Database = {
         }
         Relationships: []
       }
+      confidence_scores: {
+        Row: {
+          classification_type: string
+          created_at: string | null
+          current_confidence: number
+          failed_contexts: Json | null
+          failure_count: number | null
+          id: string
+          initial_confidence: number
+          keyword_pattern: string
+          last_failure_at: string | null
+          last_success_at: string | null
+          success_count: number | null
+          successful_contexts: Json | null
+          total_attempts: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          classification_type: string
+          created_at?: string | null
+          current_confidence: number
+          failed_contexts?: Json | null
+          failure_count?: number | null
+          id?: string
+          initial_confidence: number
+          keyword_pattern: string
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          success_count?: number | null
+          successful_contexts?: Json | null
+          total_attempts?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          classification_type?: string
+          created_at?: string | null
+          current_confidence?: number
+          failed_contexts?: Json | null
+          failure_count?: number | null
+          id?: string
+          initial_confidence?: number
+          keyword_pattern?: string
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          success_count?: number | null
+          successful_contexts?: Json | null
+          total_attempts?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       conversation_context_log: {
         Row: {
           conversation_id: string
@@ -2556,6 +2676,140 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      decision_logs: {
+        Row: {
+          classified_as: string
+          complexity_detected: string | null
+          confidence_score: number | null
+          context_used: Json | null
+          conversation_id: string | null
+          created_at: string
+          decision_input: Json
+          decision_output: Json
+          decision_type: string
+          id: string
+          intent_detected: string | null
+          job_id: string | null
+          model_used: string | null
+          processing_time_ms: number | null
+          user_id: string
+          user_request: string
+        }
+        Insert: {
+          classified_as: string
+          complexity_detected?: string | null
+          confidence_score?: number | null
+          context_used?: Json | null
+          conversation_id?: string | null
+          created_at?: string
+          decision_input: Json
+          decision_output: Json
+          decision_type: string
+          id?: string
+          intent_detected?: string | null
+          job_id?: string | null
+          model_used?: string | null
+          processing_time_ms?: number | null
+          user_id: string
+          user_request: string
+        }
+        Update: {
+          classified_as?: string
+          complexity_detected?: string | null
+          confidence_score?: number | null
+          context_used?: Json | null
+          conversation_id?: string | null
+          created_at?: string
+          decision_input?: Json
+          decision_output?: Json
+          decision_type?: string
+          id?: string
+          intent_detected?: string | null
+          job_id?: string | null
+          model_used?: string | null
+          processing_time_ms?: number | null
+          user_id?: string
+          user_request?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_logs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_logs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generation_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      decision_outcomes: {
+        Row: {
+          actual_intent: string | null
+          actual_outcome: Json | null
+          corrected_at: string | null
+          correction_needed: boolean | null
+          decision_id: string | null
+          detected_at: string | null
+          detected_by: string | null
+          detection_confidence: number | null
+          error_severity: string | null
+          expected_outcome: Json | null
+          id: string
+          symptoms: Json | null
+          user_feedback: string | null
+          user_satisfaction_score: number | null
+          was_correct: boolean | null
+        }
+        Insert: {
+          actual_intent?: string | null
+          actual_outcome?: Json | null
+          corrected_at?: string | null
+          correction_needed?: boolean | null
+          decision_id?: string | null
+          detected_at?: string | null
+          detected_by?: string | null
+          detection_confidence?: number | null
+          error_severity?: string | null
+          expected_outcome?: Json | null
+          id?: string
+          symptoms?: Json | null
+          user_feedback?: string | null
+          user_satisfaction_score?: number | null
+          was_correct?: boolean | null
+        }
+        Update: {
+          actual_intent?: string | null
+          actual_outcome?: Json | null
+          corrected_at?: string | null
+          correction_needed?: boolean | null
+          decision_id?: string | null
+          detected_at?: string | null
+          detected_by?: string | null
+          detection_confidence?: number | null
+          error_severity?: string | null
+          expected_outcome?: Json | null
+          id?: string
+          symptoms?: Json | null
+          user_feedback?: string | null
+          user_satisfaction_score?: number | null
+          was_correct?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_outcomes_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "decision_logs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dependency_audits: {
         Row: {
@@ -4091,6 +4345,72 @@ export type Database = {
           status?: string | null
           target_performance?: Json
           test_results?: Json | null
+        }
+        Relationships: []
+      }
+      misclassification_patterns: {
+        Row: {
+          auto_fix_code: string | null
+          common_keywords: Json | null
+          confidence_score: number | null
+          context_indicators: Json | null
+          correct_classification: string
+          correction_strategy: Json
+          example_requests: Json | null
+          first_seen_at: string | null
+          id: string
+          is_active: boolean | null
+          last_corrected_at: string | null
+          last_seen_at: string | null
+          occurrences: number | null
+          pattern_name: string
+          pattern_type: string
+          success_rate: number | null
+          times_corrected: number | null
+          validated: boolean | null
+          wrong_classification: string
+        }
+        Insert: {
+          auto_fix_code?: string | null
+          common_keywords?: Json | null
+          confidence_score?: number | null
+          context_indicators?: Json | null
+          correct_classification: string
+          correction_strategy: Json
+          example_requests?: Json | null
+          first_seen_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_corrected_at?: string | null
+          last_seen_at?: string | null
+          occurrences?: number | null
+          pattern_name: string
+          pattern_type: string
+          success_rate?: number | null
+          times_corrected?: number | null
+          validated?: boolean | null
+          wrong_classification: string
+        }
+        Update: {
+          auto_fix_code?: string | null
+          common_keywords?: Json | null
+          confidence_score?: number | null
+          context_indicators?: Json | null
+          correct_classification?: string
+          correction_strategy?: Json
+          example_requests?: Json | null
+          first_seen_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_corrected_at?: string | null
+          last_seen_at?: string | null
+          occurrences?: number | null
+          pattern_name?: string
+          pattern_type?: string
+          success_rate?: number | null
+          times_corrected?: number | null
+          validated?: boolean | null
+          wrong_classification?: string
         }
         Relationships: []
       }
