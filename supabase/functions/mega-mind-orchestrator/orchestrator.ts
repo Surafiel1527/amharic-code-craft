@@ -26,6 +26,15 @@ import {
   logGenerationSuccess,
 } from './productionMonitoring.ts';
 import { logDecision, reflectOnDecision, checkForCorrection } from '../_shared/agiIntegration.ts';
+import { evolvePatterns, detectPatternCategory } from '../_shared/patternLearning.ts';
+
+// Learning integration
+import {
+  applyLearnedFixes,
+  recordGenerationOutcome,
+  evolvePatternsAutonomously,
+  getDynamicConfidenceThreshold
+} from './learning-integration.ts';
 
 // Enterprise modules
 import { FeatureOrchestrator } from '../_shared/featureOrchestrator.ts';
@@ -194,6 +203,13 @@ export async function executeGeneration(ctx: {
     });
 
     (conversationContext as any)._contextAnalysis = contextAnalysis;
+
+    // Find relevant learned patterns before analysis
+    console.log('🎯 Searching for relevant learned patterns...');
+    const patternCategory = detectPatternCategory(request);
+    const learnedPatterns = await findRelevantPatterns(platformSupabase, request, patternCategory);
+    console.log(`📚 Found ${learnedPatterns.length} relevant patterns from past successes`);
+    (conversationContext as any)._learnedPatterns = learnedPatterns;
 
     const analysis = await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase);
     
@@ -515,6 +531,38 @@ export async function executeGeneration(ctx: {
     await updateJobProgress(50, 'Database setup complete', 'Setting up Backend', analysis._orchestrationPlan?.phases || []);
   }
 
+  // Store successful pattern for learning
+  const learnedPatterns = (conversationContext as any)._learnedPatterns || [];
+  const patternCategory = detectPatternCategory(request);
+  try {
+    await storeSuccessfulPattern(platformSupabase, {
+      category: patternCategory || 'general',
+      patternName: analysis.intent || 'user_request',
+      useCase: request,
+      codeTemplate: JSON.stringify(analysis),
+      context: { 
+        confidence: (conversationContext as any)._finalConfidence || 0.7,
+        patterns_used: learnedPatterns.length,
+        contextAnalysis: (conversationContext as any)._contextAnalysis
+      }
+    });
+    console.log('✅ Stored successful pattern for future learning');
+  } catch (error) {
+    console.error('⚠️ Failed to store pattern:', error);
+  }
+
+  // Record outcome for feedback loop
+  await recordGenerationOutcome(platformSupabase, {
+    decisionId: (conversationContext as any)._decisionId,
+    userId,
+    success: true,
+    actualOutput: analysis,
+    expectedOutput: { intent: analysis.intent }
+  }).catch(console.error);
+
+  // Trigger autonomous pattern evolution (async, don't wait)
+  evolvePatternsAutonomously(platformSupabase).catch(console.error);
+
   // Return analysis and prepared context for code generation
   return {
     analysis,
@@ -630,6 +678,33 @@ async function monitorExecutionWithCorrection(ctx: {
     if (correctionResult.correctionApplied && correctionResult.shouldRetry) {
       console.log('✅ REAL-TIME CORRECTION APPLIED:', correctionResult);
 
+      // Try to apply learned fixes from self-learning engine
+      console.log('🧠 Checking for learned fixes...');
+      
+      // Use the existing platformSupabase (passed through ctx if available)
+      const platformSupabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+      
+      const learnedFix = await applyLearnedFixes(
+        platformSupabase as any,
+        `${step}_failure`,
+        { step, error: error?.message, analysis }
+      );
+      
+      if (learnedFix.applied) {
+        await broadcast('learned_fix_applied', {
+          status: 'learned_fix',
+          message: `🧠 Applied learned fix from past cases (${(learnedFix.confidence! * 100).toFixed(0)}% confidence)`,
+          step,
+          fix: learnedFix.fix,
+          confidence: learnedFix.confidence
+        });
+        
+        console.log('✅ Learned fix applied successfully');
+      }
+
       await broadcast('correction:applied', {
         status: 'corrected',
         message: '✅ Issue detected and corrected - retrying automatically',
@@ -697,16 +772,34 @@ export async function analyzeRequest(
   platformSupabase: any
 ): Promise<any> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')!;
-  const relevantPatterns = await findRelevantPatterns(platformSupabase, request);
+  const relevantPatterns = (conversationContext as any)._learnedPatterns || [];
 
-  const prompt = buildAnalysisPrompt(request, 'generation', {
+  let prompt = buildAnalysisPrompt(request, 'generation', {
     recentTurns: conversationContext.recentTurns || []
   });
+  
+  // Include learned patterns in the prompt
+  if (relevantPatterns.length > 0) {
+    prompt += '\n\n🎓 LEARNED PATTERNS (from past successful generations):\n';
+    prompt += 'These patterns have worked well in similar situations:\n\n';
+    relevantPatterns.forEach((match: any, idx: number) => {
+      const p = match.pattern;
+      prompt += `${idx + 1}. ${p.pattern_name} (${(match.relevanceScore * 100).toFixed(0)}% relevant)\n`;
+      prompt += `   Success Rate: ${p.success_rate}%\n`;
+      prompt += `   Use Case: ${p.use_case}\n`;
+      prompt += `   Times Used: ${p.times_used}\n`;
+      if (p.code_template) {
+        prompt += `   Pattern Template:\n${p.code_template.substring(0, 200)}...\n`;
+      }
+      prompt += '\n';
+    });
+    prompt += 'Consider using these patterns if they fit the current request.\n';
+  }
 
   const response = await callAIWithFallback(
     [{ role: 'user', content: prompt }],
     { 
-      systemPrompt: 'You are an expert at analyzing user requests for web development. Always respond with valid JSON.',
+      systemPrompt: 'You are an expert at analyzing user requests for web development. Always respond with valid JSON. Use learned patterns when relevant.',
       preferredModel: 'google/gemini-2.5-flash'
     }
   );
