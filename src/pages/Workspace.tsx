@@ -604,8 +604,33 @@ export default function Workspace() {
 
   // handleSendMessage removed - now handled by UniversalChatInterface
 
-  // Check if project is still generating
-  const isGenerating = project && project.title.includes('[Generating...]');
+  // Check if project is still generating (not just by title, but by actual job status)
+  const [isGenerating, setIsGenerating] = useState(false);
+  
+  useEffect(() => {
+    if (!project || !project.title.includes('[Generating...]')) {
+      setIsGenerating(false);
+      return;
+    }
+    
+    // Title has [Generating...], but check if there's actually an active job
+    const checkJobStatus = async () => {
+      const { data: jobs } = await supabase
+        .from('ai_generation_jobs')
+        .select('status')
+        .eq('project_id', project.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      const latestJob = jobs?.[0];
+      const activeStatuses = ['queued', 'generating'];
+      const isActuallyGenerating = latestJob && activeStatuses.includes(latestJob.status);
+      
+      setIsGenerating(isActuallyGenerating);
+    };
+    
+    checkJobStatus();
+  }, [project]);
   
   if (!project) {
     return (
