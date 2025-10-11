@@ -50,8 +50,11 @@ Visit `http://localhost:5173` to see your app running!
 
 ### ✅ Key Features
 - AI-powered code generation (Gemini 2.5 Pro/Flash + GPT-5)
+- **AGI Self-Correction System** - Real-time transparency into AI decision-making ⭐ NEW
+- **Confidence Gates** - <40% asks user, 40-60% self-reflects, >60% proceeds ⭐ NEW
 - **Intelligence Engine** - Context-aware decisions & autonomous learning
 - **Autonomous Healing** - Auto-fixes errors with high confidence
+- **User Transparency** - See AI thinking, corrections, and reasoning in real-time ⭐ NEW
 - Automatic database setup with RLS
 - Self-healing database migrations
 - Pattern learning and evolution from every interaction
@@ -70,6 +73,7 @@ Visit `http://localhost:5173` to see your app running!
 ## 📚 Documentation
 
 ### Essential Guides
+- **[AGI System Status](./AGI_SYSTEM_STATUS.md)** - Complete AGI self-correction system (100% operational) ⭐ NEW
 - **[Quick Start Guide](./QUICK_START_GUIDE.md)** - Get started in 5 minutes
 - **[Mega Mind Architecture](./MEGA_MIND_ARCHITECTURE.md)** - Orchestrator design & workflows
 - **[Self-Healing System](./SELF_HEALING_SYSTEM.md)** - Auto-fix & recovery capabilities
@@ -79,9 +83,14 @@ Visit `http://localhost:5173` to see your app running!
 - **[Phase Review](./PHASE_REVIEW.md)** - Implementation achievements
 
 ### Key Files
+- **AGI Components:** ⭐ NEW
+  - Backend: `supabase/functions/_shared/agiIntegration.ts`
+  - Frontend: `src/hooks/useGenerationMonitor.ts`
+  - UI: `src/components/GenerationMonitorOverlay.tsx`
+  - Functions: `decision-validator`, `autonomous-corrector`, `meta-learning-engine`
 - Main orchestrator: `supabase/functions/mega-mind-orchestrator/` (split into 3 files: ~1,300 lines total)
   - `index.ts` - Entry point & routing (~200 lines)
-  - `orchestrator.ts` - Core AI logic (~550 lines)
+  - `orchestrator.ts` - Core AI logic with AGI integration (~550 lines)
   - `code-generator.ts` - Code generation (~550 lines)
 - Intelligence engine: `supabase/functions/_shared/intelligenceEngine.ts`
 - Healing engine: `supabase/functions/unified-healing-engine/index.ts`
@@ -165,17 +174,18 @@ See [Platform Architecture](./PLATFORM_ARCHITECTURE.md) for more troubleshooting
 
 ## 📊 Project Status
 
-✅ **Production Ready** - Advanced intelligence & autonomous healing active  
-🧠 **Intelligence Engine** - Context-aware decisions & learning  
+✅ **Production Ready** - AGI Self-Correction System 100% Operational ⭐ NEW  
+🧠 **Real-Time Transparency** - Users see AI thinking, confidence, and corrections  
 🤖 **Autonomous Healing** - Auto-fixes with 75%+ confidence  
-🔄 **Fully Integrated** - Context analysis → Decisions → Actions  
+🎯 **Confidence Gates** - <40% clarification, 40-60% self-reflection, >60% proceed  
+🔄 **Fully Integrated** - AGI system live in Workspace page  
 🧩 **Modular Design** - Shared utilities & clean separation  
 🧪 **Tested** - Unit tests for core modules  
 📚 **Documented** - Comprehensive guides available  
 
 **Last Updated:** January 2025  
-**Architecture Version:** 3.0 (Intelligence-Integrated)  
-**Key Achievement:** Autonomous fix operation connected to orchestrator
+**Architecture Version:** 3.0 (AGI-Integrated)  
+**Key Achievement:** Complete user transparency into AI decision-making
 
 ## 🤝 Contributing
 

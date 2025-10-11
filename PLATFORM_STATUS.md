@@ -1,8 +1,8 @@
 # Platform Status - Current State
 
-**Last Updated:** 2025-01-10  
-**Version:** Production with Intelligence Engine  
-**Status:** ✅ Fully Operational with Autonomous Healing
+**Last Updated:** 2025-01-11  
+**Version:** Production with AGI Self-Correction System  
+**Status:** ✅ Fully Operational with Complete User Transparency
 
 ---
 
@@ -10,20 +10,30 @@
 
 A full-stack AI-powered code generation platform built on React + Vite + Supabase that:
 - Generates complete web applications from text prompts
-- **Analyzes context** before every generation for intelligent decisions
-- **Autonomously heals** errors with 75%+ confidence using learned patterns
+- **AGI-powered decision-making** with real-time user transparency
+- **Self-correcting classification** with confidence gates (<40% asks user, 40-60% self-reflects, >60% proceeds)
+- **Autonomous healing** with 75%+ confidence using learned patterns
+- **Complete transparency** into AI thinking, corrections, and confidence levels
 - Implements progressive building for complex projects (20+ files)
 - Provides real-time progress tracking with file-by-file visibility
 - Monitors all generations with automatic test creation from failures
 - Self-heals with 4-level JSON parsing fallbacks
 - Times out gracefully after 5 minutes
-- **Evolves patterns** from every interaction through Bayesian learning
+- **Continuous learning** from every interaction through Bayesian pattern evolution
 
 ---
 
 ## 📊 Current Capabilities
 
 ### ✅ What Works Now
+
+#### AGI Self-Correction System ⭐ NEW
+- **Real-time transparency**: Users see AI thinking, confidence scores, and reasoning
+- **Confidence gates**: <40% asks clarification, 40-60% self-reflects, >60% proceeds
+- **Auto-corrections**: Visible corrections with from/to classifications and reasoning
+- **Self-reflection**: AI critiques its own decisions before proceeding
+- **User interaction**: Clarification dialogs when confidence is too low
+- **Complete integration**: AGI components live in Workspace page
 
 #### Intelligence & Learning
 - **Context analysis**: Analyzes intent, complexity, confidence before every request
@@ -336,9 +346,47 @@ IF (failure_count >= 3 for same error_type in 7 days) {
 
 ### Broadcast Events
 
-#### Generation Flow
+#### AGI Events ⭐ NEW
 ```typescript
 // Frontend subscribes to: ai-status-{projectId}
+// Event: 'generation_event'
+
+'clarification_needed' → {
+  confidence: 0.35,
+  questions: string[],
+  decision: { classification, intent, userRequest }
+}
+
+'decision' → {
+  confidence: 0.67,
+  reasoning: string,
+  decision: { classification, intent, complexity }
+}
+
+'correction' | 'correction_applied' → {
+  originalClassification: string,
+  correctedClassification: string,
+  reasoning: string,
+  confidence: 0.85
+}
+
+'execution_start' → {
+  status: 'running'
+}
+
+'execution_complete' → {
+  status: 'success'
+}
+
+'execution_failed' → {
+  status: 'error',
+  error: string
+}
+```
+
+#### Generation Flow
+```typescript
+// Event: 'status-update'
 
 'status-update' → {
   status: 'analyzing' | 'generating' | 'finalizing',
