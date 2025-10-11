@@ -38,12 +38,15 @@ ${context.suggestionsPrompt || ''}
    - Requests to "improve understanding", "see logs", "check what happened"
    - Debugging or troubleshooting the system itself
    - Questions about how the system works
-   - Keywords: "see log", "check", "understand", "didn't work", "improve it", "what happened", "debug"
+   - Keywords: "see log", "check", "understand", "didn't work", "what happened", "debug"
+   - **IMPORTANT**: "update README", "add instructions", "modify documentation" are NOT meta-requests - they are CODE MODIFICATIONS
 
 2. **CODE MODIFICATION** (outputType: "modification"):
-   - Clear requests to change/update/fix existing code
+   - Clear requests to change/update/fix existing code or files
    - "Remove X", "Add Y", "Change Z", "Fix the button"
+   - **Updating documentation files** (README.md, docs, any file with content changes)
    - Direct code changes to existing project
+   - Keywords: "update", "add to", "change", "fix", "write to", "modify file"
    
 3. **NEW HTML WEBSITE** (outputType: "html-website"):
    - Creating new website from scratch
