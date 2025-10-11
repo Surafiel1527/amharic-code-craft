@@ -24,14 +24,15 @@ export function MobileWorkspaceTrigger({
 
   return (
     <>
-      <div className="fixed bottom-4 left-4 z-40 flex gap-2 md:hidden">
+      <div className="fixed bottom-4 left-4 z-40 flex gap-2">
         <Button
           size="lg"
           onClick={() => setIsOpen(true)}
-          className="shadow-lg"
+          className="shadow-lg text-sm md:text-base"
         >
-          <MessageSquare className="h-5 w-5 mr-2" />
-          Workspace
+          <MessageSquare className="h-4 w-4 md:h-5 md:w-5 mr-1 md:mr-2" />
+          <span className="hidden xs:inline">Workspace</span>
+          <span className="xs:hidden">Work</span>
         </Button>
       </div>
 
