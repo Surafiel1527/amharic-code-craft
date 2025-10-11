@@ -26,7 +26,7 @@ interface MisclassificationPattern {
   wrong_classification: string;
   correct_classification: string;
   confidence_score: number;
-  times_seen: number;
+  occurrences: number;
   times_corrected: number;
   success_rate: number;
   common_keywords: string[];
@@ -106,8 +106,23 @@ export const AGIMonitoringDashboard = () => {
 
       if (correctionsError) throw correctionsError;
 
-      setDecisions(decisionsData || []);
-      setPatterns(patternsData || []);
+      // Cast types properly from database
+      const typedDecisions = (decisionsData || []).map(d => ({
+        ...d,
+        decision_outcomes: d.decision_outcomes?.map(o => ({
+          was_correct: o.was_correct,
+          symptoms: Array.isArray(o.symptoms) ? o.symptoms as string[] : []
+        }))
+      }));
+
+      const typedPatterns = (patternsData || []).map(p => ({
+        ...p,
+        common_keywords: Array.isArray(p.common_keywords) ? p.common_keywords as string[] : [],
+        occurrences: p.occurrences || 0
+      }));
+
+      setDecisions(typedDecisions);
+      setPatterns(typedPatterns);
       setCorrections(correctionsData || []);
 
       // Calculate statistics
@@ -310,7 +325,7 @@ export const AGIMonitoringDashboard = () => {
                             {(pattern.confidence_score * 100).toFixed(0)}% confidence
                           </Badge>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {pattern.times_corrected}/{pattern.times_seen} corrected
+                            {pattern.times_corrected}/{pattern.occurrences} corrected
                           </p>
                         </div>
                       </div>
