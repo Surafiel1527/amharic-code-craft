@@ -1,64 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-// Textarea removed - no longer needed
-import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Loader2, Save, ArrowLeft, Maximize2, Minimize2, 
-  History, Code2, Eye, Sparkles, RotateCcw, Download, Code, FileCode2, Rocket
-} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { DevicePreview } from "@/components/DevicePreview";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { VersionHistory } from "@/components/VersionHistory";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { PatternLearner } from "@/components/PatternLearner";
-// OrchestrationProgress, ArchitecturePlanViewer, QualityMetrics removed - handled by UniversalChatInterface
-import { FileTree } from "@/components/FileTree";
-import { CodeEditor } from "@/components/CodeEditor";
-import { ProjectVersionSelector } from "@/components/ProjectVersionSelector";
-import { ConversationHistoryPanel } from "@/components/ConversationHistoryPanel";
-import { ProjectPreviewGenerator } from "@/components/ProjectPreviewGenerator";
-import { ProjectDownloader } from "@/components/ProjectDownloader";
-import { ComponentTemplates } from "@/components/ComponentTemplates";
-import { CollaborativePresence } from "@/components/CollaborativePresence";
-import { MultiFileGenerator } from "@/components/MultiFileGenerator";
-import { EnhancedFileTree } from "@/components/EnhancedFileTree";
-import { SplitPaneEditor } from "@/components/SplitPaneEditor";
-import { FileTemplatesLibrary } from "@/components/FileTemplatesLibrary";
-import { DependencyGraph } from "@/components/DependencyGraph";
-import { CodeMetrics } from "@/components/CodeMetrics";
 import { useAutoSave } from "@/hooks/useAutoSave";
-import { ConversationMemory } from "@/components/ConversationMemory";
-import { AIImageGenerator } from "@/components/AIImageGenerator";
-import { IntelligentRefactoring } from "@/components/IntelligentRefactoring";
-import { ProactiveAIAssistant } from "@/components/ProactiveAIAssistant";
-import { PatternIntelligenceDashboard } from "@/components/PatternIntelligenceDashboard";
-import { UniversalChatInterface } from "@/components/UniversalChatInterface";
-import { ReactComponentGenerator } from "@/components/ReactComponentGenerator";
-import { TailwindUtilitiesBuilder } from "@/components/TailwindUtilitiesBuilder";
-import { StateManagementHelper } from "@/components/StateManagementHelper";
-import { AdvancedTestGenerator } from "@/components/AdvancedTestGenerator";
-import { CICDPipelineBuilder } from "@/components/CICDPipelineBuilder";
-import { APITestingSuite } from "@/components/APITestingSuite";
-import { DeploymentManager } from "@/components/DeploymentManager";
-import { CollaborativeCodeEditor } from "@/components/CollaborativeCodeEditor";
-import { CodeReviewPanel } from "@/components/CodeReviewPanel";
-import { TemplatesGallery } from "@/components/TemplatesGallery";
-import { UsageAnalyticsDashboard } from "@/components/UsageAnalyticsDashboard";
-import { PerformanceMonitor } from "@/components/PerformanceMonitor";
-import { AICodeReview } from "@/components/AICodeReview";
-import { SmartDebugger } from "@/components/SmartDebugger";
-import { LiveGenerationProgress } from "@/components/LiveGenerationProgress";
-// PythonProjectViewer removed - handled by UniversalChatInterface
-import { LanguageCapabilities } from "@/components/LanguageCapabilities";
-import { ConversationSidebar } from "@/components/ConversationSidebar";
-import { MessageSquarePlus } from "lucide-react";
-// orchestrationHelpers removed - no longer needed
+import { WorkspaceLayout } from "./workspace/WorkspaceLayout";
+import { EditorSection } from "./workspace/EditorSection";
+import { PreviewSection } from "./workspace/PreviewSection";
 
 // Message interface removed - now handled by UniversalChatInterface
 
@@ -667,7 +615,66 @@ export default function Workspace() {
   }
 
   return (
-    <div className="h-screen bg-background flex flex-col">
+    <WorkspaceLayout
+      viewMode={viewMode}
+      setViewMode={setViewMode}
+      editorMode={editorMode}
+      setEditorMode={setEditorMode}
+      autoSaveEnabled={autoSaveEnabled}
+      setAutoSaveEnabled={setAutoSaveEnabled}
+      isPreviewExpanded={isPreviewExpanded}
+      setIsPreviewExpanded={setIsPreviewExpanded}
+      showVersionHistory={showVersionHistory}
+      setShowVersionHistory={setShowVersionHistory}
+      showConversations={showConversations}
+      setShowConversations={setShowConversations}
+      showMultiFileGen={showMultiFileGen}
+      setShowMultiFileGen={setShowMultiFileGen}
+      project={project}
+      conversationId={conversationId}
+      conversations={conversations}
+      isSaving={isSaving}
+      handleSave={handleSave}
+      handleRestoreVersion={handleRestoreVersion}
+      handleConversationSelect={handleConversationSelect}
+      handleNewConversation={handleNewConversation}
+      loadConversations={loadConversations}
+    >
+      {viewMode === 'multi' ? (
+        <EditorSection
+          projectId={projectId!}
+          conversationId={conversationId}
+          projectFiles={projectFiles}
+          selectedFiles={selectedFiles}
+          editorMode={editorMode}
+          showMultiFileGen={showMultiFileGen}
+          setShowMultiFileGen={setShowMultiFileGen}
+          setProjectFiles={setProjectFiles}
+          setSelectedFiles={setSelectedFiles}
+          handleSelectFile={handleSelectFile}
+          handleCreateFile={handleCreateFile}
+          handleDeleteFile={handleDeleteFile}
+          handleRenameFile={handleRenameFile}
+          handleSaveFile={handleSaveFile}
+          handleBulkDelete={handleBulkDelete}
+          selectedVersionId={selectedVersionId}
+          currentVersionNumber={currentVersionNumber}
+          setSelectedVersionId={setSelectedVersionId}
+          setCurrentVersionNumber={setCurrentVersionNumber}
+          projectTitle={project.title}
+        />
+      ) : (
+        <PreviewSection
+          projectId={projectId!}
+          conversationId={conversationId}
+          htmlCode={project.html_code}
+          framework={project.framework || 'react'}
+          mode="modification"
+        />
+      )}
+    </WorkspaceLayout>
+  );
+}
       {/* Mobile Chat - Fixed at Bottom (Removed separate floating button) */}
       
       <PatternLearner />
