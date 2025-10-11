@@ -9,6 +9,7 @@ import { WorkspaceLayout } from "./workspace/WorkspaceLayout";
 import { EditorSection } from "./workspace/EditorSection";
 import { PreviewSection } from "./workspace/PreviewSection";
 import { LiveGenerationProgress } from "@/components/LiveGenerationProgress";
+import { GenerationMonitorOverlay } from "@/components/GenerationMonitorOverlay";
 
 interface Project {
   id: string;
@@ -617,70 +618,106 @@ export default function Workspace() {
     );
   }
 
+  // Handle clarification submission from AGI
+  const handleClarificationSubmit = async (clarification: string) => {
+    if (!projectId || !conversationId) return;
+    
+    try {
+      toast.info("Sending clarification to AGI system...");
+      
+      // Call orchestrator with clarification
+      const response = await supabase.functions.invoke('mega-mind-orchestrator', {
+        body: {
+          userMessage: clarification,
+          conversationId,
+          projectId,
+          clarification: true
+        }
+      });
+      
+      if (response.error) {
+        toast.error("Failed to process clarification");
+        console.error('Clarification error:', response.error);
+      } else {
+        toast.success("Clarification received, continuing generation...");
+      }
+    } catch (error) {
+      console.error('Error submitting clarification:', error);
+      toast.error("Failed to submit clarification");
+    }
+  };
+
   return (
-    <WorkspaceLayout
-      viewMode={viewMode}
-      setViewMode={setViewMode}
-      editorMode={editorMode}
-      setEditorMode={setEditorMode}
-      autoSaveEnabled={autoSaveEnabled}
-      setAutoSaveEnabled={setAutoSaveEnabled}
-      isPreviewExpanded={isPreviewExpanded}
-      setIsPreviewExpanded={setIsPreviewExpanded}
-      showVersionHistory={showVersionHistory}
-      setShowVersionHistory={setShowVersionHistory}
-      showConversations={showConversations}
-      setShowConversations={setShowConversations}
-      showMultiFileGen={showMultiFileGen}
-      setShowMultiFileGen={setShowMultiFileGen}
-      project={project}
-      conversationId={conversationId}
-      conversations={conversations}
-      isSaving={isSaving}
-      handleSave={handleSave}
-      handleRestoreVersion={handleRestoreVersion}
-      handleConversationSelect={handleConversationSelect}
-      handleNewConversation={handleNewConversation}
-      loadConversations={loadConversations}
-      mobileTab={mobileTab}
-      setMobileTab={setMobileTab}
-    >
-      {viewMode === 'multi' ? (
-        <EditorSection
-          projectId={projectId!}
-          conversationId={conversationId}
-          projectFiles={projectFiles}
-          selectedFiles={selectedFiles}
-          editorMode={editorMode}
-          showMultiFileGen={showMultiFileGen}
-          setShowMultiFileGen={setShowMultiFileGen}
-          setProjectFiles={setProjectFiles}
-          setSelectedFiles={setSelectedFiles}
-          handleSelectFile={handleSelectFile}
-          handleCreateFile={handleCreateFile}
-          handleDeleteFile={handleDeleteFile}
-          handleRenameFile={handleRenameFile}
-          handleSaveFile={handleSaveFile}
-          handleBulkDelete={handleBulkDelete}
-          selectedVersionId={selectedVersionId}
-          currentVersionNumber={currentVersionNumber}
-          setSelectedVersionId={setSelectedVersionId}
-          setCurrentVersionNumber={setCurrentVersionNumber}
-          projectTitle={project.title}
-          mobileTab={mobileTab}
-        />
-      ) : (
-        <PreviewSection
-          projectId={projectId!}
-          conversationId={conversationId}
-          htmlCode={project.html_code}
-          framework={project.framework || 'react'}
-          mobileTab={mobileTab}
-          projectTitle={project.title}
-          selectedFiles={selectedFiles}
-          onFileSelect={handleSelectFile}
-        />
-      )}
-    </WorkspaceLayout>
+    <>
+      <GenerationMonitorOverlay 
+        projectId={projectId}
+        onClarificationSubmit={handleClarificationSubmit}
+      />
+      
+      <WorkspaceLayout
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        editorMode={editorMode}
+        setEditorMode={setEditorMode}
+        autoSaveEnabled={autoSaveEnabled}
+        setAutoSaveEnabled={setAutoSaveEnabled}
+        isPreviewExpanded={isPreviewExpanded}
+        setIsPreviewExpanded={setIsPreviewExpanded}
+        showVersionHistory={showVersionHistory}
+        setShowVersionHistory={setShowVersionHistory}
+        showConversations={showConversations}
+        setShowConversations={setShowConversations}
+        showMultiFileGen={showMultiFileGen}
+        setShowMultiFileGen={setShowMultiFileGen}
+        project={project}
+        conversationId={conversationId}
+        conversations={conversations}
+        isSaving={isSaving}
+        handleSave={handleSave}
+        handleRestoreVersion={handleRestoreVersion}
+        handleConversationSelect={handleConversationSelect}
+        handleNewConversation={handleNewConversation}
+        loadConversations={loadConversations}
+        mobileTab={mobileTab}
+        setMobileTab={setMobileTab}
+      >
+        {viewMode === 'multi' ? (
+          <EditorSection
+            projectId={projectId!}
+            conversationId={conversationId}
+            projectFiles={projectFiles}
+            selectedFiles={selectedFiles}
+            editorMode={editorMode}
+            showMultiFileGen={showMultiFileGen}
+            setShowMultiFileGen={setShowMultiFileGen}
+            setProjectFiles={setProjectFiles}
+            setSelectedFiles={setSelectedFiles}
+            handleSelectFile={handleSelectFile}
+            handleCreateFile={handleCreateFile}
+            handleDeleteFile={handleDeleteFile}
+            handleRenameFile={handleRenameFile}
+            handleSaveFile={handleSaveFile}
+            handleBulkDelete={handleBulkDelete}
+            selectedVersionId={selectedVersionId}
+            currentVersionNumber={currentVersionNumber}
+            setSelectedVersionId={setSelectedVersionId}
+            setCurrentVersionNumber={setCurrentVersionNumber}
+            projectTitle={project.title}
+            mobileTab={mobileTab}
+          />
+        ) : (
+          <PreviewSection
+            projectId={projectId!}
+            conversationId={conversationId}
+            htmlCode={project.html_code}
+            framework={project.framework || 'react'}
+            mobileTab={mobileTab}
+            projectTitle={project.title}
+            selectedFiles={selectedFiles}
+            onFileSelect={handleSelectFile}
+          />
+        )}
+      </WorkspaceLayout>
+    </>
   );
 }
