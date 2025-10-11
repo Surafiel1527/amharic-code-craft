@@ -16,6 +16,8 @@ interface MobileWorkspaceSheetProps {
   currentCode: string;
   onConversationChange: (id: string) => void;
   projectFiles?: Array<{ file_path: string; file_content: string }>;
+  projectId?: string;
+  projectStatus?: 'success' | 'failed' | 'generating';
 }
 
 export function MobileWorkspaceSheet({
@@ -25,7 +27,9 @@ export function MobileWorkspaceSheet({
   onCodeGenerated,
   currentCode,
   onConversationChange,
-  projectFiles = []
+  projectFiles = [],
+  projectId,
+  projectStatus = 'success'
 }: MobileWorkspaceSheetProps) {
   const [deviceMode, setDeviceMode] = useState<"desktop" | "tablet" | "mobile">("mobile");
   const [activeTab, setActiveTab] = useState("chat");
@@ -104,12 +108,15 @@ export function MobileWorkspaceSheet({
             <TabsContent value="chat" className="h-full m-0 p-0">
               <UniversalChatInterface
                 mode="panel"
+                operationMode="enhance"
                 height="h-full"
                 conversationId={conversationId}
-                projectFiles={currentCode ? [{
-                  file_path: 'current-file',
+                projectId={projectId}
+                projectFiles={projectFiles.length > 0 ? projectFiles : (currentCode ? [{
+                  file_path: 'main-project',
                   file_content: currentCode
-                }] : []}
+                }] : [])}
+                context={{ projectId, projectStatus }}
                 onCodeApply={async (code) => {
                   onCodeGenerated(code);
                 }}
@@ -117,10 +124,10 @@ export function MobileWorkspaceSheet({
                 persistMessages={true}
                 autoLearn={true}
                 autoApply={true}
-                showContext={false}
+                showContext={true}
                 showHeader={false}
                 showFooter={true}
-                placeholder="Describe changes..."
+                placeholder={projectStatus === 'failed' ? "Describe the issue or ask for help fixing it..." : "Describe what you want to add or improve..."}
               />
             </TabsContent>
 

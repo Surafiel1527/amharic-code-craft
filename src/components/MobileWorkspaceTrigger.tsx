@@ -9,6 +9,8 @@ interface MobileWorkspaceTriggerProps {
   currentCode: string;
   onConversationChange: (id: string) => void;
   projectFiles?: Array<{ file_path: string; file_content: string }>;
+  projectId?: string;
+  projectStatus?: 'success' | 'failed' | 'generating';
   defaultTab?: "chat" | "preview" | "files";
 }
 
@@ -18,6 +20,8 @@ export function MobileWorkspaceTrigger({
   currentCode,
   onConversationChange,
   projectFiles,
+  projectId,
+  projectStatus,
   defaultTab = "chat"
 }: MobileWorkspaceTriggerProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -44,6 +48,8 @@ export function MobileWorkspaceTrigger({
         currentCode={currentCode}
         onConversationChange={onConversationChange}
         projectFiles={projectFiles}
+        projectId={projectId}
+        projectStatus={projectStatus}
       />
     </>
   );
