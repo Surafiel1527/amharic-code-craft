@@ -676,6 +676,7 @@ export default function Workspace() {
           htmlCode={project.html_code}
           framework={project.framework || 'react'}
           mobileTab={mobileTab}
+          projectTitle={project.title}
         />
       )}
     </WorkspaceLayout>
