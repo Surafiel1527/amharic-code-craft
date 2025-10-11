@@ -46,6 +46,9 @@ export default function Workspace() {
   // Version management state
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [currentVersionNumber, setCurrentVersionNumber] = useState<number>(1);
+  
+  // Mobile tab state
+  const [mobileTab, setMobileTab] = useState<'chat' | 'preview' | 'code'>('preview');
 
   // Load all conversations for this project
   const loadConversations = async () => {
@@ -639,6 +642,7 @@ export default function Workspace() {
       handleConversationSelect={handleConversationSelect}
       handleNewConversation={handleNewConversation}
       loadConversations={loadConversations}
+      mobileTab={mobileTab}
     >
       {viewMode === 'multi' ? (
         <EditorSection
@@ -662,6 +666,7 @@ export default function Workspace() {
           setSelectedVersionId={setSelectedVersionId}
           setCurrentVersionNumber={setCurrentVersionNumber}
           projectTitle={project.title}
+          mobileTab={mobileTab}
         />
       ) : (
         <PreviewSection
@@ -669,6 +674,7 @@ export default function Workspace() {
           conversationId={conversationId}
           htmlCode={project.html_code}
           framework={project.framework || 'react'}
+          mobileTab={mobileTab}
         />
       )}
     </WorkspaceLayout>

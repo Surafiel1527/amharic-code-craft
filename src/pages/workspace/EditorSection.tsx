@@ -31,6 +31,8 @@ import { SmartDebugger } from "@/components/SmartDebugger";
 import { LanguageCapabilities } from "@/components/LanguageCapabilities";
 import { toast } from "sonner";
 
+import { useIsMobile } from "@/hooks/use-mobile";
+
 interface EditorSectionProps {
   projectId: string;
   conversationId: string | null;
@@ -52,6 +54,7 @@ interface EditorSectionProps {
   setSelectedVersionId: (id: string | null) => void;
   setCurrentVersionNumber: (num: number) => void;
   projectTitle: string;
+  mobileTab?: 'chat' | 'preview' | 'code';
 }
 
 export function EditorSection({
@@ -73,8 +76,15 @@ export function EditorSection({
   currentVersionNumber,
   setSelectedVersionId,
   setCurrentVersionNumber,
-  projectTitle
+  projectTitle,
+  mobileTab = 'code'
 }: EditorSectionProps) {
+  const isMobile = useIsMobile();
+  
+  // On mobile, only show when mobileTab is 'code'
+  if (isMobile && mobileTab !== 'code') {
+    return null;
+  }
   
   return (
     <>

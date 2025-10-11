@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ArrowLeft, Maximize2, Minimize2, 
-  RotateCcw, MessageSquarePlus, Save, Loader2, FileCode2, Code2, Sparkles
+  RotateCcw, MessageSquarePlus, Save, Loader2, FileCode2, Code2, Sparkles, MessageSquare, Eye
 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,6 +53,7 @@ interface WorkspaceLayoutProps {
   handleConversationSelect: (id: string) => void;
   handleNewConversation: () => void;
   loadConversations: () => void;
+  mobileTab?: 'chat' | 'preview' | 'code';
   children: React.ReactNode;
 }
 
@@ -79,11 +81,18 @@ export function WorkspaceLayout({
   handleConversationSelect,
   handleNewConversation,
   loadConversations,
+  mobileTab: externalMobileTab,
   children
 }: WorkspaceLayoutProps) {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const [isGenerating, setIsGenerating] = useState(false);
+  const isMobile = useIsMobile();
+  const [internalMobileTab, setInternalMobileTab] = useState<'chat' | 'preview' | 'code'>('preview');
+  
+  // Use external control if provided, otherwise use internal state
+  const mobileTab = externalMobileTab || internalMobileTab;
+  const setMobileTab = externalMobileTab ? () => {} : setInternalMobileTab;
   
   useEffect(() => {
     if (!project) {
@@ -133,8 +142,8 @@ export function WorkspaceLayout({
     <div className="h-screen bg-background flex flex-col">
       <PatternLearner />
       
-      {/* Header */}
-      <div className="border-b bg-card/50 backdrop-blur-sm">
+      {/* Header - Hidden on mobile */}
+      <div className={`border-b bg-card/50 backdrop-blur-sm ${isMobile ? 'hidden' : 'block'}`}>
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
@@ -280,9 +289,60 @@ export function WorkspaceLayout({
       <CollaborativePresence projectId={projectId!} />
 
       {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
-        {children}
-      </div>
+      {isMobile ? (
+        <>
+          {/* Mobile: Single View Based on Active Tab */}
+          <div className="flex-1 overflow-hidden pb-16">
+            {children}
+          </div>
+
+          {/* Mobile Bottom Navigation */}
+          <div className="fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur-sm z-50">
+            <div className="flex items-center justify-around px-2 py-3">
+              <button
+                onClick={() => setMobileTab('chat')}
+                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
+                  mobileTab === 'chat' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <MessageSquare className="h-5 w-5" />
+                <span className="text-xs font-medium">Chat</span>
+              </button>
+              
+              <button
+                onClick={() => setMobileTab('preview')}
+                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
+                  mobileTab === 'preview' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Eye className="h-5 w-5" />
+                <span className="text-xs font-medium">Preview</span>
+              </button>
+              
+              <button
+                onClick={() => setMobileTab('code')}
+                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
+                  mobileTab === 'code' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Code2 className="h-5 w-5" />
+                <span className="text-xs font-medium">Code</span>
+              </button>
+            </div>
+          </div>
+        </>
+      ) : (
+        /* Desktop: Side-by-side layout */
+        <div className="flex-1 overflow-hidden">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
