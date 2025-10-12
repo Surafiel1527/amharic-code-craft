@@ -337,14 +337,14 @@ export function UniversalChatInterface({
               const userMessage = message.role === 'user' ? message : messages[index - 1];
               const stepsForMessage = userMessage?.role === 'user' ? messageSteps.get(userMessage.id) : undefined;
               
-              // For assistant messages: check if we have steps for the previous user message
+              // PERMANENT THINKING STEPS - Lovable/Replit style
+              // For assistant messages: always show steps from previous user message (permanent)
               const showStepsForAssistant = message.role === 'assistant' && stepsForMessage && stepsForMessage.length > 0;
               
-              // For user messages: show steps below IF it's the last one AND there's no assistant response after it
+              // For user messages: show steps if it's the last one OR if we have stored steps for it
               const hasAssistantResponseAfter = message.role === 'user' && messages[index + 1]?.role === 'assistant';
-              const showStepsForUser = message.role === 'user' && isLastUserMessage && 
-                !hasAssistantResponseAfter && // Don't show if assistant response exists
-                (thinkingSteps.length > 0 || (stepsForMessage && stepsForMessage.length > 0));
+              const showStepsForUser = message.role === 'user' && !hasAssistantResponseAfter && 
+                (isLastUserMessage ? thinkingSteps.length > 0 : (stepsForMessage && stepsForMessage.length > 0));
 
               return (
                 <div key={message.id}>
