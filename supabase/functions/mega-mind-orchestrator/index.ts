@@ -89,7 +89,8 @@ serve(async (req) => {
     // Helper to broadcast via Supabase Realtime Channels
     const broadcast = async (event: string, data: any) => {
       try {
-        const channel = platformSupabase.channel(`ai-status-${projectId}`);
+        // Use conversationId for channel to match client subscription
+        const channel = platformSupabase.channel(`ai-status-${conversationId}`);
         
         // Handle thinking steps specially - send with original event name
         if (event === 'thinking_step') {
@@ -102,7 +103,7 @@ serve(async (req) => {
               conversationId
             }
           });
-          console.log(`📡 Status: ${event}`, data.status);
+          console.log(`📡 Thinking step [${conversationId}]:`, data.operation, data.status);
           return;
         }
         
