@@ -545,14 +545,20 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         content = `💡 ${explanation}`;
       } else {
         // Skip adding a message for "Generation started" - thinking steps will show progress
-        return null as any; // Signal to skip adding this message
+        // Return undefined to signal skipping
+        return undefined;
       }
+    }
+
+    // Don't create a message if content is empty or meaningless
+    if (!content || content.trim() === '' || content === '💡 Generation started') {
+      return undefined;
     }
 
     return {
       id: crypto.randomUUID(),
       role: 'assistant',
-      content: content || 'I processed your request.',
+      content,
       timestamp: new Date().toISOString(),
       codeBlock,
       metadata

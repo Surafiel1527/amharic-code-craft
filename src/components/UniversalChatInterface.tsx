@@ -303,15 +303,16 @@ export function UniversalChatInterface({
               // Don't filter user messages
               if (msg.role === 'user') return true;
               
-              // For assistant messages, only filter out specific system-generated status messages
-              // Keep messages that have emoji or substantive content
+              // For assistant messages, filter out placeholder status messages
               const content = msg.content.trim();
               if (msg.role === 'assistant') {
-                // Keep messages with emojis (like "💡 Generation started")
-                if (/[\p{Emoji}]/u.test(content)) return true;
+                // ALWAYS filter "Generation started" even with emoji
+                if (content.includes('Generation started')) {
+                  return false;
+                }
                 
-                // Filter only very specific auto-generated status patterns
-                if (content.match(/^(generation started|generation complete)$/i)) {
+                // Filter other auto-generated status patterns
+                if (content.match(/^(generation complete|processing|thinking)\.?\.?\.?$/i)) {
                   return false;
                 }
               }
