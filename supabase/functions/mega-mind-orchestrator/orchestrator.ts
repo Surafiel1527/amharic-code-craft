@@ -124,6 +124,7 @@ export async function processRequest(ctx: {
   framework: string;
   projectId: string | null;
   conversationContext: any;
+  projectMemory?: any; // 🆕 Cross-conversation memory
   dependencies: any[];
   platformSupabase: any;
   userSupabase: any;
@@ -172,6 +173,7 @@ export async function executeGeneration(ctx: {
   framework: string;
   projectId: string | null;
   conversationContext: any;
+  projectMemory?: any; // 🆕 Cross-conversation memory
   dependencies: any[];
   platformSupabase: any;
   userSupabase: any;
@@ -186,6 +188,7 @@ export async function executeGeneration(ctx: {
     framework,
     projectId, 
     conversationContext,
+    projectMemory, // 🆕 Extract project memory
     platformSupabase,
     userSupabase,
     broadcast 
@@ -301,7 +304,7 @@ export async function executeGeneration(ctx: {
     console.log(`📚 Found ${learnedPatterns.length} relevant patterns from past successes`);
     (conversationContext as any)._learnedPatterns = learnedPatterns;
 
-    const analysis = await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase);
+    const analysis = await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase, projectMemory);
     await stepTracker.trackStep('analyze_request', `Classified as ${analysis.outputType || 'code generation'}`, broadcast, 'complete');
     
     console.log('📊 Analysis complete:', JSON.stringify(analysis, null, 2));
@@ -511,7 +514,7 @@ export async function executeGeneration(ctx: {
     conversationContext._analysis = analysis;
   } else {
     console.log('⏭️ Skipping analysis - already completed');
-    conversationContext._analysis = conversationContext._analysis || await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase);
+    conversationContext._analysis = conversationContext._analysis || await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase, projectMemory);
   }
 
   const analysis = conversationContext._analysis;
@@ -923,7 +926,8 @@ export async function analyzeRequest(
   conversationContext: any,
   framework: string,
   broadcast: (event: string, data: any) => Promise<void>,
-  platformSupabase: any
+  platformSupabase: any,
+  projectMemory?: any // 🆕 Cross-conversation memory
 ): Promise<any> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')!;
   const relevantPatterns = (conversationContext as any)._learnedPatterns || [];
@@ -931,6 +935,15 @@ export async function analyzeRequest(
   let prompt = buildAnalysisPrompt(request, 'generation', {
     recentTurns: conversationContext.recentTurns || []
   });
+  
+  // 🆕 Include cross-conversation memory if available
+  if (projectMemory && projectMemory.recentMessages && projectMemory.recentMessages.length > 0) {
+    const { buildProjectMemorySummary } = await import('../_shared/conversationMemory.ts');
+    const memorySummary = buildProjectMemorySummary(projectMemory);
+    if (memorySummary) {
+      prompt += '\n\n' + memorySummary;
+    }
+  }
   
   // Include learned patterns in the prompt
   if (relevantPatterns.length > 0) {

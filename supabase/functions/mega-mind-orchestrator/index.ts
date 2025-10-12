@@ -9,7 +9,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 import { 
-  loadConversationHistory 
+  loadConversationHistory,
+  loadProjectConversationMemory,
+  buildProjectMemorySummary
 } from '../_shared/conversationMemory.ts';
 import { 
   loadFileDependencies 
@@ -82,9 +84,16 @@ serve(async (req) => {
       5, // Recent turns limit
       isQuestion // Load full history for Q&A
     );
+    
+    // 🆕 Load cross-conversation memory for project-wide context
+    const projectMemory = projectId 
+      ? await loadProjectConversationMemory(platformSupabase, projectId, 15)
+      : { recentMessages: [], conversationCount: 0 };
+    
     const dependencies = await loadFileDependencies(platformSupabase, conversationId);
 
     console.log(`📚 Loaded context: ${conversationContext.totalTurns} turns, ${dependencies.length} dependencies, Q&A mode: ${isQuestion}`);
+    console.log(`🔗 Cross-conversation memory: ${projectMemory.recentMessages.length} messages from ${projectMemory.conversationCount} conversations`);
 
     // Helper to broadcast via Supabase Realtime Channels
     const broadcast = async (event: string, data: any) => {
@@ -189,6 +198,7 @@ serve(async (req) => {
       framework,
       projectId,
       conversationContext,
+      projectMemory, // 🆕 Add cross-conversation memory
       dependencies,
       platformSupabase,
       userSupabase,

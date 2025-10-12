@@ -118,6 +118,61 @@ export async function storeConversationTurn(
 }
 
 /**
+ * Load cross-conversation memory for a project
+ * Gets recent messages from ALL conversations in the project
+ */
+export async function loadProjectConversationMemory(
+  supabase: any,
+  projectId: string,
+  limit: number = 15
+): Promise<{
+  recentMessages: Array<{ conversation_id: string; role: string; content: string; created_at: string }>;
+  conversationCount: number;
+}> {
+  if (!projectId || !supabase) {
+    console.warn('⚠️ No projectId or supabase client, returning empty project memory');
+    return { recentMessages: [], conversationCount: 0 };
+  }
+
+  try {
+    // Get all conversations for this project
+    const { data: conversations, error: convError } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('project_id', projectId)
+      .order('updated_at', { ascending: false });
+
+    if (convError) throw convError;
+
+    const conversationIds = (conversations || []).map((c: any) => c.id);
+    
+    if (conversationIds.length === 0) {
+      return { recentMessages: [], conversationCount: 0 };
+    }
+
+    // Load recent messages from all conversations
+    const { data: messages, error: msgError } = await supabase
+      .from('messages')
+      .select('conversation_id, role, content, created_at')
+      .in('conversation_id', conversationIds)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (msgError) throw msgError;
+
+    console.log(`📚 Loaded ${messages?.length || 0} messages from ${conversationIds.length} conversations`);
+
+    return {
+      recentMessages: messages || [],
+      conversationCount: conversationIds.length
+    };
+  } catch (error) {
+    console.error('Error loading project conversation memory:', error);
+    return { recentMessages: [], conversationCount: 0 };
+  }
+}
+
+/**
  * Build conversation summary for AI context
  */
 export function buildConversationSummary(context: ConversationContext): string {
@@ -137,5 +192,30 @@ Recent Requests:
 ${recentRequests}
 
 IMPORTANT: User can reference "that component" or "the feature we built" - check the conversation history above to understand what they're referring to.
+`.trim();
+}
+
+/**
+ * Build cross-conversation memory summary for AI context
+ */
+export function buildProjectMemorySummary(projectMemory: {
+  recentMessages: Array<{ conversation_id: string; role: string; content: string; created_at: string }>;
+  conversationCount: number;
+}): string {
+  if (projectMemory.recentMessages.length === 0) {
+    return "";
+  }
+
+  const messageSummary = projectMemory.recentMessages
+    .slice(0, 10) // Show most recent 10 messages
+    .map(m => `[${new Date(m.created_at).toLocaleTimeString()}] ${m.role}: ${m.content.substring(0, 100)}${m.content.length > 100 ? '...' : ''}`)
+    .join('\n');
+
+  return `
+CROSS-CONVERSATION MEMORY (${projectMemory.conversationCount} conversations, showing recent context):
+
+${messageSummary}
+
+CONTEXT: These are recent interactions from other conversations in this project. Use this to understand what has been built/fixed previously.
 `.trim();
 }
