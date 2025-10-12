@@ -150,7 +150,7 @@ export function UniversalChatInterface({
   const containerHeight = height || config.height;
 
   // Thinking steps tracking
-  const { steps: thinkingSteps, clearSteps } = useThinkingSteps(projectId);
+  const { steps: thinkingSteps, clearSteps } = useThinkingSteps(conversationId);
   const [messageSteps, setMessageSteps] = useState<Map<string, typeof thinkingSteps>>(new Map());
 
   // Use the unified AI brain

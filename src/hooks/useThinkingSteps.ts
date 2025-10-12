@@ -16,21 +16,21 @@ interface UseThinkingStepsResult {
   clearSteps: () => void;
 }
 
-export function useThinkingSteps(projectId?: string): UseThinkingStepsResult {
+export function useThinkingSteps(conversationId?: string): UseThinkingStepsResult {
   const [steps, setSteps] = useState<ThinkingStep[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  // Load historical steps from database on mount
+  // Load historical steps from database on mount by conversation
   useEffect(() => {
-    if (!projectId || loaded) return;
+    if (!conversationId || loaded) return;
 
     const loadHistoricalSteps = async () => {
       try {
         const { data, error } = await supabase
           .from('thinking_steps')
           .select('*')
-          .eq('project_id', projectId)
+          .eq('conversation_id', conversationId)
           .order('timestamp', { ascending: true });
 
         if (error) {
@@ -48,7 +48,7 @@ export function useThinkingSteps(projectId?: string): UseThinkingStepsResult {
             timestamp: row.timestamp
           }));
           
-          console.log(`📚 Loaded ${historicalSteps.length} historical thinking steps`);
+          console.log(`📚 Loaded ${historicalSteps.length} historical thinking steps for conversation`);
           setSteps(historicalSteps);
           setLoaded(true);
         }
@@ -58,12 +58,12 @@ export function useThinkingSteps(projectId?: string): UseThinkingStepsResult {
     };
 
     loadHistoricalSteps();
-  }, [projectId, loaded]);
+  }, [conversationId, loaded]);
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!conversationId) return;
 
-    const channel = supabase.channel(`ai-status-${projectId}`);
+    const channel = supabase.channel(`ai-status-${conversationId}`);
 
     channel
       .on('broadcast', { event: 'thinking_step' }, ({ payload }) => {
@@ -103,7 +103,7 @@ export function useThinkingSteps(projectId?: string): UseThinkingStepsResult {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [projectId]);
+  }, [conversationId]);
 
   const clearSteps = () => {
     setSteps([]);

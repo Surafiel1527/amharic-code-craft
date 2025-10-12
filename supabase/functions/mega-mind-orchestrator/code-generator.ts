@@ -27,11 +27,13 @@ class ThinkingStepTracker {
   private supabase: any;
   private jobId: string | null;
   private projectId: string | null;
+  private conversationId: string | null;
 
-  constructor(supabase: any, jobId: string | null, projectId: string | null) {
+  constructor(supabase: any, jobId: string | null, projectId: string | null, conversationId: string | null = null) {
     this.supabase = supabase;
     this.jobId = jobId;
     this.projectId = projectId;
+    this.conversationId = conversationId;
   }
 
   async trackStep(operation: string, detail: string, broadcast: Function, status: 'start' | 'complete' = 'start') {
@@ -46,11 +48,12 @@ class ThinkingStepTracker {
         timestamp
       });
       
-      // Save to DB
+      // Save to DB with conversation_id
       if (this.jobId && this.projectId) {
         await this.supabase.from('thinking_steps').insert({
           job_id: this.jobId,
           project_id: this.projectId,
+          conversation_id: this.conversationId,
           operation,
           detail,
           status: 'active',
@@ -70,11 +73,12 @@ class ThinkingStepTracker {
         timestamp
       });
       
-      // Save to DB
+      // Save to DB with conversation_id
       if (this.jobId && this.projectId) {
         await this.supabase.from('thinking_steps').insert({
           job_id: this.jobId,
           project_id: this.projectId,
+          conversation_id: this.conversationId,
           operation,
           detail,
           status: 'complete',
@@ -136,7 +140,7 @@ export async function generateAndPackageCode(ctx: {
   }
 
   // Initialize thinking step tracker with DB persistence
-  const stepTracker = new ThinkingStepTracker(platformSupabase, jobId, projectId);
+  const stepTracker = new ThinkingStepTracker(platformSupabase, jobId, projectId, conversationId);
 
   // Check for retry
   const isRetry = conversationContext.isRetry || false;

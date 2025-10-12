@@ -7596,33 +7596,39 @@ export type Database = {
       }
       thinking_steps: {
         Row: {
+          conversation_id: string | null
           created_at: string
           detail: string
           duration: number | null
           id: string
           job_id: string | null
+          message_id: string | null
           operation: string
           project_id: string | null
           status: string
           timestamp: string
         }
         Insert: {
+          conversation_id?: string | null
           created_at?: string
           detail: string
           duration?: number | null
           id?: string
           job_id?: string | null
+          message_id?: string | null
           operation: string
           project_id?: string | null
           status: string
           timestamp?: string
         }
         Update: {
+          conversation_id?: string | null
           created_at?: string
           detail?: string
           duration?: number | null
           id?: string
           job_id?: string | null
+          message_id?: string | null
           operation?: string
           project_id?: string | null
           status?: string
@@ -7630,10 +7636,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "thinking_steps_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "thinking_steps_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "ai_generation_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thinking_steps_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]
