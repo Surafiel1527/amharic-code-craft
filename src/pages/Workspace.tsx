@@ -195,6 +195,14 @@ export default function Workspace() {
   useEffect(() => {
     if (!projectId || !user) return;
 
+    // Helper function to clean title from generation status markers
+    const cleanTitle = (title: string) => {
+      return title
+        .replace(/\[Generating\.\.\.\]/g, '')
+        .replace(/- (Analyzing|Building|Creating|Setting up|Finalizing).*$/g, '')
+        .trim();
+    };
+
     const loadProject = async () => {
       const { data, error } = await supabase
         .from('projects')
@@ -249,7 +257,7 @@ export default function Workspace() {
             {
               conversation_id: convId,
               role: 'assistant',
-              content: `✨ I've created your project: **${data.title}**\n\nYour website is ready! You can now make changes by describing what you want to update.`,
+              content: `✨ I've created your project: **${cleanTitle(data.title)}**\n\nYour website is ready! You can now make changes by describing what you want to update.`,
               generated_code: data.html_code,
               metadata: { isInitialGeneration: true }
             }
@@ -283,7 +291,7 @@ export default function Workspace() {
             {
               conversation_id: convId,
               role: 'assistant',
-              content: `✨ I've created your project: **${data.title}**\n\nYour website is ready! You can now make changes by describing what you want to update.`,
+              content: `✨ I've created your project: **${cleanTitle(data.title)}**\n\nYour website is ready! You can now make changes by describing what you want to update.`,
               generated_code: data.html_code,
               metadata: { isInitialGeneration: true }
             }

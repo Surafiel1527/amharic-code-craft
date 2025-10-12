@@ -304,10 +304,22 @@ export function UniversalChatInterface({
 
           {messages
             .filter(msg => {
-              // Filter out "Generation started" messages
-              if (msg.role === 'assistant' && msg.content.toLowerCase().includes('generation started')) {
+              // Filter out system status messages
+              if (msg.role === 'system') return false;
+              
+              // Filter out generation status messages
+              const lowerContent = msg.content.toLowerCase();
+              if (msg.role === 'assistant' && (
+                lowerContent.includes('generation started') ||
+                lowerContent.includes('generation complete') ||
+                lowerContent.match(/^✅\s*(generation|project|website)\s*(complete|ready|created)/i) ||
+                lowerContent.match(/^🔧\s*initializing/i) ||
+                lowerContent.match(/^📦\s*packaging/i) ||
+                lowerContent.match(/^🏗️\s*building/i)
+              )) {
                 return false;
               }
+              
               return true;
             })
             .map((message, index) => {
