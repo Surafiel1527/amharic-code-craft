@@ -152,14 +152,31 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
 
         console.log('📊 Project check:', projectData);
 
-        // Only complete if project has actual code AND title doesn't have status prefixes
+        // Check if project has code and verify job is actually complete
+        const { data: jobData } = await supabase
+          .from('ai_generation_jobs')
+          .select('status, progress')
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        console.log('📊 Job check:', jobData);
+
+        // Only complete if:
+        // 1. Project has actual code
+        // 2. Title doesn't have generating status
+        // 3. Job is marked as complete with 100% progress
         if (projectData?.html_code && 
             !projectData.title.includes('[Generating...]') && 
-            !projectData.title.includes('[Failed]')) {
+            !projectData.title.includes('[Failed]') &&
+            jobData?.status === 'complete' &&
+            jobData?.progress === 100) {
           console.log('✅ Project generation verified complete!');
+          // Wait a bit longer to ensure all UI updates are done
           setTimeout(() => {
             onCompleteRef.current?.();
-          }, 1500);
+          }, 2000);
         } else {
           const newRetryCount = retryCount + 1;
           setRetryCount(newRetryCount);
@@ -169,6 +186,7 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
             setError('Generation timed out. The project may not have been created properly. Please try again or contact support.');
           } else {
             console.log(`⏳ Still waiting for project data to save... (${newRetryCount}/${MAX_RETRIES})`);
+            console.log(`   Project code: ${!!projectData?.html_code}, Job status: ${jobData?.status}, Progress: ${jobData?.progress}`);
             // Check again in 2 seconds
             setTimeout(checkProjectComplete, 2000);
           }
@@ -285,11 +303,18 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
         setCurrentPhase(phase);
         setProgress(progress);
         
-        // If we hit 100% or status is idle, mark complete (but don't call onComplete yet)
-        if (progress >= 100 || payload.status === 'idle') {
-          console.log('🎯 AI generation complete, verifying project data...');
+        // Only mark complete when we get explicit completion event
+        // Don't rely on progress percentage alone
+        if (payload.status === 'complete' || payload.message?.includes('Generation complete')) {
+          console.log('🎯 Received completion signal, verifying project data...');
           setIsComplete(true);
         }
+      })
+      .on('broadcast', { event: 'generation:complete' }, ({ payload }) => {
+        console.log('✅ Generation complete event received:', payload);
+        setProgress(100);
+        setCurrentPhase('complete');
+        setIsComplete(true);
       })
       .on('broadcast', { event: 'generation:error' }, ({ payload }) => {
         console.error('❌ Generation error received:', payload);

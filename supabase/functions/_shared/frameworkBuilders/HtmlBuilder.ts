@@ -293,7 +293,9 @@ Return ONLY the HTML code, no explanations.`;
 
 **File Purpose:** ${file.purpose}
 
-**Requirements:**
+**CRITICAL REQUIREMENTS:**
+- EVERY opening brace { MUST have a matching closing brace }
+- Count your braces: opening { and closing } MUST be equal
 - Modern, professional design
 - Fully responsive (mobile-first approach)
 - CSS Grid and Flexbox for layouts
@@ -303,7 +305,13 @@ Return ONLY the HTML code, no explanations.`;
 - Dark mode support if appropriate
 - Cross-browser compatibility
 
-Return ONLY the CSS code, no explanations.`;
+**VALIDATION:**
+Before finishing, verify:
+1. Count all { braces
+2. Count all } braces
+3. Numbers MUST match exactly
+
+Return ONLY the CSS code with BALANCED BRACES, no explanations.`;
     }
 
     if (file.type === 'javascript') {

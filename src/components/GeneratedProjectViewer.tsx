@@ -1,16 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { FileCode, FolderOpen, Download, Eye } from 'lucide-react';
+import { FileCode, FolderOpen, Download, Eye, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import JSZip from 'jszip';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-tsx';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-css';
+import 'prismjs/components/prism-markup';
 import 'prismjs/themes/prism-tomorrow.css';
+import { supabase } from '@/integrations/supabase/client';
 
 interface GeneratedFile {
   path: string;
@@ -19,12 +23,61 @@ interface GeneratedFile {
 }
 
 interface GeneratedProjectViewerProps {
-  files: GeneratedFile[];
+  files?: GeneratedFile[];
   projectTitle?: string;
+  projectId?: string; // Allow loading files from project_files table
 }
 
-export function GeneratedProjectViewer({ files, projectTitle }: GeneratedProjectViewerProps) {
+export function GeneratedProjectViewer({ files: propFiles, projectTitle, projectId }: GeneratedProjectViewerProps) {
+  const [files, setFiles] = useState<GeneratedFile[]>(propFiles || []);
   const [selectedFile, setSelectedFile] = useState<GeneratedFile | null>(files[0] || null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load files from project_files table if projectId provided but no files
+  useEffect(() => {
+    if (projectId && (!propFiles || propFiles.length === 0)) {
+      loadProjectFiles();
+    } else if (propFiles && propFiles.length > 0) {
+      setFiles(propFiles);
+      setSelectedFile(propFiles[0]);
+    }
+  }, [projectId, propFiles]);
+
+  const loadProjectFiles = async () => {
+    setIsLoading(true);
+    try {
+      console.log('📁 Loading files from project_files table for project:', projectId);
+      
+      const { data, error } = await supabase
+        .from('project_files')
+        .select('file_path, file_content, file_type')
+        .eq('project_id', projectId);
+
+      if (error) {
+        console.error('Error loading project files:', error);
+        throw error;
+      }
+
+      console.log('📁 Loaded files:', data);
+
+      if (data && data.length > 0) {
+        const loadedFiles: GeneratedFile[] = data.map(file => ({
+          path: file.file_path,
+          content: file.file_content,
+          description: `${file.file_type} file`
+        }));
+        setFiles(loadedFiles);
+        setSelectedFile(loadedFiles[0]);
+        console.log('✅ Files loaded successfully:', loadedFiles.length);
+      } else {
+        console.log('⚠️ No files found in project_files table');
+      }
+    } catch (error) {
+      console.error('Error loading project files:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleDownloadZip = async () => {
     const zip = new JSZip();
@@ -85,7 +138,13 @@ ${files.map(f => `- ${f.path}${f.description ? ` - ${f.description}` : ''}`).joi
   const folders = Object.keys(fileTree).sort();
 
   const getHighlightedCode = (code: string, path: string) => {
-    const language = path.endsWith('.tsx') || path.endsWith('.ts') ? 'typescript' : 'typescript';
+    let language = 'typescript';
+    if (path.endsWith('.tsx')) language = 'tsx';
+    else if (path.endsWith('.ts')) language = 'typescript';
+    else if (path.endsWith('.jsx') || path.endsWith('.js')) language = 'javascript';
+    else if (path.endsWith('.css')) language = 'css';
+    else if (path.endsWith('.html')) language = 'markup';
+    
     try {
       return Prism.highlight(code, Prism.languages[language], language);
     } catch {
@@ -101,6 +160,29 @@ ${files.map(f => `- ${f.path}${f.description ? ` - ${f.description}` : ''}`).joi
     return '📄';
   };
 
+  if (isLoading) {
+    return (
+      <Card className="border-2 border-primary/20">
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-muted-foreground">Loading project files...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (files.length === 0) {
+    return (
+      <Card className="border-2 border-primary/20">
+        <CardContent className="flex items-center justify-center py-12">
+          <p className="text-muted-foreground">No files found</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -113,7 +195,7 @@ ${files.map(f => `- ${f.path}${f.description ? ` - ${f.description}` : ''}`).joi
                 Generated Project
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                {files.length} files generated • Ready to download
+                {files.length} file{files.length !== 1 ? 's' : ''} generated • Ready to download
               </p>
             </div>
             <Button onClick={handleDownloadZip} className="gap-2">

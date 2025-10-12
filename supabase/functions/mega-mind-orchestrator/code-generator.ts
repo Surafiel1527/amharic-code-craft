@@ -336,6 +336,15 @@ export async function generateAndPackageCode(ctx: {
       
       console.log(`✅ Restored original title: "${originalTitle}"`);
     }
+
+    // Broadcast final completion signal
+    await broadcast('generation:complete', {
+      status: 'complete',
+      message: '✅ Generation complete!',
+      progress: 100,
+      fileCount: generatedCode.files.length,
+      phaseName: 'Complete'
+    });
   }
 
   // Step 9: Log success metrics
