@@ -91,6 +91,21 @@ serve(async (req) => {
       try {
         const channel = platformSupabase.channel(`ai-status-${projectId}`);
         
+        // Handle thinking steps specially - send with original event name
+        if (event === 'thinking_step') {
+          await channel.send({
+            type: 'broadcast',
+            event: 'thinking_step',
+            payload: {
+              ...data,
+              projectId,
+              conversationId
+            }
+          });
+          console.log(`📡 Status: ${event}`, data.status);
+          return;
+        }
+        
         // Determine event type - AGI events vs general status updates
         const isAGIEvent = ['confidence:low', 'confidence:reflecting', 'confidence:corrected', 
                             'confidence:high', 'confidence:proceeding', 'execution:monitoring',
