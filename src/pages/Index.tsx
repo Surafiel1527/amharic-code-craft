@@ -376,9 +376,10 @@ const Index = () => {
         throw error;
       }
       
-      // Edge function already updated the project, just refresh the list
+      // ❌ REMOVED: Don't show success here! Generation happens async
+      // The workspace will show progress and completion
+      // Just refresh the projects list
       fetchRecentProjects();
-      toast.success(`✅ ${frameworkLabel} project generated successfully!`, { id: 'gen-toast' });
 
     } catch (error) {
       console.error("Generation error:", error);

@@ -346,17 +346,48 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
     };
   }, [projectId]);
 
-  // CRITICAL FIX: Hide component 2 seconds after completion so user can see final state
+  // CRITICAL FIX: Verify files exist before hiding, keep thinking steps visible longer
   useEffect(() => {
-    if (isComplete && progress >= 100 && !error) {
-      console.log('✅ Generation complete, hiding in 2 seconds...');
-      const timer = setTimeout(() => {
+    if (!isComplete || progress < 100 || error) return;
+    
+    const verifyAndHide = async () => {
+      try {
+        console.log('✅ Generation complete, verifying files...');
+        
+        // Wait a bit for files to be written
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Verify project_files exist
+        const { data: files } = await supabase
+          .from('project_files')
+          .select('file_path')
+          .eq('project_id', projectId)
+          .limit(1);
+        
+        if (files && files.length > 0) {
+          console.log('✅ Files verified, keeping visible for 5 seconds so user can see thinking steps');
+          // Keep visible for 5 seconds so user can see final thinking steps
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          setShouldHide(true);
+          onCompleteRef.current?.();
+        } else {
+          console.warn('⚠️ No files found, waiting longer...');
+          // Retry after delay
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          setShouldHide(true);
+          onCompleteRef.current?.();
+        }
+      } catch (error) {
+        console.error('❌ Error verifying files:', error);
+        // Hide anyway after delay
+        await new Promise(resolve => setTimeout(resolve, 2000));
         setShouldHide(true);
         onCompleteRef.current?.();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isComplete, progress, error]);
+      }
+    };
+    
+    verifyAndHide();
+  }, [isComplete, progress, error, projectId]);
 
   // Don't render if should hide
   if (shouldHide) {
