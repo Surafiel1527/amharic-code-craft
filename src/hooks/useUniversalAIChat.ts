@@ -539,9 +539,13 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
         // Don't show code blocks in chat - code is applied directly
         codeBlock = undefined;
+      } else if (explanation && explanation !== 'Generation started') {
+        // Only show message if it's meaningful (not just the start acknowledgment)
+        // Real-time thinking steps will show progress instead
+        content = `💡 ${explanation}`;
       } else {
-        // No code, just a message response
-        content = `💡 ${explanation || 'Request processed successfully'}`;
+        // Skip adding a message for "Generation started" - thinking steps will show progress
+        return null as any; // Signal to skip adding this message
       }
     }
 
@@ -639,10 +643,14 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
       // Process and add assistant response
       const assistantMessage = await processResponse(response, routedTo);
-      setMessages(prev => [...prev, assistantMessage]);
+      
+      // Only add message if it's not null (null means skip it - e.g., "Generation started")
+      if (assistantMessage) {
+        setMessages(prev => [...prev, assistantMessage]);
+      }
 
-      // Save assistant message
-      if (persistMessages && activeConvId) {
+      // Save assistant message (only if it exists - skip for "Generation started")
+      if (persistMessages && activeConvId && assistantMessage) {
         await saveMessage(assistantMessage, activeConvId, assistantMessage.codeBlock?.code);
       }
 
