@@ -179,7 +179,7 @@ export function UniversalChatInterface({
     mode: operationMode // Pass operation mode to the hook
   });
 
-  // Capture thinking steps for the current message
+  // Capture thinking steps for the current message - keep them permanent
   useEffect(() => {
     if (thinkingSteps.length > 0) {
       // Associate steps with the last user message
@@ -190,12 +190,7 @@ export function UniversalChatInterface({
     }
   }, [thinkingSteps, messages]);
 
-  // Clear steps when generation completes (keep visible for 5 seconds)
-  useEffect(() => {
-    if (!isLoading) {
-      setTimeout(clearSteps, 5000);
-    }
-  }, [isLoading, clearSteps]);
+  // ❌ REMOVED: Don't clear thinking steps - keep them permanent like Lovable/Replit
 
   // Auto-scroll on new messages
   useEffect(() => {

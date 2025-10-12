@@ -244,7 +244,7 @@ export default function Workspace() {
           .select('*', { count: 'exact', head: true })
           .eq('conversation_id', convId);
         
-        // If no messages exist, add the original prompt
+        // If no messages exist, add the original prompt only (no hardcoded response)
         if (count === 0 && data.prompt) {
           console.log('💬 Adding original prompt to existing conversation');
           await supabase.from('messages').insert([
@@ -253,13 +253,6 @@ export default function Workspace() {
               role: 'user',
               content: data.prompt,
               metadata: { isOriginalPrompt: true }
-            },
-            {
-              conversation_id: convId,
-              role: 'assistant',
-              content: `✨ I've created your project: **${cleanTitle(data.title)}**\n\nYour website is ready! You can now make changes by describing what you want to update.`,
-              generated_code: data.html_code,
-              metadata: { isInitialGeneration: true }
             }
           ]);
         }
@@ -278,7 +271,7 @@ export default function Workspace() {
         
         convId = newConv?.id;
         
-        // Insert the original prompt as the first message
+        // Insert the original prompt as the first message only (no hardcoded response)
         if (convId && data.prompt) {
           console.log('💬 Adding original prompt to new conversation');
           await supabase.from('messages').insert([
@@ -287,13 +280,6 @@ export default function Workspace() {
               role: 'user',
               content: data.prompt,
               metadata: { isOriginalPrompt: true }
-            },
-            {
-              conversation_id: convId,
-              role: 'assistant',
-              content: `✨ I've created your project: **${cleanTitle(data.title)}**\n\nYour website is ready! You can now make changes by describing what you want to update.`,
-              generated_code: data.html_code,
-              metadata: { isInitialGeneration: true }
             }
           ]);
         }

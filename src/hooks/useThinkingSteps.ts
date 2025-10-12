@@ -51,13 +51,11 @@ export function useThinkingSteps(projectId?: string): UseThinkingStepsResult {
         setIsThinking(payload.status === 'active');
       })
       .on('broadcast', { event: 'generation_event' }, ({ payload }) => {
-        // When generation completes, keep steps visible for a while
+        // When generation completes, keep steps permanent - don't hide them
         if (payload.type === 'execution_complete') {
-          console.log('✅ Generation complete, keeping thinking steps visible');
-          // Don't immediately stop - let them see the final state
-          setTimeout(() => {
-            setIsThinking(false);
-          }, 6000); // Keep visible for 6 seconds
+          console.log('✅ Generation complete, keeping thinking steps permanent');
+          // Keep thinking false to stop spinner, but steps remain visible
+          setIsThinking(false);
         }
       })
       .subscribe();

@@ -365,9 +365,8 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
           .limit(1);
         
         if (files && files.length > 0) {
-          console.log('✅ Files verified, keeping visible for 5 seconds so user can see thinking steps');
-          // Keep visible for 5 seconds so user can see final thinking steps
-          await new Promise(resolve => setTimeout(resolve, 5000));
+          console.log('✅ Files verified, hiding progress component');
+          // Hide immediately - thinking steps stay in chat permanently
           setShouldHide(true);
           onCompleteRef.current?.();
         } else {
