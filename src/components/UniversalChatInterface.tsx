@@ -336,17 +336,22 @@ export function UniversalChatInterface({
               // Show thinking steps inline for last user message when loading OR for assistant responses
               const userMessage = message.role === 'user' ? message : messages[index - 1];
               const stepsForMessage = userMessage?.role === 'user' ? messageSteps.get(userMessage.id) : undefined;
-              const showStepsHere = (
-                (message.role === 'assistant' && stepsForMessage && stepsForMessage.length > 0) ||
-                (isLastUserMessage && isLoading && thinkingSteps.length > 0)
-              );
+              
+              // For assistant messages: check if we have steps for the previous user message
+              const showStepsForAssistant = message.role === 'assistant' && stepsForMessage && stepsForMessage.length > 0;
+              
+              // For user messages: show steps below IF it's the last one AND there's no assistant response after it
+              const hasAssistantResponseAfter = message.role === 'user' && messages[index + 1]?.role === 'assistant';
+              const showStepsForUser = message.role === 'user' && isLastUserMessage && 
+                !hasAssistantResponseAfter && // Don't show if assistant response exists
+                (thinkingSteps.length > 0 || (stepsForMessage && stepsForMessage.length > 0));
 
               return (
                 <div key={message.id}>
-                  {/* Show thinking steps inline during generation or above assistant response */}
-                  {showStepsHere && (
+                  {/* Show thinking steps BEFORE assistant response (as context) */}
+                  {showStepsForAssistant && (
                     <div className="mb-2">
-                      <InlineThinkingSteps steps={isLoading && isLastUserMessage ? thinkingSteps : stepsForMessage || []} />
+                      <InlineThinkingSteps steps={stepsForMessage || []} />
                     </div>
                   )}
                   
@@ -472,6 +477,15 @@ export function UniversalChatInterface({
                       </div>
                     </Card>
                   </div>
+                  
+                  {/* Show thinking steps AFTER user message (active or completed) */}
+                  {showStepsForUser && (
+                    <div className="mt-2">
+                      <InlineThinkingSteps 
+                        steps={thinkingSteps.length > 0 ? thinkingSteps : (stepsForMessage || [])} 
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
