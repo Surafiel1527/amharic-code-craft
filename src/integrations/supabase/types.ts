@@ -6351,6 +6351,36 @@ export type Database = {
           },
         ]
       }
+      reasoning_traces: {
+        Row: {
+          complexity: string | null
+          confidence: number
+          created_at: string | null
+          id: string
+          needed_clarification: boolean | null
+          reasoning_output: Json
+          user_request: string
+        }
+        Insert: {
+          complexity?: string | null
+          confidence: number
+          created_at?: string | null
+          id?: string
+          needed_clarification?: boolean | null
+          reasoning_output: Json
+          user_request: string
+        }
+        Update: {
+          complexity?: string | null
+          confidence?: number
+          created_at?: string | null
+          id?: string
+          needed_clarification?: boolean | null
+          reasoning_output?: Json
+          user_request?: string
+        }
+        Relationships: []
+      }
       refactoring_suggestions: {
         Row: {
           applied_at: string | null
@@ -7560,6 +7590,50 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thinking_steps: {
+        Row: {
+          created_at: string
+          detail: string
+          duration: number | null
+          id: string
+          job_id: string | null
+          operation: string
+          project_id: string | null
+          status: string
+          timestamp: string
+        }
+        Insert: {
+          created_at?: string
+          detail: string
+          duration?: number | null
+          id?: string
+          job_id?: string | null
+          operation: string
+          project_id?: string | null
+          status: string
+          timestamp?: string
+        }
+        Update: {
+          created_at?: string
+          detail?: string
+          duration?: number | null
+          id?: string
+          job_id?: string | null
+          operation?: string
+          project_id?: string | null
+          status?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thinking_steps_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "ai_generation_jobs"
             referencedColumns: ["id"]
           },
         ]

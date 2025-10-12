@@ -19,6 +19,46 @@ interface UseThinkingStepsResult {
 export function useThinkingSteps(projectId?: string): UseThinkingStepsResult {
   const [steps, setSteps] = useState<ThinkingStep[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load historical steps from database on mount
+  useEffect(() => {
+    if (!projectId || loaded) return;
+
+    const loadHistoricalSteps = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('thinking_steps')
+          .select('*')
+          .eq('project_id', projectId)
+          .order('timestamp', { ascending: true });
+
+        if (error) {
+          console.warn('Failed to load historical thinking steps:', error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const historicalSteps: ThinkingStep[] = data.map((row: any) => ({
+            id: `${row.operation}_${row.timestamp}`,
+            operation: row.operation,
+            detail: row.detail,
+            status: row.status,
+            duration: row.duration,
+            timestamp: row.timestamp
+          }));
+          
+          console.log(`📚 Loaded ${historicalSteps.length} historical thinking steps`);
+          setSteps(historicalSteps);
+          setLoaded(true);
+        }
+      } catch (err) {
+        console.error('Error loading historical steps:', err);
+      }
+    };
+
+    loadHistoricalSteps();
+  }, [projectId, loaded]);
 
   useEffect(() => {
     if (!projectId) return;

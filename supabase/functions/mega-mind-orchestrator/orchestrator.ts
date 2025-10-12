@@ -43,19 +43,43 @@ import { SchemaArchitect } from '../_shared/schemaArchitect.ts';
 
 /**
  * Thinking Step Tracker - Records granular AI operations with timing
+ * Now persists to database for permanent display
  */
 class ThinkingStepTracker {
   private startTimes: Map<string, number> = new Map();
+  private supabase: any;
+  private jobId: string | null;
+  private projectId: string | null;
+
+  constructor(supabase: any, jobId: string | null, projectId: string | null) {
+    this.supabase = supabase;
+    this.jobId = jobId;
+    this.projectId = projectId;
+  }
 
   async trackStep(operation: string, detail: string, broadcast: Function, status: 'start' | 'complete' = 'start') {
+    const timestamp = new Date().toISOString();
+    
     if (status === 'start') {
       this.startTimes.set(operation, Date.now());
       await broadcast('thinking_step', {
         operation,
         detail,
         status: 'active',
-        timestamp: new Date().toISOString()
+        timestamp
       });
+      
+      // Save to DB
+      if (this.jobId && this.projectId) {
+        await this.supabase.from('thinking_steps').insert({
+          job_id: this.jobId,
+          project_id: this.projectId,
+          operation,
+          detail,
+          status: 'active',
+          timestamp
+        }).catch((err: any) => console.warn('Failed to save thinking step:', err));
+      }
     } else {
       const startTime = this.startTimes.get(operation) || Date.now();
       const duration = (Date.now() - startTime) / 1000; // seconds
@@ -66,8 +90,21 @@ class ThinkingStepTracker {
         detail,
         status: 'complete',
         duration,
-        timestamp: new Date().toISOString()
+        timestamp
       });
+      
+      // Save to DB
+      if (this.jobId && this.projectId) {
+        await this.supabase.from('thinking_steps').insert({
+          job_id: this.jobId,
+          project_id: this.projectId,
+          operation,
+          detail,
+          status: 'complete',
+          duration,
+          timestamp
+        }).catch((err: any) => console.warn('Failed to save thinking step:', err));
+      }
     }
   }
 }
@@ -153,8 +190,22 @@ export async function executeGeneration(ctx: {
   // Track start time for metrics
   const startTime = ctx.startTime!;
   
-  // Initialize thinking step tracker
-  const stepTracker = new ThinkingStepTracker();
+  // Get or create job ID for tracking
+  let jobId: string | null = null;
+  if (projectId) {
+    const { data: existingJob } = await platformSupabase
+      .from('ai_generation_jobs')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    jobId = existingJob?.id || null;
+  }
+  
+  // Initialize thinking step tracker with DB persistence
+  const stepTracker = new ThinkingStepTracker(platformSupabase, jobId, projectId);
 
   // Retry logic
   const isRetry = conversationContext.isRetry || false;
