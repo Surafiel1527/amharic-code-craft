@@ -8,13 +8,13 @@ import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 interface LearnedPattern {
   id: string;
-  category: string;
   pattern_name: string;
   use_case: string;
   code_template: string;
   success_rate: number;
   times_used: number;
   avg_user_rating: number;
+  // Removed category - column doesn't exist in schema
 }
 
 interface PatternMatch {
@@ -43,7 +43,6 @@ export async function storeSuccessfulPattern(
       .from('learned_patterns')
       .select('*')
       .eq('pattern_name', data.patternName)
-      .eq('category', data.category)
       .maybeSingle();
 
     if (existing) {
@@ -57,7 +56,6 @@ export async function storeSuccessfulPattern(
         .eq('id', existing.id);
     } else {
       await supabase.from('learned_patterns').insert({
-        category: data.category,
         pattern_name: data.patternName,
         use_case: data.useCase,
         code_template: data.codeTemplate,
@@ -87,7 +85,7 @@ export async function findRelevantPatterns(
       .order('success_rate', { ascending: false })
       .limit(5);
 
-    if (category) query.eq('category', category);
+    // Removed category filter - column doesn't exist in schema
 
     const { data: patterns } = await query;
     if (!patterns) return [];
@@ -117,7 +115,7 @@ function calculateRelevance(request: string, pattern: LearnedPattern): number {
     if (keyword.length > 3 && requestLower.includes(keyword)) score += 0.2;
   });
 
-  if (requestLower.includes(pattern.category.toLowerCase())) score += 0.3;
+  // Removed category scoring - column doesn't exist
   score = score * (pattern.success_rate / 100);
   if (pattern.times_used > 10) score += 0.1;
   if (pattern.times_used > 50) score += 0.1;
@@ -126,10 +124,7 @@ function calculateRelevance(request: string, pattern: LearnedPattern): number {
 }
 
 function getMatchReason(request: string, pattern: LearnedPattern): string {
-  const requestLower = request.toLowerCase();
-  if (requestLower.includes(pattern.category.toLowerCase())) {
-    return `Request mentions \"${pattern.category}\" which matches this pattern`;
-  }
+  // Simplified - removed category reference as column doesn't exist
   return `Similar to successful past generations (${pattern.times_used} uses, ${pattern.success_rate}% success)`;
 }
 

@@ -71,6 +71,7 @@ export async function recordGenerationOutcome(
       .from('generation_analytics')
       .insert({
         user_id: data.userId,
+        user_prompt: data.actualOutput?.request || 'Unknown request', // Fixed: added required user_prompt field
         success: data.success,
         error_message: data.errorMessage,
         metadata: {

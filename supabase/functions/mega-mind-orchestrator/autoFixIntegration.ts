@@ -57,17 +57,17 @@ export async function autoFixGeneratedCode(
       }
     }
   } else if (result.errors.length > 0) {
-    // Log errors that couldn't be fixed
+    // Log errors that couldn't be fixed - removed user_id as it doesn't exist in schema
     await platformSupabase.from('detected_errors').insert(
       result.errors.map(error => ({
-        user_id: userId,
         error_type: 'generation',
         error_message: error,
         severity: 'medium',
         status: 'pending',
-        context: {
+        error_context: { // Fixed: use error_context not context
           fileCount: files.length,
-          attempts: result.totalAttempts
+          attempts: result.totalAttempts,
+          userId: userId // Store userId in context instead
         }
       }))
     );

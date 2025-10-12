@@ -97,7 +97,7 @@ export async function logGenerationSuccess(
       data: {
         project_id: details.projectId,
         user_id: details.userId,
-        user_request: details.userRequest,
+        user_prompt: details.userRequest, // Fixed: use user_prompt not user_request
         success: true,
         framework: details.framework,
         metadata: {

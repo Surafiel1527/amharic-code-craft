@@ -112,8 +112,8 @@ serve(async (req) => {
               solution_code: fixes[0].fix_code,
               confidence_score: avgConfidence,
               success_count: fixes.length,
-              projects_affected: [...new Set(fixes.map((f: any) => f.detected_errors?.project_id))].length,
-              auto_apply: avgConfidence >= 0.85,
+              projects_affected: [...new Set(fixes.map((f: any) => f.detected_errors?.project_id))].length
+              // Removed auto_apply - column doesn't exist
             }, { onConflict: 'error_signature' });
 
           results.patterns_learned++;

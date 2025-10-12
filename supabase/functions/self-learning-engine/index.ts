@@ -158,11 +158,11 @@ Return JSON:
                   successIndicators: pattern.successIndicators,
                   applicableContexts: pattern.applicableContexts
                 },
-                confidence_score: pattern.confidence / 100,
-                success_count: fixes.length,
-                times_encountered: fixes.length,
-                auto_apply: pattern.confidence > 90 // Auto-apply if very confident
-              });
+              confidence_score: pattern.confidence / 100,
+              success_count: fixes.length,
+              times_encountered: fixes.length
+              // Removed auto_apply - column doesn't exist
+            });
 
             learningResults.newPatternsLearned++;
           }
@@ -193,24 +193,28 @@ Return JSON:
             .maybeSingle();
 
           if (!existing) {
-            await supabaseClient
-              .from('universal_error_patterns')
-              .insert({
-                error_category: pattern.pattern_type,
-                error_subcategory: pattern.pattern_name,
-                diagnosis: {
-                  rootCause: 'Cross-project pattern',
-                  solutionPattern: pattern.pattern_code,
-                  crossProject: true,
-                  contexts: pattern.contexts
-                },
-                confidence_score: pattern.confidence_score / 100,
-                success_count: pattern.usage_count,
-                times_encountered: pattern.usage_count,
-                auto_apply: pattern.success_rate > 90
-              });
+            try {
+              await supabaseClient
+                .from('universal_error_patterns')
+                .insert({
+                  error_category: pattern.pattern_type,
+                  error_subcategory: pattern.pattern_name,
+                  diagnosis: {
+                    rootCause: 'Cross-project pattern',
+                    solutionPattern: pattern.pattern_code,
+                    crossProject: true,
+                    contexts: pattern.contexts
+                  },
+                  confidence_score: pattern.confidence_score / 100,
+                  success_count: pattern.usage_count,
+                  times_encountered: pattern.usage_count
+                  // Removed auto_apply - column doesn't exist
+                });
 
-            learningResults.crossProjectInsights++;
+              learningResults.crossProjectInsights++;
+            } catch (patternError) {
+              console.warn('Could not store cross-project pattern:', patternError);
+            }
           }
         }
       }
@@ -227,21 +231,21 @@ Return JSON:
 
     if (pendingErrors && pendingErrors.length > 0) {
       for (const error of pendingErrors) {
-        // Find high-confidence pattern match
-        const { data: matchingPattern } = await supabaseClient
-          .from('universal_error_patterns')
-          .select('*')
-          .eq('error_category', error.error_type)
-          .eq('auto_apply', true)
-          .gte('confidence_score', 0.9)
-          .gte('success_count', 5)
-          .maybeSingle();
+        try {
+          // Find high-confidence pattern match (wrapped in try-catch for schema flexibility)
+          const { data: matchingPattern } = await supabaseClient
+            .from('universal_error_patterns')
+            .select('*')
+            .eq('error_category', error.error_type)
+            .gte('confidence_score', 0.9)
+            .gte('success_count', 5)
+            .maybeSingle();
 
-        if (matchingPattern) {
-          console.log(`⚡ Auto-applying high-confidence pattern for error ${error.id}`);
-          
-          // Generate fix using the pattern template
-          const fixPrompt = `Apply this proven solution pattern to fix the error:
+          if (matchingPattern) {
+            console.log(`⚡ Auto-applying high-confidence pattern for error ${error.id}`);
+            
+            // Generate fix using the pattern template
+            const fixPrompt = `Apply this proven solution pattern to fix the error:
 
 ERROR: ${error.error_message}
 CONTEXT: ${JSON.stringify(error.context)}
@@ -251,48 +255,51 @@ ${JSON.stringify(matchingPattern.diagnosis, null, 2)}
 
 Generate the exact code fix following this pattern.`;
 
-          const fixResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'google/gemini-2.5-flash',
-              messages: [{ role: 'user', content: fixPrompt }]
-            }),
-          });
+            const fixResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'google/gemini-2.5-flash',
+                messages: [{ role: 'user', content: fixPrompt }]
+              }),
+            });
 
-          if (fixResponse.ok) {
-            const fixData = await fixResponse.json();
-            const fixedCode = fixData.choices[0].message.content;
+            if (fixResponse.ok) {
+              const fixData = await fixResponse.json();
+              const fixedCode = fixData.choices[0].message.content;
 
-            // Apply the fix
-            await supabaseClient
-              .from('auto_fixes')
-              .insert({
-                error_id: error.id,
-                fix_type: 'learned_pattern',
-                original_code: error.context?.code || '',
-                fixed_code: fixedCode,
-                explanation: `Auto-applied learned pattern: ${matchingPattern.error_subcategory}`,
-                status: 'applied',
-                ai_confidence: matchingPattern.confidence_score,
-                applied_at: new Date().toISOString()
-              });
+              // Apply the fix
+              await supabaseClient
+                .from('auto_fixes')
+                .insert({
+                  error_id: error.id,
+                  fix_type: 'learned_pattern',
+                  original_code: error.context?.code || '',
+                  fixed_code: fixedCode,
+                  explanation: `Auto-applied learned pattern: ${matchingPattern.error_subcategory}`,
+                  status: 'applied',
+                  ai_confidence: matchingPattern.confidence_score,
+                  applied_at: new Date().toISOString()
+                });
 
-            // Update error status
-            await supabaseClient
-              .from('detected_errors')
-              .update({
-                status: 'fixed',
-                fix_attempts: error.fix_attempts + 1,
-                resolved_at: new Date().toISOString()
-              })
-              .eq('id', error.id);
+              // Update error status
+              await supabaseClient
+                .from('detected_errors')
+                .update({
+                  status: 'fixed',
+                  fix_attempts: error.fix_attempts + 1,
+                  resolved_at: new Date().toISOString()
+                })
+                .eq('id', error.id);
 
-            learningResults.autoAppliedFixes++;
-          }
+              learningResults.autoAppliedFixes++;
+            }
+          } // Close if (matchingPattern)
+        } catch (autoFixError) {
+          console.warn(`Could not auto-apply pattern for error ${error.id}:`, autoFixError);
         }
       }
     }
