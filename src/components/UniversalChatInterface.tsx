@@ -266,12 +266,6 @@ export function UniversalChatInterface({
         </Card>
       )}
 
-      {/* Real-time AI Status */}
-      <RealtimeAIPanel 
-        projectId={projectId}
-        conversationId={conversationId || activeConversationId}
-      />
-
       {/* Messages */}
       <ScrollArea className="flex-1 pr-4 mb-3">
         <div className="space-y-3">
@@ -308,143 +302,165 @@ export function UniversalChatInterface({
             </div>
           )}
 
-          {messages.map((message) => {
-            const RouteIcon = message.metadata?.routedTo 
-              ? ROUTE_ICONS[message.metadata.routedTo]
-              : null;
-            const routeLabel = message.metadata?.routedTo 
-              ? ROUTE_LABELS[message.metadata.routedTo]
-              : null;
-            const routeColor = message.metadata?.routedTo
-              ? ROUTE_COLORS[message.metadata.routedTo]
-              : '';
+          {messages
+            .filter(msg => {
+              // Filter out "Generation started" messages
+              if (msg.role === 'assistant' && msg.content.toLowerCase().includes('generation started')) {
+                return false;
+              }
+              return true;
+            })
+            .map((message, index) => {
+              const RouteIcon = message.metadata?.routedTo 
+                ? ROUTE_ICONS[message.metadata.routedTo]
+                : null;
+              const routeLabel = message.metadata?.routedTo 
+                ? ROUTE_LABELS[message.metadata.routedTo]
+                : null;
+              const routeColor = message.metadata?.routedTo
+                ? ROUTE_COLORS[message.metadata.routedTo]
+                : '';
+              
+              const isLastUserMessage = message.role === 'user' && 
+                index === messages.filter(m => m.role === 'user').length - 1;
 
-            return (
-              <div
-                key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <Card 
-                  className={`max-w-[85%] p-3 ${
-                    message.role === 'user' 
-                      ? 'bg-primary text-primary-foreground' 
-                      : message.role === 'system'
-                      ? 'bg-muted/50 border-dashed'
-                      : 'bg-muted'
-                  }`}
-                >
-                  {/* Message Header */}
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <Badge variant="outline" className="text-[10px]">
-                      {message.role === 'user' ? 'You' : 
-                       message.role === 'system' ? 'System' : 'AI'}
-                    </Badge>
-                    
-                    {/* Routing indicator */}
-                    {RouteIcon && routeLabel && (
-                      <Badge variant="secondary" className={`text-[10px] ${routeColor}`}>
-                        <RouteIcon className="w-2 h-2 mr-1" />
-                        {routeLabel}
-                      </Badge>
-                    )}
-
-                    {/* Confidence score */}
-                    {message.metadata?.confidence !== undefined && (
-                      <Badge 
-                        variant={message.metadata.confidence > 0.7 ? "default" : "outline"}
-                        className="text-[10px]"
-                      >
-                        {Math.round(message.metadata.confidence * 100)}% confidence
-                      </Badge>
-                    )}
-
-                    {/* Known pattern indicator */}
-                    {message.metadata?.isKnown && (
-                      <Badge variant="default" className="text-[10px]">
-                        <CheckCircle2 className="w-2 h-2 mr-1" />
-                        Known Fix
-                      </Badge>
-                    )}
-
-                    {/* Context indicator */}
-                    {message.contextFiles && message.contextFiles.length > 0 && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        <FileCode className="w-2 h-2 mr-1" />
-                        {message.contextFiles.length} files
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Message Content */}
-                  <div className="text-sm whitespace-pre-wrap prose prose-sm dark:prose-invert max-w-none">
-                    {message.streaming ? (
-                      <span>{message.content}<span className="animate-pulse">▋</span></span>
-                    ) : (
-                      message.content
-                    )}
-                  </div>
-
-                  {/* Implementation Plan */}
-                  {message.plan && !message.streaming && !message.plan.approved && (
-                    <div className="mt-3">
-                      <PlanApprovalCard
-                        plan={message.plan}
-                        onApprove={() => {
-                          // Send approval message to trigger actual generation
-                          sendMessage('yes - proceed with implementation');
-                        }}
-                        onReject={(feedback) => {
-                          // Send feedback to revise plan
-                          sendMessage(feedback || 'Please revise the plan with these changes');
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Code Block */}
-                  {message.codeBlock && !message.streaming && (
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-center justify-between">
+              return (
+                <div key={message.id}>
+                  <div
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <Card 
+                      className={`max-w-[85%] p-3 ${
+                        message.role === 'user' 
+                          ? 'bg-primary text-primary-foreground' 
+                          : message.role === 'system'
+                          ? 'bg-muted/50 border-dashed'
+                          : 'bg-muted'
+                      }`}
+                    >
+                      {/* Message Header */}
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <Badge variant="outline" className="text-[10px]">
-                          <Code2 className="w-2 h-2 mr-1" />
-                          {message.codeBlock.language}
+                          {message.role === 'user' ? 'You' : 
+                           message.role === 'system' ? 'System' : 'AI'}
                         </Badge>
-                        {message.codeBlock.filePath && (
+                        
+                        {/* Routing indicator */}
+                        {RouteIcon && routeLabel && (
+                          <Badge variant="secondary" className={`text-[10px] ${routeColor}`}>
+                            <RouteIcon className="w-2 h-2 mr-1" />
+                            {routeLabel}
+                          </Badge>
+                        )}
+
+                        {/* Confidence score */}
+                        {message.metadata?.confidence !== undefined && (
+                          <Badge 
+                            variant={message.metadata.confidence > 0.7 ? "default" : "outline"}
+                            className="text-[10px]"
+                          >
+                            {Math.round(message.metadata.confidence * 100)}% confidence
+                          </Badge>
+                        )}
+
+                        {/* Known pattern indicator */}
+                        {message.metadata?.isKnown && (
+                          <Badge variant="default" className="text-[10px]">
+                            <CheckCircle2 className="w-2 h-2 mr-1" />
+                            Known Fix
+                          </Badge>
+                        )}
+
+                        {/* Context indicator */}
+                        {message.contextFiles && message.contextFiles.length > 0 && (
                           <Badge variant="secondary" className="text-[10px]">
-                            {message.codeBlock.filePath}
+                            <FileCode className="w-2 h-2 mr-1" />
+                            {message.contextFiles.length} files
                           </Badge>
                         )}
                       </div>
-                      
-                      <div className="relative">
-                        <pre className="text-xs bg-background/50 p-3 rounded overflow-x-auto max-h-[300px]">
-                          <code className={`language-${message.codeBlock.language}`}>
-                            {message.codeBlock.code}
-                          </code>
-                        </pre>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="absolute top-2 right-2 h-6 w-6"
-                          onClick={() => copyCode(message.codeBlock!.code)}
-                        >
-                          <Copy className="w-3 h-3" />
-                        </Button>
+
+                      {/* Message Content */}
+                      <div className="text-sm whitespace-pre-wrap prose prose-sm dark:prose-invert max-w-none">
+                        {message.streaming ? (
+                          <span>{message.content}<span className="animate-pulse">▋</span></span>
+                        ) : (
+                          message.content
+                        )}
                       </div>
+
+                      {/* Implementation Plan */}
+                      {message.plan && !message.streaming && !message.plan.approved && (
+                        <div className="mt-3">
+                          <PlanApprovalCard
+                            plan={message.plan}
+                            onApprove={() => {
+                              // Send approval message to trigger actual generation
+                              sendMessage('yes - proceed with implementation');
+                            }}
+                            onReject={(feedback) => {
+                              // Send feedback to revise plan
+                              sendMessage(feedback || 'Please revise the plan with these changes');
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Code Block */}
+                      {message.codeBlock && !message.streaming && (
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Badge variant="outline" className="text-[10px]">
+                              <Code2 className="w-2 h-2 mr-1" />
+                              {message.codeBlock.language}
+                            </Badge>
+                            {message.codeBlock.filePath && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                {message.codeBlock.filePath}
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          <div className="relative">
+                            <pre className="text-xs bg-background/50 p-3 rounded overflow-x-auto max-h-[300px]">
+                              <code className={`language-${message.codeBlock.language}`}>
+                                {message.codeBlock.code}
+                              </code>
+                            </pre>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="absolute top-2 right-2 h-6 w-6"
+                              onClick={() => copyCode(message.codeBlock!.code)}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Timestamp */}
+                      <div className="text-[10px] text-muted-foreground mt-2 flex items-center justify-between">
+                        <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
+                        {message.metadata?.category && (
+                          <span className="opacity-50">{message.metadata.category}</span>
+                        )}
+                      </div>
+                    </Card>
+                  </div>
+                  
+                  {/* Show real-time AI progress after last user message when loading */}
+                  {isLastUserMessage && isLoading && (
+                    <div className="mt-3">
+                      <RealtimeAIPanel 
+                        projectId={projectId}
+                        conversationId={conversationId || activeConversationId}
+                      />
                     </div>
                   )}
-
-                  {/* Timestamp */}
-                  <div className="text-[10px] text-muted-foreground mt-2 flex items-center justify-between">
-                    <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
-                    {message.metadata?.category && (
-                      <span className="opacity-50">{message.metadata.category}</span>
-                    )}
-                  </div>
-                </Card>
-              </div>
-            );
-          })}
+                </div>
+              );
+            })}
 
           <div ref={messagesEndRef} />
         </div>
