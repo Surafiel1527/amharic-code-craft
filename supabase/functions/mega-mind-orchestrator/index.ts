@@ -159,7 +159,23 @@ serve(async (req) => {
       userSupabaseConnection,
       broadcast
     }).then(async (orchestrationResult) => {
-      // Continue with code generation
+      // Check if clarification is needed or if it's a conversation-only response
+      if (orchestrationResult.needsClarification || orchestrationResult.conversationOnly) {
+        console.log('⏸️ Skipping code generation - needs clarification or conversation only');
+        return;
+      }
+      
+      // Continue with code generation only if we have updateJobProgress
+      if (!orchestrationResult.updateJobProgress) {
+        console.error('❌ Missing updateJobProgress function');
+        await broadcast('generation:failed', {
+          status: 'error',
+          error: 'Internal error: missing progress tracking',
+          progress: 0
+        });
+        return;
+      }
+      
       const packagedCode = await generateAndPackageCode({
         request,
         conversationId,
