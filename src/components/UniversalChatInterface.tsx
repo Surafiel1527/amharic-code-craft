@@ -539,27 +539,6 @@ export function UniversalChatInterface({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Footer */}
-      {showFooter && (
-        <div className="text-xs text-muted-foreground text-center mt-3">
-          <div className="flex items-center justify-center gap-2 flex-wrap">
-            <span className="flex items-center gap-1">
-              <Brain className="w-3 h-3" />
-              8 Error Categories
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1">
-              <Target className="w-3 h-3" />
-              Smart Routing
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" />
-              Auto-Learning
-            </span>
-          </div>
-        </div>
-      )}
     </Card>
   );
 }
