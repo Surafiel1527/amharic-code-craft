@@ -24,6 +24,7 @@ import { useUniversalAIChat, Message } from "@/hooks/useUniversalAIChat";
 import { EnhancedSensitiveDataDetector } from "@/components/EnhancedSensitiveDataDetector";
 import { RealtimeAIPanel } from "@/components/RealtimeAIPanel";
 import { PlanApprovalCard } from "@/components/PlanApprovalCard";
+import { LiveReasoningProgress } from "@/components/LiveReasoningProgress";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css";
 import "prismjs/components/prism-typescript";
@@ -442,6 +443,19 @@ export function UniversalChatInterface({
                     )}
                   </div>
                 </Card>
+                
+                {/* Live Reasoning Progress - show below AI messages when generation is active */}
+                {message.role === 'assistant' && 
+                 isLoading && 
+                 messages[messages.length - 1]?.id === message.id &&
+                 conversationId && (
+                  <div className="mt-2 max-w-[85%]">
+                    <LiveReasoningProgress 
+                      conversationId={conversationId}
+                      projectId={projectId}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
