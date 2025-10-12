@@ -84,7 +84,11 @@ export function useGenerationMonitor(projectId?: string): UseGenerationMonitorRe
 
           case 'clarification_needed':
             setNeedsClarification(true);
-            setClarificationQuestions(payload.questions || []);
+            setClarificationQuestions(payload.questions || [
+              'Could you provide more details about what you want to achieve?',
+              'Are there specific features or components you want to focus on?',
+              'Do you have any examples or references that might help?'
+            ]);
             setCurrentDecision({
               type: payload.decision?.classification,
               classified_as: payload.decision?.classification,
@@ -92,6 +96,10 @@ export function useGenerationMonitor(projectId?: string): UseGenerationMonitorRe
               intent: payload.decision?.intent,
               reasoning: payload.message || '',
               userRequest: payload.decision?.userRequest || '',
+              concerns: payload.concerns || [
+                'Confidence is below threshold',
+                'Need more information to proceed accurately'
+              ],
               timestamp: payload.timestamp
             });
             setExecutionStatus('idle');

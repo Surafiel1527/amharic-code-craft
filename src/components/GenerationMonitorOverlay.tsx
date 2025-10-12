@@ -91,7 +91,7 @@ export function GenerationMonitorOverlay({
           context={{
             userRequest: currentDecision?.userRequest || "",
             classifiedAs: currentDecision?.type || currentDecision?.classified_as || "",
-            concerns: [
+            concerns: currentDecision?.concerns || [
               "Confidence is below threshold",
               "Need more information to proceed accurately"
             ]

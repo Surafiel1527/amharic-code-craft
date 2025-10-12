@@ -214,6 +214,12 @@ export async function executeGeneration(ctx: {
     const analysis = await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase);
     
     console.log('📊 Analysis complete:', JSON.stringify(analysis, null, 2));
+    console.log('🤖 AI Analysis:', {
+      isMetaRequest: analysis.isMetaRequest,
+      outputType: analysis.outputType,
+      confidence: analysis.confidence || 0.5,
+      backendNeeds: analysis.backendRequirements
+    });
 
     // AGI: Log decision for learning
     const decisionId = await logDecision(analysis, {
@@ -226,12 +232,68 @@ export async function executeGeneration(ctx: {
     (conversationContext as any)._decisionId = decisionId;
 
     // ============ CONFIDENCE GATE SYSTEM ============
-    const finalConfidence = contextAnalysis.confidenceScore * (analysis.confidence || 0.5);
+    // Use weighted average instead of multiplication to avoid being too strict
+    // 60% weight on context analysis, 40% on AI analysis
+    const finalConfidence = (contextAnalysis.confidenceScore * 0.6) + ((analysis.confidence || 0.5) * 0.4);
     console.log(`🎯 Final confidence: ${(finalConfidence * 100).toFixed(0)}%`);
+    console.log(`   - Context: ${(contextAnalysis.confidenceScore * 100).toFixed(0)}%, AI: ${((analysis.confidence || 0.5) * 100).toFixed(0)}%`);
 
-    // GATE 1: Very Low Confidence (<40%) - Ask User for Clarification
-    if (finalConfidence < 0.4) {
+    // Helper: Generate contextual questions based on what's unclear
+    const generateContextualQuestions = (): string[] => {
+      const questions: string[] = [];
+      
+      // Check what's unclear about the request
+      if (request.length < 50) {
+        questions.push('Could you provide more details about what you want to build?');
+      }
+      
+      // If output type is unclear
+      if (!analysis.outputType || analysis.confidence < 0.5) {
+        questions.push('Are you looking to create a new website/app or modify existing code?');
+      }
+      
+      // If backend needs are unclear
+      if (analysis.backendRequirements && 
+          (analysis.backendRequirements.needsDatabase === undefined || 
+           analysis.backendRequirements.needsAuth === undefined)) {
+        questions.push('Will this need user accounts and data storage?');
+      }
+      
+      // If user intent is unclear (question vs build request)
+      if (contextAnalysis.userIntent === 'explore' || contextAnalysis.userIntent === 'question') {
+        questions.push('Are you asking a question or requesting me to build/modify something?');
+      }
+      
+      // If complexity is unclear
+      if (contextAnalysis.complexity === 'complex' && contextAnalysis.confidenceScore < 0.5) {
+        questions.push('What are the main features or sections you want to include?');
+      }
+      
+      // Default fallback questions if none generated
+      if (questions.length === 0) {
+        questions.push('What specific features or functionality do you want to focus on?');
+        questions.push('Do you have any design preferences or examples?');
+      }
+      
+      return questions.slice(0, 3); // Max 3 questions
+    };
+
+    // GATE 1: Very Low Confidence (<30%) - Ask User for Clarification
+    if (finalConfidence < 0.3) {
       console.log('❌ CONFIDENCE TOO LOW - Requesting user clarification');
+      
+      const contextualQuestions = generateContextualQuestions();
+      const concerns: string[] = [];
+      
+      if (contextAnalysis.confidenceScore < 0.4) {
+        concerns.push('Context quality is low - need more conversation history or details');
+      }
+      if (analysis.confidence && analysis.confidence < 0.4) {
+        concerns.push('Request classification is uncertain - unclear what type of work is needed');
+      }
+      if (request.length < 50) {
+        concerns.push('Request is very brief - more details would help ensure accuracy');
+      }
       
       await broadcast('confidence:low', {
         status: 'needs_clarification',
@@ -241,13 +303,11 @@ export async function executeGeneration(ctx: {
         decision: {
           classification: analysis.isMetaRequest ? 'meta_request' : analysis.outputType,
           confidence: finalConfidence,
-          intent: contextAnalysis.userIntent
+          intent: contextAnalysis.userIntent,
+          userRequest: request
         },
-        questions: [
-          'Could you provide more details about what you want to achieve?',
-          'Are there specific features or components you want to focus on?',
-          'Do you have any examples or references that might help?'
-        ]
+        questions: contextualQuestions,
+        concerns
       });
 
       return {
@@ -255,11 +315,8 @@ export async function executeGeneration(ctx: {
         confidence: finalConfidence,
         analysis,
         conversationContext,
-        questions: [
-          'Could you provide more details about what you want to achieve?',
-          'Are there specific features or components you want to focus on?',
-          'Do you have any examples or references that might help?'
-        ]
+        questions: contextualQuestions,
+        concerns
       };
     }
 
