@@ -3862,7 +3862,7 @@ export type Database = {
           existing_code_context: string | null
           feedback_type: Database["public"]["Enums"]["feedback_type"] | null
           framework: string | null
-          generated_code: string
+          generated_code: string | null
           generation_time_ms: number | null
           id: string
           metadata: Json | null
@@ -3891,7 +3891,7 @@ export type Database = {
           existing_code_context?: string | null
           feedback_type?: Database["public"]["Enums"]["feedback_type"] | null
           framework?: string | null
-          generated_code: string
+          generated_code?: string | null
           generation_time_ms?: number | null
           id?: string
           metadata?: Json | null
@@ -3920,7 +3920,7 @@ export type Database = {
           existing_code_context?: string | null
           feedback_type?: Database["public"]["Enums"]["feedback_type"] | null
           framework?: string | null
-          generated_code?: string
+          generated_code?: string | null
           generation_time_ms?: number | null
           id?: string
           metadata?: Json | null
