@@ -329,17 +329,20 @@ export function UniversalChatInterface({
               const isLastUserMessage = message.role === 'user' && 
                 index === messages.filter(m => m.role === 'user').length - 1;
 
-              // Get thinking steps for this message if it's a user message
+              // Show thinking steps inline for last user message when loading OR for assistant responses
               const userMessage = message.role === 'user' ? message : messages[index - 1];
               const stepsForMessage = userMessage?.role === 'user' ? messageSteps.get(userMessage.id) : undefined;
-              const showStepsHere = message.role === 'assistant' && stepsForMessage && stepsForMessage.length > 0;
+              const showStepsHere = (
+                (message.role === 'assistant' && stepsForMessage && stepsForMessage.length > 0) ||
+                (isLastUserMessage && isLoading && thinkingSteps.length > 0)
+              );
 
               return (
                 <div key={message.id}>
-                  {/* Show thinking steps above assistant response */}
+                  {/* Show thinking steps inline during generation or above assistant response */}
                   {showStepsHere && (
                     <div className="mb-2">
-                      <InlineThinkingSteps steps={stepsForMessage} />
+                      <InlineThinkingSteps steps={isLoading && isLastUserMessage ? thinkingSteps : stepsForMessage || []} />
                     </div>
                   )}
                   
@@ -465,16 +468,6 @@ export function UniversalChatInterface({
                       </div>
                     </Card>
                   </div>
-                  
-                  {/* Show real-time AI progress after last user message when loading */}
-                  {isLastUserMessage && isLoading && (
-                    <div className="mt-3">
-                      <RealtimeAIPanel 
-                        projectId={projectId}
-                        conversationId={conversationId || activeConversationId}
-                      />
-                    </div>
-                  )}
                 </div>
               );
             })}
