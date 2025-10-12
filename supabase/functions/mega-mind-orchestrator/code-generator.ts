@@ -19,6 +19,40 @@ import {
 /**
  * Generate, validate, and package code using framework-specific builders
  */
+/**
+ * Thinking Step Tracker - Same as orchestrator
+ */
+class ThinkingStepTracker {
+  private startTimes: Map<string, number> = new Map();
+
+  async trackStep(operation: string, detail: string, broadcast: Function, status: 'start' | 'complete' = 'start') {
+    if (status === 'start') {
+      this.startTimes.set(operation, Date.now());
+      await broadcast('thinking_step', {
+        operation,
+        detail,
+        status: 'active',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      const startTime = this.startTimes.get(operation) || Date.now();
+      const duration = (Date.now() - startTime) / 1000;
+      this.startTimes.delete(operation);
+      
+      await broadcast('thinking_step', {
+        operation,
+        detail,
+        status: 'complete',
+        duration,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+}
+
+/**
+ * Generate, validate, and package code using framework-specific builders
+ */
 export async function generateAndPackageCode(ctx: {
   request: string;
   conversationId: string;
@@ -51,6 +85,9 @@ export async function generateAndPackageCode(ctx: {
     startTime
   } = ctx;
 
+  // Initialize thinking step tracker
+  const stepTracker = new ThinkingStepTracker();
+
   // Check for retry
   const isRetry = conversationContext.isRetry || false;
   const resumeProgress = conversationContext.resumeFromProgress || 0;
@@ -69,6 +106,7 @@ export async function generateAndPackageCode(ctx: {
     };
     frameworkBuilder = FrameworkBuilderFactory.createBuilder(framework);
   } else {
+    await stepTracker.trackStep('generate_files', 'Initializing code generation', broadcast, 'start');
     await broadcast('generation:coding', { 
       status: 'generating', 
       message: '🔧 Initializing framework-specific builder...', 
@@ -99,10 +137,12 @@ export async function generateAndPackageCode(ctx: {
     generatedCode = await frameworkBuilder.generateFiles(buildContext, generationPlan);
     console.log(`✅ Generated ${generatedCode.files.length} files using ${generatedCode.framework} builder`);
 
+    await stepTracker.trackStep('generate_files', `Generated ${generatedCode.files.length} files`, broadcast, 'complete');
     await updateJobProgress(75, 'Code generation complete', 'Building Components', []);
   }
 
   // Step 5: Validate files
+  await stepTracker.trackStep('validate_code', `Checking ${generatedCode.files.length} files`, broadcast, 'start');
   await broadcast('generation:validating', { 
     status: 'validating', 
     message: '🔍 Validating generated files...', 
@@ -117,6 +157,7 @@ export async function generateAndPackageCode(ctx: {
     console.warn('⚠️ Validation warnings:', validationResult.warnings);
     console.error('❌ Validation errors:', validationResult.errors);
     
+    await stepTracker.trackStep('validate_code', `Found ${validationResult.errors.length} errors`, broadcast, 'complete');
     await broadcast('generation:validation_warning', {
       status: 'warning',
       message: `⚠️ ${validationResult.errors.length} validation issue(s) found`,
@@ -129,6 +170,7 @@ export async function generateAndPackageCode(ctx: {
   } else if (validationResult.warnings.length > 0) {
     console.warn('⚠️ Validation passed with warnings:', validationResult.warnings);
     
+    await stepTracker.trackStep('validate_code', `Passed with ${validationResult.warnings.length} warnings`, broadcast, 'complete');
     await broadcast('generation:validation_success', {
       status: 'success',
       message: `✅ Validation passed (${validationResult.warnings.length} warnings)`,
@@ -140,6 +182,7 @@ export async function generateAndPackageCode(ctx: {
   } else {
     console.log('✅ Validation passed with no issues');
     
+    await stepTracker.trackStep('validate_code', 'All checks passed', broadcast, 'complete');
     await broadcast('generation:validation_success', {
       status: 'success',
       message: '✅ All validation checks passed',
@@ -168,6 +211,7 @@ export async function generateAndPackageCode(ctx: {
   };
   
   if (validationResult.errors.length > 0) {
+    await stepTracker.trackStep('auto_fix', 'Analyzing and fixing errors', broadcast, 'start');
     await broadcast('generation:auto_fixing', { 
       status: 'auto_fixing', 
       message: '🔧 Auto-fixing validation errors...', 
@@ -190,6 +234,7 @@ export async function generateAndPackageCode(ctx: {
         imports: f.imports || []
       }));
       
+      await stepTracker.trackStep('auto_fix', `Fixed ${autoFixResult.fixedErrorTypes.length} error types`, broadcast, 'complete');
       await broadcast('generation:auto_fixed', {
         status: 'success',
         message: `✅ Auto-fixed ${autoFixResult.fixedErrorTypes.join(', ')}`,
@@ -199,6 +244,8 @@ export async function generateAndPackageCode(ctx: {
           fixedTypes: autoFixResult.fixedErrorTypes
         }
       });
+    } else {
+      await stepTracker.trackStep('auto_fix', 'Auto-fix completed', broadcast, 'complete');
     }
   }
 

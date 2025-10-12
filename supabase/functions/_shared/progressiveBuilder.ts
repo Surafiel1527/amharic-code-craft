@@ -8,6 +8,37 @@
 import { callAIWithFallback } from './aiHelpers.ts';
 import { buildWebsitePrompt } from './promptTemplates.ts';
 
+/**
+ * Thinking Step Tracker - Same as orchestrator
+ */
+class ThinkingStepTracker {
+  private startTimes: Map<string, number> = new Map();
+
+  async trackStep(operation: string, detail: string, broadcast: Function, status: 'start' | 'complete' = 'start') {
+    if (status === 'start') {
+      this.startTimes.set(operation, Date.now());
+      await broadcast('thinking_step', {
+        operation,
+        detail,
+        status: 'active',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      const startTime = this.startTimes.get(operation) || Date.now();
+      const duration = (Date.now() - startTime) / 1000;
+      this.startTimes.delete(operation);
+      
+      await broadcast('thinking_step', {
+        operation,
+        detail,
+        status: 'complete',
+        duration,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+}
+
 export interface BuildPhase {
   phaseNumber: number;
   name: string;
@@ -51,6 +82,7 @@ export class ProgressiveBuilder {
   private analysis: any;
   private framework: string;
   private broadcast: (event: string, data: any) => Promise<void>;
+  private stepTracker: ThinkingStepTracker;
 
   constructor(
     originalRequest: string, 
@@ -62,6 +94,7 @@ export class ProgressiveBuilder {
     this.analysis = analysis;
     this.framework = framework;
     this.broadcast = broadcast;
+    this.stepTracker = new ThinkingStepTracker();
   }
 
   /**
@@ -77,6 +110,7 @@ export class ProgressiveBuilder {
       const phase = phases[i];
       console.log(`📦 Starting Phase ${phase.phaseNumber}/${phases.length}: ${phase.name}`);
       
+      await this.stepTracker.trackStep('phase_start', `Phase ${phase.phaseNumber}: ${phase.name}`, this.broadcast, 'start');
       await this.broadcast('generation:phase_start', {
         status: 'generating',
         message: `📦 Phase ${phase.phaseNumber}/${phases.length}: ${phase.name}`,
@@ -97,6 +131,7 @@ export class ProgressiveBuilder {
 
       if (!result.success) {
         console.error(`❌ Phase ${phase.phaseNumber} failed:`, result.errors);
+        await this.stepTracker.trackStep('phase_start', `Failed: ${result.errors[0]}`, this.broadcast, 'complete');
         await this.broadcast('generation:phase_failed', {
           status: 'error',
           message: `Failed: ${result.errors[0]}`,
@@ -106,6 +141,7 @@ export class ProgressiveBuilder {
         break;
       }
 
+      await this.stepTracker.trackStep('phase_start', `Completed ${result.filesGenerated.length} files`, this.broadcast, 'complete');
       await this.broadcast('generation:phase_complete', {
         status: 'generating',
         message: `✅ Completed Phase ${phase.phaseNumber}: ${phase.name}`,
@@ -246,6 +282,9 @@ export class ProgressiveBuilder {
         const file = phase.files[i];
         const fileNumber = completedFiles + i + 1;
         
+        // Track thinking step for file generation
+        await this.stepTracker.trackStep('generate_file', `${file.path}`, this.broadcast, 'start');
+        
         // Broadcast file-level progress
         await this.broadcast('generation:file_start', {
           status: 'generating',
@@ -295,6 +334,9 @@ Return ONLY the code, no markdown, no explanations.`;
           file.content = result.data.choices[0].message.content;
           filesGenerated.push(file.path);
           
+          // Track completion
+          await this.stepTracker.trackStep('generate_file', `Completed ${file.path}`, this.broadcast, 'complete');
+          
           // Broadcast file completion
           await this.broadcast('generation:file_complete', {
             status: 'generating',
@@ -305,6 +347,8 @@ Return ONLY the code, no markdown, no explanations.`;
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           errors.push(`Failed to generate ${file.path}: ${errorMessage}`);
+          
+          await this.stepTracker.trackStep('generate_file', `Failed: ${errorMessage}`, this.broadcast, 'complete');
           
           await this.broadcast('generation:file_error', {
             status: 'error',

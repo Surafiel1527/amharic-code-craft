@@ -28,6 +28,31 @@ const OPERATION_CONFIG = {
     icon: Code,
     label: 'Created plan',
     color: 'text-orange-400'
+  },
+  generate_files: {
+    icon: Code,
+    label: 'Generated files',
+    color: 'text-cyan-400'
+  },
+  validate_code: {
+    icon: CheckCircle2,
+    label: 'Validated code',
+    color: 'text-green-400'
+  },
+  auto_fix: {
+    icon: Code,
+    label: 'Auto-fixed issues',
+    color: 'text-yellow-400'
+  },
+  generate_file: {
+    icon: FileSearch,
+    label: 'Generated file',
+    color: 'text-indigo-400'
+  },
+  phase_start: {
+    icon: Target,
+    label: 'Started phase',
+    color: 'text-pink-400'
   }
 };
 
