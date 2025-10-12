@@ -61,7 +61,8 @@ export function InlineThinkingSteps({ steps, className }: InlineThinkingStepsPro
 
   if (steps.length === 0) return null;
 
-  const completedSteps = steps.filter(s => s.status === 'complete');
+  // ✅ Show ALL steps (active, complete, pending) - not just completed ones
+  const visibleSteps = steps;
 
   const toggleStep = (stepId: string) => {
     setExpandedSteps(prev => {
@@ -77,7 +78,7 @@ export function InlineThinkingSteps({ steps, className }: InlineThinkingStepsPro
 
   return (
     <div className={cn("space-y-1.5 mb-3", className)}>
-      {completedSteps.map((step) => {
+      {visibleSteps.map((step) => {
         const config = OPERATION_CONFIG[step.operation as keyof typeof OPERATION_CONFIG] || {
           icon: CheckCircle2,
           label: step.operation,

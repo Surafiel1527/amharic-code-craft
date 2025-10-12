@@ -416,15 +416,15 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
   // Detect mobile
   const isMobile = window.innerWidth < 768;
 
-  // On mobile, render as fixed banner instead of full-screen
+  // On mobile, render as compact banner above navigation
   if (isMobile) {
     return (
-      <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-4">
-        <Card className="w-full p-4 space-y-3 bg-gradient-to-br from-background via-background to-primary/5 shadow-2xl border-2">
+      <div className="fixed bottom-20 left-0 right-0 z-40 px-3">
+        <Card className="w-full p-3 space-y-2 bg-background/95 backdrop-blur-sm shadow-lg border-primary/50">
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="py-2">
               <XCircle className="h-4 w-4" />
-              <AlertDescription className="ml-2">
+              <AlertDescription className="ml-2 text-xs">
                 <div>
                   <strong>Generation Failed:</strong> {error}
                 </div>
@@ -432,21 +432,21 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
             </Alert>
           )}
 
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <motion.div
                 animate={{ rotate: (isComplete && !error) ? 0 : 360 }}
                 transition={{ duration: 2, repeat: (isComplete && !error) ? 0 : Infinity, ease: "linear" }}
                 className="flex-shrink-0"
               >
-                {error ? <XCircle className="h-5 w-5 text-destructive" /> : getPhaseIcon(currentPhase)}
+                {error ? <XCircle className="h-4 w-4 text-destructive" /> : getPhaseIcon(currentPhase)}
               </motion.div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">
-                  {error ? 'Generation Failed' : (isComplete ? 'Project Ready!' : 'Generating HTML/CSS/JS project...')}
+                <p className="text-xs font-semibold truncate">
+                  {error ? 'Generation Failed' : (isComplete ? 'Project Ready!' : 'Generating project...')}
                 </p>
                 {!error && !isComplete && currentOperation && (
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-[10px] text-muted-foreground truncate">
                     {currentOperation}
                   </p>
                 )}
@@ -454,24 +454,35 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
             </div>
             
             {!error && !isComplete && (
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="text-xs font-medium text-primary">{progress}%</span>
-              </div>
+              <span className="text-xs font-medium text-primary flex-shrink-0">{progress}%</span>
             )}
           </div>
 
           {!error && !isComplete && (
-            <Progress value={progress} className="h-2" />
+            <Progress value={progress} className="h-1" />
           )}
 
           {error && (
             <div className="flex gap-2">
-              <Button onClick={handleRetry} disabled={isRetrying} size="sm" className="flex-1">
-                {isRetrying ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RotateCcw className="w-4 h-4 mr-2" />}
-                Retry
+              <Button
+                onClick={handleRetry}
+                disabled={isRetrying}
+                className="flex-1 h-8 text-xs"
+              >
+                {isRetrying ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                    Retrying...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="mr-1.5 h-3 w-3" />
+                    Retry
+                  </>
+                )}
               </Button>
-              <Button onClick={() => window.location.href = '/'} variant="outline" size="sm">
-                Home
+              <Button onClick={onCancel} variant="outline" className="h-8 text-xs px-3">
+                Cancel
               </Button>
             </div>
           )}
