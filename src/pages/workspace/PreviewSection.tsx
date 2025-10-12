@@ -19,6 +19,7 @@ interface PreviewSectionProps {
   projectTitle?: string;
   selectedFiles?: string[];
   onFileSelect?: (path: string) => void;
+  projectFiles?: any[]; // Real files from database
 }
 
 export function PreviewSection({ 
@@ -29,15 +30,27 @@ export function PreviewSection({
   mobileTab = 'preview',
   projectTitle = 'project',
   selectedFiles = [],
-  onFileSelect
+  onFileSelect,
+  projectFiles = []
 }: PreviewSectionProps) {
   const isMobile = useIsMobile();
   const [selectedFile, setSelectedFile] = useState<string>(framework === 'react' ? 'src/App.tsx' : 'index.html');
   
-  // Generate all file contents
+  // Generate all file contents - use real project files if available
   const fileContents = useMemo(() => {
     const files: Record<string, string> = {};
     
+    // 🆕 Use real project files from database if available
+    if (projectFiles && projectFiles.length > 0) {
+      console.log('📁 Using real project files from database:', projectFiles.length);
+      projectFiles.forEach(file => {
+        files[file.file_path] = file.file_content;
+      });
+      return files;
+    }
+    
+    // Fallback: Generate dummy files from htmlCode for legacy single-file projects
+    console.log('⚠️ No project files found, generating dummy files from htmlCode');
     if (framework === 'react') {
       files['src/App.tsx'] = htmlCode;
       files['src/main.tsx'] = `import React from 'react'
@@ -144,7 +157,7 @@ npm run build
     }
     
     return files;
-  }, [htmlCode, framework, projectTitle]);
+  }, [htmlCode, framework, projectTitle, projectFiles]);
   
   const handleDownloadZip = async () => {
     try {

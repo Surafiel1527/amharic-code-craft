@@ -723,6 +723,7 @@ export default function Workspace() {
             projectTitle={project.title}
             selectedFiles={selectedFiles}
             onFileSelect={handleSelectFile}
+            projectFiles={projectFiles}
           />
         )}
       </WorkspaceLayout>
