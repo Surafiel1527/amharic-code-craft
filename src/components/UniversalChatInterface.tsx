@@ -24,6 +24,8 @@ import { useUniversalAIChat, Message } from "@/hooks/useUniversalAIChat";
 import { EnhancedSensitiveDataDetector } from "@/components/EnhancedSensitiveDataDetector";
 import { RealtimeAIPanel } from "@/components/RealtimeAIPanel";
 import { PlanApprovalCard } from "@/components/PlanApprovalCard";
+import { useThinkingSteps } from "@/hooks/useThinkingSteps";
+import { InlineThinkingSteps } from "@/components/InlineThinkingSteps";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css";
 import "prismjs/components/prism-typescript";
@@ -147,6 +149,10 @@ export function UniversalChatInterface({
   const config = MODE_CONFIGS[mode];
   const containerHeight = height || config.height;
 
+  // Thinking steps tracking
+  const { steps: thinkingSteps, clearSteps } = useThinkingSteps(projectId);
+  const [messageSteps, setMessageSteps] = useState<Map<string, typeof thinkingSteps>>(new Map());
+
   // Use the unified AI brain
   const {
     messages,
@@ -172,6 +178,24 @@ export function UniversalChatInterface({
     projectContext: { ...projectContext, ...(context || {}) }, // Merge contexts
     mode: operationMode // Pass operation mode to the hook
   });
+
+  // Capture thinking steps for the current message
+  useEffect(() => {
+    if (thinkingSteps.length > 0 && isLoading) {
+      // Associate steps with the last user message
+      const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+      if (lastUserMessage) {
+        setMessageSteps(prev => new Map(prev).set(lastUserMessage.id, [...thinkingSteps]));
+      }
+    }
+  }, [thinkingSteps, isLoading, messages]);
+
+  // Clear steps when generation completes
+  useEffect(() => {
+    if (!isLoading) {
+      setTimeout(clearSteps, 500);
+    }
+  }, [isLoading, clearSteps]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -336,8 +360,20 @@ export function UniversalChatInterface({
               const isLastUserMessage = message.role === 'user' && 
                 index === messages.filter(m => m.role === 'user').length - 1;
 
+              // Get thinking steps for this message if it's a user message
+              const userMessage = message.role === 'user' ? message : messages[index - 1];
+              const stepsForMessage = userMessage?.role === 'user' ? messageSteps.get(userMessage.id) : undefined;
+              const showStepsHere = message.role === 'assistant' && stepsForMessage && stepsForMessage.length > 0;
+
               return (
                 <div key={message.id}>
+                  {/* Show thinking steps above assistant response */}
+                  {showStepsHere && (
+                    <div className="mb-2">
+                      <InlineThinkingSteps steps={stepsForMessage} />
+                    </div>
+                  )}
+                  
                   <div
                     className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >

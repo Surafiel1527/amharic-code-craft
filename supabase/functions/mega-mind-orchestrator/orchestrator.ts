@@ -42,6 +42,37 @@ import { FeatureDependencyGraph } from '../_shared/featureDependencyGraph.ts';
 import { SchemaArchitect } from '../_shared/schemaArchitect.ts';
 
 /**
+ * Thinking Step Tracker - Records granular AI operations with timing
+ */
+class ThinkingStepTracker {
+  private startTimes: Map<string, number> = new Map();
+
+  async trackStep(operation: string, detail: string, broadcast: Function, status: 'start' | 'complete' = 'start') {
+    if (status === 'start') {
+      this.startTimes.set(operation, Date.now());
+      await broadcast('thinking_step', {
+        operation,
+        detail,
+        status: 'active',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      const startTime = this.startTimes.get(operation) || Date.now();
+      const duration = (Date.now() - startTime) / 1000; // seconds
+      this.startTimes.delete(operation);
+      
+      await broadcast('thinking_step', {
+        operation,
+        detail,
+        status: 'complete',
+        duration,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+}
+
+/**
  * Core processing pipeline with timeout protection
  */
 export async function processRequest(ctx: {
@@ -121,6 +152,9 @@ export async function executeGeneration(ctx: {
   
   // Track start time for metrics
   const startTime = ctx.startTime!;
+  
+  // Initialize thinking step tracker
+  const stepTracker = new ThinkingStepTracker();
 
   // Retry logic
   const isRetry = conversationContext.isRetry || false;
@@ -176,6 +210,7 @@ export async function executeGeneration(ctx: {
 
   // Step 1: Analyze request
   if (!isRetry || resumeProgress < 25) {
+    await stepTracker.trackStep('analyze_request', 'Reading and understanding your request', broadcast, 'start');
     await broadcast('generation:thinking', { 
       status: 'analyzing', 
       message: '🔍 Understanding your request...', 
@@ -212,6 +247,7 @@ export async function executeGeneration(ctx: {
     (conversationContext as any)._learnedPatterns = learnedPatterns;
 
     const analysis = await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase);
+    await stepTracker.trackStep('analyze_request', `Classified as ${analysis.outputType || 'code generation'}`, broadcast, 'complete');
     
     console.log('📊 Analysis complete:', JSON.stringify(analysis, null, 2));
     console.log('🤖 AI Analysis:', {
@@ -222,6 +258,7 @@ export async function executeGeneration(ctx: {
     });
 
     // AGI: Log decision for learning
+    await stepTracker.trackStep('make_decision', 'Evaluating confidence and approach', broadcast, 'start');
     const decisionId = await logDecision(analysis, {
       userId,
       conversationId,
@@ -235,6 +272,7 @@ export async function executeGeneration(ctx: {
     // Use weighted average instead of multiplication to avoid being too strict
     // 60% weight on context analysis, 40% on AI analysis
     const finalConfidence = (contextAnalysis.confidenceScore * 0.6) + ((analysis.confidence || 0.5) * 0.4);
+    await stepTracker.trackStep('make_decision', `Confidence: ${(finalConfidence * 100).toFixed(0)}%`, broadcast, 'complete');
     console.log(`🎯 Final confidence: ${(finalConfidence * 100).toFixed(0)}%`);
     console.log(`   - Context: ${(contextAnalysis.confidenceScore * 100).toFixed(0)}%, AI: ${((analysis.confidence || 0.5) * 100).toFixed(0)}%`);
 
@@ -438,6 +476,7 @@ export async function executeGeneration(ctx: {
     const { analyzeCodebase } = await import('../_shared/codebaseAnalyzer.ts');
     const { generateDetailedPlan, formatPlanForDisplay } = await import('../_shared/implementationPlanner.ts');
     
+    await stepTracker.trackStep('read_codebase', 'Scanning project files and structure', broadcast, 'start');
     await broadcast('generation:planning', { 
       status: 'analyzing_codebase', 
       message: '🔍 Analyzing existing codebase...', 
@@ -454,7 +493,9 @@ export async function executeGeneration(ctx: {
     );
 
     console.log(`📁 Codebase analysis: ${codebaseAnalysis.totalFiles} files, ${codebaseAnalysis.similarFunctionality.length} similar`);
+    await stepTracker.trackStep('read_codebase', `Found ${codebaseAnalysis.totalFiles} files`, broadcast, 'complete');
 
+    await stepTracker.trackStep('create_plan', 'Breaking down implementation into steps', broadcast, 'start');
     await broadcast('generation:planning', { 
       status: 'creating_plan', 
       message: '📋 Creating detailed implementation plan...', 
@@ -472,6 +513,7 @@ export async function executeGeneration(ctx: {
     );
 
     const formattedPlan = formatPlanForDisplay(detailedPlan);
+    await stepTracker.trackStep('create_plan', 'Implementation plan created', broadcast, 'complete');
     
     await broadcast('generation:plan_ready', { 
       status: 'awaiting_approval', 
