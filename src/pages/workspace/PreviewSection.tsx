@@ -297,46 +297,50 @@ npm run build
     }
   };
   
-  return (
-    <div className={`${isMobile ? 'h-full' : 'grid lg:grid-cols-2 gap-4 p-4 h-full'}`}>
-      {/* Chat Interface - Always rendered to keep state */}
-      <div className={isMobile && mobileTab !== 'chat' ? 'hidden' : ''}>
-        <Card className={`p-4 flex flex-col ${isMobile ? 'h-full border-0 rounded-none' : ''}`}>
-          {!isMobile && <h2 className="text-lg font-semibold mb-4">AI Assistant</h2>}
-          <div className="flex-1 overflow-hidden">
-            {conversationId && (
-              <UniversalChatInterface
-                conversationId={conversationId}
-                projectId={projectId}
-                mode="panel"
-                persistMessages={true}
-                selectedFiles={selectedFiles}
-                projectFiles={Object.entries(fileContents).map(([path, content]) => ({
-                  file_path: path,
-                  file_content: typeof content === 'string' ? content : ''
-                }))}
-                context={{
-                  currentCode: htmlCode,
-                  projectId,
-                  conversationHistory: [],
-                  framework
-                }}
-              />
-            )}
-          </div>
-        </Card>
-      </div>
-
-      {/* Live Preview */}
-      <div className={isMobile && mobileTab !== 'preview' ? 'hidden' : ''}>
-        <Card className={`p-4 ${isMobile ? 'h-full border-0 rounded-none' : ''}`}>
-          {!isMobile && <h2 className="text-lg font-semibold mb-4">Live Preview</h2>}
-          <DevicePreview generatedCode={fileContents['index.html'] || htmlCode} />
-        </Card>
-      </div>
-      
-      {/* Code View - Mobile Only */}
-      {isMobile && mobileTab === 'code' && (
+  // On mobile, only render the active tab content
+  if (isMobile) {
+    if (mobileTab === 'chat') {
+      return (
+        <div className="h-full">
+          <Card className="p-4 flex flex-col h-full border-0 rounded-none">
+            <div className="flex-1 overflow-hidden">
+              {conversationId && (
+                <UniversalChatInterface
+                  conversationId={conversationId}
+                  projectId={projectId}
+                  mode="panel"
+                  persistMessages={true}
+                  selectedFiles={selectedFiles}
+                  projectFiles={Object.entries(fileContents).map(([path, content]) => ({
+                    file_path: path,
+                    file_content: typeof content === 'string' ? content : ''
+                  }))}
+                  context={{
+                    currentCode: htmlCode,
+                    projectId,
+                    conversationHistory: [],
+                    framework
+                  }}
+                />
+              )}
+            </div>
+          </Card>
+        </div>
+      );
+    }
+    
+    if (mobileTab === 'preview') {
+      return (
+        <div className="h-full">
+          <Card className="p-4 h-full border-0 rounded-none">
+            <DevicePreview generatedCode={fileContents['index.html'] || htmlCode} />
+          </Card>
+        </div>
+      );
+    }
+    
+    if (mobileTab === 'code') {
+      return (
         <div className="h-full flex flex-col border-0">
           <div className="flex items-center justify-between p-4 border-b">
             <div className="flex items-center gap-2">
@@ -398,7 +402,46 @@ npm run build
             </div>
           </ScrollArea>
         </div>
-      )}
+      );
+    }
+    
+    return null;
+  }
+  
+  // Desktop: render side-by-side
+  return (
+    <div className="grid lg:grid-cols-2 gap-4 p-4 h-full">
+      {/* Chat Interface */}
+      <Card className="p-4 flex flex-col">
+        <h2 className="text-lg font-semibold mb-4">AI Assistant</h2>
+        <div className="flex-1 overflow-hidden">
+          {conversationId && (
+            <UniversalChatInterface
+              conversationId={conversationId}
+              projectId={projectId}
+              mode="panel"
+              persistMessages={true}
+              selectedFiles={selectedFiles}
+              projectFiles={Object.entries(fileContents).map(([path, content]) => ({
+                file_path: path,
+                file_content: typeof content === 'string' ? content : ''
+              }))}
+              context={{
+                currentCode: htmlCode,
+                projectId,
+                conversationHistory: [],
+                framework
+              }}
+            />
+          )}
+        </div>
+      </Card>
+
+      {/* Live Preview */}
+      <Card className="p-4">
+        <h2 className="text-lg font-semibold mb-4">Live Preview</h2>
+        <DevicePreview generatedCode={fileContents['index.html'] || htmlCode} />
+      </Card>
     </div>
   );
 }
