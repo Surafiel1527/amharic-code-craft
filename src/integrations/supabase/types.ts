@@ -7596,7 +7596,7 @@ export type Database = {
       }
       thinking_steps: {
         Row: {
-          conversation_id: string | null
+          conversation_id: string
           created_at: string
           detail: string
           duration: number | null
@@ -7607,9 +7607,10 @@ export type Database = {
           project_id: string | null
           status: string
           timestamp: string
+          user_id: string
         }
         Insert: {
-          conversation_id?: string | null
+          conversation_id: string
           created_at?: string
           detail: string
           duration?: number | null
@@ -7620,9 +7621,10 @@ export type Database = {
           project_id?: string | null
           status: string
           timestamp?: string
+          user_id: string
         }
         Update: {
-          conversation_id?: string | null
+          conversation_id?: string
           created_at?: string
           detail?: string
           duration?: number | null
@@ -7633,6 +7635,7 @@ export type Database = {
           project_id?: string | null
           status?: string
           timestamp?: string
+          user_id?: string
         }
         Relationships: [
           {

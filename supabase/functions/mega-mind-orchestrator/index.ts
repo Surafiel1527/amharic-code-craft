@@ -110,6 +110,7 @@ serve(async (req) => {
             await platformSupabase.from('thinking_steps').insert({
               conversation_id: conversationId,
               project_id: projectId,
+              user_id: userId,
               operation: data.operation,
               detail: data.detail,
               status: data.status,
