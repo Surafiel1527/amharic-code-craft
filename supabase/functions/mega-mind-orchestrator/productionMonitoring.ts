@@ -97,7 +97,7 @@ export async function logGenerationSuccess(
       data: {
         project_id: details.projectId,
         user_id: details.userId,
-        user_prompt: details.userRequest, // Database expects user_prompt, not user_request
+        user_request: details.userRequest,
         success: true,
         framework: details.framework,
         metadata: {

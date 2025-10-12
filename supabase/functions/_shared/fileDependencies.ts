@@ -68,7 +68,7 @@ export async function storeFileDependency(
       component_type: data.componentType,
       depends_on: data.dependsOn || [],
       used_by: data.usedBy || [],
-      complexity_score: Math.round(data.complexityScore || 1), // Convert to integer
+      complexity_score: data.complexityScore || 1,
       criticality: data.criticality || 'medium'
     });
 

@@ -36,7 +36,6 @@ import {
   getDynamicConfidenceThreshold
 } from './learning-integration.ts';
 
-// Reasoning engine - mimics human-like thinking
 // Enterprise modules
 import { FeatureOrchestrator } from '../_shared/featureOrchestrator.ts';
 import { FeatureDependencyGraph } from '../_shared/featureDependencyGraph.ts';
@@ -212,7 +211,6 @@ export async function executeGeneration(ctx: {
     console.log(`📚 Found ${learnedPatterns.length} relevant patterns from past successes`);
     (conversationContext as any)._learnedPatterns = learnedPatterns;
 
-    // Analyze the request
     const analysis = await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase);
     
     console.log('📊 Analysis complete:', JSON.stringify(analysis, null, 2));

@@ -6351,36 +6351,6 @@ export type Database = {
           },
         ]
       }
-      reasoning_traces: {
-        Row: {
-          complexity: string | null
-          confidence: number
-          created_at: string | null
-          id: string
-          needed_clarification: boolean | null
-          reasoning_output: Json
-          user_request: string
-        }
-        Insert: {
-          complexity?: string | null
-          confidence: number
-          created_at?: string | null
-          id?: string
-          needed_clarification?: boolean | null
-          reasoning_output: Json
-          user_request: string
-        }
-        Update: {
-          complexity?: string | null
-          confidence?: number
-          created_at?: string | null
-          id?: string
-          needed_clarification?: boolean | null
-          reasoning_output?: Json
-          user_request?: string
-        }
-        Relationships: []
-      }
       refactoring_suggestions: {
         Row: {
           applied_at: string | null

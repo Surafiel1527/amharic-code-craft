@@ -53,7 +53,7 @@ serve(async (req) => {
     const projectId = context.projectId || null;
 
     console.log('🚀 Mega Mind Orchestrator started', { 
-      request: request ? request.substring(0, 100) : 'No request', 
+      request: request.substring(0, 100), 
       conversationId, 
       userId, 
       requestType,
@@ -159,23 +159,7 @@ serve(async (req) => {
       userSupabaseConnection,
       broadcast
     }).then(async (orchestrationResult) => {
-      // Check if clarification is needed or if it's a conversation-only response
-      if (orchestrationResult.needsClarification || orchestrationResult.conversationOnly) {
-        console.log('⏸️ Skipping code generation - needs clarification or conversation only');
-        return;
-      }
-      
-      // Continue with code generation only if we have updateJobProgress
-      if (!orchestrationResult.updateJobProgress) {
-        console.error('❌ Missing updateJobProgress function');
-        await broadcast('generation:failed', {
-          status: 'error',
-          error: 'Internal error: missing progress tracking',
-          progress: 0
-        });
-        return;
-      }
-      
+      // Continue with code generation
       const packagedCode = await generateAndPackageCode({
         request,
         conversationId,
@@ -286,24 +270,38 @@ serve(async (req) => {
         
         const hasLearnedPattern = !!(matchingPatterns && matchingPatterns.length > 0);
         
-        // Context analysis should be available from orchestrator
-        const contextAnalysis = (conversationContext as any)._contextAnalysis || {
-          userIntent: 'fix',
-          complexity: 'moderate',
-          confidenceScore: 0.5,
-          projectState: {
-            hasAuth: false,
-            hasDatabase: false,
-            recentErrors: 0,
-            successRate: 0.5,
-            generationHistory: []
-          },
-          patterns: {
-            commonIssues: [],
-            userPreferences: [],
-            successfulApproaches: []
-          }
-        };
+        // Get context analysis (might be from earlier in the flow)
+        let contextAnalysis: any;
+        try {
+          contextAnalysis = (conversationContext as any)._contextAnalysis || await analyzeContext(
+            platformSupabase as any,
+            conversationId,
+            userId,
+            request,
+            projectId || undefined
+          );
+        } catch (analysisError) {
+          console.error('Context analysis failed, using defaults:', analysisError);
+          // Use default context
+          contextAnalysis = {
+            userIntent: 'fix',
+            complexity: 'moderate',
+            confidenceScore: 0.5,
+            projectState: {
+              hasAuth: false,
+              hasDatabase: false,
+              recentErrors: 0,
+              successRate: 0.5,
+              generationHistory: []
+            },
+            patterns: {
+              commonIssues: [],
+              userPreferences: [],
+              successfulApproaches: []
+            },
+            contextQuality: 50
+          };
+        }
         
         // Map critical severity to high for decision making
         const mappedSeverity = errorClassification.severity === 'critical' ? 'high' : errorClassification.severity as 'low' | 'medium' | 'high';
