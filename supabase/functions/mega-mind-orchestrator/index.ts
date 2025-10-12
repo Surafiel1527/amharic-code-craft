@@ -92,8 +92,9 @@ serve(async (req) => {
         // Use conversationId for channel to match client subscription
         const channel = platformSupabase.channel(`ai-status-${conversationId}`);
         
-        // Handle thinking steps specially - send with original event name
+        // Handle thinking steps specially - send with original event name AND persist to DB
         if (event === 'thinking_step') {
+          // Broadcast for real-time display
           await channel.send({
             type: 'broadcast',
             event: 'thinking_step',
@@ -103,7 +104,25 @@ serve(async (req) => {
               conversationId
             }
           });
-          console.log(`📡 Thinking step [${conversationId}]:`, data.operation, data.status);
+          
+          // Persist to database for permanent display after reload
+          try {
+            await platformSupabase.from('thinking_steps').insert({
+              conversation_id: conversationId,
+              project_id: projectId,
+              operation: data.operation,
+              detail: data.detail,
+              status: data.status,
+              duration: data.duration || null,
+              timestamp: data.timestamp
+            });
+            console.log(`💾 Thinking step saved [${conversationId}]:`, data.operation, data.status);
+          } catch (dbError) {
+            console.error('Failed to persist thinking step:', dbError);
+            // Don't throw - continue even if DB insert fails
+          }
+          
+          console.log(`📡 Thinking step broadcast [${conversationId}]:`, data.operation, data.status);
           return;
         }
         
