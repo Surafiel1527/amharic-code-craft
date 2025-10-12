@@ -12,64 +12,47 @@ const OPERATION_CONFIG = {
   analyze_request: {
     icon: Brain,
     label: 'Analyzed request',
-    color: 'text-blue-400',
-    getDescription: (detail?: string) => 'Understanding user requirements and context'
+    color: 'text-blue-400'
   },
   read_codebase: {
     icon: FileSearch,
     label: 'Read codebase',
-    color: 'text-purple-400',
-    getDescription: (detail?: string) => detail ? `Scanned ${detail}` : 'Reviewing existing code structure'
+    color: 'text-purple-400'
   },
   make_decision: {
     icon: Target,
     label: 'Made decision',
-    color: 'text-green-400',
-    getDescription: (detail?: string) => {
-      // Extract confidence if available
-      const match = detail?.match(/confidence[:\s]+(\d+)%/i);
-      return match ? `Confidence: ${match[1]}%` : 'Determined best approach';
-    }
+    color: 'text-green-400'
   },
   create_plan: {
     icon: Code,
     label: 'Created plan',
-    color: 'text-orange-400',
-    getDescription: (detail?: string) => detail || 'Implementation plan created'
+    color: 'text-orange-400'
   },
   generate_files: {
     icon: Code,
     label: 'Generated files',
-    color: 'text-cyan-400',
-    getDescription: (detail?: string) => {
-      // Extract file count if available
-      const match = detail?.match(/(\d+)\s+file/i);
-      return match ? `Created ${match[1]} files` : 'Writing code changes';
-    }
+    color: 'text-cyan-400'
   },
   validate_code: {
     icon: CheckCircle2,
     label: 'Validated code',
-    color: 'text-green-400',
-    getDescription: (detail?: string) => detail || 'Checking for errors and consistency'
+    color: 'text-green-400'
   },
   auto_fix: {
     icon: Code,
     label: 'Auto-fixed issues',
-    color: 'text-yellow-400',
-    getDescription: (detail?: string) => detail || 'Automatically resolved detected issues'
+    color: 'text-yellow-400'
   },
   generate_file: {
     icon: FileSearch,
     label: 'Generated file',
-    color: 'text-indigo-400',
-    getDescription: (detail?: string) => detail || 'Creating new file'
+    color: 'text-indigo-400'
   },
   phase_start: {
     icon: Target,
     label: 'Started phase',
-    color: 'text-pink-400',
-    getDescription: (detail?: string) => detail || 'Beginning new phase'
+    color: 'text-pink-400'
   }
 };
 
@@ -99,8 +82,7 @@ export function InlineThinkingSteps({ steps, className }: InlineThinkingStepsPro
         const config = OPERATION_CONFIG[step.operation as keyof typeof OPERATION_CONFIG] || {
           icon: CheckCircle2,
           label: step.operation,
-          color: 'text-gray-400',
-          getDescription: (detail?: string) => detail || 'Processing...'
+          color: 'text-gray-400'
         };
         const Icon = config.icon;
         const isExpanded = expandedSteps.has(step.id);
@@ -121,8 +103,8 @@ export function InlineThinkingSteps({ steps, className }: InlineThinkingStepsPro
               )}
               <Icon className={cn("h-3.5 w-3.5 flex-shrink-0", config.color)} />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-foreground">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-foreground">
                     {config.label}
                   </span>
                   {step.duration && (
@@ -131,9 +113,9 @@ export function InlineThinkingSteps({ steps, className }: InlineThinkingStepsPro
                     </span>
                   )}
                 </div>
-                {config.getDescription && (
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {config.getDescription(step.detail)}
+                {step.detail && (
+                  <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    {step.detail}
                   </div>
                 )}
               </div>
