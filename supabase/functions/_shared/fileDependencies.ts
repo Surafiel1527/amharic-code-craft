@@ -60,6 +60,7 @@ export async function storeFileDependency(
     return;
   }
 
+  // CRITICAL FIX: Add proper conflict handling for upsert
   const { error } = await supabase
     .from('component_dependencies')
     .upsert({
@@ -69,7 +70,11 @@ export async function storeFileDependency(
       depends_on: data.dependsOn || [],
       used_by: data.usedBy || [],
       complexity_score: data.complexityScore || 1,
-      criticality: data.criticality || 'medium'
+      criticality: data.criticality || 'medium',
+      updated_at: new Date().toISOString()
+    }, {
+      onConflict: 'conversation_id,component_name',
+      ignoreDuplicates: false
     });
 
   if (error) {

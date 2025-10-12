@@ -92,26 +92,59 @@ export async function analyzeCodebase(
 ): Promise<CodebaseAnalysisResult> {
   console.log('🔍 Starting codebase analysis for:', request);
 
-  // Extract file dependencies from conversation history
-  const { data: existingFiles } = await supabase
-    .from('file_dependencies')
+  // CRITICAL FIX: Read from both component_dependencies AND project_files
+  const { data: fileDeps } = await supabase
+    .from('component_dependencies')
     .select('*')
     .eq('conversation_id', conversationContext.conversationId)
     .order('created_at', { ascending: false })
     .limit(100);
 
-  const codebaseFiles: CodebaseFile[] = (existingFiles || []).map((file: any) => ({
-    path: file.component_name,
-    content: '',
-    type: detectFileType(file.component_name),
-    exports: [],
-    imports: file.depends_on || [],
-    functions: [],
-    components: file.component_type === 'component' ? [file.component_name] : [],
-    hooks: file.component_type === 'hook' ? [file.component_name] : []
-  }));
+  // CRITICAL FIX: Also read actual file content from project_files
+  let projectFiles: any[] = [];
+  if (conversationContext.projectId) {
+    const { data: files } = await supabase
+      .from('project_files')
+      .select('file_path, file_content, file_type')
+      .eq('project_id', conversationContext.projectId)
+      .order('created_at', { ascending: false });
+    projectFiles = files || [];
+  }
 
-  console.log(`📁 Found ${codebaseFiles.length} existing files in project`);
+  // CRITICAL FIX: Merge data from both sources
+  const fileMap = new Map<string, any>();
+  
+  // Add from component_dependencies
+  (fileDeps || []).forEach((file: any) => {
+    fileMap.set(file.component_name, {
+      path: file.component_name,
+      content: '',
+      type: detectFileType(file.component_name),
+      exports: [],
+      imports: file.depends_on || [],
+      functions: [],
+      components: file.component_type === 'component' ? [file.component_name] : [],
+      hooks: file.component_type === 'hook' ? [file.component_name] : []
+    });
+  });
+
+  // Add/update from project_files with actual content
+  projectFiles.forEach((file: any) => {
+    const existing = fileMap.get(file.file_path);
+    fileMap.set(file.file_path, {
+      path: file.file_path,
+      content: file.file_content || '',
+      type: detectFileType(file.file_path),
+      exports: [],
+      imports: existing?.imports || [],
+      functions: [],
+      components: existing?.components || [],
+      hooks: existing?.hooks || []
+    });
+  });
+
+  const codebaseFiles: CodebaseFile[] = Array.from(fileMap.values());
+  console.log(`📁 Found ${codebaseFiles.length} existing files in project (${projectFiles.length} with content)`);
 
   // Validate React files using codeValidator
   const reactFiles = codebaseFiles.filter(f => 

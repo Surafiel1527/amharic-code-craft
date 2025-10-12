@@ -335,7 +335,7 @@ export async function generateAndPackageCode(ctx: {
       console.log('✅ Project updated successfully');
     }
 
-    // CRITICAL FIX: Always save individual files to project_files table (removed length check)
+    // CRITICAL FIX: Always save individual files to project_files table with proper conflict handling
     console.log(`💾 Saving ${generatedCode.files.length} individual files...`);
     
     for (const file of generatedCode.files) {
@@ -346,7 +346,11 @@ export async function generateAndPackageCode(ctx: {
           file_path: file.path,
           file_content: file.content,
           file_type: file.language || 'typescript',
-          created_by: userId
+          created_by: userId,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'project_id,file_path',
+          ignoreDuplicates: false
         });
       
       if (fileError) {
