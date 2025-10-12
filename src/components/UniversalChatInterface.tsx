@@ -181,19 +181,19 @@ export function UniversalChatInterface({
 
   // Capture thinking steps for the current message
   useEffect(() => {
-    if (thinkingSteps.length > 0 && isLoading) {
+    if (thinkingSteps.length > 0) {
       // Associate steps with the last user message
       const lastUserMessage = messages.filter(m => m.role === 'user').pop();
       if (lastUserMessage) {
         setMessageSteps(prev => new Map(prev).set(lastUserMessage.id, [...thinkingSteps]));
       }
     }
-  }, [thinkingSteps, isLoading, messages]);
+  }, [thinkingSteps, messages]);
 
-  // Clear steps when generation completes
+  // Clear steps when generation completes (keep visible for 5 seconds)
   useEffect(() => {
     if (!isLoading) {
-      setTimeout(clearSteps, 500);
+      setTimeout(clearSteps, 5000);
     }
   }, [isLoading, clearSteps]);
 
