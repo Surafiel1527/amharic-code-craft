@@ -247,16 +247,6 @@ export function UniversalChatInterface({
             </div>
             <div>
               <h3 className={`font-bold ${config.headerSize}`}>AI Assistant</h3>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant="outline" className="text-[10px]">
-                  <Brain className="w-3 h-3 mr-1" />
-                  Universal Learning
-                </Badge>
-                <Badge variant="secondary" className="text-[10px]">
-                  <Target className="w-3 h-3 mr-1" />
-                  Smart Routing
-                </Badge>
-              </div>
             </div>
           </div>
 
@@ -305,22 +295,6 @@ export function UniversalChatInterface({
                   <p className="text-xs">
                     Report errors, request features, or ask questions
                   </p>
-                  <div className="flex items-center justify-center gap-3 mt-4 text-[10px]">
-                    <span className="flex items-center gap-1">
-                      <Brain className="w-3 h-3" />
-                      8 Error Categories
-                    </span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Target className="w-3 h-3" />
-                      Smart Routing
-                    </span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Auto-Fix
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
