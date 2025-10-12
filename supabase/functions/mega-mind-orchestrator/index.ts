@@ -53,7 +53,7 @@ serve(async (req) => {
     const projectId = context.projectId || null;
 
     console.log('🚀 Mega Mind Orchestrator started', { 
-      request: request.substring(0, 100), 
+      request: request ? request.substring(0, 100) : 'No request', 
       conversationId, 
       userId, 
       requestType,
@@ -270,38 +270,24 @@ serve(async (req) => {
         
         const hasLearnedPattern = !!(matchingPatterns && matchingPatterns.length > 0);
         
-        // Get context analysis (might be from earlier in the flow)
-        let contextAnalysis: any;
-        try {
-          contextAnalysis = (conversationContext as any)._contextAnalysis || await analyzeContext(
-            platformSupabase as any,
-            conversationId,
-            userId,
-            request,
-            projectId || undefined
-          );
-        } catch (analysisError) {
-          console.error('Context analysis failed, using defaults:', analysisError);
-          // Use default context
-          contextAnalysis = {
-            userIntent: 'fix',
-            complexity: 'moderate',
-            confidenceScore: 0.5,
-            projectState: {
-              hasAuth: false,
-              hasDatabase: false,
-              recentErrors: 0,
-              successRate: 0.5,
-              generationHistory: []
-            },
-            patterns: {
-              commonIssues: [],
-              userPreferences: [],
-              successfulApproaches: []
-            },
-            contextQuality: 50
-          };
-        }
+        // Context analysis should be available from orchestrator
+        const contextAnalysis = (conversationContext as any)._contextAnalysis || {
+          userIntent: 'fix',
+          complexity: 'moderate',
+          confidenceScore: 0.5,
+          projectState: {
+            hasAuth: false,
+            hasDatabase: false,
+            recentErrors: 0,
+            successRate: 0.5,
+            generationHistory: []
+          },
+          patterns: {
+            commonIssues: [],
+            userPreferences: [],
+            successfulApproaches: []
+          }
+        };
         
         // Map critical severity to high for decision making
         const mappedSeverity = errorClassification.severity === 'critical' ? 'high' : errorClassification.severity as 'low' | 'medium' | 'high';
