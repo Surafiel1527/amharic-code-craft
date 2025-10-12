@@ -115,12 +115,17 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastUserMessageRef = useRef<string>('');
   
-  // Update conversation ID when external one changes
+  // Update conversation ID when external one changes AND reload messages
   useEffect(() => {
     if (externalConversationId && externalConversationId !== conversationId) {
       setConversationId(externalConversationId);
+      // Clear old messages and load new conversation
+      setMessages([]);
+      if (persistMessages) {
+        loadConversation(externalConversationId);
+      }
     }
-  }, [externalConversationId]);
+  }, [externalConversationId, persistMessages]);
 
   /**
    * Load conversation messages from database

@@ -227,12 +227,13 @@ export default function Workspace() {
       // Create or load conversation
       let convId: string | undefined;
       
-      // Try to get the first conversation for this project
+      // Try to get the most recent conversation for this project
       const { data: existingConvs } = await (supabase
         .from('conversations')
         .select('id') as any)
         .eq('project_id', projectId)
         .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
         .limit(1);
       
       if (existingConvs && existingConvs.length > 0) {
