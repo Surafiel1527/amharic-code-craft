@@ -331,7 +331,7 @@ npm run build
       <div className={isMobile && mobileTab !== 'preview' ? 'hidden' : ''}>
         <Card className={`p-4 ${isMobile ? 'h-full border-0 rounded-none' : ''}`}>
           {!isMobile && <h2 className="text-lg font-semibold mb-4">Live Preview</h2>}
-          <DevicePreview generatedCode={htmlCode} />
+          <DevicePreview generatedCode={fileContents['index.html'] || htmlCode} />
         </Card>
       </div>
       
