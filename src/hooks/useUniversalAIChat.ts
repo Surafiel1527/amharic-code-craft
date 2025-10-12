@@ -145,17 +145,23 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
       const typedMessages: Message[] = (data || [])
         .filter(m => m.role === 'user' || m.role === 'assistant')
-        .map(m => ({
-          id: m.id,
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-          timestamp: m.created_at,
-          codeBlock: m.generated_code ? {
-            language: 'typescript',
-            code: m.generated_code,
-            filePath: undefined
-          } : undefined
-        }));
+        .map(m => {
+          const storedMetadata = (m.metadata as any) || {};
+          
+          return {
+            id: m.id,
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+            timestamp: m.created_at,
+            codeBlock: storedMetadata.codeBlock || (m.generated_code ? {
+              language: 'typescript',
+              code: m.generated_code,
+              filePath: undefined
+            } : undefined),
+            metadata: storedMetadata.metadata,
+            plan: storedMetadata.plan
+          };
+        });
 
       setMessages(typedMessages);
       logger.success('Loaded messages', { count: typedMessages.length });
@@ -215,7 +221,12 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         conversation_id: convId,
         role: message.role,
         content: message.content,
-        generated_code: generatedCode || message.codeBlock?.code
+        generated_code: generatedCode || message.codeBlock?.code,
+        metadata: {
+          codeBlock: message.codeBlock,
+          metadata: message.metadata,
+          plan: message.plan
+        }
       });
     } catch (error) {
       console.error('Failed to save message:', error);
