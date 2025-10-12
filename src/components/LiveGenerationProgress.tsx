@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Code2, Package, CheckCircle, Loader2, XCircle, X } from "lucide-react";
+import { Sparkles, Code2, Package, CheckCircle, Loader2, XCircle, X, RotateCcw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -346,7 +346,7 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
     };
   }, [projectId]);
 
-  // CRITICAL FIX: Verify files exist before hiding, keep thinking steps visible longer
+  // CRITICAL FIX: Hide banner after generation completes
   useEffect(() => {
     if (!isComplete || progress < 100 || error) return;
     
@@ -354,8 +354,8 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
       try {
         console.log('✅ Generation complete, verifying files...');
         
-        // Wait a bit for files to be written
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait briefly for UI updates
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
         // Verify project_files exist
         const { data: files } = await supabase
@@ -365,21 +365,19 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
           .limit(1);
         
         if (files && files.length > 0) {
-          console.log('✅ Files verified, hiding progress component');
-          // Hide immediately - thinking steps stay in chat permanently
+          console.log('✅ Files verified, hiding banner');
           setShouldHide(true);
           onCompleteRef.current?.();
         } else {
-          console.warn('⚠️ No files found, waiting longer...');
-          // Retry after delay
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.warn('⚠️ No files found yet, hiding banner anyway');
+          await new Promise(resolve => setTimeout(resolve, 1000));
           setShouldHide(true);
           onCompleteRef.current?.();
         }
       } catch (error) {
         console.error('❌ Error verifying files:', error);
-        // Hide anyway after delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Always hide after delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
         setShouldHide(true);
         onCompleteRef.current?.();
       }
@@ -415,6 +413,74 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
     }
   };
 
+  // Detect mobile
+  const isMobile = window.innerWidth < 768;
+
+  // On mobile, render as fixed banner instead of full-screen
+  if (isMobile) {
+    return (
+      <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-4">
+        <Card className="w-full p-4 space-y-3 bg-gradient-to-br from-background via-background to-primary/5 shadow-2xl border-2">
+          {error && (
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertDescription className="ml-2">
+                <div>
+                  <strong>Generation Failed:</strong> {error}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <motion.div
+                animate={{ rotate: (isComplete && !error) ? 0 : 360 }}
+                transition={{ duration: 2, repeat: (isComplete && !error) ? 0 : Infinity, ease: "linear" }}
+                className="flex-shrink-0"
+              >
+                {error ? <XCircle className="h-5 w-5 text-destructive" /> : getPhaseIcon(currentPhase)}
+              </motion.div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">
+                  {error ? 'Generation Failed' : (isComplete ? 'Project Ready!' : 'Generating HTML/CSS/JS project...')}
+                </p>
+                {!error && !isComplete && currentOperation && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    {currentOperation}
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {!error && !isComplete && (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs font-medium text-primary">{progress}%</span>
+              </div>
+            )}
+          </div>
+
+          {!error && !isComplete && (
+            <Progress value={progress} className="h-2" />
+          )}
+
+          {error && (
+            <div className="flex gap-2">
+              <Button onClick={handleRetry} disabled={isRetrying} size="sm" className="flex-1">
+                {isRetrying ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RotateCcw className="w-4 h-4 mr-2" />}
+                Retry
+              </Button>
+              <Button onClick={() => window.location.href = '/'} variant="outline" size="sm">
+                Home
+              </Button>
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  }
+
+  // Desktop: full-screen view
   return (
     <div className="flex items-center justify-center min-h-[60vh] p-4">
       <Card className="w-full max-w-2xl p-8 space-y-6 bg-gradient-to-br from-background via-background to-primary/5">

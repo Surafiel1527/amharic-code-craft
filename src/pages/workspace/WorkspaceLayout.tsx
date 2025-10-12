@@ -128,21 +128,21 @@ export function WorkspaceLayout({
     );
   }
 
-  if (isGenerating) {
-    return (
-      <div className="min-h-screen bg-background">
+  // Don't block entire workspace on mobile - show banner overlay instead
+  // Desktop still gets full-screen generation view
+
+  return (
+    <div className="h-screen bg-background flex flex-col">
+      <PatternLearner />
+      
+      {/* Generation Progress Overlay - Shows on both mobile and desktop */}
+      {isGenerating && (
         <LiveGenerationProgress 
           projectId={project.id}
           onComplete={() => window.location.reload()}
           onCancel={() => navigate('/')}
         />
-      </div>
-    );
-  }
-
-  return (
-    <div className="h-screen bg-background flex flex-col">
-      <PatternLearner />
+      )}
       
       {/* Header - Hidden on mobile */}
       <div className={`border-b bg-card/50 backdrop-blur-sm ${isMobile ? 'hidden' : 'block'}`}>
