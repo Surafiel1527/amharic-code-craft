@@ -97,7 +97,10 @@ export async function logGenerationSuccess(
       data: {
         project_id: details.projectId,
         user_id: details.userId,
-        user_prompt: details.userRequest, // Fixed: use user_prompt not user_request
+        user_prompt: details.userRequest,
+        system_prompt: 'Platform auto-generation system', // CRITICAL FIX: Required field
+        model_used: 'google/gemini-2.5-flash', // CRITICAL FIX: Required field
+        prompt_version: 'v1.0.0',
         success: true,
         framework: details.framework,
         metadata: {

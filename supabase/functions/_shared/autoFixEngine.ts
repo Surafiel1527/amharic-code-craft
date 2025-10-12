@@ -104,38 +104,57 @@ export async function autoFixCode(
     };
 
     try {
-      // Fix each file with errors
-      const fixPromises = currentFiles.map(async (file) => {
-        const fileErrors = getFileErrors(file, validation);
-        
-        if (fileErrors.length === 0) {
-          return file; // No errors in this file
-        }
-
-        console.log(`🔨 Fixing ${fileErrors.length} errors in ${file.path}`);
-        
-        // Use AI to fix the code
-        const fixed = await fixCodeWithAI(file, fileErrors);
-        return fixed || file; // Return original if fix failed
-      });
-
-      const fixedFiles = await Promise.all(fixPromises);
-      
-      // Check if any files were actually fixed
-      const wasFixed = fixedFiles.some((fixed, i) => 
-        fixed.content !== currentFiles[i].content
+      // CRITICAL FIX: Try deterministic fixes FIRST (before AI)
+      console.log('🔧 Attempting deterministic fixes first...');
+      const deterministicFixed = applyAggressiveFixes(currentFiles, allErrors);
+      const deterministicWorked = deterministicFixed.some((f, i) => 
+        f.content !== currentFiles[i].content
       );
-
-      if (wasFixed) {
-        console.log(`✅ Applied fixes in attempt ${attemptNumber}`);
-        currentFiles = fixedFiles;
+      
+      if (deterministicWorked) {
+        console.log(`✅ Deterministic fixes applied in attempt ${attemptNumber}`);
+        currentFiles = deterministicFixed;
         result.fixed = true;
-        result.fixedErrorTypes.push(attempt.errorType);
+        result.fixedErrorTypes.push('deterministic_' + attempt.errorType);
         attempt.fixApplied = true;
-        attempt.fixDescription = `Fixed ${allErrors.length} ${attempt.errorType} errors`;
+        attempt.fixDescription = `Fixed ${allErrors.length} ${attempt.errorType} errors deterministically`;
       } else {
-        console.log(`❌ No fixes could be applied in attempt ${attemptNumber}`);
-        attempt.fixApplied = false;
+        // If deterministic fixes didn't work, try AI
+        console.log('🤖 Deterministic fixes insufficient, trying AI...');
+        
+        // Fix each file with errors using AI
+        const fixPromises = currentFiles.map(async (file) => {
+          const fileErrors = getFileErrors(file, validation);
+          
+          if (fileErrors.length === 0) {
+            return file; // No errors in this file
+          }
+
+          console.log(`🔨 AI fixing ${fileErrors.length} errors in ${file.path}`);
+          
+          // Use AI to fix the code
+          const fixed = await fixCodeWithAI(file, fileErrors);
+          return fixed || file; // Return original if fix failed
+        });
+
+        const fixedFiles = await Promise.all(fixPromises);
+        
+        // Check if any files were actually fixed
+        const wasFixed = fixedFiles.some((fixed, i) => 
+          fixed.content !== currentFiles[i].content
+        );
+
+        if (wasFixed) {
+          console.log(`✅ AI fixes applied in attempt ${attemptNumber}`);
+          currentFiles = fixedFiles;
+          result.fixed = true;
+          result.fixedErrorTypes.push('ai_' + attempt.errorType);
+          attempt.fixApplied = true;
+          attempt.fixDescription = `Fixed ${allErrors.length} ${attempt.errorType} errors with AI`;
+        } else {
+          console.log(`❌ No fixes could be applied in attempt ${attemptNumber}`);
+          attempt.fixApplied = false;
+        }
       }
 
     } catch (error) {
@@ -144,30 +163,6 @@ export async function autoFixCode(
     }
 
     result.attempts.push(attempt);
-
-    // ✅ IMPROVED: Don't give up on first failure - try different strategies  
-    if (!attempt.fixApplied) {
-      console.log(`⚠️ No progress in attempt ${attemptNumber}, errors persist`);
-      
-      // If we're on our last attempt, try aggressive fallback fixes
-      if (attemptNumber === maxAttempts) {
-        console.log('🔥 Last attempt - trying aggressive fallback fixes');
-        
-        try {
-          const aggressiveFixed = applyAggressiveFixes(currentFiles, allErrors);
-          if (aggressiveFixed.some((f, i) => f.content !== currentFiles[i].content)) {
-            currentFiles = aggressiveFixed;
-            result.fixed = true;
-            result.fixedErrorTypes.push('aggressive_fallback');
-            attempt.fixApplied = true;
-            attempt.fixDescription = 'Applied aggressive fallback fixes';
-            console.log('✅ Aggressive fixes applied');
-          }
-        } catch (error) {
-          console.error('⚠️ Aggressive fix failed:', error);
-        }
-      }
-    }
   }
 
   result.fixedFiles = currentFiles;

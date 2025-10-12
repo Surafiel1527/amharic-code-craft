@@ -44,16 +44,19 @@ export async function autoFixGeneratedCode(
     });
 
     // Store successful fixes as patterns for future learning
-    for (let i = 0; i < result.attempts.length; i++) {
-      const attempt = result.attempts[i];
-      if (attempt.fixApplied) {
-        await storeFixPattern(
-          platformSupabase,
-          attempt.errorType,
-          attempt.errorDetails,
-          result.originalFiles[i],
-          result.fixedFiles[i]
-        );
+    // CRITICAL FIX: Only store if we have valid original and fixed files
+    if (result.originalFiles.length > 0 && result.fixedFiles.length > 0) {
+      for (const attempt of result.attempts) {
+        if (attempt.fixApplied) {
+          // Store pattern using the first file (primary file that was fixed)
+          await storeFixPattern(
+            platformSupabase,
+            attempt.errorType,
+            attempt.errorDetails,
+            result.originalFiles[0],
+            result.fixedFiles[0]
+          );
+        }
       }
     }
   } else if (result.errors.length > 0) {
@@ -106,6 +109,12 @@ async function storeFixPattern(
   fixedFile: CodeFile
 ): Promise<void> {
   try {
+    // CRITICAL FIX: Add null checks before accessing properties
+    if (!originalFile || !fixedFile || !fixedFile.content) {
+      console.warn('⚠️ Skipping pattern storage - invalid file data');
+      return;
+    }
+
     await supabase.from('universal_error_patterns').upsert({
       error_signature: errorType,
       error_category: errorType,
@@ -116,7 +125,7 @@ async function storeFixPattern(
       auto_fixable: true,
       learned_from: 'auto_fix_engine',
       metadata: {
-        fileType: originalFile.language,
+        fileType: originalFile.language || 'unknown',
         errorCount: errors.length
       }
     }, { 

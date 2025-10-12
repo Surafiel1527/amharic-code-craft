@@ -141,7 +141,12 @@ export class HtmlBuilder implements IFrameworkBuilder {
           }
         );
 
-        const content = this.cleanGeneratedCode(result.data.choices[0].message.content);
+        let content = this.cleanGeneratedCode(result.data.choices[0].message.content);
+        
+        // CRITICAL FIX: Balance CSS braces immediately after generation
+        if (file.type === 'css') {
+          content = this.balanceCSSBraces(content);
+        }
 
         files.push({
           path: file.path,
@@ -222,6 +227,35 @@ export class HtmlBuilder implements IFrameworkBuilder {
       errors,
       warnings
     };
+  }
+
+  /**
+   * Balance CSS braces deterministically (CRITICAL FIX)
+   */
+  private balanceCSSBraces(css: string): string {
+    const openBraces = (css.match(/\{/g) || []).length;
+    const closeBraces = (css.match(/\}/g) || []).length;
+    
+    if (openBraces === closeBraces) {
+      return css; // Already balanced
+    }
+    
+    let balanced = css;
+    if (openBraces > closeBraces) {
+      // Add missing closing braces
+      const missing = openBraces - closeBraces;
+      balanced += '\n' + '}'.repeat(missing);
+      console.log(`🔧 HtmlBuilder: Added ${missing} missing closing braces`);
+    } else if (closeBraces > openBraces) {
+      // Remove extra closing braces from end
+      const extra = closeBraces - openBraces;
+      for (let i = 0; i < extra; i++) {
+        balanced = balanced.replace(/\}\s*$/, '');
+      }
+      console.log(`🔧 HtmlBuilder: Removed ${extra} extra closing braces`);
+    }
+    
+    return balanced;
   }
 
   async packageOutput(generatedCode: GeneratedCode): Promise<string> {
