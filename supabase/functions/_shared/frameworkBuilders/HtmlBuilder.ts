@@ -14,22 +14,26 @@ export class HtmlBuilder implements IFrameworkBuilder {
   }
 
   async analyzeRequest(context: BuildContext): Promise<any> {
-    // HTML projects are typically simpler
-    const { analysis } = context;
+    // HTML projects - analyze complexity to determine file structure
+    const { analysis, request } = context;
+    
+    // Determine if multi-page website
+    const needsMultiplePages = /multiple pages|multi-page|about page|contact page|separate pages/i.test(request);
     
     return {
       ...analysis,
-      // ALWAYS use multi-file strategy for proper file tree display
+      // Use multi-file for better organization and to ensure files show in tree
       buildStrategy: 'multi-file',
-      needsSeparateCSS: true, // Always separate CSS
-      needsSeparateJS: true   // Always separate JS
+      needsSeparateCSS: true,
+      needsSeparateJS: analysis.needsInteractivity || analysis.needsAPI || true,
+      needsMultiplePages
     };
   }
 
   async planGeneration(context: BuildContext, analysis: any): Promise<any> {
     const { request } = context;
     
-    // Determine file structure
+    // DYNAMIC file structure based on AI analysis
     const files = [];
     
     if (analysis.buildStrategy === 'single-file') {
@@ -39,17 +43,18 @@ export class HtmlBuilder implements IFrameworkBuilder {
         purpose: 'Complete single-file application with inline CSS/JS'
       });
     } else {
+      // Always include core files
       files.push({
         path: 'index.html',
         type: 'html',
-        purpose: 'Main HTML structure'
+        purpose: 'Main HTML structure and entry point'
       });
       
       if (analysis.needsSeparateCSS) {
         files.push({
           path: 'styles.css',
           type: 'css',
-          purpose: 'All styles and responsive design'
+          purpose: 'Main stylesheet with responsive design'
         });
       }
       
@@ -57,7 +62,51 @@ export class HtmlBuilder implements IFrameworkBuilder {
         files.push({
           path: 'script.js',
           type: 'javascript',
-          purpose: 'Interactive functionality and API calls'
+          purpose: 'Main JavaScript functionality'
+        });
+      }
+      
+      // Add additional pages if multi-page website detected
+      if (analysis.needsMultiplePages) {
+        // Common additional pages
+        if (/about/i.test(request)) {
+          files.push({
+            path: 'about.html',
+            type: 'html',
+            purpose: 'About page content and structure'
+          });
+        }
+        if (/contact/i.test(request)) {
+          files.push({
+            path: 'contact.html',
+            type: 'html',
+            purpose: 'Contact form and information'
+          });
+        }
+        if (/services|products/i.test(request)) {
+          files.push({
+            path: 'services.html',
+            type: 'html',
+            purpose: 'Services or products listing page'
+          });
+        }
+      }
+      
+      // Add additional JS modules if complex interactivity
+      if (analysis.complexity === 'complex' && analysis.needsInteractivity) {
+        files.push({
+          path: 'utils.js',
+          type: 'javascript',
+          purpose: 'Utility functions and helpers'
+        });
+      }
+      
+      // Add API handler if API integration needed
+      if (analysis.needsAPI) {
+        files.push({
+          path: 'api.js',
+          type: 'javascript',
+          purpose: 'API integration and data fetching'
         });
       }
     }
