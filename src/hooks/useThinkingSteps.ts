@@ -23,7 +23,11 @@ export function useThinkingSteps(conversationId?: string): UseThinkingStepsResul
 
   // Load historical steps from database on mount by conversation
   useEffect(() => {
-    if (!conversationId || loaded) return;
+    if (!conversationId) return;
+
+    // Reset and load fresh when conversationId changes
+    setLoaded(false);
+    setSteps([]);
 
     const loadHistoricalSteps = async () => {
       try {
@@ -50,15 +54,16 @@ export function useThinkingSteps(conversationId?: string): UseThinkingStepsResul
           
           console.log(`📚 Loaded ${historicalSteps.length} historical thinking steps for conversation`);
           setSteps(historicalSteps);
-          setLoaded(true);
         }
+        setLoaded(true);
       } catch (err) {
         console.error('Error loading historical steps:', err);
+        setLoaded(true);
       }
     };
 
     loadHistoricalSteps();
-  }, [conversationId, loaded]);
+  }, [conversationId]);
 
   useEffect(() => {
     if (!conversationId) return;
