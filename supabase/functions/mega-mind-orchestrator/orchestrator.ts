@@ -175,73 +175,6 @@ export async function executeGeneration(ctx: {
     }
   };
 
-  // Step 0.5: Deep Reasoning (NEW - Mimics human-like thinking)
-  let deepReasoning: ReasoningOutput | undefined;
-  
-  if (!isRetry || resumeProgress < 5) {
-    await broadcast('generation:reasoning', { 
-      status: 'reasoning', 
-      message: '🧠 Thinking deeply about your request...', 
-      progress: 2,
-      currentOperation: 'Step-by-step reasoning about requirements',
-      phaseName: 'Deep Reasoning'
-    });
-    
-    await updateJobProgress(2, 'Deep reasoning', 'Deep Reasoning', []);
-
-    console.log('🧠 Starting deep reasoning phase (mimicking human thinking)...');
-    
-    // Get project data for context
-    let projectData = null;
-    if (projectId) {
-      const { data } = await platformSupabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .single();
-      projectData = data;
-    }
-
-    // Perform deep reasoning
-    deepReasoning = await performDeepReasoning(
-      platformSupabase as any,
-      request,
-      {
-        conversationHistory: conversationContext.recentTurns || [],
-        projectState: projectData,
-        learnedPatterns: []
-      }
-    );
-    
-    console.log('🧠 Deep reasoning complete:', {
-      confidence: deepReasoning.confidence_in_understanding,
-      needs_clarification: deepReasoning.needs_clarification,
-      complexity: deepReasoning.analysis.estimated_complexity,
-      main_goal: deepReasoning.breakdown.main_goal
-    });
-
-    // If reasoning says we need clarification, generate specific questions
-    if (deepReasoning.needs_clarification && deepReasoning.clarifications.length > 0) {
-      console.log('❓ Reasoning suggests asking for clarification');
-      const clarificationMessage = deepReasoning.clarifications
-        .map(c => `**${c.question}**\n${c.why_asking}`)
-        .join('\n\n');
-      
-      await broadcast('reasoning:clarification_needed', {
-        status: 'needs_clarification',
-        message: `I want to make sure I understand correctly:\n\n${clarificationMessage}`,
-        reasoning: deepReasoning.reasoning_steps,
-        confidence: deepReasoning.confidence_in_understanding,
-        clarifications: deepReasoning.clarifications
-      });
-    }
-
-    (conversationContext as any)._deepReasoning = deepReasoning;
-  } else {
-    console.log('⏭️ Skipping deep reasoning - already completed');
-    deepReasoning = (conversationContext as any)._deepReasoning;
-  }
-
   // Step 1: Analyze request
   if (!isRetry || resumeProgress < 25) {
     await broadcast('generation:thinking', { 
@@ -279,8 +212,8 @@ export async function executeGeneration(ctx: {
     console.log(`📚 Found ${learnedPatterns.length} relevant patterns from past successes`);
     (conversationContext as any)._learnedPatterns = learnedPatterns;
 
-    // Pass deep reasoning to analysis
-    const analysis = await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase, deepReasoning);
+    // Analyze the request
+    const analysis = await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase);
     
     console.log('📊 Analysis complete:', JSON.stringify(analysis, null, 2));
 
@@ -832,15 +765,13 @@ async function monitorExecutionWithCorrection(ctx: {
 
 /**
  * Analyze user request to understand intent and requirements
- * Now enhanced with deep reasoning output
  */
 export async function analyzeRequest(
   request: string,
   conversationContext: any,
   framework: string,
   broadcast: (event: string, data: any) => Promise<void>,
-  platformSupabase: any,
-  reasoning?: ReasoningOutput // NEW: Accept reasoning output
+  platformSupabase: any
 ): Promise<any> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')!;
   const relevantPatterns = (conversationContext as any)._learnedPatterns || [];
@@ -848,36 +779,6 @@ export async function analyzeRequest(
   let prompt = buildAnalysisPrompt(request, 'generation', {
     recentTurns: conversationContext.recentTurns || []
   });
-  
-  // Add deep reasoning context to guide the AI (NEW)
-  if (reasoning) {
-    const reasoningContext = `\n\n🧠 DEEP REASONING ANALYSIS:\n` +
-      `This is my step-by-step thinking about the request:\n\n` +
-      `**Understanding:**\n` +
-      `- What user wants: ${reasoning.understanding.what_user_wants}\n` +
-      `- Why they want it: ${reasoning.understanding.why_they_want_it}\n` +
-      `- Implicit requirements: ${reasoning.understanding.implicit_requirements.join(', ') || 'None detected'}\n\n` +
-      `**Breakdown:**\n` +
-      `- Main goal: ${reasoning.breakdown.main_goal}\n` +
-      `- Sub-goals: ${reasoning.breakdown.sub_goals.join(', ') || 'None'}\n` +
-      `- Dependencies: ${reasoning.breakdown.dependencies.join(', ') || 'None'}\n\n` +
-      `**Complexity Analysis:**\n` +
-      `- Estimated complexity: ${reasoning.analysis.estimated_complexity}\n` +
-      `- Reasoning: ${reasoning.analysis.complexity_reasoning}\n` +
-      `- Edge cases to consider: ${reasoning.analysis.edge_cases.join(', ') || 'None'}\n` +
-      `- Potential issues: ${reasoning.analysis.potential_issues.join(', ') || 'None'}\n\n` +
-      `**Recommended Approach:**\n` +
-      `${reasoning.planning.recommended}\n` +
-      `Reasoning: ${reasoning.planning.reasoning}\n\n` +
-      `**Reasoning Steps (My Thinking Process):**\n` +
-      reasoning.reasoning_steps.map((s, i) => 
-        `${i + 1}. ${s.step} (confidence: ${(s.confidence * 100).toFixed(0)}%):\n   ${s.thought}${s.concerns ? `\n   Concerns: ${s.concerns.join(', ')}` : ''}`
-      ).join('\n\n') +
-      `\n\n**Overall Confidence in Understanding: ${(reasoning.confidence_in_understanding * 100).toFixed(0)}%**\n\n` +
-      `Use this reasoning to guide your analysis. The reasoning steps show how I broke down the problem.`;
-    
-    prompt += reasoningContext;
-  }
   
   // Include learned patterns in the prompt
   if (relevantPatterns.length > 0) {
