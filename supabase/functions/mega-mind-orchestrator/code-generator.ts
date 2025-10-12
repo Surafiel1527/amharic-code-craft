@@ -281,28 +281,26 @@ export async function generateAndPackageCode(ctx: {
       console.log('✅ Project updated successfully');
     }
 
-    // Save individual files to project_files table
-    if (generatedCode.files.length > 1) {
-      console.log(`💾 Saving ${generatedCode.files.length} individual files...`);
+    // CRITICAL FIX: Always save individual files to project_files table (removed length check)
+    console.log(`💾 Saving ${generatedCode.files.length} individual files...`);
+    
+    for (const file of generatedCode.files) {
+      const { error: fileError } = await platformSupabase
+        .from('project_files')
+        .upsert({
+          project_id: projectId,
+          file_path: file.path,
+          file_content: file.content,
+          file_type: file.language || 'typescript',
+          created_by: userId
+        });
       
-      for (const file of generatedCode.files) {
-        const { error: fileError } = await platformSupabase
-          .from('project_files')
-          .upsert({
-            project_id: projectId,
-            file_path: file.path,
-            file_content: file.content,
-            file_type: file.language || 'typescript',
-            created_by: userId
-          });
-        
-        if (fileError) {
-          console.error(`⚠️ Failed to save file ${file.path}:`, fileError);
-        }
+      if (fileError) {
+        console.error(`⚠️ Failed to save file ${file.path}:`, fileError);
       }
-      
-      console.log('✅ All files saved to project_files table');
     }
+    
+    console.log('✅ All files saved to project_files table');
 
     // Update job as complete
     await platformSupabase

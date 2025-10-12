@@ -19,9 +19,10 @@ export class HtmlBuilder implements IFrameworkBuilder {
     
     return {
       ...analysis,
-      buildStrategy: analysis.estimatedFiles <= 3 ? 'single-file' : 'multi-file',
-      needsSeparateCSS: analysis.complexity !== 'simple',
-      needsSeparateJS: analysis.needsInteractivity || analysis.needsAPI
+      // ALWAYS use multi-file strategy for proper file tree display
+      buildStrategy: 'multi-file',
+      needsSeparateCSS: true, // Always separate CSS
+      needsSeparateJS: true   // Always separate JS
     };
   }
 
