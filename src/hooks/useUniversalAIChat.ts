@@ -230,11 +230,11 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
   // Reload conversation when it's set
   useEffect(() => {
-    if (conversationId && persistMessages && messages.length === 0) {
+    if (conversationId && persistMessages) {
       logger.info('📨 Loading conversation messages', { conversationId });
       loadConversation(conversationId);
     }
-  }, [conversationId, persistMessages, messages.length]);
+  }, [conversationId, persistMessages]);
 
   /**
    * Detects if the message is likely reporting an error

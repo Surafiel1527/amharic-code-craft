@@ -300,17 +300,20 @@ export function UniversalChatInterface({
               // Filter out system status messages
               if (msg.role === 'system') return false;
               
-              // Filter out generation status messages
-              const lowerContent = msg.content.toLowerCase();
-              if (msg.role === 'assistant' && (
-                lowerContent.includes('generation started') ||
-                lowerContent.includes('generation complete') ||
-                lowerContent.match(/^✅\s*(generation|project|website)\s*(complete|ready|created)/i) ||
-                lowerContent.match(/^🔧\s*initializing/i) ||
-                lowerContent.match(/^📦\s*packaging/i) ||
-                lowerContent.match(/^🏗️\s*building/i)
-              )) {
-                return false;
+              // Don't filter user messages
+              if (msg.role === 'user') return true;
+              
+              // For assistant messages, only filter out specific system-generated status messages
+              // Keep messages that have emoji or substantive content
+              const content = msg.content.trim();
+              if (msg.role === 'assistant') {
+                // Keep messages with emojis (like "💡 Generation started")
+                if (/[\p{Emoji}]/u.test(content)) return true;
+                
+                // Filter only very specific auto-generated status patterns
+                if (content.match(/^(generation started|generation complete)$/i)) {
+                  return false;
+                }
               }
               
               return true;
