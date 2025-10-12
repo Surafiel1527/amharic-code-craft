@@ -37,8 +37,6 @@ import {
 } from './learning-integration.ts';
 
 // Reasoning engine - mimics human-like thinking
-import { performDeepReasoning, type ReasoningOutput } from '../_shared/reasoningEngine.ts';
-
 // Enterprise modules
 import { FeatureOrchestrator } from '../_shared/featureOrchestrator.ts';
 import { FeatureDependencyGraph } from '../_shared/featureDependencyGraph.ts';
