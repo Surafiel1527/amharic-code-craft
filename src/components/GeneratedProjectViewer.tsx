@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { FileCode, FolderOpen, Download, Eye, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-typescript';
@@ -32,6 +33,7 @@ export function GeneratedProjectViewer({ files: propFiles, projectTitle, project
   const [files, setFiles] = useState<GeneratedFile[]>(propFiles || []);
   const [selectedFile, setSelectedFile] = useState<GeneratedFile | null>(files[0] || null);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast(); // CRITICAL FIX: Add toast hook
 
   // Load files from project_files table if projectId provided but no files
   useEffect(() => {
@@ -51,14 +53,15 @@ export function GeneratedProjectViewer({ files: propFiles, projectTitle, project
       const { data, error } = await supabase
         .from('project_files')
         .select('file_path, file_content, file_type')
-        .eq('project_id', projectId);
+        .eq('project_id', projectId)
+        .order('file_path'); // CRITICAL FIX: Order files consistently
 
       if (error) {
         console.error('Error loading project files:', error);
         throw error;
       }
 
-      console.log('📁 Loaded files:', data);
+      console.log('📁 Loaded files from database:', data?.length || 0);
 
       if (data && data.length > 0) {
         const loadedFiles: GeneratedFile[] = data.map(file => ({
@@ -70,10 +73,26 @@ export function GeneratedProjectViewer({ files: propFiles, projectTitle, project
         setSelectedFile(loadedFiles[0]);
         console.log('✅ Files loaded successfully:', loadedFiles.length);
       } else {
-        console.log('⚠️ No files found in project_files table');
+        console.warn('⚠️ No files found in project_files table, falling back to props');
+        // CRITICAL FIX: Fallback to props if database has no files
+        if (propFiles && propFiles.length > 0) {
+          setFiles(propFiles);
+          setSelectedFile(propFiles[0]);
+        }
       }
     } catch (error) {
       console.error('Error loading project files:', error);
+      // CRITICAL FIX: Show user-friendly error
+      toast({
+        title: "Failed to load files",
+        description: "Could not load project files from database. Trying fallback...",
+        variant: "destructive"
+      });
+      // Try props as fallback
+      if (propFiles && propFiles.length > 0) {
+        setFiles(propFiles);
+        setSelectedFile(propFiles[0]);
+      }
     } finally {
       setIsLoading(false);
     }

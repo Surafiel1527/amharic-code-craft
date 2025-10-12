@@ -39,6 +39,9 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
   const [isRetrying, setIsRetrying] = useState(false);
   const MAX_RETRIES = 30; // 30 retries × 2 seconds = 1 minute max
   
+  // CRITICAL FIX: Add state to control when component should hide
+  const [shouldHide, setShouldHide] = useState(false);
+  
   // Store the latest onComplete callback in a ref to avoid re-subscriptions
   const onCompleteRef = useRef(onComplete);
   useEffect(() => {
@@ -342,6 +345,23 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
       clearTimeout(timeout);
     };
   }, [projectId]);
+
+  // CRITICAL FIX: Hide component 2 seconds after completion so user can see final state
+  useEffect(() => {
+    if (isComplete && progress >= 100 && !error) {
+      console.log('✅ Generation complete, hiding in 2 seconds...');
+      const timer = setTimeout(() => {
+        setShouldHide(true);
+        onCompleteRef.current?.();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isComplete, progress, error]);
+
+  // Don't render if should hide
+  if (shouldHide) {
+    return null;
+  }
 
   const getPhaseIcon = (phase: string) => {
     switch (phase) {
