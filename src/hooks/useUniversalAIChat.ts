@@ -331,40 +331,50 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   const detectIntentType = useCallback((message: string): 'question' | 'build' | 'error' => {
     const messageLower = message.toLowerCase();
     
-    // Check for questions/help requests
-    const questionPatterns = [
-      /^(how can i|where do i|how do i|what should i|when should i)/i,
-      /^(is there a way|can i|should i)/i,
-      /\?$/,
-      /^(help|guide|teach|show|explain|tell me)/i,
-      /(not working|doesn't work|isn't working|won't work|can't get|unable to)/i
-    ];
-    
-    if (questionPatterns.some(pattern => pattern.test(messageLower))) {
-      return 'question';
-    }
-    
-    // Check for error reports
-    const errorKeywords = /error|failed|exception|warning|issue|problem|bug|broken|crash|freeze/i;
-    if (errorKeywords.test(messageLower)) {
-      return 'error';
-    }
-    
-    // Check for build requests
+    // CRITICAL: Check for build/generation requests FIRST (highest priority)
     const buildPatterns = [
-      /^(create|add|build|make|generate|implement)/i,
-      /^(change|update|modify|edit|refactor)/i,
+      /^(build|create|make|generate|add|implement|design|develop|setup|configure)/i,
+      /^(change|update|modify|edit|refactor|improve|enhance)/i,
       /^(remove|delete|get rid of)/i,
+      /(app|application|website|site|page|component|feature|function|system)/i,
+      /(dashboard|login|signup|auth|authentication|form|button|navbar|sidebar|menu)/i,
+      /(task|todo|user|profile|admin|settings|list|card|modal|table|chart)/i,
       /let's (add|create|build|change|update)/i,
-      /can you (add|create|build|change|update)/i
+      /can you (add|create|build|change|update)/i,
+      /with.*authentication/i,
+      /should be able to/i,
+      /users? (can|should|need to)/i
     ];
     
     if (buildPatterns.some(pattern => pattern.test(messageLower))) {
       return 'build';
     }
     
-    // Default to question if unclear
-    return 'question';
+    // Check for error reports (second priority)
+    const errorPatterns = [
+      /error|failed|exception|warning|bug|broken|crash|freeze/i,
+      /(not working|doesn't work|isn't working|won't work|can't get|unable to|failing)/i,
+      /^(fix|repair|debug|solve|resolve)/i
+    ];
+    
+    if (errorPatterns.some(pattern => pattern.test(messageLower))) {
+      return 'error';
+    }
+    
+    // Check for questions/help requests (third priority - most specific patterns only)
+    const questionPatterns = [
+      /^(how can i|where do i|how do i|what should i|when should i|why is|why does)/i,
+      /^(is there a way|can you explain|can you help|what is|where is|which)/i,
+      /^(help|guide|teach|show me how|explain|tell me about|describe)\s/i,
+      /\?$/
+    ];
+    
+    if (questionPatterns.some(pattern => pattern.test(messageLower))) {
+      return 'question';
+    }
+    
+    // Default to build for proactive code generation
+    return 'build';
   }, []);
 
   /**
