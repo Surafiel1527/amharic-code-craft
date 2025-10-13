@@ -3,6 +3,7 @@
  * 
  * Coordinates multiple features with dependency resolution for complex apps.
  * Breaks large requests (e.g., "Build TikTok clone") into ordered phases.
+ * Integrated with External Resource Guide for universal intelligence
  * 
  * Example: TikTok Clone Breakdown
  * Phase 1: [Auth, Profiles, Database Schema]
@@ -10,6 +11,8 @@
  * Phase 3: [Feed, Comments, Likes]
  * Phase 4: [Search, Notifications]
  */
+
+import { detectRequiredResources, type ExternalResource } from './externalResourceGuide.ts';
 
 export interface Feature {
   id: string;
@@ -41,6 +44,7 @@ export interface OrchestrationPlan {
     totalTables: number;
     tables: string[];
   };
+  requiredExternalResources?: ExternalResource[]; // 🆕 External resource guidance
 }
 
 export class FeatureOrchestrator {
@@ -174,7 +178,11 @@ export class FeatureOrchestrator {
     const sortedFeatures = this.topologicalSort(graph);
     const phases = this.groupIntoPhases(sortedFeatures);
     
-    return this.buildOrchestrationPlan(phases, features);
+    // 🆕 Detect required external resources using universal guide
+    const featureIds = features.map(f => f.id);
+    const requiredResources = detectRequiredResources(request, featureIds);
+    
+    return this.buildOrchestrationPlan(phases, features, requiredResources);
   }
 
   /**
@@ -354,9 +362,13 @@ export class FeatureOrchestrator {
   }
 
   /**
-   * Builds final orchestration plan
+   * Builds final orchestration plan with external resource guidance
    */
-  private buildOrchestrationPlan(phases: Phase[], features: Feature[]): OrchestrationPlan {
+  private buildOrchestrationPlan(
+    phases: Phase[], 
+    features: Feature[],
+    requiredResources: ExternalResource[] = []
+  ): OrchestrationPlan {
     const externalAPIs = [...new Set(
       features.flatMap(f => f.requiredAPIs || [])
     )];
@@ -377,6 +389,7 @@ export class FeatureOrchestrator {
         totalTables: databaseTables.length,
         tables: databaseTables,
       },
+      requiredExternalResources: requiredResources, // 🆕 Include resource guidance
     };
   }
 
