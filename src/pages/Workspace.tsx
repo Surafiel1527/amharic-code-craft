@@ -567,13 +567,26 @@ export default function Workspace() {
   const [isGenerating, setIsGenerating] = useState(false);
   
   useEffect(() => {
-    if (!project) {
+    if (!project || !conversationId) {
       setIsGenerating(false);
       return;
     }
     
-    // Check if there's actually an active job
+    // Check if there's actually an active job AND if conversation doesn't have messages yet
     const checkJobStatus = async () => {
+      // First check if conversation has messages - if yes, don't show banner
+      const { data: messages, count } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('conversation_id', conversationId);
+      
+      // If conversation has messages, never show generating banner
+      if (count && count > 0) {
+        setIsGenerating(false);
+        return;
+      }
+      
+      // Only show if no messages AND active job exists
       const { data: jobs } = await supabase
         .from('ai_generation_jobs')
         .select('status')
@@ -589,7 +602,7 @@ export default function Workspace() {
     };
     
     checkJobStatus();
-  }, [project]);
+  }, [project, conversationId]);
   
   if (!project) {
     return (

@@ -180,20 +180,25 @@ export function UniversalChatInterface({
     mode: operationMode // Pass operation mode to the hook
   });
 
-  // Populate messageSteps from loaded messages with thinkingSteps
+  // ✅ FIX: Populate messageSteps from loaded messages with thinkingSteps
+  // This ensures historical thinking steps appear when conversation loads
   useEffect(() => {
-    const newMessageSteps = new Map(messageSteps);
-    let hasChanges = false;
+    const newMessageSteps = new Map<string, typeof thinkingSteps>();
     
+    // For each message that has thinking steps, store them
     messages.forEach(message => {
-      if (message.thinkingSteps && message.thinkingSteps.length > 0 && !newMessageSteps.has(message.id)) {
-        newMessageSteps.set(message.id, message.thinkingSteps);
-        hasChanges = true;
+      if (message.thinkingSteps && message.thinkingSteps.length > 0) {
+        // If it's a user message, store steps directly
+        if (message.role === 'user') {
+          newMessageSteps.set(message.id, message.thinkingSteps);
+        }
       }
     });
     
-    if (hasChanges) {
+    // Only update if we have new steps to add
+    if (newMessageSteps.size > 0) {
       setMessageSteps(newMessageSteps);
+      console.log('✅ Loaded thinking steps for messages:', newMessageSteps.size);
     }
   }, [messages]);
 
@@ -359,6 +364,11 @@ export function UniversalChatInterface({
               // For assistant messages, filter out placeholder status messages
               const content = msg.content.trim();
               if (msg.role === 'assistant') {
+                // ✅ NEVER filter summary messages
+                if (msg.metadata?.isSummary) {
+                  return true;
+                }
+                
                 // ALWAYS filter "Generation started" even with emoji
                 if (content.includes('Generation started')) {
                   return false;

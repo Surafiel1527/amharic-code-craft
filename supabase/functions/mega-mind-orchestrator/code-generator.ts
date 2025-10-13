@@ -416,20 +416,38 @@ export async function generateAndPackageCode(ctx: {
 
     // Generate summary before final broadcast
     const fileList = generatedCode.files.map((f: any) => `• \`${f.path}\``).join('\n');
-    const summary = `**What I Built:**\n${fileList}\n\n` +
+    const summary = `**Project Generated Successfully! 🎉**\n\n` +
+      `**What I Built:**\n${fileList}\n\n` +
       `**Framework:** ${framework.toUpperCase()}\n` +
       `**Files Created:** ${generatedCode.files.length}\n` +
-      (validationResult.success ? '**Status:** ✅ All validations passed' : '**Status:** ⚠️ Fixed validation issues') +
-      (autoFixResult.fixed ? `\n**Auto-fixes Applied:** ${autoFixResult.fixedErrorTypes.length}` : '');
+      (validationResult.success ? '**Status:** ✅ All validations passed\n' : '**Status:** ⚠️ Fixed validation issues\n') +
+      (autoFixResult.fixed ? `**Auto-fixes Applied:** ${autoFixResult.fixedErrorTypes.length}` : '');
 
-    // Broadcast final completion signal with summary
+    // ✅ Save summary as a message directly to database
+    try {
+      await platformSupabase.from('messages').insert({
+        conversation_id: conversationId,
+        role: 'assistant',
+        content: summary,
+        metadata: { 
+          isSummary: true, 
+          category: 'completion',
+          fileCount: generatedCode.files.length,
+          framework
+        }
+      });
+      console.log('✅ Saved generation summary to database');
+    } catch (err) {
+      console.warn('Failed to save summary message:', err);
+    }
+
+    // Broadcast final completion signal
     await broadcast('generation:complete', {
       status: 'complete',
       message: '✅ Generation complete!',
       progress: 100,
       fileCount: generatedCode.files.length,
-      phaseName: 'Complete',
-      summary
+      phaseName: 'Complete'
     });
   }
 
