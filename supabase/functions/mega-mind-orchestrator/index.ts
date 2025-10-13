@@ -95,16 +95,26 @@ serve(async (req) => {
     console.log(`📚 Loaded context: ${conversationContext.totalTurns} turns, ${dependencies.length} dependencies, Q&A mode: ${isQuestion}`);
     console.log(`🔗 Cross-conversation memory: ${projectMemory.recentMessages.length} messages from ${projectMemory.conversationCount} conversations`);
 
+    // ✅ Create and subscribe to channel ONCE for the entire request
+    const realtimeChannel = platformSupabase.channel(`ai-status-${conversationId}`);
+    
+    // Subscribe immediately before any broadcasts (non-blocking)
+    realtimeChannel.subscribe((status: string) => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`✅ Realtime channel subscribed: ai-status-${conversationId}`);
+      }
+    });
+    
+    // Small delay to ensure subscription is established
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     // Helper to broadcast via Supabase Realtime Channels
     const broadcast = async (event: string, data: any) => {
       try {
-        // Use conversationId for channel to match client subscription
-        const channel = platformSupabase.channel(`ai-status-${conversationId}`);
-        
         // Handle thinking steps specially - send with original event name AND persist to DB
         if (event === 'thinking_step') {
-          // Broadcast for real-time display
-          await channel.send({
+          // Broadcast for real-time display using pre-subscribed channel
+          await realtimeChannel.send({
             type: 'broadcast',
             event: 'thinking_step',
             payload: {
@@ -145,7 +155,7 @@ serve(async (req) => {
         if (isAGIEvent) {
           // Send AGI events with generation_event format for useGenerationMonitor
           const agiEventType = mapToAGIEventType(event, data);
-          await channel.send({
+          await realtimeChannel.send({
             type: 'broadcast',
             event: 'generation_event',
             payload: {
@@ -159,7 +169,7 @@ serve(async (req) => {
           console.log(`🧠 AGI Event: ${agiEventType}`, data.message || data.status);
         } else {
           // Send general status updates
-          await channel.send({
+          await realtimeChannel.send({
             type: 'broadcast',
             event: 'status-update',
             payload: {
