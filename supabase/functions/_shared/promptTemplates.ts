@@ -14,10 +14,25 @@ export interface AnalysisContext {
  * Generate request analysis prompt
  */
 export function buildAnalysisPrompt(request: string, requestType: string, context: AnalysisContext): string {
+  const hasExistingProject = context.projectContext?._existingProject?.hasExistingCode;
+  const existingFiles = context.projectContext?._existingProject?.files?.length || 0;
+  
   return `You are an expert web development analyst. Analyze this user request.
 
 **User Request:** "${request}"
 **Request Type:** ${requestType}
+
+${hasExistingProject ? `
+🚨 **CRITICAL CONTEXT: EXISTING PROJECT DETECTED**
+This project already has ${existingFiles} files of code. This is almost certainly a MODIFICATION request, not a new generation.
+Unless the user explicitly says "create new project" or "start over", you MUST classify this as outputType: "modification".
+
+**Signs this is a modification:**
+- User says "when I click X do Y" → Modify button behavior
+- User says "add X", "change Y", "fix Z" → Modify existing code
+- User says "redirect to page" → Add navigation to existing code
+- User mentions specific UI elements (buttons, forms, pages) → Modify existing UI
+` : ''}
 
 ${context.recentTurns?.length ? `
 **Recent Conversation Context:**
@@ -42,6 +57,7 @@ ${context.suggestionsPrompt || ''}
    - **IMPORTANT**: "update README", "add instructions", "modify documentation" are NOT meta-requests - they are CODE MODIFICATIONS
 
 2. **CODE MODIFICATION** (outputType: "modification"):
+   - ${hasExistingProject ? '🚨 **DEFAULT CHOICE when project exists** 🚨' : ''}
    - Clear requests to change/update/fix existing code or files
    - "Remove X", "Add Y", "Change Z", "Fix the button"
    - **Updating documentation files** (README.md, docs, any file with content changes)

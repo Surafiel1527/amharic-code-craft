@@ -225,6 +225,34 @@ export async function executeGeneration(ctx: {
     });
 
     (conversationContext as any)._contextAnalysis = contextAnalysis;
+    
+    // ✅ CRITICAL FIX: Load existing project files if projectId exists
+    let existingProjectCode: any = null;
+    if (projectId) {
+      console.log(`🔍 Loading existing project files for project ${projectId}...`);
+      const { data: projectData } = await platformSupabase
+        .from('projects')
+        .select('html_code, framework')
+        .eq('id', projectId)
+        .single();
+      
+      const { data: projectFiles } = await platformSupabase
+        .from('project_files')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+      
+      if (projectData || projectFiles?.length) {
+        existingProjectCode = {
+          mainCode: projectData?.html_code,
+          framework: projectData?.framework || framework,
+          files: projectFiles || [],
+          hasExistingCode: true
+        };
+        console.log(`✅ Loaded ${projectFiles?.length || 0} existing files from project`);
+        (conversationContext as any)._existingProject = existingProjectCode;
+      }
+    }
 
     // Find relevant learned patterns before analysis
     console.log('🎯 Searching for relevant learned patterns...');
