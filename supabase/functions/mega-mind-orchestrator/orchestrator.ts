@@ -532,10 +532,13 @@ export async function executeGeneration(ctx: {
 
   // Detect if this is a simple text/content update vs full generation
   const isSimpleUpdate = request.toLowerCase().includes('update') && 
-                         request.toLowerCase().includes('name') ||
+                         (request.toLowerCase().includes('name') ||
+                          request.toLowerCase().includes('title') ||
+                          request.toLowerCase().includes('text')) ||
                          request.toLowerCase().includes('change') && request.toLowerCase().includes('text') ||
                          request.toLowerCase().includes('replace') && request.length < 100;
 
+  // ONLY run codebase analysis and planning if NOT a simple update
   if (needsPlanning && !isSimpleUpdate) {
     const { analyzeCodebase } = await import('../_shared/codebaseAnalyzer.ts');
     const { generateDetailedPlan, formatPlanForDisplay } = await import('../_shared/implementationPlanner.ts');

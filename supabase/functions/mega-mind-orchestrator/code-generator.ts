@@ -160,10 +160,11 @@ export async function generateAndPackageCode(ctx: {
     };
     frameworkBuilder = FrameworkBuilderFactory.createBuilder(framework);
   } else {
-    await stepTracker.trackStep('generate_files', 'Initializing code generation', broadcast, 'start');
+    // ONLY show generation step when actually generating
+    await stepTracker.trackStep('generate_files', 'Generating code', broadcast, 'start');
     await broadcast('generation:coding', { 
       status: 'generating', 
-      message: '🔧 Initializing framework-specific builder...', 
+      message: '🔧 Generating code...', 
       progress: 50 
     });
 
@@ -203,53 +204,65 @@ export async function generateAndPackageCode(ctx: {
     await updateJobProgress(75, 'Code generation complete', 'Building Components', []);
   }
 
-  // Step 5: Validate files
-  await stepTracker.trackStep('validate_code', `Checking ${generatedCode.files.length} files`, broadcast, 'start');
-  await broadcast('generation:validating', { 
-    status: 'validating', 
-    message: '🔍 Validating generated files...', 
-    progress: 70,
-    currentOperation: 'Checking code quality and dependencies',
-    phaseName: 'Validating Code'
-  });
-
-  const validationResult = await frameworkBuilder.validateFiles(generatedCode.files);
+  // Step 5: Validate files - ONLY if files were generated
+  let validationResult: {
+    success: boolean;
+    errors: string[];
+    warnings: string[];
+  } = {
+    success: true,
+    errors: [],
+    warnings: []
+  };
   
-  if (!validationResult.success) {
-    console.warn('⚠️ Validation warnings:', validationResult.warnings);
-    console.error('❌ Validation errors:', validationResult.errors);
-    
-    await stepTracker.trackStep('validate_code', `Found ${validationResult.errors.length} errors`, broadcast, 'complete');
-    await broadcast('generation:validation_warning', {
-      status: 'warning',
-      message: `⚠️ ${validationResult.errors.length} validation issue(s) found`,
-      progress: 72,
-      details: {
-        errors: validationResult.errors,
-        warnings: validationResult.warnings
-      }
+  if (generatedCode.files.length > 0) {
+    await stepTracker.trackStep('validate_code', `Validating ${generatedCode.files.length} files`, broadcast, 'start');
+    await broadcast('generation:validating', { 
+      status: 'validating', 
+      message: '🔍 Validating code...', 
+      progress: 70,
+      currentOperation: 'Checking code quality',
+      phaseName: 'Validating Code'
     });
-  } else if (validationResult.warnings.length > 0) {
-    console.warn('⚠️ Validation passed with warnings:', validationResult.warnings);
+
+    validationResult = await frameworkBuilder.validateFiles(generatedCode.files);
     
-    await stepTracker.trackStep('validate_code', `Passed with ${validationResult.warnings.length} warnings`, broadcast, 'complete');
-    await broadcast('generation:validation_success', {
-      status: 'success',
-      message: `✅ Validation passed (${validationResult.warnings.length} warnings)`,
-      progress: 75,
-      details: {
-        warnings: validationResult.warnings
-      }
-    });
-  } else {
-    console.log('✅ Validation passed with no issues');
-    
-    await stepTracker.trackStep('validate_code', 'All checks passed', broadcast, 'complete');
-    await broadcast('generation:validation_success', {
-      status: 'success',
-      message: '✅ All validation checks passed',
-      progress: 75
-    });
+    if (!validationResult.success) {
+      console.warn('⚠️ Validation warnings:', validationResult.warnings);
+      console.error('❌ Validation errors:', validationResult.errors);
+      
+      await stepTracker.trackStep('validate_code', `Found ${validationResult.errors.length} errors`, broadcast, 'complete');
+      await broadcast('generation:validation_warning', {
+        status: 'warning',
+        message: `⚠️ ${validationResult.errors.length} issue(s) found`,
+        progress: 72,
+        details: {
+          errors: validationResult.errors,
+          warnings: validationResult.warnings
+        }
+      });
+    } else if (validationResult.warnings.length > 0) {
+      console.warn('⚠️ Validation passed with warnings:', validationResult.warnings);
+      
+      await stepTracker.trackStep('validate_code', `Passed with ${validationResult.warnings.length} warnings`, broadcast, 'complete');
+      await broadcast('generation:validation_success', {
+        status: 'success',
+        message: `✅ Validated (${validationResult.warnings.length} warnings)`,
+        progress: 75,
+        details: {
+          warnings: validationResult.warnings
+        }
+      });
+    } else {
+      console.log('✅ Validation passed with no issues');
+      
+      await stepTracker.trackStep('validate_code', 'Code validated successfully', broadcast, 'complete');
+      await broadcast('generation:validation_success', {
+        status: 'success',
+        message: '✅ Validation passed',
+        progress: 75
+      });
+    }
   }
 
   // Step 6: AUTO-FIX
