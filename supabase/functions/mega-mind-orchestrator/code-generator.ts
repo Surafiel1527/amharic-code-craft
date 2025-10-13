@@ -414,13 +414,22 @@ export async function generateAndPackageCode(ctx: {
       console.log(`✅ Restored original title: "${originalTitle}"`);
     }
 
-    // Broadcast final completion signal
+    // Generate summary before final broadcast
+    const fileList = generatedCode.files.map((f: any) => `• \`${f.path}\``).join('\n');
+    const summary = `**What I Built:**\n${fileList}\n\n` +
+      `**Framework:** ${framework.toUpperCase()}\n` +
+      `**Files Created:** ${generatedCode.files.length}\n` +
+      (validationResult.success ? '**Status:** ✅ All validations passed' : '**Status:** ⚠️ Fixed validation issues') +
+      (autoFixResult.fixed ? `\n**Auto-fixes Applied:** ${autoFixResult.fixedErrorTypes.length}` : '');
+
+    // Broadcast final completion signal with summary
     await broadcast('generation:complete', {
       status: 'complete',
       message: '✅ Generation complete!',
       progress: 100,
       fileCount: generatedCode.files.length,
-      phaseName: 'Complete'
+      phaseName: 'Complete',
+      summary
     });
   }
 
@@ -435,7 +444,7 @@ export async function generateAndPackageCode(ctx: {
     duration: generationTime
   });
 
-  // Step 10: Final operations (non-blocking)
+  // Step 11: Final operations (non-blocking)
   await Promise.allSettled([
     // Store successful pattern
     storeSuccessfulPattern(platformSupabase, {

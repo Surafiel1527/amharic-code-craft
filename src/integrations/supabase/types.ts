@@ -4272,6 +4272,7 @@ export type Database = {
           created_at: string
           generated_code: string | null
           id: string
+          is_summary: boolean | null
           metadata: Json | null
           role: string
         }
@@ -4281,6 +4282,7 @@ export type Database = {
           created_at?: string
           generated_code?: string | null
           id?: string
+          is_summary?: boolean | null
           metadata?: Json | null
           role: string
         }
@@ -4290,6 +4292,7 @@ export type Database = {
           created_at?: string
           generated_code?: string | null
           id?: string
+          is_summary?: boolean | null
           metadata?: Json | null
           role?: string
         }

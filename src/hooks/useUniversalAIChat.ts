@@ -29,6 +29,7 @@ export interface Message {
     };
     toolUsed?: string;
     toolResult?: any;
+    isSummary?: boolean;
   };
   plan?: {
     summary: string;
@@ -239,17 +240,18 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   }, [persistMessages, projectId, onConversationChange]);
 
   /**
-   * Save message to database
+   * Save message to database and link thinking steps
    */
   const saveMessage = useCallback(async (
     message: Message,
     convId: string | null,
-    generatedCode?: string
+    generatedCode?: string,
+    linkThinkingSteps: boolean = true
   ) => {
-    if (!persistMessages || !convId) return;
+    if (!persistMessages || !convId) return null;
 
     try {
-      await supabase.from("messages").insert({
+      const { data, error } = await supabase.from("messages").insert({
         conversation_id: convId,
         role: message.role,
         content: message.content,
@@ -257,11 +259,39 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         metadata: {
           codeBlock: message.codeBlock,
           metadata: message.metadata,
-          plan: message.plan
+          plan: message.plan,
+          isSummary: message.metadata?.isSummary || false
+        },
+        is_summary: message.metadata?.isSummary || false
+      }).select('id, created_at').single();
+
+      if (error) throw error;
+      
+      // Link thinking steps to this assistant message
+      if (linkThinkingSteps && message.role === 'assistant' && data?.id) {
+        const messageTime = new Date(data.created_at);
+        const fiveMinutesAgo = new Date(messageTime.getTime() - 5 * 60 * 1000);
+        
+        // Update all thinking steps from the last 5 minutes that don't have a message_id
+        const { error: updateError } = await supabase
+          .from('thinking_steps')
+          .update({ message_id: data.id })
+          .eq('conversation_id', convId)
+          .is('message_id', null)
+          .gte('timestamp', fiveMinutesAgo.toISOString())
+          .lte('timestamp', messageTime.toISOString());
+        
+        if (updateError) {
+          logger.warn('Failed to link thinking steps to message', updateError);
+        } else {
+          logger.success('Linked thinking steps to message', { messageId: data.id });
         }
-      });
+      }
+      
+      return data?.id || null;
     } catch (error) {
       console.error('Failed to save message:', error);
+      return null;
     }
   }, [persistMessages]);
 
@@ -703,14 +733,14 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       // Process and add assistant response
       const assistantMessage = await processResponse(response, routedTo);
       
-      // Only add message if it's not null (null means skip it - e.g., "Generation started")
+      // Only add message if it's not null
       if (assistantMessage) {
         setMessages(prev => [...prev, assistantMessage]);
-      }
-
-      // Save assistant message (only if it exists - skip for "Generation started")
-      if (persistMessages && activeConvId && assistantMessage) {
-        await saveMessage(assistantMessage, activeConvId, assistantMessage.codeBlock?.code);
+        
+        // Save assistant message and link thinking steps
+        if (persistMessages && activeConvId) {
+          await saveMessage(assistantMessage, activeConvId, assistantMessage.codeBlock?.code, true);
+        }
       }
 
       // Update conversation timestamp
