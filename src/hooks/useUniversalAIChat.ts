@@ -559,14 +559,23 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         // Only show message if it's meaningful (not just the start acknowledgment)
         // Real-time thinking steps will show progress instead
         content = `💡 ${explanation}`;
+      } else if (data.files || data.filesGenerated || data.success) {
+        // ✅ FIX: Handle successful generation without explicit code/explanation
+        // This ensures ALL orchestrator responses create a saved message
+        const fileCount = data.files?.length || data.filesGenerated?.length || 0;
+        content = `✅ **Generation Complete!**\n\nSuccessfully processed your request${fileCount > 0 ? ` and generated ${fileCount} file(s)` : ''}.`;
       } else {
-        // Skip adding a message for "Generation started" - thinking steps will show progress
-        // Return undefined to signal skipping
-        return undefined;
+        // ✅ FIX: Default fallback - ALWAYS create a message for orchestrator responses
+        // Only skip for true placeholder "Generation started" messages
+        if (explanation === 'Generation started' || data.status === 'started') {
+          return undefined; // Skip placeholder messages
+        }
+        // For any other response, create a generic success message
+        content = `✅ **Request Processed**\n\nYour request has been completed successfully.`;
       }
     }
 
-    // Don't create a message if content is empty or meaningless
+    // Don't create a message if content is empty or is just "Generation started"
     if (!content || content.trim() === '' || content === '💡 Generation started') {
       return undefined;
     }
