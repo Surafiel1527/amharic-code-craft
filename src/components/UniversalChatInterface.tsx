@@ -151,7 +151,7 @@ export function UniversalChatInterface({
   const containerHeight = height || config.height;
 
   // Thinking steps tracking
-  const { steps: thinkingSteps, clearSteps } = useThinkingSteps(conversationId);
+  const { steps: thinkingSteps } = useThinkingSteps(conversationId);
   const [messageSteps, setMessageSteps] = useState<Map<string, typeof thinkingSteps>>(new Map());
 
   // Use the unified AI brain
@@ -197,27 +197,21 @@ export function UniversalChatInterface({
     }
   }, [messages]);
 
-  // Capture thinking steps for the current message - keep them permanent
+  // Capture thinking steps for the current message - PERMANENT, never clear
   useEffect(() => {
     if (thinkingSteps.length > 0) {
-      // Associate steps with the last user message
       const lastUserMessage = messages.filter(m => m.role === 'user').pop();
       if (lastUserMessage) {
-        // Store in memory for immediate display
+        // Store in memory permanently
         setMessageSteps(prev => new Map(prev).set(lastUserMessage.id, [...thinkingSteps]));
         
-        // Only save to database if user is authenticated and persistence is enabled
+        // Save to database if authenticated
         if (persistMessages && conversationId && !isLoading) {
           const saveSteps = async () => {
             try {
-              // Check authentication first
               const { data: { session } } = await supabase.auth.getSession();
-              if (!session?.user) {
-                console.log('Skipping thinking steps save - not authenticated');
-                return;
-              }
+              if (!session?.user) return;
               
-              // Save each thinking step to database
               await supabase.from('thinking_steps').insert(
                 thinkingSteps.map(step => ({
                   conversation_id: conversationId,
@@ -239,24 +233,6 @@ export function UniversalChatInterface({
       }
     }
   }, [thinkingSteps, messages, isLoading, persistMessages, conversationId]);
-
-  // Clear thinking steps only when generation completes AND assistant response exists
-  useEffect(() => {
-    if (!isLoading && thinkingSteps.length > 0) {
-      const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-      const lastMessage = messages[messages.length - 1];
-      
-      // Only clear if there's an assistant response after the last user message
-      if (lastMessage?.role === 'assistant' && lastUserMessage) {
-        const userMessageIndex = messages.findIndex(m => m.id === lastUserMessage.id);
-        const hasResponseAfter = messages.slice(userMessageIndex + 1).some(m => m.role === 'assistant');
-        
-        if (hasResponseAfter) {
-          clearSteps();
-        }
-      }
-    }
-  }, [isLoading, messages, thinkingSteps, clearSteps]);
 
   // ❌ REMOVED: Don't clear thinking steps - keep them permanent like Lovable/Replit
 
