@@ -202,35 +202,41 @@ export function UniversalChatInterface({
     if (thinkingSteps.length > 0 && !isLoading) {
       // Associate steps with the last user message
       const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-      if (lastUserMessage && persistMessages && conversationId) {
-        // Save steps to database for persistence across page refreshes
-        const saveSteps = async () => {
-          try {
-            // Get current user
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-            
-            // Save each thinking step to database
-            await supabase.from('thinking_steps').insert(
-              thinkingSteps.map(step => ({
-                conversation_id: conversationId,
-                message_id: lastUserMessage.id,
-                operation: step.operation,
-                detail: step.detail,
-                status: step.status,
-                duration: step.duration,
-                timestamp: step.timestamp,
-                user_id: user.id
-              }))
-            );
-          } catch (error) {
-            console.error('Failed to save thinking steps:', error);
-          }
-        };
-        saveSteps();
-        
-        // Also store in memory for immediate display
+      if (lastUserMessage) {
+        // Store in memory for immediate display
         setMessageSteps(prev => new Map(prev).set(lastUserMessage.id, [...thinkingSteps]));
+        
+        // Only save to database if user is authenticated and persistence is enabled
+        if (persistMessages && conversationId) {
+          const saveSteps = async () => {
+            try {
+              // Check authentication first
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!session?.user) {
+                console.log('Skipping thinking steps save - not authenticated');
+                return;
+              }
+              
+              // Save each thinking step to database
+              await supabase.from('thinking_steps').insert(
+                thinkingSteps.map(step => ({
+                  conversation_id: conversationId,
+                  message_id: lastUserMessage.id,
+                  operation: step.operation,
+                  detail: step.detail,
+                  status: step.status,
+                  duration: step.duration,
+                  timestamp: step.timestamp,
+                  user_id: session.user.id
+                }))
+              );
+            } catch (error) {
+              console.error('Failed to save thinking steps:', error);
+            }
+          };
+          saveSteps();
+        }
+        
         clearSteps();
       }
     }
