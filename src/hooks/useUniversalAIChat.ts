@@ -469,11 +469,9 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   }, [conversationId, projectId, projectContext]);
 
   /**
-   * Routes the message to Smart Orchestrator
+   * Routes the message to Smart Orchestrator OR Intelligent Code Assistant
    */
   const routeToOrchestrator = useCallback(async (message: string, context: any): Promise<any> => {
-    logger.info(`Routing to Mega Mind Orchestrator (${mode} mode)`);
-
     const startTime = Date.now();
     try {
       // CRITICAL: Get current user ID
@@ -482,16 +480,24 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         throw new Error('Not authenticated - user ID required');
       }
 
+      // SMART ROUTING: Determine if this is a modification or new generation
+      const isModification = mode === 'enhance' && projectId && context.currentCode;
+      const targetFunction = isModification ? 'intelligent-code-assistant' : 'mega-mind-orchestrator';
+      
+      logger.info(`Routing to ${targetFunction} (${mode} mode, isModification: ${isModification})`);
+
       // Use retry logic for reliability
       const data = await retryWithBackoff(async () => {
-        const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
+        const { data, error } = await supabase.functions.invoke(targetFunction, {
           body: {
             // CRITICAL: Pass userId and conversationId at TOP LEVEL
             userId: currentUser.id,
             conversationId: conversationId || projectId,
-            request: message,
-            requestType: 'code-update',
-            mode, // Pass mode to orchestrator
+            projectId: projectId,
+            userInstruction: message,
+            request: message, // Keep for backward compatibility
+            requestType: isModification ? 'modification' : 'generation',
+            mode: isModification ? 'generate' : undefined, // intelligent-code-assistant uses different modes
             context: {
               projectId: projectId,
               currentCode: context.currentCode,
