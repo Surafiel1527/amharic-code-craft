@@ -404,13 +404,39 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
 
   const getPhaseColor = (phase: string) => {
     switch (phase) {
-      case 'analyzing': return 'text-blue-500';
-      case 'generating': return 'text-purple-500';
-      case 'dependencies': return 'text-amber-500';
-      case 'finalizing': return 'text-green-500';
-      case 'complete': return 'text-emerald-500';
+      case 'analyzing': return 'text-primary';
+      case 'generating': return 'text-primary';
+      case 'dependencies': return 'text-accent';
+      case 'finalizing': return 'text-primary';
+      case 'complete': return 'text-primary';
       default: return 'text-muted-foreground';
     }
+  };
+
+  const getPhaseLabel = (phase: string) => {
+    switch (phase) {
+      case 'analyzing': return 'Understanding your request';
+      case 'generating': return 'Building your project';
+      case 'dependencies': return 'Setting up packages';
+      case 'finalizing': return 'Adding final touches';
+      case 'complete': return 'All done!';
+      default: return 'Working on it';
+    }
+  };
+
+  const getOperationLabel = (operation: string) => {
+    // Make operations more user-friendly
+    if (operation.includes('Creating') || operation.includes('component')) {
+      return operation;
+    }
+    if (operation.includes('Analyzed')) return 'Analyzing your request';
+    if (operation.includes('decision')) return 'Planning the best approach';
+    if (operation.includes('Read')) return 'Reviewing existing code';
+    if (operation.includes('plan')) return 'Creating implementation plan';
+    if (operation.includes('Generated')) return 'Writing code';
+    if (operation.includes('Validated')) return 'Checking code quality';
+    if (operation.includes('Auto-fixed')) return 'Optimizing and polishing';
+    return operation;
   };
 
   // Detect mobile
@@ -420,250 +446,291 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
   if (isMobile) {
     return (
       <div className="fixed bottom-20 left-0 right-0 z-40 px-3">
-        <Card className="w-full p-3 space-y-2 bg-background/95 backdrop-blur-sm shadow-lg border-primary/50">
-          {error && (
-            <Alert variant="destructive" className="py-2">
-              <XCircle className="h-4 w-4" />
-              <AlertDescription className="ml-2 text-xs">
-                <div>
-                  <strong>Generation Failed:</strong> {error}
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <motion.div
-                animate={{ rotate: (isComplete && !error) ? 0 : 360 }}
-                transition={{ duration: 2, repeat: (isComplete && !error) ? 0 : Infinity, ease: "linear" }}
-                className="flex-shrink-0"
-              >
-                {error ? <XCircle className="h-4 w-4 text-destructive" /> : getPhaseIcon(currentPhase)}
-              </motion.div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold truncate">
-                  {error ? 'Generation Failed' : (isComplete ? 'Project Ready!' : 'Generating project...')}
-                </p>
-                {!error && !isComplete && currentOperation && (
-                  <p className="text-[10px] text-muted-foreground truncate">
-                    {currentOperation}
-                  </p>
-                )}
-              </div>
-            </div>
-            
-            {!error && !isComplete && (
-              <span className="text-xs font-medium text-primary flex-shrink-0">{progress}%</span>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+        >
+          <Card className="w-full p-3 space-y-2 glass-effect shadow-elegant border-primary/20">
+            {error && (
+              <Alert variant="destructive" className="py-2">
+                <XCircle className="h-4 w-4" />
+                <AlertDescription className="ml-2 text-xs">
+                  <div>
+                    <strong>Generation Failed:</strong> {error}
+                  </div>
+                </AlertDescription>
+              </Alert>
             )}
-          </div>
 
-          {!error && !isComplete && (
-            <Progress value={progress} className="h-1" />
-          )}
-
-          {error && (
-            <div className="flex gap-2">
-              <Button
-                onClick={handleRetry}
-                disabled={isRetrying}
-                className="flex-1 h-8 text-xs"
-              >
-                {isRetrying ? (
-                  <>
-                    <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-                    Retrying...
-                  </>
-                ) : (
-                  <>
-                    <RotateCcw className="mr-1.5 h-3 w-3" />
-                    Retry
-                  </>
-                )}
-              </Button>
-              <Button onClick={onCancel} variant="outline" className="h-8 text-xs px-3">
-                Cancel
-              </Button>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <motion.div
+                  animate={{ 
+                    rotate: (isComplete && !error) ? 0 : 360,
+                    scale: (isComplete && !error) ? [1, 1.2, 1] : 1
+                  }}
+                  transition={{ 
+                    rotate: { duration: 2, repeat: (isComplete && !error) ? 0 : Infinity, ease: "linear" },
+                    scale: { duration: 0.5 }
+                  }}
+                  className={`flex-shrink-0 ${getPhaseColor(currentPhase)}`}
+                >
+                  {error ? <XCircle className="h-4 w-4 text-destructive" /> : getPhaseIcon(currentPhase)}
+                </motion.div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold truncate">
+                    {error ? 'Generation Failed' : (isComplete ? '🎉 Project Ready!' : getPhaseLabel(currentPhase))}
+                  </p>
+                  {!error && !isComplete && currentOperation && (
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {getOperationLabel(currentOperation)}
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              {!error && !isComplete && (
+                <motion.span 
+                  key={progress}
+                  initial={{ scale: 1.2 }}
+                  animate={{ scale: 1 }}
+                  className="text-xs font-medium text-primary flex-shrink-0"
+                >
+                  {progress}%
+                </motion.span>
+              )}
             </div>
-          )}
-        </Card>
+
+            {!error && !isComplete && (
+              <div className="relative">
+                <Progress value={progress} className="h-1.5 overflow-hidden" />
+                <motion.div 
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                  animate={{ x: [-200, 200] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  style={{ width: '100px' }}
+                />
+              </div>
+            )}
+
+            {error && (
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleRetry}
+                  disabled={isRetrying}
+                  className="flex-1 h-8 text-xs"
+                  variant="default"
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  {isRetrying ? 'Retrying...' : 'Try Again'}
+                </Button>
+                <Button
+                  onClick={onCancel}
+                  disabled={isRetrying}
+                  variant="ghost"
+                  className="h-8 px-3"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+          </Card>
+        </motion.div>
       </div>
     );
   }
 
-  // Desktop: full-screen view
+  // Desktop: render as floating card in bottom-right with enterprise design
   return (
-    <div className="flex items-center justify-center min-h-[60vh] p-4">
-      <Card className="w-full max-w-2xl p-8 space-y-6 bg-gradient-to-br from-background via-background to-primary/5">
-        {error && (
-          <Alert variant="destructive">
-            <XCircle className="h-4 w-4" />
-            <AlertDescription className="ml-2 flex items-center justify-between">
-              <div>
-                <strong>Generation Failed:</strong> {error}
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
+    <AnimatePresence mode="wait">
+      <motion.div
+        initial={{ opacity: 0, y: 50, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 50, scale: 0.95 }}
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+        className="fixed bottom-6 right-6 z-50 w-[420px] max-w-[calc(100vw-3rem)]"
+      >
+        <Card className="p-6 space-y-5 glass-effect shadow-elegant border-primary/20 overflow-hidden relative">
+          {/* Animated background gradient */}
+          <motion.div 
+            className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none"
+            animate={{ 
+              backgroundPosition: ['0% 0%', '100% 100%'],
+            }}
+            transition={{ 
+              duration: 10,
+              repeat: Infinity,
+              repeatType: 'reverse'
+            }}
+          />
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-2"
-        >
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <motion.div
-              animate={{ rotate: (isComplete && !error) ? 0 : 360 }}
-              transition={{ duration: 2, repeat: (isComplete && !error) ? 0 : Infinity, ease: "linear" }}
-            >
-              {error ? <XCircle className="h-5 w-5 text-destructive" /> : getPhaseIcon(currentPhase)}
-            </motion.div>
-            <h2 className="text-2xl font-bold">
-              {error ? '❌ Generation Failed' : (isComplete ? '🎉 Project Ready!' : '🚀 Generating Your Project')}
-            </h2>
-          </div>
-          <p className="text-muted-foreground">
-            {error 
-              ? 'Please check the error message above and try again'
-              : (isComplete 
-                ? 'Your project is ready! Redirecting to workspace...'
-                : currentOperation || 'Watch your project come to life in real-time')}
-          </p>
-          {!error && !isComplete && currentPhaseName && (
-            <p className="text-sm font-medium text-primary mt-1">
-              {currentPhaseName}
-            </p>
-          )}
-        </motion.div>
-
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="font-medium">Progress</span>
-            <span className="text-muted-foreground">{progress}%</span>
-          </div>
-          <Progress value={progress} className="h-3" />
-        </div>
-
-        <div className="space-y-3">
-          <AnimatePresence mode="popLayout">
-            {updates.map((update, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ delay: index * 0.1 }}
-                className={`flex items-start gap-3 p-3 rounded-lg bg-card border ${getPhaseColor(update.phase)}`}
-              >
-                <div className={`mt-0.5 ${getPhaseColor(update.phase)}`}>
-                  {update.progress >= 100 || update.phase === 'complete' ? (
-                    <CheckCircle className="h-5 w-5 text-emerald-500" />
-                  ) : (
-                    getPhaseIcon(update.phase)
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium capitalize">{update.phaseName || update.phase}</p>
-                  <p className="text-sm text-muted-foreground">{update.message}</p>
-                  {update.currentOperation && (
-                    <p className="text-xs text-muted-foreground/80 mt-0.5 italic">
-                      → {update.currentOperation}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(update.timestamp).toLocaleTimeString()}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-
-        {!error && !isComplete && updates.length > 0 && (
-          <motion.div
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="text-center p-4 rounded-lg bg-primary/5 border border-primary/10"
-          >
-            <div className="flex items-center justify-center gap-2 text-sm font-medium">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              <span>
-                {currentOperation || (
-                  updates[updates.length - 1].fileNumber && updates[updates.length - 1].totalFiles
-                    ? `Building file ${updates[updates.length - 1].fileNumber} of ${updates[updates.length - 1].totalFiles}`
-                    : currentPhase === 'analyzing'
-                    ? 'Analyzing your request...'
-                    : currentPhase === 'generating'
-                    ? 'Generating project files...'
-                    : 'Processing...'
-                )}
-              </span>
-            </div>
-            {progress > 0 && currentPhaseName && (
-              <p className="text-xs text-primary/80 font-medium mt-2">
-                {currentPhaseName}
-              </p>
+          <div className="relative z-10">
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <XCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="space-y-3">
+                    <div>
+                      <strong>Generation Failed:</strong> {error}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleRetry}
+                        disabled={isRetrying}
+                        size="sm"
+                        variant="outline"
+                        className="hover-scale"
+                      >
+                        <RotateCcw className="h-3 w-3 mr-1" />
+                        {isRetrying ? 'Retrying...' : 'Retry Generation'}
+                      </Button>
+                      <Button
+                        onClick={onCancel}
+                        disabled={isRetrying}
+                        size="sm"
+                        variant="ghost"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
             )}
-          </motion.div>
-        )}
-        
-        {!error && isComplete && (
-          <motion.div
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="text-center p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20"
-          >
-            <div className="flex items-center justify-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-              <CheckCircle className="h-4 w-4" />
-              <span>✅ All files generated, finalizing project...</span>
-            </div>
-          </motion.div>
-        )}
 
-        {!error && onCancel && (
-          <div className="flex justify-center pt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onCancel}
-              className="gap-2"
-            >
-              <X className="h-4 w-4" />
-              Cancel Generation
-            </Button>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex justify-center gap-3 pt-4">
-            <Button
-              variant="default"
-              onClick={handleRetry}
-              disabled={isRetrying}
-              className="gap-2"
-            >
-              {isRetrying ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Retrying...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  Retry Generation
-                </>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-4 flex-1">
+                <motion.div
+                  animate={{ 
+                    rotate: (isComplete && !error) ? [0, 360] : 0,
+                    scale: isComplete && !error ? [1, 1.15, 1] : 1
+                  }}
+                  transition={{ 
+                    rotate: { duration: 2, repeat: isComplete && !error ? 0 : Infinity, ease: "linear" },
+                    scale: { duration: 0.6, ease: "easeOut" }
+                  }}
+                  className={`flex-shrink-0 p-3 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 ${getPhaseColor(currentPhase)}`}
+                >
+                  {error ? (
+                    <XCircle className="h-7 w-7 text-destructive" />
+                  ) : (
+                    <motion.div
+                      animate={isComplete ? {} : { y: [0, -2, 0] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                      {getPhaseIcon(currentPhase)}
+                    </motion.div>
+                  )}
+                </motion.div>
+                
+                <div className="flex-1 min-w-0">
+                  <motion.h3 
+                    className="font-semibold text-lg mb-1"
+                    key={isComplete ? 'complete' : currentPhase}
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    {error ? 'Generation Failed' : (isComplete ? '🎉 Project Ready!' : getPhaseLabel(currentPhase))}
+                  </motion.h3>
+                  <motion.p 
+                    className="text-sm text-muted-foreground"
+                    key={currentOperation || currentPhase}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    {error ? 'Something went wrong during generation' : 
+                     (isComplete ? 'Your project is ready to use!' : 
+                      (currentOperation ? getOperationLabel(currentOperation) : getPhaseLabel(currentPhase)))}
+                  </motion.p>
+                </div>
+              </div>
+              
+              {!error && !isComplete && (
+                <motion.div 
+                  key={progress}
+                  initial={{ scale: 1.2, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="flex flex-col items-end"
+                >
+                  <div className="text-3xl font-bold bg-gradient-to-br from-primary to-primary/70 bg-clip-text text-transparent">
+                    {progress}%
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {isComplete ? 'Complete' : 'Progress'}
+                  </div>
+                </motion.div>
               )}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => window.location.href = '/'}
-              disabled={isRetrying}
-            >
-              Return to Home
-            </Button>
+            </div>
+
+            {!error && !isComplete && (
+              <div className="space-y-4 mt-5">
+                <div className="relative">
+                  <Progress value={progress} className="h-2.5 overflow-hidden" />
+                  {/* Shimmer effect */}
+                  <motion.div 
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/30 to-transparent pointer-events-none"
+                    animate={{ x: [-200, 400] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    style={{ width: '200px' }}
+                  />
+                </div>
+
+                {updates.length > 0 && (
+                  <div className="max-h-28 overflow-y-auto space-y-2 text-xs scrollbar-thin">
+                    <AnimatePresence mode="popLayout">
+                      {updates.slice(-4).reverse().map((update, idx) => (
+                        <motion.div
+                          key={`${update.timestamp}-${idx}`}
+                          initial={{ opacity: 0, x: -20, height: 0 }}
+                          animate={{ opacity: 1, x: 0, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ 
+                            opacity: { duration: 0.3 },
+                            x: { duration: 0.3 },
+                            height: { duration: 0.2 }
+                          }}
+                          className="flex items-start gap-2 text-muted-foreground py-1.5 px-3 rounded-lg bg-accent/5 hover:bg-accent/10 transition-colors"
+                        >
+                          <span className="mt-0.5 flex-shrink-0">•</span>
+                          <span className="flex-1">{update.message}</span>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isComplete && !error && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mt-4 p-4 rounded-lg bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20"
+              >
+                <p className="text-sm text-center font-medium">
+                  ✨ Your project has been successfully generated and is ready to use!
+                </p>
+              </motion.div>
+            )}
+
+            <div className="flex gap-2 mt-4">
+              {!error && onCancel && (
+                <Button
+                  onClick={onCancel}
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1 hover-scale"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  {isComplete ? 'Close' : 'Dismiss'}
+                </Button>
+              )}
+            </div>
           </div>
-        )}
-      </Card>
-    </div>
+        </Card>
+      </motion.div>
+    </AnimatePresence>
   );
 }
