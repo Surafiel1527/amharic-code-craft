@@ -98,15 +98,9 @@ serve(async (req) => {
     // ✅ Create and subscribe to channel ONCE for the entire request
     const realtimeChannel = platformSupabase.channel(`ai-status-${conversationId}`);
     
-    // Subscribe immediately before any broadcasts (non-blocking)
-    realtimeChannel.subscribe((status: string) => {
-      if (status === 'SUBSCRIBED') {
-        console.log(`✅ Realtime channel subscribed: ai-status-${conversationId}`);
-      }
-    });
-    
-    // Small delay to ensure subscription is established
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Subscribe to channel (Supabase Realtime will handle connection)
+    realtimeChannel.subscribe();
+    console.log(`✅ Realtime channel created: ai-status-${conversationId}`);
 
     // Helper to broadcast via Supabase Realtime Channels
     const broadcast = async (event: string, data: any) => {
