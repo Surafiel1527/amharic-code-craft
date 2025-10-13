@@ -694,6 +694,12 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
     }
 
     try {
+      // Check authentication first
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        throw new Error('Please sign in to use the AI chat');
+      }
+
       const context = buildContext();
       const isError = detectError(message);
 
@@ -767,7 +773,25 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       const errorMsg = formatErrorMessage(error);
       
       // Handle specific error types
-      if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
+      if (errorMsg.includes('sign in') || errorMsg.includes('Not authenticated')) {
+        toast.error("Please sign in to use the AI chat", {
+          description: "You need to be logged in to generate or modify code"
+        });
+        
+        const authErrorMessage: Message = {
+          id: crypto.randomUUID(),
+          role: 'system',
+          content: `🔐 **Authentication Required**\n\nYou need to sign in to use the AI chat.\n\n**To continue:**\n• Sign up for a new account\n• Or log in if you already have one\n\nOnce logged in, you'll be able to generate and modify code with AI assistance.`,
+          timestamp: new Date().toISOString(),
+          metadata: { isGenerationStart: true }
+        };
+        
+        setMessages(prev => [...prev, authErrorMessage]);
+        setIsLoading(false);
+        setCurrentPhase('');
+        setProgress(0);
+        return; // Don't continue error handling
+      } else if (errorMsg.includes('rate limit') || errorMsg.includes('429')) {
         toast.error("Too many requests. Please wait a moment.");
       } else if (errorMsg.includes('payment') || errorMsg.includes('credits') || errorMsg.includes('402')) {
         toast.error("Credits needed. Please add credits to your workspace.");

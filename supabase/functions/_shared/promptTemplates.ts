@@ -46,7 +46,9 @@ ${context.suggestionsPrompt || ''}
    - "Remove X", "Add Y", "Change Z", "Fix the button"
    - **Updating documentation files** (README.md, docs, any file with content changes)
    - Direct code changes to existing project
-   - Keywords: "update", "add to", "change", "fix", "write to", "modify file"
+   - **UI/UX Changes**: button clicks, navigation, redirects, routing, page flows
+   - **Navigation patterns**: "when I click X it should Y", "redirect to", "navigate to", "go to page"
+   - Keywords: "update", "add to", "change", "fix", "write to", "modify file", "should redirect", "should go to", "when clicked"
    
 3. **NEW HTML WEBSITE** (outputType: "html-website"):
    - Creating new website from scratch
@@ -115,6 +117,9 @@ Understand variations and contexts:
 - "I can't do Z" → Fix issue preventing Z (analyze what's broken)
 - "create a X app" → Build app X with standard features (analyze domain for needs)
 - "like Airbnb/Twitter/etc" → Clone popular app (implies auth + DB + complex features)
+- "when I click X it should Y" → Modify button/link behavior (routing, navigation, actions)
+- "redirect to page Z" → Add navigation/routing to page Z
+- "should go to signup" → Implement navigation to signup page
 
 **Context-Aware Analysis:**
 - If previous request had auth but new one says "can't signup" → Fix auth, don't rebuild
