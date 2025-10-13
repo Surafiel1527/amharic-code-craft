@@ -262,6 +262,25 @@ export async function executeGeneration(ctx: {
     (conversationContext as any)._learnedPatterns = learnedPatterns;
 
     const analysis = await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase, projectMemory);
+    
+    // 🚨 CRITICAL SAFETY CHECK: Never generate new project when existing project exists
+    if (existingProjectCode?.hasExistingCode && 
+        (analysis.outputType === 'html-website' || analysis.outputType === 'react-app')) {
+      console.log(`🚨 SAFETY OVERRIDE: Forcing outputType from "${analysis.outputType}" to "modification" because existing project detected!`);
+      console.log(`📁 Existing project has ${existingProjectCode.files?.length || 0} files`);
+      
+      // Force modification
+      analysis.outputType = 'modification';
+      analysis.isMetaRequest = false;
+      
+      // Log warning
+      await broadcast('generation:warning', {
+        status: 'corrected',
+        message: '✅ Detected existing project - will modify instead of creating new',
+        progress: 8
+      });
+    }
+    
     await stepTracker.trackStep('analyze_request', `Classified as ${analysis.outputType || 'code generation'}`, broadcast, 'complete');
     
     console.log('📊 Analysis complete:', JSON.stringify(analysis, null, 2));

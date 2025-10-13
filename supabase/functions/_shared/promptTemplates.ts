@@ -19,20 +19,34 @@ export function buildAnalysisPrompt(request: string, requestType: string, contex
   
   return `You are an expert web development analyst. Analyze this user request.
 
+${hasExistingProject ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔴 🔴 🔴 RED ALERT: EXISTING PROJECT DETECTED 🔴 🔴 🔴
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+THIS PROJECT HAS ${existingFiles} FILES ALREADY!
+
+🚨 YOU MUST RESPOND WITH: outputType: "modification" 🚨
+
+DO NOT GENERATE A NEW PROJECT! DO NOT USE "html-website" OR "react-app"!
+
+The user is chatting about their EXISTING project. They want to:
+• Modify existing code
+• Add features to existing code  
+• Fix bugs in existing code
+• Discuss what was built
+
+ONLY use "modification" unless user explicitly says:
+✅ "start over completely"
+✅ "create a brand new project"
+✅ "delete everything and start fresh"
+
+ANY other request = outputType: "modification"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+` : ''}
+
 **User Request:** "${request}"
 **Request Type:** ${requestType}
-
-${hasExistingProject ? `
-🚨 **CRITICAL CONTEXT: EXISTING PROJECT DETECTED**
-This project already has ${existingFiles} files of code. This is almost certainly a MODIFICATION request, not a new generation.
-Unless the user explicitly says "create new project" or "start over", you MUST classify this as outputType: "modification".
-
-**Signs this is a modification:**
-- User says "when I click X do Y" → Modify button behavior
-- User says "add X", "change Y", "fix Z" → Modify existing code
-- User says "redirect to page" → Add navigation to existing code
-- User mentions specific UI elements (buttons, forms, pages) → Modify existing UI
-` : ''}
 
 ${context.recentTurns?.length ? `
 **Recent Conversation Context:**
