@@ -691,11 +691,57 @@ export default function Workspace() {
     }
   };
 
+  // Handle secrets completion - resume generation
+  const handleSecretsComplete = async () => {
+    setShowSecretsModal(false);
+    toast.success("🔑 Secrets configured! Resuming generation...");
+    
+    if (pendingGenerationRequest && conversationId) {
+      // Retry the generation now that secrets are configured
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        await supabase.functions.invoke('mega-mind-orchestrator', {
+          body: {
+            userId: user.id,
+            conversationId,
+            request: pendingGenerationRequest,
+            requestType: 'code-update',
+            context: { projectId }
+          }
+        });
+      } catch (error) {
+        console.error('Failed to resume generation:', error);
+        toast.error("Failed to resume generation");
+      }
+    }
+    
+    setPendingGenerationRequest(null);
+    setRequiredResources([]);
+  };
+  
+  // Handle secrets cancellation
+  const handleSecretsCancel = () => {
+    setShowSecretsModal(false);
+    setPendingGenerationRequest(null);
+    setRequiredResources([]);
+    toast.info("Generation cancelled - secrets not configured");
+  };
+
   return (
     <>
       <GenerationMonitorOverlay 
         projectId={projectId}
         onClarificationSubmit={handleClarificationSubmit}
+      />
+      
+      <SecretsRequiredModal
+        open={showSecretsModal}
+        resources={requiredResources}
+        onComplete={handleSecretsComplete}
+        onCancel={handleSecretsCancel}
+        conversationId={conversationId || undefined}
       />
       
       <WorkspaceLayout
