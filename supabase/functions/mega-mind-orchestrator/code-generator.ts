@@ -191,7 +191,15 @@ export async function generateAndPackageCode(ctx: {
     generatedCode = await frameworkBuilder.generateFiles(buildContext, generationPlan);
     console.log(`✅ Generated ${generatedCode.files.length} files using ${generatedCode.framework} builder`);
 
-    await stepTracker.trackStep('generate_files', `Generated ${generatedCode.files.length} files`, broadcast, 'complete');
+    // Dynamic completion message based on what was actually done
+    const fileCountText = generatedCode.files.length === 1 
+      ? '1 file'
+      : `${generatedCode.files.length} files`;
+    const actionText = existingFiles.length > 0 
+      ? `Updated ${fileCountText}`
+      : `Created ${fileCountText}`;
+    
+    await stepTracker.trackStep('generate_files', actionText, broadcast, 'complete');
     await updateJobProgress(75, 'Code generation complete', 'Building Components', []);
   }
 

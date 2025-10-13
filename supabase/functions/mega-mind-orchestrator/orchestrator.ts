@@ -530,7 +530,13 @@ export async function executeGeneration(ctx: {
                        !request.toLowerCase().includes('error') &&
                        analysis.outputType !== 'conversation';
 
-  if (needsPlanning) {
+  // Detect if this is a simple text/content update vs full generation
+  const isSimpleUpdate = request.toLowerCase().includes('update') && 
+                         request.toLowerCase().includes('name') ||
+                         request.toLowerCase().includes('change') && request.toLowerCase().includes('text') ||
+                         request.toLowerCase().includes('replace') && request.length < 100;
+
+  if (needsPlanning && !isSimpleUpdate) {
     const { analyzeCodebase } = await import('../_shared/codebaseAnalyzer.ts');
     const { generateDetailedPlan, formatPlanForDisplay } = await import('../_shared/implementationPlanner.ts');
     
@@ -551,7 +557,15 @@ export async function executeGeneration(ctx: {
     );
 
     console.log(`📁 Codebase analysis: ${codebaseAnalysis.totalFiles} files, ${codebaseAnalysis.similarFunctionality.length} similar`);
-    await stepTracker.trackStep('read_codebase', `Found ${codebaseAnalysis.totalFiles} files`, broadcast, 'complete');
+    
+    // Dynamic detail text based on actual codebase state
+    const detailText = codebaseAnalysis.totalFiles === 0 
+      ? 'Starting fresh project'
+      : codebaseAnalysis.similarFunctionality.length > 0
+        ? `Found ${codebaseAnalysis.totalFiles} files, ${codebaseAnalysis.similarFunctionality.length} similar to request`
+        : `Analyzed ${codebaseAnalysis.totalFiles} existing files`;
+    
+    await stepTracker.trackStep('read_codebase', detailText, broadcast, 'complete');
 
     await stepTracker.trackStep('create_plan', 'Breaking down implementation into steps', broadcast, 'start');
     await broadcast('generation:planning', { 
@@ -571,7 +585,14 @@ export async function executeGeneration(ctx: {
     );
 
     const formattedPlan = formatPlanForDisplay(detailedPlan);
-    await stepTracker.trackStep('create_plan', 'Implementation plan created', broadcast, 'complete');
+    
+    // Dynamic plan completion message
+    const planSteps = detailedPlan.steps?.length || 0;
+    const planDetailText = planSteps > 0
+      ? `Created plan with ${planSteps} implementation steps`
+      : 'Implementation approach determined';
+    
+    await stepTracker.trackStep('create_plan', planDetailText, broadcast, 'complete');
     
     await broadcast('generation:plan_ready', { 
       status: 'awaiting_approval', 
