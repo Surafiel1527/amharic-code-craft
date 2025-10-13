@@ -46,6 +46,7 @@ serve(async (req) => {
       conversationId, 
       userId, 
       requestType = 'generation',
+      operationMode = 'generate', // 'generate' | 'modify'
       context = {},
       userSupabaseConnection 
     } = await req.json();
@@ -53,12 +54,17 @@ serve(async (req) => {
     // Extract framework from context (default: react)
     const framework = context.framework || 'react';
     const projectId = context.projectId || null;
+    
+    // Log operation mode
+    const isModifyMode = operationMode === 'modify' && projectId;
 
     console.log('🚀 Mega Mind Orchestrator started', { 
       request: request.substring(0, 100), 
       conversationId, 
       userId, 
       requestType,
+      operationMode,
+      isModifyMode,
       framework,
       projectId
     });
@@ -238,6 +244,7 @@ serve(async (req) => {
       conversationId,
       userId,
       requestType,
+      operationMode, // Pass operation mode
       framework,
       projectId,
       conversationContext,

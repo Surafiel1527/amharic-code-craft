@@ -50,6 +50,7 @@ export async function processRequest(ctx: {
   conversationId: string;
   userId: string;
   requestType: string;
+  operationMode?: string; // 'generate' | 'modify'
   framework: string;
   projectId: string | null;
   conversationContext: any;
@@ -99,6 +100,7 @@ export async function executeGeneration(ctx: {
   conversationId: string;
   userId: string;
   requestType: string;
+  operationMode?: string; // 'generate' | 'modify'
   framework: string;
   projectId: string | null;
   conversationContext: any;
@@ -114,6 +116,7 @@ export async function executeGeneration(ctx: {
     request, 
     conversationId, 
     userId,
+    operationMode = 'generate',
     framework,
     projectId, 
     conversationContext,
@@ -122,6 +125,9 @@ export async function executeGeneration(ctx: {
     userSupabase,
     broadcast 
   } = ctx;
+  
+  // Check if in modify mode
+  const isModifyMode = operationMode === 'modify' && projectId;
   
   // Track start time for metrics
   const startTime = ctx.startTime!;
@@ -263,8 +269,24 @@ export async function executeGeneration(ctx: {
 
     const analysis = await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase, projectMemory);
     
-    // 🚨 CRITICAL SAFETY CHECK: Never generate new project when existing project exists
-    if (existingProjectCode?.hasExistingCode && 
+    // 🚨 CRITICAL SAFETY CHECK: Force modification mode when appropriate
+    // Case 1: Explicit modify mode with existing project
+    if (isModifyMode && existingProjectCode?.hasExistingCode) {
+      console.log(`🔧 MODIFY MODE: Forcing modification for existing project`);
+      console.log(`📁 Existing project has ${existingProjectCode.files?.length || 0} files`);
+      
+      // Force modification
+      analysis.outputType = 'modification';
+      analysis.isMetaRequest = false;
+      
+      await broadcast('generation:info', {
+        status: 'modify_mode',
+        message: '🔧 Modifying existing project',
+        progress: 8
+      });
+    }
+    // Case 2: Existing project detected but not in explicit modify mode (safety fallback)
+    else if (existingProjectCode?.hasExistingCode && 
         (analysis.outputType === 'html-website' || analysis.outputType === 'react-app')) {
       console.log(`🚨 SAFETY OVERRIDE: Forcing outputType from "${analysis.outputType}" to "modification" because existing project detected!`);
       console.log(`📁 Existing project has ${existingProjectCode.files?.length || 0} files`);

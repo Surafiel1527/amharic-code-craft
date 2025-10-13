@@ -158,11 +158,3 @@ verify_jwt = false
 
 [functions.conversational-ai]
 verify_jwt = true
-
-# ============================================
-# PHASE 5: MASTER SYSTEM PROMPT
-# Intelligent code generation with full context
-# ============================================
-
-[functions.intelligent-code-assistant]
-verify_jwt = true

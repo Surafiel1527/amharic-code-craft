@@ -469,7 +469,8 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   }, [conversationId, projectId, projectContext]);
 
   /**
-   * Routes the message to Smart Orchestrator OR Intelligent Code Assistant
+   * Routes the message to Unified Mega Mind Orchestrator
+   * Handles both modifications and new generation with operationMode
    */
   const routeToOrchestrator = useCallback(async (message: string, context: any): Promise<any> => {
     const startTime = Date.now();
@@ -480,24 +481,22 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         throw new Error('Not authenticated - user ID required');
       }
 
-      // SMART ROUTING: Determine if this is a modification or new generation
+      // UNIFIED ROUTING: Always use mega-mind-orchestrator with appropriate operationMode
       const isModification = mode === 'enhance' && projectId && context.currentCode;
-      const targetFunction = isModification ? 'intelligent-code-assistant' : 'mega-mind-orchestrator';
+      const operationMode = isModification ? 'modify' : 'generate';
       
-      logger.info(`Routing to ${targetFunction} (${mode} mode, isModification: ${isModification})`);
+      logger.info(`Routing to mega-mind-orchestrator (operationMode: ${operationMode}, mode: ${mode}, isModification: ${isModification})`);
 
       // Use retry logic for reliability
       const data = await retryWithBackoff(async () => {
-        const { data, error } = await supabase.functions.invoke(targetFunction, {
+        const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
           body: {
             // CRITICAL: Pass userId and conversationId at TOP LEVEL
             userId: currentUser.id,
             conversationId: conversationId || projectId,
-            projectId: projectId,
-            userInstruction: message,
-            request: message, // Keep for backward compatibility
+            request: message,
+            operationMode, // 'modify' or 'generate'
             requestType: isModification ? 'modification' : 'generation',
-            mode: isModification ? 'generate' : undefined, // intelligent-code-assistant uses different modes
             context: {
               projectId: projectId,
               currentCode: context.currentCode,
