@@ -153,6 +153,13 @@ export function UniversalChatInterface({
   // Thinking steps tracking
   const { steps: thinkingSteps } = useThinkingSteps(conversationId);
   const [messageSteps, setMessageSteps] = useState<Map<string, typeof thinkingSteps>>(new Map());
+  
+  // ✅ NEW: Track project-level generation status for inline display
+  const [generationStatus, setGenerationStatus] = useState<{
+    isGenerating: boolean;
+    message: string;
+    progress: number;
+  }>({ isGenerating: false, message: '', progress: 0 });
 
   // Use the unified AI brain
   const {
@@ -179,6 +186,39 @@ export function UniversalChatInterface({
     projectContext: { ...projectContext, ...(context || {}) }, // Merge contexts
     mode: operationMode // Pass operation mode to the hook
   });
+
+  // ✅ NEW: Subscribe to project-level generation status
+  useEffect(() => {
+    if (!projectId) return;
+    
+    console.log('🔌 Chat subscribing to project generation status:', `ai-status-${projectId}`);
+    
+    const statusChannel = supabase
+      .channel(`chat-gen-status-${projectId}`)
+      .on('broadcast', { event: 'status-update' }, ({ payload }) => {
+        console.log('📥 Chat received generation status:', payload);
+        
+        const isGenerating = payload.status !== 'idle' && payload.status !== 'complete';
+        setGenerationStatus({
+          isGenerating,
+          message: payload.message || payload.currentOperation || 'Generating...',
+          progress: payload.progress || 0
+        });
+        
+        // Clear when complete
+        if (payload.status === 'complete' || payload.message?.includes('complete')) {
+          setTimeout(() => {
+            setGenerationStatus({ isGenerating: false, message: '', progress: 0 });
+          }, 2000);
+        }
+      })
+      .subscribe();
+    
+    return () => {
+      console.log('🔌 Chat unsubscribing from generation status');
+      supabase.removeChannel(statusChannel);
+    };
+  }, [projectId]);
 
   // ✅ FIX: Populate messageSteps from loaded messages with thinkingSteps
   // This ensures historical thinking steps appear when conversation loads
@@ -552,6 +592,42 @@ export function UniversalChatInterface({
                 </div>
               );
             })}
+
+          {/* ✅ NEW: Inline generation status indicator */}
+          {generationStatus.isGenerating && (
+            <div className="flex justify-start">
+              <Card className="max-w-[85%] p-3 bg-muted border-primary/50">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="outline" className="text-[10px]">AI</Badge>
+                      <Badge variant="secondary" className="text-[10px]">
+                        <Sparkles className="w-2 h-2 mr-1" />
+                        Generating
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {generationStatus.message}
+                    </p>
+                    {generationStatus.progress > 0 && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="flex-1 bg-background/50 rounded-full h-1.5 overflow-hidden">
+                          <div 
+                            className="h-full bg-primary transition-all duration-300"
+                            style={{ width: `${generationStatus.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground font-medium">
+                          {generationStatus.progress}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
 
           <div ref={messagesEndRef} />
         </div>
