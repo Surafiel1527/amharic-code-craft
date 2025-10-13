@@ -534,6 +534,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_prompts: {
+        Row: {
+          avg_quality_score: number | null
+          created_at: string
+          id: string
+          last_used_at: string | null
+          prompt_text: string
+          prompt_type: string
+          success_count: number | null
+          success_rate: number | null
+          times_used: number | null
+          updated_at: string
+          user_satisfaction: number | null
+        }
+        Insert: {
+          avg_quality_score?: number | null
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          prompt_text: string
+          prompt_type: string
+          success_count?: number | null
+          success_rate?: number | null
+          times_used?: number | null
+          updated_at?: string
+          user_satisfaction?: number | null
+        }
+        Update: {
+          avg_quality_score?: number | null
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          prompt_text?: string
+          prompt_type?: string
+          success_count?: number | null
+          success_rate?: number | null
+          times_used?: number | null
+          updated_at?: string
+          user_satisfaction?: number | null
+        }
+        Relationships: []
+      }
       ai_workflows: {
         Row: {
           created_at: string

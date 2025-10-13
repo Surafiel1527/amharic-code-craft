@@ -30,6 +30,7 @@ const AdminInsights = lazy(() => import("./pages/AdminInsights"));
 const AGIInsights = lazy(() => import("./pages/AGIInsights"));
 const UXIntelligenceDashboard = lazy(() => import("./components/UXIntelligenceDashboard"));
 const AdminApprovalPage = lazy(() => import("./pages/AdminApprovalPage"));
+const PromptEvolutionPage = lazy(() => import("./pages/PromptEvolutionPage"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -66,6 +67,7 @@ const App = () => {
           <Route path="/platform-analytics" element={<PlatformAnalytics />} />
           <Route path="/admin/insights" element={<AdminInsights />} />
           <Route path="/admin/approvals" element={<AdminApprovalPage />} />
+          <Route path="/admin/prompt-evolution" element={<PromptEvolutionPage />} />
           <Route path="/agi-insights" element={<AGIInsights />} />
           <Route path="/ux-intelligence" element={<UXIntelligenceDashboard />} />
           <Route path="*" element={<NotFound />} />
