@@ -3,25 +3,29 @@
  * Centralized database utilities for mega-mind-orchestrator
  */
 
+import { createLogger, type LogContext } from './logger.ts';
+
 /**
  * Auto-heals common database errors
  */
 export async function autoHealDatabaseError(
   userSupabase: any,
   errorMessage: string,
-  originalSql: string
+  originalSql: string,
+  logContext?: LogContext
 ): Promise<boolean> {
-  console.log('🔧 Auto-healing database error:', errorMessage);
+  const logger = createLogger(logContext);
+  logger.info('Auto-healing database error', { errorMessage });
   
   try {
     // Pattern 1: Missing UUID extension
     if (errorMessage.includes('uuid_generate_v4') || errorMessage.includes('function uuid_generate_v4() does not exist')) {
-      console.log('🩹 Detected: Missing uuid-ossp extension');
+      logger.info('Detected: Missing uuid-ossp extension');
       const fixSql = `CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA extensions;`;
       
       const { error } = await userSupabase.rpc('execute_migration', { migration_sql: fixSql });
       if (!error) {
-        console.log('✅ Enabled uuid-ossp extension');
+        logger.success('Enabled uuid-ossp extension');
         return true;
       }
     }
@@ -31,12 +35,12 @@ export async function autoHealDatabaseError(
       const extensionMatch = errorMessage.match(/"([^"]+)"\s+extension/i) || errorMessage.match(/extension\s+"([^"]+)"/i);
       if (extensionMatch) {
         const extension = extensionMatch[1];
-        console.log(`🩹 Detected: Missing ${extension} extension`);
+        logger.info('Detected: Missing extension', { extension });
         const fixSql = `CREATE EXTENSION IF NOT EXISTS "${extension}" SCHEMA extensions;`;
         
         const { error } = await userSupabase.rpc('execute_migration', { migration_sql: fixSql });
         if (!error) {
-          console.log(`✅ Enabled ${extension} extension`);
+          logger.success('Enabled extension', { extension });
           return true;
         }
       }
@@ -48,22 +52,22 @@ export async function autoHealDatabaseError(
       if (schemaMatch) {
         const schema = schemaMatch[1];
         if (schema !== 'auth' && schema !== 'storage') {
-          console.log(`🩹 Detected: Missing ${schema} schema`);
+          logger.info('Detected: Missing schema', { schema });
           const fixSql = `CREATE SCHEMA IF NOT EXISTS ${schema};`;
           
           const { error } = await userSupabase.rpc('execute_migration', { migration_sql: fixSql });
           if (!error) {
-            console.log(`✅ Created ${schema} schema`);
+            logger.success('Created schema', { schema });
             return true;
           }
         }
       }
     }
     
-    console.log('❌ No auto-fix available for this error');
+    logger.warn('No auto-fix available for this error');
     return false;
   } catch (err) {
-    console.error('❌ Auto-heal failed:', err);
+    logger.error('Auto-heal failed', err);
     return false;
   }
 }
@@ -76,12 +80,14 @@ export async function setupDatabaseTables(
   userId: string, 
   broadcast: any, 
   userSupabaseClient: any, 
-  platformSupabaseClient: any
+  platformSupabaseClient: any,
+  logContext?: LogContext
 ): Promise<void> {
+  const logger = createLogger(logContext);
   const { backendRequirements } = analysis;
   
   if (!backendRequirements?.needsDatabase || !backendRequirements.databaseTables?.length) {
-    console.log('⏭️ No database tables needed');
+    logger.info('No database tables needed');
     return;
   }
 
@@ -95,10 +101,10 @@ export async function setupDatabaseTables(
     const sqlStatements: string[] = [];
     
     for (const table of backendRequirements.databaseTables) {
-      console.log(`📊 Creating table: ${table.name}`);
+      logger.info('Creating table', { tableName: table.name });
       
       if (!table.fields || !Array.isArray(table.fields) || table.fields.length === 0) {
-        console.error(`❌ Invalid table structure for ${table.name}: no fields`);
+        logger.error('Invalid table structure: no fields', undefined, { tableName: table.name });
         continue;
       }
       
@@ -148,7 +154,7 @@ CREATE POLICY "${table.name}_authenticated_policy" ON public.${table.name}
     }
 
     if (sqlStatements.length === 0) {
-      console.warn('⚠️ No valid SQL statements generated');
+      logger.warn('No valid SQL statements generated');
       await broadcast('generation:database', { 
         status: 'error', 
         message: 'Failed to generate valid database schema', 
@@ -158,7 +164,7 @@ CREATE POLICY "${table.name}_authenticated_policy" ON public.${table.name}
     }
 
     const fullSQL = sqlStatements.join('\n\n');
-    console.log('📝 Generated SQL for database setup');
+    logger.info('Generated SQL for database setup', { statementCount: sqlStatements.length });
     
     // Execute migration
     let { data: execResult, error: execError } = await userSupabaseClient
@@ -166,19 +172,19 @@ CREATE POLICY "${table.name}_authenticated_policy" ON public.${table.name}
 
     if (execError || !execResult?.success) {
       const errorMsg = execError?.message || execResult?.error || 'Unknown error';
-      console.error('❌ Failed to execute migration:', errorMsg);
+      logger.error('Failed to execute migration', execError, { errorMsg });
       
       // Try auto-healing
-      console.log('🩹 Attempting auto-heal for database error...');
-      const healed = await autoHealDatabaseError(userSupabaseClient, errorMsg, fullSQL);
+      logger.info('Attempting auto-heal for database error...');
+      const healed = await autoHealDatabaseError(userSupabaseClient, errorMsg, fullSQL, logContext);
       
       if (healed) {
-        console.log('✅ Auto-healed! Retrying migration...');
+        logger.success('Auto-healed! Retrying migration...');
         ({ data: execResult, error: execError } = await userSupabaseClient
           .rpc('execute_migration', { migration_sql: fullSQL }));
         
         if (!execError && execResult?.success) {
-          console.log('✅ Migration successful after auto-healing!');
+          logger.success('Migration successful after auto-healing!');
           await broadcast('generation:database', { 
             status: 'success', 
             message: '✅ Database setup complete (auto-fixed)', 
@@ -218,7 +224,7 @@ CREATE POLICY "${table.name}_authenticated_policy" ON public.${table.name}
       }
     }
     
-    console.log('✅ Tables created successfully!');
+    logger.success('Tables created successfully!', { tableCount: backendRequirements.databaseTables.length });
     
     await platformSupabaseClient.from('generated_migrations').insert({
       user_id: userId,
@@ -234,7 +240,7 @@ CREATE POLICY "${table.name}_authenticated_policy" ON public.${table.name}
       progress: 35
     });
   } catch (error) {
-    console.error('❌ Database setup failed:', error);
+    logger.error('Database setup failed', error);
     await broadcast('generation:database', { 
       status: 'warning', 
       message: 'Database setup encountered issues', 
@@ -246,7 +252,8 @@ CREATE POLICY "${table.name}_authenticated_policy" ON public.${table.name}
 /**
  * Ensure authentication infrastructure is set up
  */
-export async function ensureAuthInfrastructure(supabaseClient: any): Promise<void> {
+export async function ensureAuthInfrastructure(supabaseClient: any, logContext?: LogContext): Promise<void> {
+  const logger = createLogger(logContext);
   try {
     const profilesTableSql = `
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -270,11 +277,11 @@ CREATE POLICY "profiles_update_policy" ON public.profiles
     const { error } = await supabaseClient.rpc('execute_migration', { migration_sql: profilesTableSql });
     
     if (error) {
-      console.warn('⚠️ Profiles table setup warning:', error.message);
+      logger.warn('Profiles table setup warning', { error: error.message });
     } else {
-      console.log('✅ Profiles table ensured');
+      logger.success('Profiles table ensured');
     }
   } catch (err) {
-    console.warn('⚠️ Auth infrastructure setup skipped:', err);
+    logger.warn('Auth infrastructure setup skipped', err);
   }
 }

@@ -28,6 +28,7 @@ const IntelligenceHub = lazy(() => import("./pages/IntelligenceHub"));
 const PlatformAnalytics = lazy(() => import("./pages/PlatformAnalytics"));
 const AdminInsights = lazy(() => import("./pages/AdminInsights"));
 const AGIInsights = lazy(() => import("./pages/AGIInsights"));
+const UXIntelligenceDashboard = lazy(() => import("./components/UXIntelligenceDashboard"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -64,6 +65,7 @@ const App = () => {
           <Route path="/platform-analytics" element={<PlatformAnalytics />} />
           <Route path="/admin/insights" element={<AdminInsights />} />
           <Route path="/agi-insights" element={<AGIInsights />} />
+          <Route path="/ux-intelligence" element={<UXIntelligenceDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

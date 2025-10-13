@@ -5,6 +5,8 @@
  * Layer 3: Direct Gemini API Emergency Fallback (gemini-2.0-flash-exp)
  */
 
+import { createLogger, type LogContext } from './logger.ts';
+
 interface AIMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -52,15 +54,19 @@ export async function callAIWithFallback(
     temperature?: number;
     maxRetries?: number;
     enableEmergencyFallback?: boolean;
+    logContext?: LogContext;
   } = {}
 ): Promise<AIResponse> {
   const {
     preferredModel,
     temperature = 0.7,
     maxRetries = 2,
-    enableEmergencyFallback = true
+    enableEmergencyFallback = true,
+    logContext
   } = options;
 
+  const logger = createLogger(logContext);
+  
   const models = preferredModel 
     ? [preferredModel, preferredModel === PRIMARY_MODEL ? BACKUP_MODEL : PRIMARY_MODEL]
     : [PRIMARY_MODEL, BACKUP_MODEL];
@@ -80,9 +86,10 @@ export async function callAIWithFallback(
       const isRetry = retry > 0;
       
       try {
-        console.log(
+        logger.info(
           `${isBackup ? '🔄 Layer 2 (Backup)' : '🚀 Layer 1 (Primary)'} - ` +
-          `Model: ${model}${isRetry ? ` (Retry ${retry}/${maxRetries})` : ''}`
+          `Model: ${model}${isRetry ? ` (Retry ${retry}/${maxRetries})` : ''}`,
+          { model, isBackup, isRetry, attempt: totalAttempts }
         );
         
         const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -102,29 +109,29 @@ export async function callAIWithFallback(
         if (response.status === 429) {
           const retryAfter = response.headers.get('Retry-After');
           const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : calculateBackoff(retry);
-          console.warn(`⚠️ Rate limited. Waiting ${waitTime}ms before retry...`);
+          logger.warn('Rate limited. Waiting before retry...', { waitTime, retry });
           await new Promise(resolve => setTimeout(resolve, waitTime));
           continue; // Retry same model
         }
 
         // Handle payment required
         if (response.status === 402) {
-          console.error('💳 Payment required - Lovable AI credits exhausted');
+          logger.error('Payment required - Lovable AI credits exhausted', undefined, { status: 402 });
           throw new Error('Payment required: Lovable AI credits exhausted. Add credits or use emergency fallback.');
         }
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`❌ Lovable Gateway error (${response.status}): ${errorText}`);
+          logger.error('Lovable Gateway error', undefined, { status: response.status, errorText });
           throw new Error(`Lovable Gateway error (${response.status}): ${errorText}`);
         }
 
         const data = await response.json();
         const totalLatency = Date.now() - startTime;
         
-        console.log(
-          `✅ SUCCESS via Lovable Gateway ${isBackup ? '(backup)' : '(primary)'} - ` +
-          `Model: ${model}, Attempts: ${totalAttempts}, Latency: ${totalLatency}ms`
+        logger.success(
+          `SUCCESS via Lovable Gateway ${isBackup ? '(backup)' : '(primary)'}`,
+          { model, totalAttempts, totalLatency, gateway: 'lovable', wasBackup: isBackup }
         );
         
         return {
@@ -138,21 +145,23 @@ export async function callAIWithFallback(
         };
       } catch (error: any) {
         lastError = error;
-        console.error(
-          `❌ Attempt ${totalAttempts} failed - ${isBackup ? 'Backup' : 'Primary'} ${model}: ${error.message}`
+        logger.error(
+          `Attempt ${totalAttempts} failed - ${isBackup ? 'Backup' : 'Primary'} ${model}`,
+          error,
+          { attempt: totalAttempts, isBackup, model }
         );
         
         // If not last retry for this model, wait and retry
         if (retry < maxRetries) {
           const backoffTime = calculateBackoff(retry);
-          console.log(`⏳ Backing off ${backoffTime}ms before retry...`);
+          logger.info('Backing off before retry...', { backoffTime, retry });
           await new Promise(resolve => setTimeout(resolve, backoffTime));
           continue;
         }
         
         // If not last model, move to next model
         if (modelIndex < models.length - 1) {
-          console.log(`⏭️ Moving to backup model...`);
+          logger.info('Moving to backup model...');
           break;
         }
       }
@@ -165,7 +174,7 @@ export async function callAIWithFallback(
       `All Lovable Gateway attempts exhausted after ${totalAttempts} attempts.\n` +
       `Last error: ${lastError?.message}\n` +
       `Emergency fallback is disabled.`;
-    console.error(errorMsg);
+    logger.error('All gateway attempts exhausted', lastError, { totalAttempts });
     throw new Error(errorMsg);
   }
 
@@ -177,11 +186,11 @@ export async function callAIWithFallback(
       `Note: Emergency Gemini fallback is not configured (optional).\n` +
       `The system works perfectly with just Lovable AI.\n` +
       `To add emergency fallback, configure GEMINI_API_KEY in secrets.`;
-    console.warn(errorMsg);
+    logger.warn('Emergency fallback not configured', { totalAttempts, lastError: lastError?.message });
     throw new Error(errorMsg);
   }
 
-  console.log('🆘 Layer 3 (Emergency) - Attempting direct Gemini API fallback (optional feature)...');
+  logger.info('Layer 3 (Emergency) - Attempting direct Gemini API fallback...');
 
   // Retry logic for emergency fallback
   for (let retry = 0; retry <= maxRetries; retry++) {
@@ -190,7 +199,7 @@ export async function callAIWithFallback(
     try {
       const backoffTime = calculateBackoff(retry);
       if (retry > 0) {
-        console.log(`⏳ Emergency retry ${retry}/${maxRetries} - waiting ${backoffTime}ms...`);
+        logger.info('Emergency retry - waiting before attempt...', { retry, maxRetries, backoffTime });
         await new Promise(resolve => setTimeout(resolve, backoffTime));
       }
       
@@ -200,7 +209,7 @@ export async function callAIWithFallback(
         parts: [{ text: msg.content }]
       }));
 
-      console.log(`🔧 Emergency attempt ${totalAttempts} - Calling direct Gemini API (gemini-2.0-flash-exp)...`);
+      logger.info('Emergency attempt - Calling direct Gemini API...', { totalAttempts, model: 'gemini-2.0-flash-exp' });
       
       const geminiResponse = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
@@ -221,14 +230,14 @@ export async function callAIWithFallback(
       if (geminiResponse.status === 429) {
         const retryAfter = geminiResponse.headers.get('Retry-After');
         const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : calculateBackoff(retry + 2);
-        console.warn(`⚠️ Gemini rate limited. Waiting ${waitTime}ms before retry...`);
+        logger.warn('Gemini rate limited. Waiting before retry...', { waitTime, retry });
         await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
       }
 
       if (!geminiResponse.ok) {
         const errorText = await geminiResponse.text();
-        console.error(`❌ Direct Gemini API error (${geminiResponse.status}): ${errorText}`);
+        logger.error('Direct Gemini API error', undefined, { status: geminiResponse.status, errorText });
         throw new Error(`Direct Gemini API error (${geminiResponse.status}): ${errorText}`);
       }
 
@@ -241,9 +250,9 @@ export async function callAIWithFallback(
 
       const totalLatency = Date.now() - startTime;
       
-      console.log(
-        `🎉 EMERGENCY SUCCESS via direct Gemini API! ` +
-        `Attempts: ${totalAttempts}, Latency: ${totalLatency}ms`
+      logger.success(
+        'EMERGENCY SUCCESS via direct Gemini API!',
+        { totalAttempts, totalLatency, gateway: 'direct-gemini-emergency' }
       );
       
       // Convert Gemini response to OpenAI-compatible format
@@ -264,7 +273,7 @@ export async function callAIWithFallback(
         totalLatency
       };
     } catch (error: any) {
-      console.error(`❌ Emergency attempt ${totalAttempts} failed: ${error.message}`);
+      logger.error('Emergency attempt failed', error, { totalAttempts });
       
       if (retry < maxRetries) {
         continue; // Retry emergency fallback
@@ -286,7 +295,12 @@ export async function callAIWithFallback(
         `- Invalid API keys\n` +
         `- Rate limits exceeded on all providers`;
       
-      console.error(finalError);
+      logger.error('CATASTROPHIC FAILURE - All AI layers failed', error, { 
+        totalAttempts, 
+        totalLatency,
+        lovableError: lastError?.message,
+        geminiError: error.message
+      });
       throw new Error(finalError);
     }
   }
