@@ -95,9 +95,9 @@ export const UXPatternFeedbackDashboard = () => {
     try {
       setIsLoading(true);
 
-      // Load confidence history
+      // Load confidence history (using type assertion until migration is applied)
       const { data: historyData, error: historyError } = await supabase
-        .from('pattern_confidence_history')
+        .from('pattern_confidence_history' as any)
         .select(`
           *,
           learned_patterns!inner(pattern_name)
@@ -107,10 +107,10 @@ export const UXPatternFeedbackDashboard = () => {
 
       if (historyError) throw historyError;
 
-      const formattedHistory = (historyData || []).map(item => ({
+      const formattedHistory = (historyData || []).map((item: any) => ({
         id: item.id,
         pattern_id: item.pattern_id,
-        pattern_name: (item as any).learned_patterns?.pattern_name || 'Unknown',
+        pattern_name: item.learned_patterns?.pattern_name || 'Unknown',
         old_confidence: item.old_confidence,
         new_confidence: item.new_confidence,
         frustration_score: item.frustration_score,
@@ -120,15 +120,15 @@ export const UXPatternFeedbackDashboard = () => {
 
       setConfidenceHistory(formattedHistory);
 
-      // Load interventions
+      // Load interventions (using type assertion until migration is applied)
       const { data: interventionsData, error: interventionsError } = await supabase
-        .from('pattern_interventions')
+        .from('pattern_interventions' as any)
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (interventionsError) throw interventionsError;
-      setInterventions(interventionsData || []);
+      setInterventions((interventionsData as any) || []);
 
       // Calculate metrics
       const improved = formattedHistory.filter(h => h.new_confidence > h.old_confidence).length;
@@ -186,7 +186,7 @@ export const UXPatternFeedbackDashboard = () => {
   const handleIntervention = async (interventionId: string, action: 'apply' | 'dismiss') => {
     try {
       const { error } = await supabase
-        .from('pattern_interventions')
+        .from('pattern_interventions' as any)
         .update({ status: action === 'apply' ? 'applied' : 'dismissed' })
         .eq('id', interventionId);
 

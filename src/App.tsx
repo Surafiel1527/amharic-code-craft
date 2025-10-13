@@ -32,6 +32,7 @@ const UXIntelligenceDashboard = lazy(() => import("./components/UXIntelligenceDa
 const AdminApprovalPage = lazy(() => import("./pages/AdminApprovalPage"));
 const PromptEvolutionPage = lazy(() => import("./pages/PromptEvolutionPage"));
 const UXPatternFeedbackPage = lazy(() => import("./pages/UXPatternFeedbackPage"));
+const UnifiedAIDashboardPage = lazy(() => import("./pages/UnifiedAIDashboardPage"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -70,6 +71,7 @@ const App = () => {
           <Route path="/admin/approvals" element={<AdminApprovalPage />} />
           <Route path="/admin/prompt-evolution" element={<PromptEvolutionPage />} />
           <Route path="/admin/ux-pattern-feedback" element={<UXPatternFeedbackPage />} />
+          <Route path="/admin/ai-dashboard" element={<UnifiedAIDashboardPage />} />
           <Route path="/agi-insights" element={<AGIInsights />} />
           <Route path="/ux-intelligence" element={<UXIntelligenceDashboard />} />
           <Route path="*" element={<NotFound />} />

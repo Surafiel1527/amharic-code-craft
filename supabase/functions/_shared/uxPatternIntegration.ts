@@ -365,8 +365,7 @@ export async function runUXPatternIntegrationCycle(
           pattern_name: intervention.pattern_name,
           frustration_score: intervention.frustration_score,
           failure_count: intervention.failure_count,
-          suggested_alternative: intervention.suggested_alternative,
-          status: 'pending'
+          suggested_alternative: intervention.suggested_alternative
         });
       }
     }
