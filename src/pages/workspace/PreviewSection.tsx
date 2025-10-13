@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { DevicePreview } from "@/components/DevicePreview";
 import { UniversalChatInterface } from "@/components/UniversalChatInterface";
-
+import { FileTreeSidebar } from "@/components/FileTreeSidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Download, FileCode, Loader2 } from "lucide-react";
