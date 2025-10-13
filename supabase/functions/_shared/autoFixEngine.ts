@@ -4,6 +4,7 @@
  */
 
 import { callAIWithFallback } from './aiHelpers.ts';
+import { createLogger, type LogContext } from './logger.ts';
 import { 
   validateReact, 
   validateJavaScript, 
@@ -46,10 +47,15 @@ export interface AutoFixResult {
  */
 export async function autoFixCode(
   files: CodeFile[],
-  maxAttempts: number = 3
+  maxAttempts: number = 3,
+  logContext?: LogContext
 ): Promise<AutoFixResult> {
   
-  console.log(`🔧 AUTO-FIX ENGINE: Starting with ${files.length} files (max ${maxAttempts} attempts)`);
+  const logger = createLogger(logContext);
+  logger.info('AUTO-FIX ENGINE: Starting validation', { 
+    fileCount: files.length, 
+    maxAttempts 
+  });
   
   const result: AutoFixResult = {
     success: false,
@@ -70,13 +76,17 @@ export async function autoFixCode(
     attemptNumber++;
     result.totalAttempts = attemptNumber;
     
-    console.log(`📊 Attempt ${attemptNumber}/${maxAttempts}: Validating ${currentFiles.length} files...`);
+    logger.info('Validation attempt', { 
+      attempt: attemptNumber, 
+      maxAttempts, 
+      fileCount: currentFiles.length 
+    });
     
     // Step 1: Validate all files
     const validation = validateAllFiles(currentFiles);
     
     if (validation.isValid) {
-      console.log(`✅ Validation passed on attempt ${attemptNumber}!`);
+      logger.info('Validation passed', { attempt: attemptNumber, warningCount: validation.warnings.length });
       result.success = true;
       result.fixedFiles = currentFiles;
       result.warnings = validation.warnings;
@@ -91,7 +101,10 @@ export async function autoFixCode(
       ...validation.structureErrors
     ];
 
-    console.log(`⚠️ Found ${allErrors.length} errors to fix`);
+    logger.warn('Errors found during validation', { 
+      errorCount: allErrors.length, 
+      attempt: attemptNumber 
+    });
     result.errors = allErrors;
 
     // Step 3: Attempt to fix errors
@@ -105,14 +118,17 @@ export async function autoFixCode(
 
     try {
       // CRITICAL FIX: Try deterministic fixes FIRST (before AI)
-      console.log('🔧 Attempting deterministic fixes first...');
-      const deterministicFixed = applyAggressiveFixes(currentFiles, allErrors);
+      logger.debug('Attempting deterministic fixes', { attempt: attemptNumber });
+      const deterministicFixed = applyAggressiveFixes(currentFiles, allErrors, logger);
       const deterministicWorked = deterministicFixed.some((f, i) => 
         f.content !== currentFiles[i].content
       );
       
       if (deterministicWorked) {
-        console.log(`✅ Deterministic fixes applied in attempt ${attemptNumber}`);
+        logger.info('Deterministic fixes applied', { 
+          attempt: attemptNumber, 
+          errorCount: allErrors.length 
+        });
         currentFiles = deterministicFixed;
         result.fixed = true;
         result.fixedErrorTypes.push('deterministic_' + attempt.errorType);
@@ -120,7 +136,7 @@ export async function autoFixCode(
         attempt.fixDescription = `Fixed ${allErrors.length} ${attempt.errorType} errors deterministically`;
       } else {
         // If deterministic fixes didn't work, try AI
-        console.log('🤖 Deterministic fixes insufficient, trying AI...');
+        logger.debug('Deterministic fixes insufficient, attempting AI', { attempt: attemptNumber });
         
         // Fix each file with errors using AI
         const fixPromises = currentFiles.map(async (file) => {
@@ -130,10 +146,13 @@ export async function autoFixCode(
             return file; // No errors in this file
           }
 
-          console.log(`🔨 AI fixing ${fileErrors.length} errors in ${file.path}`);
+          logger.debug('AI fixing file', { 
+            filePath: file.path, 
+            errorCount: fileErrors.length 
+          });
           
           // Use AI to fix the code
-          const fixed = await fixCodeWithAI(file, fileErrors);
+          const fixed = await fixCodeWithAI(file, fileErrors, logger);
           return fixed || file; // Return original if fix failed
         });
 
@@ -145,20 +164,23 @@ export async function autoFixCode(
         );
 
         if (wasFixed) {
-          console.log(`✅ AI fixes applied in attempt ${attemptNumber}`);
+          logger.info('AI fixes applied', { 
+            attempt: attemptNumber, 
+            errorCount: allErrors.length 
+          });
           currentFiles = fixedFiles;
           result.fixed = true;
           result.fixedErrorTypes.push('ai_' + attempt.errorType);
           attempt.fixApplied = true;
           attempt.fixDescription = `Fixed ${allErrors.length} ${attempt.errorType} errors with AI`;
         } else {
-          console.log(`❌ No fixes could be applied in attempt ${attemptNumber}`);
+          logger.warn('No fixes could be applied', { attempt: attemptNumber });
           attempt.fixApplied = false;
         }
       }
 
     } catch (error) {
-      console.error(`❌ Fix attempt ${attemptNumber} failed:`, error);
+      logger.error('Fix attempt failed', { attempt: attemptNumber }, error as Error);
       attempt.fixApplied = false;
     }
 
@@ -172,7 +194,10 @@ export async function autoFixCode(
   if (finalValidation.isValid) {
     result.success = true;
     result.warnings = finalValidation.warnings;
-    console.log(`✅ Code fixed after ${attemptNumber} attempts`);
+    logger.info('Code successfully fixed', { 
+      totalAttempts: attemptNumber, 
+      warningCount: finalValidation.warnings.length 
+    });
   } else {
     result.success = false;
     result.errors = [
@@ -181,7 +206,10 @@ export async function autoFixCode(
       ...finalValidation.typeErrors,
       ...finalValidation.structureErrors
     ];
-    console.log(`❌ Code still has errors after ${attemptNumber} attempts`);
+    logger.warn('Code still has errors after all attempts', { 
+      totalAttempts: attemptNumber, 
+      errorCount: result.errors.length 
+    });
   }
 
   return result;
@@ -192,7 +220,8 @@ export async function autoFixCode(
  */
 function applyAggressiveFixes(
   files: CodeFile[],
-  errors: string[]
+  errors: string[],
+  logger: ReturnType<typeof createLogger>
 ): CodeFile[] {
   const errorText = errors.join(' ').toLowerCase();
   
@@ -207,14 +236,20 @@ function applyAggressiveFixes(
       if (openBraces > closeBraces) {
         // Add missing closing braces
         content += '\n' + '}'.repeat(openBraces - closeBraces);
-        console.log(`🔧 Added ${openBraces - closeBraces} missing closing braces to ${file.path}`);
+        logger.debug('Added missing closing braces', { 
+          filePath: file.path, 
+          count: openBraces - closeBraces 
+        });
       } else if (closeBraces > openBraces) {
         // Remove extra closing braces from end
         const toRemove = closeBraces - openBraces;
         for (let i = 0; i < toRemove; i++) {
           content = content.replace(/\}\s*$/, '');
         }
-        console.log(`🔧 Removed ${toRemove} extra closing braces from ${file.path}`);
+        logger.debug('Removed extra closing braces', { 
+          filePath: file.path, 
+          count: toRemove 
+        });
       }
     }
     
@@ -226,7 +261,11 @@ function applyAggressiveFixes(
         const closeCount = (content.match(new RegExp(`</${tag}>`, 'g')) || []).length;
         if (openCount > closeCount) {
           content += '\n' + `</${tag}>`.repeat(openCount - closeCount);
-          console.log(`🔧 Closed ${openCount - closeCount} unclosed <${tag}> tags`);
+          logger.debug('Closed unclosed tags', { 
+            filePath: file.path, 
+            tag, 
+            count: openCount - closeCount 
+          });
         }
       });
     }
@@ -371,10 +410,11 @@ function detectErrorType(errors: string[]): string {
  */
 async function fixCodeWithAI(
   file: CodeFile,
-  errors: string[]
+  errors: string[],
+  logger: ReturnType<typeof createLogger>
 ): Promise<CodeFile | null> {
   
-  console.log(`🤖 Using AI to fix ${file.path}...`);
+  logger.debug('Using AI to fix code', { filePath: file.path, errorCount: errors.length });
   
   const prompt = `You are a code fixing expert. Fix the following code errors.
 
@@ -423,18 +463,25 @@ FIXED CODE:`;
       : validateJavaScript(fixedCode);
 
     if (validation.isValid || validation.errors.length < errors.length) {
-      console.log(`✅ AI successfully fixed ${file.path}`);
+      logger.info('AI successfully fixed code', { 
+        filePath: file.path, 
+        originalErrors: errors.length, 
+        remainingErrors: validation.errors.length 
+      });
       return {
         ...file,
         content: fixedCode
       };
     } else {
-      console.warn(`⚠️ AI fix for ${file.path} still has errors`);
+      logger.warn('AI fix still has errors', { 
+        filePath: file.path, 
+        errorCount: validation.errors.length 
+      });
       return null;
     }
 
   } catch (error) {
-    console.error(`❌ AI fix failed for ${file.path}:`, error);
+    logger.error('AI fix failed', { filePath: file.path }, error as Error);
     return null;
   }
 }
