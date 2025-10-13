@@ -199,7 +199,7 @@ export function UniversalChatInterface({
 
   // Capture thinking steps for the current message - keep them permanent
   useEffect(() => {
-    if (thinkingSteps.length > 0 && !isLoading) {
+    if (thinkingSteps.length > 0) {
       // Associate steps with the last user message
       const lastUserMessage = messages.filter(m => m.role === 'user').pop();
       if (lastUserMessage) {
@@ -207,7 +207,7 @@ export function UniversalChatInterface({
         setMessageSteps(prev => new Map(prev).set(lastUserMessage.id, [...thinkingSteps]));
         
         // Only save to database if user is authenticated and persistence is enabled
-        if (persistMessages && conversationId) {
+        if (persistMessages && conversationId && !isLoading) {
           const saveSteps = async () => {
             try {
               // Check authentication first
@@ -236,11 +236,27 @@ export function UniversalChatInterface({
           };
           saveSteps();
         }
-        
-        clearSteps();
       }
     }
-  }, [thinkingSteps, messages, isLoading, clearSteps, persistMessages, conversationId]);
+  }, [thinkingSteps, messages, isLoading, persistMessages, conversationId]);
+
+  // Clear thinking steps only when generation completes AND assistant response exists
+  useEffect(() => {
+    if (!isLoading && thinkingSteps.length > 0) {
+      const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+      const lastMessage = messages[messages.length - 1];
+      
+      // Only clear if there's an assistant response after the last user message
+      if (lastMessage?.role === 'assistant' && lastUserMessage) {
+        const userMessageIndex = messages.findIndex(m => m.id === lastUserMessage.id);
+        const hasResponseAfter = messages.slice(userMessageIndex + 1).some(m => m.role === 'assistant');
+        
+        if (hasResponseAfter) {
+          clearSteps();
+        }
+      }
+    }
+  }, [isLoading, messages, thinkingSteps, clearSteps]);
 
   // ❌ REMOVED: Don't clear thinking steps - keep them permanent like Lovable/Replit
 
