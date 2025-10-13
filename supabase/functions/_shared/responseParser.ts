@@ -11,12 +11,40 @@ export interface ParsedAIResponse {
   requiresConfirmation: boolean;
 }
 
+// Surgical editing response
+export interface LineEdit {
+  file: string;
+  action: 'replace' | 'insert' | 'delete' | 'create';
+  startLine?: number;
+  endLine?: number;
+  insertAfterLine?: number;
+  content: string;
+  description: string;
+}
+
+export interface SurgicalResponse {
+  thought: string;
+  edits: LineEdit[];
+  messageToUser: string;
+  requiresConfirmation: boolean;
+}
+
 export class ResponseParser {
   
   /**
-   * Parse AI response
+   * Parse AI response (supports both full file and surgical editing formats)
    */
-  parse(aiResponse: string): ParsedAIResponse {
+  parse(aiResponse: string, mode: 'full' | 'surgical' = 'full'): ParsedAIResponse | SurgicalResponse {
+    if (mode === 'surgical') {
+      return this.parseSurgicalResponse(aiResponse);
+    }
+    return this.parseFullFileResponse(aiResponse);
+  }
+
+  /**
+   * Parse full file response (legacy mode)
+   */
+  private parseFullFileResponse(aiResponse: string): ParsedAIResponse {
     // Extract JSON from response (handle markdown code blocks)
     const jsonMatch = aiResponse.match(/```json\n([\s\S]*?)\n```/) ||
                      aiResponse.match(/```\n([\s\S]*?)\n```/) ||
@@ -86,6 +114,86 @@ export class ResponseParser {
             `File ${path} contains incomplete code with placeholders. AI must provide complete file content.`
           );
         }
+      }
+    }
+  }
+
+  /**
+   * Extract thinking steps from response
+   */
+  /**
+   * Parse surgical editing response
+   */
+  private parseSurgicalResponse(aiResponse: string): SurgicalResponse {
+    // Extract JSON from response
+    const jsonMatch = aiResponse.match(/```json\n([\s\S]*?)\n```/) ||
+                     aiResponse.match(/```\n([\s\S]*?)\n```/) ||
+                     [null, aiResponse];
+    
+    const jsonContent = jsonMatch[1] || aiResponse;
+    
+    let parsed: any;
+    try {
+      parsed = JSON.parse(jsonContent.trim());
+    } catch (error) {
+      throw new Error(`Failed to parse surgical AI response as JSON: ${error.message}`);
+    }
+
+    // Validate surgical response structure
+    this.validateSurgicalResponse(parsed);
+
+    return {
+      thought: parsed.thought,
+      edits: parsed.edits || [],
+      messageToUser: parsed.messageToUser,
+      requiresConfirmation: parsed.requiresConfirmation || false
+    };
+  }
+
+  /**
+   * Validate surgical response structure
+   */
+  private validateSurgicalResponse(response: any): void {
+    const required = ['thought', 'messageToUser', 'edits'];
+    
+    for (const field of required) {
+      if (!response[field]) {
+        throw new Error(`Missing required field in surgical response: ${field}`);
+      }
+    }
+
+    if (!Array.isArray(response.edits)) {
+      throw new Error('edits must be an array');
+    }
+
+    // Validate each edit
+    for (let i = 0; i < response.edits.length; i++) {
+      const edit = response.edits[i];
+      
+      if (!edit.file || !edit.action || !edit.description) {
+        throw new Error(`Edit ${i} missing required fields: file, action, or description`);
+      }
+
+      const validActions = ['replace', 'insert', 'delete', 'create'];
+      if (!validActions.includes(edit.action)) {
+        throw new Error(`Edit ${i} has invalid action: ${edit.action}`);
+      }
+
+      // Validate action-specific requirements
+      if (edit.action === 'replace' || edit.action === 'delete') {
+        if (edit.startLine === undefined || edit.endLine === undefined) {
+          throw new Error(`Edit ${i} with action ${edit.action} requires startLine and endLine`);
+        }
+      }
+
+      if (edit.action === 'insert') {
+        if (edit.insertAfterLine === undefined) {
+          throw new Error(`Edit ${i} with action insert requires insertAfterLine`);
+        }
+      }
+
+      if ((edit.action === 'replace' || edit.action === 'insert' || edit.action === 'create') && !edit.content) {
+        throw new Error(`Edit ${i} with action ${edit.action} requires content`);
       }
     }
   }

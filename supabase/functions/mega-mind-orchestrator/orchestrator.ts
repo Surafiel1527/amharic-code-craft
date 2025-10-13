@@ -9,6 +9,9 @@ import { callAIWithFallback, parseAIJsonResponse } from '../_shared/aiHelpers.ts
 import { 
   storeConversationTurn 
 } from '../_shared/conversationMemory.ts';
+import { SurgicalEditor } from '../_shared/surgicalEditor.ts';
+import { SurgicalPromptBuilder } from '../_shared/surgicalPromptBuilder.ts';
+import { ResponseParser } from '../_shared/responseParser.ts';
 import { 
   storeSuccessfulPattern, 
   findRelevantPatterns 
@@ -41,6 +44,7 @@ import {
 import { FeatureOrchestrator } from '../_shared/featureOrchestrator.ts';
 import { FeatureDependencyGraph } from '../_shared/featureDependencyGraph.ts';
 import { SchemaArchitect } from '../_shared/schemaArchitect.ts';
+import { handleSurgicalEdit } from './surgicalEditHandler.ts';
 
 /**
  * Core processing pipeline with timeout protection
@@ -520,6 +524,54 @@ export async function executeGeneration(ctx: {
   // Step 2: Handle meta-requests
   if (analysis.isMetaRequest) {
     return handleMetaRequest(request, conversationContext, broadcast);
+  }
+
+  // Step 2.5: Handle surgical edits for simple modifications
+  if (isModifyMode && projectId) {
+    const isSimpleMod = request.length < 200 && (
+      request.toLowerCase().includes('change') ||
+      request.toLowerCase().includes('update') ||
+      request.toLowerCase().includes('fix') ||
+      request.toLowerCase().includes('remove') ||
+      request.toLowerCase().includes('add') && !request.toLowerCase().includes('page')
+    );
+
+    if (isSimpleMod) {
+      console.log('🔧 SURGICAL EDIT MODE: Simple modification detected');
+      
+      await broadcast('generation:surgical_mode', {
+        status: 'surgical_analysis',
+        message: '🔍 Analyzing code for precise modifications...',
+        progress: 30
+      });
+
+      try {
+        return await handleSurgicalEdit({
+          request,
+          conversationId,
+          userId,
+          projectId,
+          framework,
+          platformSupabase,
+          userSupabase,
+          broadcast,
+          stepTracker,
+          updateJobProgress,
+          startTime
+        });
+      } catch (error) {
+        console.error('❌ Surgical edit failed:', error);
+        console.log('↩️ Falling back to full generation mode');
+        
+        await broadcast('generation:surgical_fallback', {
+          status: 'info',
+          message: '⚠️ Surgical edit failed, using full generation mode',
+          progress: 35
+        });
+        
+        // Fall through to regular generation
+      }
+    }
   }
 
   // Pre-implementation analysis
