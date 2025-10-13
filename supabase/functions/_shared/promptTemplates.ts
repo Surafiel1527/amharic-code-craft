@@ -58,35 +58,69 @@ ${context.suggestionsPrompt || ''}
 
 **SMART BACKEND DETECTION:**
 
-Analyze the request for these backend needs:
+🚨 **CRITICAL AUTHENTICATION DETECTION** 🚨
+If the request contains ANY of these patterns, set needsAuth=TRUE:
+- Words: login, signup, sign up, register, authentication, auth, user account, my account, profile, password, credentials
+- Features: "user can login", "signup form", "authentication", "user system", "protected routes", "login page"
+- User actions: "I can't signup", "can't create account", "login doesn't work", "need to register"
+- **IMPORTANT**: Even mentions of "user" or "account" in context of access → needsAuth=TRUE
 
-**Database Indicators:**
-- Words: save, store, persist, database, collection, list, crud, manage, track, record
-- Features: user profiles, posts, comments, likes, bookmarks, shopping cart, inventory
-- Data types: user data, content management, social features, e-commerce, analytics
-- Patterns: "save to database", "store user info", "manage products", "track orders"
+🚨 **CRITICAL DATABASE DETECTION** 🚨  
+If the request contains ANY of these patterns, set needsDatabase=TRUE:
+- Words: save, store, persist, database, collection, list, crud, manage, track, record, data
+- Features: user profiles, posts, comments, likes, bookmarks, shopping cart, inventory, tasks, notes
+- Data persistence: "save my work", "remember", "keep track of", "store information"
+- User-specific data: "my tasks", "my notes", "user posts", "personal dashboard"
 
-**Authentication Indicators:**
-- Words: login, signup, register, logout, profile, user, account, password, auth
-- Features: protected pages, user dashboard, personalized content, permissions, roles
-- Patterns: "user login", "sign up", "my profile", "only logged in users"
+**Authentication Detection Rules:**
+✅ "create user accounts" → needsAuth=TRUE
+✅ "signup page" → needsAuth=TRUE  
+✅ "user login" → needsAuth=TRUE
+✅ "I can't create account" → needsAuth=TRUE (user trying to fix broken auth)
+✅ "user authentication" → needsAuth=TRUE
+✅ "profile page" → needsAuth=TRUE + needsDatabase=TRUE
+✅ "my dashboard" → needsAuth=TRUE + needsDatabase=TRUE
+
+**Database Detection Rules:**
+✅ "task manager" → needsDatabase=TRUE (tasks need persistence)
+✅ "save tasks" → needsDatabase=TRUE
+✅ "user profiles" → needsDatabase=TRUE + needsAuth=TRUE
+✅ "shopping cart" → needsDatabase=TRUE
+✅ "blog posts" → needsDatabase=TRUE
 
 **Edge Functions Indicators:**
 - External integrations: payment, email, SMS, webhooks, third-party APIs
-- Server-side logic: data processing, scheduled tasks, background jobs
+- Server-side logic: data processing, scheduled tasks, background jobs, AI calls
 - Security: API key usage, server-side validation, rate limiting
-- Patterns: "send email", "process payment", "call API", "webhook"
+- Patterns: "send email", "process payment", "call API", "webhook", "integrate AI"
 
 **Storage Indicators:**
 - File handling: upload, download, images, documents, media, files, attachments
 - Patterns: "upload image", "profile picture", "file storage", "document upload"
 
-**Data Model Detection:**
-Intelligently infer database tables and relationships:
-- User systems → users/profiles table
+**Data Model Intelligence:**
+Automatically infer database schema:
+- Authentication → users table (auto-managed by Supabase Auth) + profiles table (id, username, full_name, avatar_url, bio, created_at)
+- Tasks/Notes → tasks table (id, user_id, title, description, completed, due_date, created_at)
 - Social features → posts, comments, likes, followers tables
 - E-commerce → products, orders, cart_items, reviews tables
-- Content management → articles, pages, categories, tags tables
+- Content → articles, pages, categories, tags tables
+
+**Universal Instruction Intelligence:**
+
+Understand variations and contexts:
+- "make it work" → Fix broken functionality
+- "add feature X" → Implement new feature X  
+- "users should be able to Y" → Enable capability Y for users (may need auth + DB)
+- "I can't do Z" → Fix issue preventing Z (analyze what's broken)
+- "create a X app" → Build app X with standard features (analyze domain for needs)
+- "like Airbnb/Twitter/etc" → Clone popular app (implies auth + DB + complex features)
+
+**Context-Aware Analysis:**
+- If previous request had auth but new one says "can't signup" → Fix auth, don't rebuild
+- If app exists but user says "add auth" → Add authentication to existing app
+- If user says "make it real" or "fully functional" → Add full backend (auth + DB)
+- If user references popular apps → Infer standard features (auth, profiles, CRUD)
 
 **Output JSON:**
 {

@@ -180,31 +180,100 @@ export function makeIntelligentDecision(
 
 /**
  * Detect user intent from current request and conversation history
+ * NOW WITH UNIVERSAL INSTRUCTION INTELLIGENCE
  */
 function detectUserIntent(
   request: string,
   messages: any[]
 ): ContextAnalysis['userIntent'] {
   const lowerRequest = request.toLowerCase();
-
-  // Fix intent
-  if (
-    lowerRequest.match(/\b(fix|repair|solve|debug|error|issue|problem|broken|not working)\b/) ||
-    lowerRequest.match(/\b(apply|implement|use)\s+(fix|solution|suggestion)\b/)
-  ) {
+  
+  // 🎯 UNIVERSAL INSTRUCTION PATTERNS
+  
+  // Fix intent - enhanced with universal patterns
+  const fixPatterns = [
+    /\b(fix|repair|solve|debug|error|issue|problem|broken|not working|doesn't work|can't)\b/,
+    /\b(apply|implement|use)\s+(fix|solution|suggestion)\b/,
+    // Universal: "make it work", "get it working", "resolve", "correct"
+    /\b(make\s+it\s+work|get\s+it\s+working|make\s+this\s+work|resolve|correct)\b/,
+    // User frustration: "still broken", "not fixed", "same error"
+    /\b(still\s+(broken|not\s+working)|same\s+error|keeps\s+failing)\b/,
+    // Completion request: "finish", "complete"
+    /\b(finish|complete)\s+(this|the|it)\b/
+  ];
+  
+  if (fixPatterns.some(pattern => lowerRequest.match(pattern))) {
     return 'fix';
   }
 
-  // Generate intent
-  if (
-    lowerRequest.match(/\b(create|add|build|make|generate|implement|new)\b/) &&
-    !lowerRequest.match(/\b(fix|error|issue)\b/)
-  ) {
+  // Generate intent - enhanced with universal patterns  
+  const generatePatterns = [
+    /\b(create|add|build|make|generate|implement|new|develop)\b/,
+    // Universal: "I want", "I need", "can you", "let's"
+    /\b(i\s+want|i\s+need|can\s+you|let'?s|could\s+you)\s+\w+/,
+    // App cloning: "like X", "similar to X", "X clone"
+    /\b(like|similar\s+to|clone\s+of|\w+\s+style)\s+(airbnb|twitter|facebook|instagram|uber|netflix)/,
+    // Feature requests: "should have", "needs to", "must include"
+    /\b(should\s+have|needs\s+to|must\s+include|has\s+to|supposed\s+to)\b/,
+    // Universal actions: "users can", "allow users", "enable"
+    /\b(users?\s+(can|should|need|able)|allow\s+users?|enable)\b/
+  ];
+  
+  if (generatePatterns.some(pattern => lowerRequest.match(pattern)) &&
+      !lowerRequest.match(/\b(fix|error|broken|issue)\b/)) {
     return 'generate';
   }
 
-  // Modify intent
-  if (
+  // Modify intent - enhanced with universal patterns
+  const modifyPatterns = [
+    /\b(update|change|modify|edit|alter|adjust|improve)\b/,
+    // Universal: "make it X", "turn it into", "convert to"
+    /\b(make\s+it|turn\s+it\s+into|convert\s+to|transform)\b/,
+    // Enhancement: "better", "enhance", "upgrade"
+    /\b(better|enhance|upgrade|optimize|refine)\b/,
+    // Removal: "remove", "delete", "take out"
+    /\b(remove|delete|take\s+out|get\s+rid\s+of)\b/
+  ];
+  
+  if (modifyPatterns.some(pattern => lowerRequest.match(pattern))) {
+    return 'modify';
+  }
+
+  // Question intent - enhanced with universal patterns
+  const questionPatterns = [
+    /\b(what|why|how|when|where|who|explain|tell\s+me|show\s+me)\b/,
+    // Universal: "can I", "is it", "does it"  
+    /\b(can\s+i|is\s+it|does\s+it|will\s+it|would\s+it)\b/,
+    // Understanding: "understand", "know", "see"
+    /\b(understand|know|see|check|view|look\s+at)\b/,
+    // Question marks
+    /\?/
+  ];
+  
+  if (questionPatterns.some(pattern => lowerRequest.match(pattern)) &&
+      !lowerRequest.match(/\b(create|add|build|fix)\b/)) {
+    return 'question';
+  }
+
+  // Explore intent - vague or open-ended
+  const explorePatterns = [
+    /\b(maybe|perhaps|possibly|what\s+if|thinking\s+about)\b/,
+    // Universal: "ideas", "suggestions", "options"
+    /\b(ideas?|suggestions?|options?|alternatives?)\b/,
+    // Exploration: "explore", "try", "test"
+    /\b(explore|try|test|experiment|play\s+with)\b/
+  ];
+  
+  if (explorePatterns.some(pattern => lowerRequest.match(pattern))) {
+    return 'explore';
+  }
+
+  // Default: treat as generate if creating something new
+  return lowerRequest.length > 50 || lowerRequest.split(' ').length > 10 ? 'generate' : 'question';
+}
+
+/**
+ * Assess complexity of the request
     lowerRequest.match(/\b(change|update|modify|edit|adjust|improve|refactor)\b/)
   ) {
     return 'modify';
