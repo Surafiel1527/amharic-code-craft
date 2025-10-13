@@ -39,9 +39,11 @@ interface GeneratedFile {
 export async function validatePostGeneration(
   files: GeneratedFile[],
   framework: string,
-  request: string
+  request: string,
+  logger?: any
 ): Promise<QualityReport> {
-  console.log(`🔍 POST-GENERATION VALIDATION: Checking ${files.length} ${framework} files...`);
+  const log = logger || console;
+  log.info(`POST-GENERATION VALIDATION: Checking ${files.length} ${framework} files`);
 
   const issues: QualityIssue[] = [];
   let qualityScore = 100;

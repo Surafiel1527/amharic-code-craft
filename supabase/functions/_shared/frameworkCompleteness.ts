@@ -18,9 +18,12 @@ interface GeneratedFile {
 export async function generateMissingInfrastructure(
   existingFiles: GeneratedFile[],
   framework: string,
-  missingFiles: string[]
+  missingFiles: string[],
+  logger?: any
 ): Promise<GeneratedFile[]> {
-  console.log(`🔧 GENERATING MISSING INFRASTRUCTURE: ${missingFiles.length} files for ${framework}`);
+  const log = logger || console;
+  log.info?.(`Generating missing infrastructure: ${missingFiles.length} files for ${framework}`) ||
+    console.log(`🔧 GENERATING MISSING INFRASTRUCTURE: ${missingFiles.length} files for ${framework}`);
 
   const newFiles: GeneratedFile[] = [];
 
@@ -28,9 +31,9 @@ export async function generateMissingInfrastructure(
     const fileContent = await generateInfrastructureFile(missingPath, framework, existingFiles);
     if (fileContent) {
       newFiles.push(fileContent);
-      console.log(`✅ Generated: ${missingPath}`);
+      log.info?.(`Generated: ${missingPath}`) || console.log(`✅ Generated: ${missingPath}`);
     } else {
-      console.warn(`⚠️ Could not generate: ${missingPath}`);
+      log.warn?.(`Could not generate: ${missingPath}`) || console.warn(`⚠️ Could not generate: ${missingPath}`);
     }
   }
 

@@ -274,25 +274,6 @@ function detectUserIntent(
 
 /**
  * Assess complexity of the request
-    lowerRequest.match(/\b(change|update|modify|edit|adjust|improve|refactor)\b/)
-  ) {
-    return 'modify';
-  }
-
-  // Question intent
-  if (
-    lowerRequest.match(/\b(what|how|why|when|where|can|should|is|are|does)\b/) ||
-    lowerRequest.includes('?')
-  ) {
-    return 'question';
-  }
-
-  // Default: explore
-  return 'explore';
-}
-
-/**
- * Assess complexity of the request
  */
 function assessComplexity(
   request: string,
