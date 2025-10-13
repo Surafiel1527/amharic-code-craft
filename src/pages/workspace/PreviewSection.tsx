@@ -414,16 +414,17 @@ npm run build
     return null;
   }
   
-  // Desktop: render side-by-side
+  // Desktop: render side-by-side with better spacing and height
   return (
-    <div className="grid lg:grid-cols-2 gap-4 p-4 h-full">
-      {/* Chat Interface */}
-      <div className="flex flex-col h-full">
+    <div className="grid lg:grid-cols-2 gap-4 p-4 h-full overflow-hidden">
+      {/* Chat Interface - Full height */}
+      <div className="flex flex-col h-full min-h-0">
         {conversationId ? (
           <UniversalChatInterface
             conversationId={conversationId}
             projectId={projectId}
-            mode="panel"
+            mode="inline"
+            height="h-full"
             persistMessages={true}
             selectedFiles={selectedFiles}
             projectFiles={Object.entries(fileContents).map(([path, content]) => ({
@@ -436,21 +437,24 @@ npm run build
               conversationHistory: [],
               framework
             }}
+            className="h-full"
           />
         ) : (
-          <div className="flex items-center justify-center h-full">
+          <Card className="flex items-center justify-center h-full">
             <div className="text-center text-muted-foreground">
               <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
               <p>Loading chat...</p>
             </div>
-          </div>
+          </Card>
         )}
       </div>
 
-      {/* Live Preview */}
-      <Card className="p-4">
+      {/* Live Preview - Full height */}
+      <Card className="p-4 h-full min-h-0 flex flex-col">
         <h2 className="text-lg font-semibold mb-4">Live Preview</h2>
-        <DevicePreview generatedCode={fileContents['index.html'] || htmlCode} />
+        <div className="flex-1 min-h-0">
+          <DevicePreview generatedCode={fileContents['index.html'] || htmlCode} />
+        </div>
       </Card>
     </div>
   );
