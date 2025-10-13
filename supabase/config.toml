@@ -155,3 +155,6 @@ verify_jwt = false
 
 [functions.report-error]
 verify_jwt = false
+
+[functions.conversational-ai]
+verify_jwt = true

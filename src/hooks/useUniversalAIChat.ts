@@ -326,11 +326,45 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   }, [conversationId, persistMessages]);
 
   /**
-   * Detects if the message is likely reporting an error
+   * Detects if the message is a question/help request vs build request
    */
-  const detectError = useCallback((message: string): boolean => {
-    const errorKeywords = /error|failed|exception|warning|issue|problem|bug|broken|not working|doesn't work|can't|cannot|unable|crash|freeze|fix|help/i;
-    return errorKeywords.test(message);
+  const detectIntentType = useCallback((message: string): 'question' | 'build' | 'error' => {
+    const messageLower = message.toLowerCase();
+    
+    // Check for questions/help requests
+    const questionPatterns = [
+      /^(how can i|where do i|how do i|what should i|when should i)/i,
+      /^(is there a way|can i|should i)/i,
+      /\?$/,
+      /^(help|guide|teach|show|explain|tell me)/i,
+      /(not working|doesn't work|isn't working|won't work|can't get|unable to)/i
+    ];
+    
+    if (questionPatterns.some(pattern => pattern.test(messageLower))) {
+      return 'question';
+    }
+    
+    // Check for error reports
+    const errorKeywords = /error|failed|exception|warning|issue|problem|bug|broken|crash|freeze/i;
+    if (errorKeywords.test(messageLower)) {
+      return 'error';
+    }
+    
+    // Check for build requests
+    const buildPatterns = [
+      /^(create|add|build|make|generate|implement)/i,
+      /^(change|update|modify|edit|refactor)/i,
+      /^(remove|delete|get rid of)/i,
+      /let's (add|create|build|change|update)/i,
+      /can you (add|create|build|change|update)/i
+    ];
+    
+    if (buildPatterns.some(pattern => pattern.test(messageLower))) {
+      return 'build';
+    }
+    
+    // Default to question if unclear
+    return 'question';
   }, []);
 
   /**
@@ -390,6 +424,39 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       return null;
     }
   }, [projectId, selectedFiles]);
+
+  /**
+   * Routes the message to Conversational AI (for questions/help)
+   */
+  const routeToConversationalAI = useCallback(async (message: string, context: any): Promise<any> => {
+    logger.info('Routing to Conversational AI');
+
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        throw new Error('Not authenticated');
+      }
+
+      const { data, error } = await supabase.functions.invoke('conversational-ai', {
+        body: {
+          userId: currentUser.id,
+          conversationId: conversationId || projectId,
+          request: message,
+          context: {
+            projectId,
+            conversationHistory: context.conversationHistory,
+            ...projectContext
+          }
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      logger.error('Conversational AI failed', error);
+      throw error;
+    }
+  }, [conversationId, projectId, projectContext]);
 
   /**
    * Routes the message to Smart Orchestrator
@@ -701,13 +768,13 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       }
 
       const context = buildContext();
-      const isError = detectError(message);
+      const intentType = detectIntentType(message);
 
       let response: any = null;
       let routedTo: 'error-teacher' | 'orchestrator' = 'orchestrator';
 
       // Smart Routing Decision
-      if (isError) {
+      if (intentType === 'error') {
         logger.info('Error detected - trying Universal Error Teacher');
         response = await routeToErrorTeacher(message, context);
         
@@ -823,7 +890,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
     persistMessages,
     selectedFiles,
     buildContext,
-    detectError,
+    detectIntentType,
     routeToErrorTeacher,
     routeToOrchestrator,
     processResponse,
