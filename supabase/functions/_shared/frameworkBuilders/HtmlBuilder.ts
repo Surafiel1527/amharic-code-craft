@@ -318,28 +318,57 @@ export class HtmlBuilder implements IFrameworkBuilder {
   // Private helper methods
 
   private buildSingleFilePrompt(request: string, analysis: any): string {
-    return `Generate a COMPLETE, BEAUTIFUL, PRODUCTION-READY single-file HTML website.
+    return `Generate a COMPLETE, FULLY FUNCTIONAL, PRODUCTION-READY single-file HTML application.
 
-**User Request:** "${request}"
+**CRITICAL REQUIREMENTS - READ CAREFULLY:**
 
-**Requirements:**
-${analysis.requiredSections?.map((s: string) => `- ${s} section`).join('\n') || '- Build according to request'}
+🎯 **User Request:** "${request}"
 
-**Technical Requirements:**
-- Single HTML file with inline CSS in <style> tags
-- Inline JavaScript in <script> tags if needed
-- Modern, responsive design (mobile-first)
-- Semantic HTML5 elements
-- CSS Grid/Flexbox for layouts
-- Smooth animations and transitions
-- Professional color scheme and typography
-- Accessibility (ARIA labels, semantic HTML)
-- SEO optimized (proper meta tags, headings hierarchy)
+**YOU MUST CREATE A FULLY WORKING APPLICATION:**
+- NO placeholder text like "Add your content here" or "Feature coming soon"
+- NO comments suggesting future implementation
+- NO skeleton code or TODO comments
+- EVERY feature mentioned in the request MUST be fully implemented and working
+- ALL interactive elements must have complete JavaScript functionality
+- ALL forms must have working validation and submission logic
+- ALL data operations must use localStorage or in-memory storage
+- If authentication is requested, implement COMPLETE login/signup with validation
+- If CRUD is requested, implement ALL operations (Create, Read, Update, Delete)
+- If comments/reviews are requested, implement the COMPLETE commenting system
+- If rich text editing is requested, implement a WORKING rich text editor
 
-${analysis.needsInteractivity ? '- Interactive elements with vanilla JavaScript' : ''}
-${analysis.needsAPI ? '- API integration with fetch API' : ''}
+**Technical Implementation:**
+✅ Single self-contained HTML file
+✅ ALL CSS embedded in <style> tags (NO external .css files)
+✅ ALL JavaScript embedded in <script> tags (NO external .js files)
+✅ Complete, working functionality for EVERY requested feature
+✅ Use localStorage for data persistence (or in-memory arrays if simpler)
+✅ Modern, responsive design (mobile-first with proper breakpoints)
+✅ Professional UI with modals, forms, notifications, loading states
+✅ Complete form validation with error messages
+✅ Interactive animations and transitions
+✅ Semantic HTML5 with ARIA labels
+✅ SEO optimized (meta tags, Open Graph, structured data)
 
-Return ONLY the complete HTML code, no markdown, no explanations.`;
+${analysis.needsInteractivity ? '✅ Implement ALL interactive features with event listeners and state management' : ''}
+${analysis.needsAPI ? '✅ Complete API integration with fetch, error handling, loading states' : ''}
+${analysis.backendRequirements?.needsDatabase ? '✅ Full data CRUD with localStorage (create, read, update, delete)' : ''}
+${analysis.needsAuth ? '✅ Complete authentication system with signup, login, logout, session management' : ''}
+
+**What Users Should See:**
+- A COMPLETE, WORKING application they can use immediately
+- ALL buttons, forms, and features working perfectly
+- Professional design with real content and interactions
+- Smooth user experience with feedback (toasts, loading states, validation)
+
+**FORBIDDEN:**
+❌ NO "TODO" or "Add functionality here" comments
+❌ NO placeholder text or dummy content suggestions
+❌ NO external file references (<link> or <script src>)
+❌ NO incomplete features or partial implementations
+❌ NO skeleton code waiting for future additions
+
+Return ONLY the complete, self-contained, fully functional HTML code. No markdown backticks, no explanations.`;
   }
 
   private buildFilePrompt(file: any, request: string, analysis: any, allFiles: any[]): string {
@@ -349,73 +378,104 @@ Return ONLY the complete HTML code, no markdown, no explanations.`;
       const hasCSS = allFiles.some(f => f.type === 'css');
       const hasJS = allFiles.some(f => f.type === 'javascript');
 
-      return `Generate the main HTML structure for this website.
+      return `Generate COMPLETE, PRODUCTION-READY HTML for a fully functional application.
 
-**User Request:** "${request}"
+🎯 **User Request:** "${request}"
+📁 **File Purpose:** ${file.purpose}
+📂 **Project Files:** ${contextFiles}
 
-**File Purpose:** ${file.purpose}
+**CRITICAL - THIS MUST BE FULLY FUNCTIONAL:**
+✅ Complete HTML5 structure with DOCTYPE
+✅ ALL semantic HTML5 elements (header, main, nav, section, article)
+✅ REAL content matching the request (no "Add content here" placeholders)
+✅ ALL forms with proper labels, inputs, and validation attributes
+✅ ALL interactive elements (buttons, links) with data attributes for JS
+${hasCSS ? '✅ Link to styles.css in <head>' : '✅ Inline CSS in <style> tags'}
+${hasJS ? '✅ Link to script.js before </body>' : '✅ Inline JavaScript in <script> tags'}
+✅ Complete meta tags (viewport, SEO, Open Graph, favicon)
+✅ Full accessibility (ARIA labels, roles, alt text, semantic HTML)
+✅ Proper heading hierarchy (h1-h6)
+✅ All UI components needed (modals, forms, cards, navigation)
 
-**Project Structure:**
-${contextFiles}
+**FORBIDDEN:**
+❌ NO placeholder content or "Lorem ipsum"
+❌ NO "Coming soon" or "Add your X here" text
+❌ NO incomplete sections
+❌ NO TODO comments
 
-**Requirements:**
-- Complete HTML5 structure with DOCTYPE
-- Semantic HTML elements
-${hasCSS ? '- Link to styles.css in <head>' : '- Inline CSS in <style> tags'}
-${hasJS ? '- Link to script.js before </body>' : ''}
-- Proper meta tags for SEO and responsiveness
-- Accessibility attributes (ARIA, alt text)
-- Clear content structure matching the request
-
-Return ONLY the HTML code, no explanations.`;
+Return ONLY the complete, production-ready HTML code.`;
     }
 
     if (file.type === 'css') {
-      return `Generate the complete CSS for this website.
+      return `Generate COMPLETE, PRODUCTION-READY CSS for a beautiful, fully responsive application.
 
-**User Request:** "${request}"
+🎯 **User Request:** "${request}"
+📁 **File Purpose:** ${file.purpose}
 
-**File Purpose:** ${file.purpose}
+**CRITICAL REQUIREMENTS - FULLY FUNCTIONAL STYLING:**
+✅ EVERY opening brace { MUST have matching closing brace }
+✅ Complete styling for ALL HTML elements in the project
+✅ Modern, professional design system (colors, spacing, typography)
+✅ Fully responsive with mobile-first breakpoints (320px, 768px, 1024px, 1440px)
+✅ CSS Grid and Flexbox layouts
+✅ Smooth transitions and animations (hover states, loading, modals)
+✅ Professional color palette with CSS variables
+✅ Typography hierarchy (font-family, sizes, weights, line-heights)
+✅ Form styling (inputs, buttons, validation states)
+✅ Component states (hover, focus, active, disabled, error, success)
+✅ Loading states and animations
+✅ Modal and overlay styling
+✅ Dark mode support (using CSS variables or @media prefers-color-scheme)
+✅ Print styles (@media print)
+✅ Cross-browser compatibility (vendor prefixes where needed)
 
-**CRITICAL REQUIREMENTS:**
-- EVERY opening brace { MUST have a matching closing brace }
-- Count your braces: opening { and closing } MUST be equal
-- Modern, professional design
-- Fully responsive (mobile-first approach)
-- CSS Grid and Flexbox for layouts
-- Smooth transitions and animations
-- Professional color scheme
-- Typography hierarchy
-- Dark mode support if appropriate
-- Cross-browser compatibility
+**VALIDATION BEFORE FINISHING:**
+1. Count all { braces = ___
+2. Count all } braces = ___
+3. Numbers MUST be EXACTLY EQUAL
 
-**VALIDATION:**
-Before finishing, verify:
-1. Count all { braces
-2. Count all } braces
-3. Numbers MUST match exactly
+**FORBIDDEN:**
+❌ NO incomplete selectors
+❌ NO missing styles for any component
+❌ NO unbalanced braces
+❌ NO TODO comments
 
-Return ONLY the CSS code with BALANCED BRACES, no explanations.`;
+Return ONLY the complete CSS code with PERFECTLY BALANCED BRACES.`;
     }
 
     if (file.type === 'javascript') {
-      return `Generate the JavaScript functionality for this website.
+      return `Generate COMPLETE, PRODUCTION-READY JavaScript for a fully functional application.
 
-**User Request:** "${request}"
+🎯 **User Request:** "${request}"
+📁 **File Purpose:** ${file.purpose}
 
-**File Purpose:** ${file.purpose}
+**CRITICAL - IMPLEMENT ALL FUNCTIONALITY:**
+✅ Vanilla JavaScript (ES6+) with modern best practices
+✅ COMPLETE implementation of ALL requested features
+✅ Full CRUD operations if data management is needed
+✅ Complete form validation with error messages
+✅ Event listeners for ALL interactive elements
+✅ DOM manipulation for dynamic content
+✅ Data persistence using localStorage with proper JSON serialization
+${analysis.needsAPI ? '✅ Complete API integration (fetch, error handling, retry logic, loading states)' : ''}
+${analysis.needsAuth ? '✅ Full authentication logic (signup, login, logout, session management, validation)' : ''}
+${analysis.backendRequirements?.needsDatabase ? '✅ Complete data layer (create, read, update, delete, search, filter)' : ''}
+✅ State management (track current user, data, UI states)
+✅ Error handling with user-friendly messages
+✅ Loading states and feedback (toasts, spinners)
+✅ Input sanitization and validation
+✅ Smooth UI interactions (animations, transitions)
+✅ Modal/dialog management
+✅ Responsive behavior (mobile touch events, keyboard navigation)
 
-**Requirements:**
-- Vanilla JavaScript (ES6+)
-- Clean, modular code
-- Event listeners and DOM manipulation
-${analysis.needsAPI ? '- API integration with fetch and error handling' : ''}
-${analysis.backendRequirements?.needsDatabase ? '- Data persistence logic' : ''}
-- Input validation where needed
-- Smooth user interactions
-- Error handling and fallbacks
+**FORBIDDEN:**
+❌ NO "TODO: Implement X" comments
+❌ NO placeholder functions that don't work
+❌ NO console.log statements without functionality
+❌ NO incomplete event handlers
+❌ NO missing error handling
 
-Return ONLY the JavaScript code, no explanations.`;
+Return ONLY the complete, production-ready JavaScript code.`;
     }
 
     return 'Generate the code for this file.';

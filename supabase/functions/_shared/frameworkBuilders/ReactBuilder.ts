@@ -117,12 +117,88 @@ export class ReactBuilder implements IFrameworkBuilder {
       progress: 60
     });
 
-    const prompt = `${buildWebsitePrompt(request, analysis)}\n\nGenerate as a React component with TypeScript.`;
+    const prompt = `Generate a COMPLETE, FULLY FUNCTIONAL React/TypeScript component.
+
+🎯 **User Request:** "${request}"
+
+**CRITICAL - THIS MUST BE PRODUCTION-READY:**
+✅ Complete, working React component with ALL requested features
+✅ Full TypeScript types and interfaces
+✅ Modern React hooks (useState, useEffect, useCallback, useMemo)
+✅ Complete state management for all features
+✅ ALL user interactions fully implemented
+✅ Form validation with error states
+✅ Loading states and error handling
+✅ Tailwind CSS for styling (utility classes)
+✅ Responsive design (mobile-first)
+✅ Accessibility (ARIA labels, semantic HTML, keyboard navigation)
+✅ Clean, modular code with proper component structure
+
+${analysis.needsAuth ? '✅ Complete authentication with login/signup forms and validation' : ''}
+${analysis.backendRequirements?.needsDatabase ? '✅ Full CRUD operations with state management and localStorage' : ''}
+${analysis.needsAPI ? '✅ API integration with fetch, error handling, retry logic' : ''}
+${analysis.needsInteractivity ? '✅ All interactive features with event handlers and state updates' : ''}
+
+**Component Structure:**
+- Import React and necessary hooks
+- Define TypeScript interfaces for all data types
+- Implement complete component logic
+- All event handlers fully functional
+- Return complete JSX with Tailwind styling
+- Export component as default
+
+**FORBIDDEN:**
+❌ NO "TODO" or placeholder comments
+❌ NO incomplete features
+❌ NO missing type definitions
+❌ NO console.log without functionality
+❌ NO skeleton code
+
+**Example Quality Level:**
+\`\`\`tsx
+import { useState, useEffect } from 'react';
+
+interface Task {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
+export default function TodoApp() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [input, setInput] = useState('');
+  
+  // Load from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('tasks');
+    if (saved) setTasks(JSON.parse(saved));
+  }, []);
+  
+  // Save to localStorage
+  useEffect(() => {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+  }, [tasks]);
+  
+  const addTask = () => {
+    if (!input.trim()) return;
+    setTasks([...tasks, { id: Date.now().toString(), title: input, completed: false }]);
+    setInput('');
+  };
+  
+  return (
+    <div className="min-h-screen bg-gray-50 p-4">
+      {/* Complete UI implementation */}
+    </div>
+  );
+}
+\`\`\`
+
+Return ONLY the complete React/TypeScript component code. No explanations, no markdown outside code blocks.`;
 
     const result = await callAIWithFallback(
       [{ role: 'user', content: prompt }],
       {
-        systemPrompt: 'You are an expert React developer. Generate clean, production-ready React code with TypeScript, hooks, and modern React best practices.',
+        systemPrompt: 'You are an expert React developer. Generate COMPLETE, PRODUCTION-READY React code with TypeScript, hooks, and modern best practices. Every feature must be fully implemented and working.',
         preferredModel: 'google/gemini-2.5-flash',
         maxTokens: 8000
       }
@@ -143,7 +219,7 @@ export class ReactBuilder implements IFrameworkBuilder {
         language: 'typescript',
         imports: ['react']
       }],
-      description: 'Generated React/TypeScript component',
+      description: 'Generated complete React/TypeScript component',
       framework: 'react'
     };
   }
