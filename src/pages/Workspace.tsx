@@ -10,6 +10,7 @@ import { EditorSection } from "./workspace/EditorSection";
 import { PreviewSection } from "./workspace/PreviewSection";
 import { LiveGenerationProgress } from "@/components/LiveGenerationProgress";
 import { GenerationMonitorOverlay } from "@/components/GenerationMonitorOverlay";
+import { SecretsRequiredModal } from "@/components/SecretsRequiredModal";
 
 interface Project {
   id: string;
@@ -50,6 +51,11 @@ export default function Workspace() {
   
   // Mobile tab state
   const [mobileTab, setMobileTab] = useState<'chat' | 'preview' | 'code'>('preview');
+  
+  // Secrets management state
+  const [showSecretsModal, setShowSecretsModal] = useState(false);
+  const [requiredResources, setRequiredResources] = useState<any[]>([]);
+  const [pendingGenerationRequest, setPendingGenerationRequest] = useState<string | null>(null);
 
   // Load all conversations for this project
   const loadConversations = async () => {
@@ -336,6 +342,30 @@ export default function Workspace() {
       supabase.removeChannel(channel);
     };
   }, [projectId, user, navigate]);
+
+  // 🔑 Listen for secrets_required events during generation
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const channel = supabase
+      .channel(`ai-status-${conversationId}`)
+      .on('broadcast', { event: 'status-update' }, (payload: any) => {
+        const data = payload.payload;
+        
+        // Check if secrets are required
+        if (data.event === 'secrets_required' && data.resources) {
+          console.log('🔑 Secrets required detected:', data.resources);
+          setRequiredResources(data.resources);
+          setShowSecretsModal(true);
+          toast.info("🔑 External service configuration needed");
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId]);
 
   // Auto-scroll removed - handled by UniversalChatInterface
 

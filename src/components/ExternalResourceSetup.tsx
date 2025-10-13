@@ -40,12 +40,19 @@ interface ExternalResource {
 }
 
 interface ExternalResourceSetupProps {
-  resource: ExternalResource;
+  resource: ExternalResource | {
+    id: string;
+    name: string;
+    setupMessage?: string;
+    secrets: SecretKey[];
+  };
   onComplete: (secrets: Record<string, string>) => void;
   onSkip?: () => void;
+  conversationId?: string;
+  compact?: boolean;
 }
 
-export function ExternalResourceSetup({ resource, onComplete, onSkip }: ExternalResourceSetupProps) {
+export function ExternalResourceSetup({ resource, onComplete, onSkip, conversationId, compact = false }: ExternalResourceSetupProps) {
   const [secrets, setSecrets] = useState<Record<string, string>>({});
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
   const [isValidating, setIsValidating] = useState(false);
