@@ -18,6 +18,12 @@ interface SecretKey {
   testMode?: boolean;
 }
 
+interface SimpleResource {
+  id: string;
+  name: string;
+  secrets: SecretKey[];
+}
+
 interface ExternalResource {
   id: string;
   name: string;
@@ -39,17 +45,19 @@ interface ExternalResource {
   }>;
 }
 
+type ResourceType = ExternalResource | SimpleResource;
+
 interface ExternalResourceSetupProps {
-  resource: ExternalResource | {
-    id: string;
-    name: string;
-    setupMessage?: string;
-    secrets: SecretKey[];
-  };
+  resource: ResourceType;
   onComplete: (secrets: Record<string, string>) => void;
   onSkip?: () => void;
   conversationId?: string;
   compact?: boolean;
+}
+
+// Type guard
+function isFullResource(resource: ResourceType): resource is ExternalResource {
+  return 'description' in resource;
 }
 
 export function ExternalResourceSetup({ resource, onComplete, onSkip, conversationId, compact = false }: ExternalResourceSetupProps) {
@@ -58,9 +66,10 @@ export function ExternalResourceSetup({ resource, onComplete, onSkip, conversati
   const [isValidating, setIsValidating] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const fullResource = isFullResource(resource);
+
   const handleSecretChange = (secretName: string, value: string) => {
     setSecrets(prev => ({ ...prev, [secretName]: value }));
-    // Clear error when user starts typing
     if (errors[secretName]) {
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -81,8 +90,8 @@ export function ExternalResourceSetup({ resource, onComplete, onSkip, conversati
       const value = secrets[secret.name];
       if (!value || value.trim() === '') {
         newErrors[secret.name] = `${secret.displayName} is required`;
-      } else if (secret.example && !value.startsWith(secret.example.split('...')[0])) {
-        newErrors[secret.name] = `Should start with ${secret.example.split('...')[0]}`;
+      } else if (secret.example && value.trim().length < 10) {
+        newErrors[secret.name] = `${secret.displayName} seems too short`;
       }
     });
 
@@ -103,7 +112,6 @@ export function ExternalResourceSetup({ resource, onComplete, onSkip, conversati
     setIsValidating(true);
     
     try {
-      // Simulate validation delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       toast({
@@ -132,9 +140,9 @@ export function ExternalResourceSetup({ resource, onComplete, onSkip, conversati
               <Plug className="h-6 w-6 text-primary" />
               <CardTitle>{resource.name} Setup Required</CardTitle>
             </div>
-            <CardDescription>{resource.description}</CardDescription>
+            {fullResource && <CardDescription>{resource.description}</CardDescription>}
           </div>
-          {resource.freeTier && (
+          {fullResource && resource.freeTier && (
             <Badge variant="secondary" className="bg-green-500/10 text-green-600 dark:text-green-400">
               Free Tier Available
             </Badge>
@@ -143,91 +151,97 @@ export function ExternalResourceSetup({ resource, onComplete, onSkip, conversati
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Purpose & Time */}
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            <div className="space-y-1">
-              <p><strong>Why you need this:</strong> {resource.purpose}</p>
-              <p className="text-sm text-muted-foreground">
-                Estimated setup time: <strong>{resource.estimatedSetupTime}</strong>
-              </p>
-            </div>
-          </AlertDescription>
-        </Alert>
+        {/* Purpose & Time - only for full resources */}
+        {fullResource && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="space-y-1">
+                <p><strong>Why you need this:</strong> {resource.purpose}</p>
+                <p className="text-sm text-muted-foreground">
+                  Estimated setup time: <strong>{resource.estimatedSetupTime}</strong>
+                </p>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
-        {/* Quick Links */}
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <a href={resource.signupUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Sign Up
-            </a>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a href={resource.dashboardUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Dashboard
-            </a>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a href={resource.docsUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Docs
-            </a>
-          </Button>
-          {resource.pricingUrl && (
+        {/* Quick Links - only for full resources */}
+        {fullResource && (
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" asChild>
-              <a href={resource.pricingUrl} target="_blank" rel="noopener noreferrer">
+              <a href={resource.signupUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4 mr-2" />
-                Pricing
+                Sign Up
               </a>
             </Button>
-          )}
-        </div>
+            <Button variant="outline" size="sm" asChild>
+              <a href={resource.dashboardUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Dashboard
+              </a>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <a href={resource.docsUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Docs
+              </a>
+            </Button>
+            {resource.pricingUrl && (
+              <Button variant="outline" size="sm" asChild>
+                <a href={resource.pricingUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Pricing
+                </a>
+              </Button>
+            )}
+          </div>
+        )}
 
-        {/* Setup Steps */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="steps">
-            <AccordionTrigger>
-              <span className="font-semibold">Setup Steps ({resource.setupSteps.length} steps)</span>
-            </AccordionTrigger>
-            <AccordionContent>
-              <ol className="space-y-2 ml-4">
-                {resource.setupSteps.map((step, i) => (
-                  <li key={i} className="text-sm">
-                    <span className="font-medium text-primary">{i + 1}.</span> {step}
-                  </li>
-                ))}
-              </ol>
-            </AccordionContent>
-          </AccordionItem>
-
-          {resource.testingNotes && (
-            <AccordionItem value="testing">
-              <AccordionTrigger>Testing Notes</AccordionTrigger>
+        {/* Setup Steps - only for full resources */}
+        {fullResource && (
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="steps">
+              <AccordionTrigger>
+                <span className="font-semibold">Setup Steps ({resource.setupSteps.length} steps)</span>
+              </AccordionTrigger>
               <AccordionContent>
-                <p className="text-sm text-muted-foreground">{resource.testingNotes}</p>
-              </AccordionContent>
-            </AccordionItem>
-          )}
-
-          {resource.commonIssues && resource.commonIssues.length > 0 && (
-            <AccordionItem value="issues">
-              <AccordionTrigger>Common Issues</AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-3">
-                  {resource.commonIssues.map((item, i) => (
-                    <div key={i} className="text-sm">
-                      <p className="font-medium text-destructive">{item.issue}</p>
-                      <p className="text-muted-foreground">{item.solution}</p>
-                    </div>
+                <ol className="space-y-2 ml-4">
+                  {resource.setupSteps.map((step, i) => (
+                    <li key={i} className="text-sm">
+                      <span className="font-medium text-primary">{i + 1}.</span> {step}
+                    </li>
                   ))}
-                </div>
+                </ol>
               </AccordionContent>
             </AccordionItem>
-          )}
-        </Accordion>
+
+            {resource.testingNotes && (
+              <AccordionItem value="testing">
+                <AccordionTrigger>Testing Notes</AccordionTrigger>
+                <AccordionContent>
+                  <p className="text-sm text-muted-foreground">{resource.testingNotes}</p>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {resource.commonIssues && resource.commonIssues.length > 0 && (
+              <AccordionItem value="issues">
+                <AccordionTrigger>Common Issues</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    {resource.commonIssues.map((item, i) => (
+                      <div key={i} className="text-sm">
+                        <p className="font-medium text-destructive">{item.issue}</p>
+                        <p className="text-muted-foreground">{item.solution}</p>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+          </Accordion>
+        )}
 
         {/* Secret Input Fields */}
         <div className="space-y-4">
@@ -241,31 +255,29 @@ export function ExternalResourceSetup({ resource, onComplete, onSkip, conversati
               <div className="flex items-center justify-between">
                 <Label htmlFor={secret.name}>
                   {secret.displayName}
-                  {secret.type === 'secret' ? (
-                    <Badge variant="destructive" className="ml-2 text-xs">Secret</Badge>
-                  ) : (
-                    <Badge variant="secondary" className="ml-2 text-xs">Public</Badge>
-                  )}
                   {secret.testMode && (
-                    <Badge variant="outline" className="ml-2 text-xs">Test Mode OK</Badge>
+                    <Badge variant="secondary" className="ml-2 text-xs">Test Mode</Badge>
                   )}
                 </Label>
+                <Badge variant={secret.type === 'secret' ? 'default' : 'secondary'} className="text-xs">
+                  {secret.type === 'secret' ? '🔒 Secret' : '🔓 Public'}
+                </Badge>
               </div>
 
               <div className="relative">
                 <Input
                   id={secret.name}
-                  type={showSecrets[secret.name] ? "text" : "password"}
-                  placeholder={secret.example || `Enter ${secret.displayName}`}
+                  type={showSecrets[secret.name] ? 'text' : 'password'}
                   value={secrets[secret.name] || ''}
                   onChange={(e) => handleSecretChange(secret.name, e.target.value)}
+                  placeholder={secret.example || `Enter ${secret.displayName}`}
                   className={errors[secret.name] ? 'border-destructive' : ''}
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-0 top-0 h-full px-3"
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
                   onClick={() => toggleShowSecret(secret.name)}
                 >
                   {showSecrets[secret.name] ? (
@@ -277,7 +289,10 @@ export function ExternalResourceSetup({ resource, onComplete, onSkip, conversati
               </div>
 
               {errors[secret.name] && (
-                <p className="text-sm text-destructive">{errors[secret.name]}</p>
+                <p className="text-sm text-destructive flex items-center gap-1">
+                  <X className="h-3 w-3" />
+                  {errors[secret.name]}
+                </p>
               )}
 
               <p className="text-xs text-muted-foreground">
@@ -287,8 +302,18 @@ export function ExternalResourceSetup({ resource, onComplete, onSkip, conversati
           ))}
         </div>
 
-        {/* Actions */}
+        {/* Action Buttons */}
         <div className="flex gap-3 pt-4">
+          {onSkip && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onSkip}
+              disabled={isValidating}
+            >
+              Skip for Now
+            </Button>
+          )}
           <Button
             onClick={handleSubmit}
             disabled={isValidating}
@@ -296,35 +321,23 @@ export function ExternalResourceSetup({ resource, onComplete, onSkip, conversati
           >
             {isValidating ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Validating...
               </>
             ) : (
               <>
-                <Check className="h-4 w-4 mr-2" />
+                <Check className="mr-2 h-4 w-4" />
                 Save & Continue
               </>
             )}
           </Button>
-
-          {onSkip && (
-            <Button
-              variant="outline"
-              onClick={onSkip}
-              disabled={isValidating}
-            >
-              <X className="h-4 w-4 mr-2" />
-              Skip for Now
-            </Button>
-          )}
         </div>
 
-        {/* Security Note */}
-        <Alert variant="default" className="bg-blue-500/10 border-blue-500/20">
-          <AlertCircle className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-sm">
-            🔒 <strong>Security:</strong> Your secrets are encrypted and stored securely in Lovable Cloud. 
-            They're never exposed in your code or logs.
+        {/* Security Notice */}
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-xs">
+            🔒 Your credentials are securely stored and encrypted. They will only be used for this project.
           </AlertDescription>
         </Alert>
       </CardContent>
