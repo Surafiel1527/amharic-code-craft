@@ -50,7 +50,10 @@ export function PreviewSection({
     }
     
     // Fallback: Generate dummy files from htmlCode for legacy single-file projects
-    console.log('⚠️ No project files found, generating dummy files from htmlCode');
+    // Only log warning if this is a React project (HTML projects don't use project_files)
+    if (framework === 'react') {
+      console.log('⚠️ No project files found, generating dummy files from htmlCode');
+    }
     if (framework === 'react') {
       files['src/App.tsx'] = htmlCode;
       files['src/main.tsx'] = `import React from 'react'

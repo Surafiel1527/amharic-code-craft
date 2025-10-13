@@ -105,7 +105,7 @@ export default function Workspace() {
     
     try {
       // Check if there's a failed job for this conversation that hasn't been diagnosed
-      const { data: failedJob } = await supabase
+      const { data: failedJob, error: queryError } = await supabase
         .from('ai_generation_jobs')
         .select('id, status, diagnostic_run, error_message, input_data')
         .eq('conversation_id', conversationId)
@@ -113,7 +113,13 @@ export default function Workspace() {
         .eq('diagnostic_run', false)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
+      
+      // Don't proceed if query failed
+      if (queryError) {
+        console.error('Error checking for failed jobs:', queryError);
+        return;
+      }
       
       if (failedJob) {
         console.log('🔍 Found failed job without diagnosis, triggering auto-diagnosis...', failedJob.id);
