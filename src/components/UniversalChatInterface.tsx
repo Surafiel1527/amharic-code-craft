@@ -187,21 +187,21 @@ export function UniversalChatInterface({
     mode: operationMode // Pass operation mode to the hook
   });
 
-  // ✅ NEW: Subscribe to project-level generation status
+  // ✅ FIX: Subscribe to conversation-level generation status (matches orchestrator broadcast)
   useEffect(() => {
-    if (!projectId) return;
+    if (!conversationId) return;
     
-    console.log('🔌 Chat subscribing to project generation status:', `ai-status-${projectId}`);
+    console.log('🔌 Chat subscribing to generation status:', `ai-status-${conversationId}`);
     
     const statusChannel = supabase
-      .channel(`chat-gen-status-${projectId}`)
+      .channel(`chat-gen-status-${conversationId}`)
       .on('broadcast', { event: 'status-update' }, ({ payload }) => {
-        console.log('📥 Chat received generation status:', payload);
+        console.log('📥 Chat received status-update:', payload);
         
         const isGenerating = payload.status !== 'idle' && payload.status !== 'complete';
         setGenerationStatus({
           isGenerating,
-          message: payload.message || payload.currentOperation || 'Generating...',
+          message: payload.message || payload.currentOperation || 'Generating project...',
           progress: payload.progress || 0
         });
         
@@ -212,13 +212,21 @@ export function UniversalChatInterface({
           }, 2000);
         }
       })
+      .on('broadcast', { event: 'generation:coding' }, ({ payload }) => {
+        console.log('📥 Chat received generation:coding:', payload);
+        setGenerationStatus({
+          isGenerating: true,
+          message: payload.message || 'Generating code...',
+          progress: payload.progress || 50
+        });
+      })
       .subscribe();
     
     return () => {
       console.log('🔌 Chat unsubscribing from generation status');
       supabase.removeChannel(statusChannel);
     };
-  }, [projectId]);
+  }, [conversationId]);
 
   // ✅ FIX: Populate messageSteps from loaded messages with thinkingSteps
   // This ensures historical thinking steps appear when conversation loads
