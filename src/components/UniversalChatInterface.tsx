@@ -403,8 +403,8 @@ export function UniversalChatInterface({
 
           {messages
             .filter(msg => {
-              // Filter out system status messages
-              if (msg.role === 'system') return false;
+              // Show generation start messages but filter other system messages
+              if (msg.role === 'system' && !msg.metadata?.isGenerationStart) return false;
               
               // Don't filter user messages
               if (msg.role === 'user') return true;
@@ -664,7 +664,13 @@ export function UniversalChatInterface({
           className="flex-1"
         />
         {isLoading ? (
-          <Button onClick={() => setShowCancelDialog(true)} variant="destructive" size="icon">
+          <Button 
+            onClick={() => setShowCancelDialog(true)} 
+            variant="destructive" 
+            size="icon"
+            className="animate-pulse"
+            title="Cancel generation"
+          >
             <AlertCircle className="w-4 h-4" />
           </Button>
         ) : (

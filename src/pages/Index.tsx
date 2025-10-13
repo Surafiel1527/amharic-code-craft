@@ -334,7 +334,16 @@ const Index = () => {
       
       // Navigate to workspace immediately
       const frameworkLabel = framework === 'html' ? 'HTML/CSS/JS' : framework === 'react' ? 'React' : 'Vue';
-      toast.loading(`🎨 Generating ${frameworkLabel} project...`, { id: 'gen-toast' });
+      
+      // Add initial message to conversation to show in chat
+      await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        role: 'system',
+        content: `🎨 Generating ${frameworkLabel} project...`,
+        user_id: user.id,
+        metadata: { isGenerationStart: true, framework: frameworkLabel }
+      });
+      
       navigate(`/workspace/${projectId}`);
       
       // Continue generation in background (edge function handles project update)

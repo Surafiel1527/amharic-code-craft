@@ -30,6 +30,8 @@ export interface Message {
     toolUsed?: string;
     toolResult?: any;
     isSummary?: boolean;
+    isGenerationStart?: boolean;
+    framework?: string;
   };
   plan?: {
     summary: string;
