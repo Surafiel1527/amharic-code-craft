@@ -95,28 +95,46 @@ serve(async (req) => {
     console.log(`📚 Loaded context: ${conversationContext.totalTurns} turns, ${dependencies.length} dependencies, Q&A mode: ${isQuestion}`);
     console.log(`🔗 Cross-conversation memory: ${projectMemory.recentMessages.length} messages from ${projectMemory.conversationCount} conversations`);
 
-    // ✅ Create and subscribe to channel ONCE for the entire request
-    const realtimeChannel = platformSupabase.channel(`ai-status-${conversationId}`);
+    // ✅ Create and subscribe to BOTH conversation and project channels
+    const conversationChannel = platformSupabase.channel(`ai-status-${conversationId}`);
+    const projectChannel = projectId ? platformSupabase.channel(`ai-status-${projectId}`) : null;
     
-    // Subscribe to channel (Supabase Realtime will handle connection)
-    realtimeChannel.subscribe();
-    console.log(`✅ Realtime channel created: ai-status-${conversationId}`);
+    // Subscribe to channels (Supabase Realtime will handle connection)
+    conversationChannel.subscribe();
+    if (projectChannel) {
+      projectChannel.subscribe();
+      console.log(`✅ Realtime channels created: conversation=${conversationId}, project=${projectId}`);
+    } else {
+      console.log(`✅ Realtime channel created: ai-status-${conversationId}`);
+    }
 
-    // Helper to broadcast via Supabase Realtime Channels
+    // Helper to broadcast via Supabase Realtime Channels to BOTH conversation and project channels
     const broadcast = async (event: string, data: any) => {
       try {
+        const payload = {
+          ...data,
+          projectId,
+          conversationId,
+          timestamp: new Date().toISOString()
+        };
+
         // Handle thinking steps specially - send with original event name AND persist to DB
         if (event === 'thinking_step') {
-          // Broadcast for real-time display using pre-subscribed channel
-          await realtimeChannel.send({
+          // Broadcast to conversation channel
+          await conversationChannel.send({
             type: 'broadcast',
             event: 'thinking_step',
-            payload: {
-              ...data,
-              projectId,
-              conversationId
-            }
+            payload
           });
+          
+          // Also broadcast to project channel for LiveGenerationProgress
+          if (projectChannel) {
+            await projectChannel.send({
+              type: 'broadcast',
+              event: 'thinking_step',
+              payload
+            });
+          }
           
           // Persist to database for permanent display after reload
           try {
@@ -149,30 +167,51 @@ serve(async (req) => {
         if (isAGIEvent) {
           // Send AGI events with generation_event format for useGenerationMonitor
           const agiEventType = mapToAGIEventType(event, data);
-          await realtimeChannel.send({
+          const agiPayload = {
+            type: agiEventType,
+            ...payload
+          };
+          
+          // Broadcast to conversation channel
+          await conversationChannel.send({
             type: 'broadcast',
             event: 'generation_event',
-            payload: {
-              type: agiEventType,
-              ...data,
-              projectId,
-              conversationId,
-              timestamp: new Date().toISOString()
-            }
+            payload: agiPayload
           });
+          
+          // Also broadcast to project channel
+          if (projectChannel) {
+            await projectChannel.send({
+              type: 'broadcast',
+              event: 'generation_event',
+              payload: agiPayload
+            });
+          }
+          
           console.log(`🧠 AGI Event: ${agiEventType}`, data.message || data.status);
         } else {
-          // Send general status updates
-          await realtimeChannel.send({
+          // Send general status updates to BOTH channels
+          const statusPayload = {
+            ...payload,
+            event
+          };
+          
+          // Broadcast to conversation channel
+          await conversationChannel.send({
             type: 'broadcast',
             event: 'status-update',
-            payload: {
-              ...data,
-              event,
-              projectId,
-              timestamp: new Date().toISOString()
-            }
+            payload: statusPayload
           });
+          
+          // Also broadcast to project channel for LiveGenerationProgress
+          if (projectChannel) {
+            await projectChannel.send({
+              type: 'broadcast',
+              event: 'status-update',
+              payload: statusPayload
+            });
+          }
+          
           console.log(`📡 Status: ${event}`, data.message || data.status);
         }
       } catch (error) {
