@@ -4,7 +4,7 @@ import { UniversalChatInterface } from "@/components/UniversalChatInterface";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
-import { Download, FileCode } from "lucide-react";
+import { Download, FileCode, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import JSZip from "jszip";
 import { toast } from "sonner";
@@ -305,7 +305,7 @@ npm run build
     if (mobileTab === 'chat') {
       return (
         <div className="h-full flex flex-col">
-          {conversationId && (
+          {conversationId ? (
             <UniversalChatInterface
               conversationId={conversationId}
               projectId={projectId}
@@ -323,6 +323,13 @@ npm run build
                 framework
               }}
             />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center text-muted-foreground">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                <p>Loading chat...</p>
+              </div>
+            </div>
           )}
         </div>
       );
@@ -412,7 +419,7 @@ npm run build
     <div className="grid lg:grid-cols-2 gap-4 p-4 h-full">
       {/* Chat Interface */}
       <div className="flex flex-col h-full">
-        {conversationId && (
+        {conversationId ? (
           <UniversalChatInterface
             conversationId={conversationId}
             projectId={projectId}
@@ -430,6 +437,13 @@ npm run build
               framework
             }}
           />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center text-muted-foreground">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+              <p>Loading chat...</p>
+            </div>
+          </div>
         )}
       </div>
 
