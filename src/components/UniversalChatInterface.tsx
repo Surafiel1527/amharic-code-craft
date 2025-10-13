@@ -26,6 +26,7 @@ import { RealtimeAIPanel } from "@/components/RealtimeAIPanel";
 import { PlanApprovalCard } from "@/components/PlanApprovalCard";
 import { useThinkingSteps } from "@/hooks/useThinkingSteps";
 import { InlineThinkingSteps } from "@/components/InlineThinkingSteps";
+import { supabase } from "@/integrations/supabase/client";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css";
 import "prismjs/components/prism-typescript";
@@ -179,22 +180,61 @@ export function UniversalChatInterface({
     mode: operationMode // Pass operation mode to the hook
   });
 
+  // Populate messageSteps from loaded messages with thinkingSteps
+  useEffect(() => {
+    const newMessageSteps = new Map(messageSteps);
+    let hasChanges = false;
+    
+    messages.forEach(message => {
+      if (message.thinkingSteps && message.thinkingSteps.length > 0 && !newMessageSteps.has(message.id)) {
+        newMessageSteps.set(message.id, message.thinkingSteps);
+        hasChanges = true;
+      }
+    });
+    
+    if (hasChanges) {
+      setMessageSteps(newMessageSteps);
+    }
+  }, [messages]);
+
   // Capture thinking steps for the current message - keep them permanent
   useEffect(() => {
-    if (thinkingSteps.length > 0) {
+    if (thinkingSteps.length > 0 && !isLoading) {
       // Associate steps with the last user message
       const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-      if (lastUserMessage) {
-        setMessageSteps(prev => new Map(prev).set(lastUserMessage.id, [...thinkingSteps]));
+      if (lastUserMessage && persistMessages && conversationId) {
+        // Save steps to database for persistence across page refreshes
+        const saveSteps = async () => {
+          try {
+            // Get current user
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            
+            // Save each thinking step to database
+            await supabase.from('thinking_steps').insert(
+              thinkingSteps.map(step => ({
+                conversation_id: conversationId,
+                message_id: lastUserMessage.id,
+                operation: step.operation,
+                detail: step.detail,
+                status: step.status,
+                duration: step.duration,
+                timestamp: step.timestamp,
+                user_id: user.id
+              }))
+            );
+          } catch (error) {
+            console.error('Failed to save thinking steps:', error);
+          }
+        };
+        saveSteps();
         
-        // ✅ FIX: Clear thinking steps after capturing them to prevent duplication
-        // Steps are now permanently stored in messageSteps Map
-        if (!isLoading) {
-          clearSteps();
-        }
+        // Also store in memory for immediate display
+        setMessageSteps(prev => new Map(prev).set(lastUserMessage.id, [...thinkingSteps]));
+        clearSteps();
       }
     }
-  }, [thinkingSteps, messages, isLoading, clearSteps]);
+  }, [thinkingSteps, messages, isLoading, clearSteps, persistMessages, conversationId]);
 
   // ❌ REMOVED: Don't clear thinking steps - keep them permanent like Lovable/Replit
 

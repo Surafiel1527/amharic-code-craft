@@ -39,6 +39,14 @@ export interface Message {
     requiresApproval: boolean;
     approved?: boolean;
   };
+  thinkingSteps?: Array<{
+    id: string;
+    operation: string;
+    detail: string;
+    status: 'pending' | 'active' | 'complete';
+    duration: number;
+    timestamp: string;
+  }>;
 }
 
 export interface UniversalAIChatOptions {
@@ -143,10 +151,26 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
       if (error) throw error;
 
+      // Load thinking steps for all messages in this conversation
+      const { data: stepsData } = await supabase
+        .from("thinking_steps")
+        .select("*")
+        .eq("conversation_id", convId)
+        .order("timestamp", { ascending: true });
+
       const typedMessages: Message[] = (data || [])
-        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .filter(m => {
+          // Filter out generic completion messages and only include valid roles
+          const isGeneric = m.content?.includes('**Generation Complete!**') || 
+                           m.content?.includes('**Request Processed**');
+          const isValidRole = m.role === 'user' || m.role === 'assistant';
+          return isValidRole && !isGeneric;
+        })
         .map(m => {
           const storedMetadata = (m.metadata as any) || {};
+          
+          // Attach thinking steps to this message
+          const messageSteps = stepsData?.filter((s: any) => s.message_id === m.id) || [];
           
           return {
             id: m.id,
@@ -159,7 +183,15 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
               filePath: undefined
             } : undefined),
             metadata: storedMetadata.metadata,
-            plan: storedMetadata.plan
+            plan: storedMetadata.plan,
+            thinkingSteps: messageSteps.map((s: any) => ({
+              id: `${s.operation}_${s.timestamp}`,
+              operation: s.operation,
+              detail: s.detail,
+              status: s.status,
+              duration: s.duration,
+              timestamp: s.timestamp
+            }))
           };
         });
 
