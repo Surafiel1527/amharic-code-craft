@@ -186,9 +186,15 @@ export function UniversalChatInterface({
       const lastUserMessage = messages.filter(m => m.role === 'user').pop();
       if (lastUserMessage) {
         setMessageSteps(prev => new Map(prev).set(lastUserMessage.id, [...thinkingSteps]));
+        
+        // ✅ FIX: Clear thinking steps after capturing them to prevent duplication
+        // Steps are now permanently stored in messageSteps Map
+        if (!isLoading) {
+          clearSteps();
+        }
       }
     }
-  }, [thinkingSteps, messages]);
+  }, [thinkingSteps, messages, isLoading, clearSteps]);
 
   // ❌ REMOVED: Don't clear thinking steps - keep them permanent like Lovable/Replit
 

@@ -21,48 +21,16 @@ export function useThinkingSteps(conversationId?: string): UseThinkingStepsResul
   const [isThinking, setIsThinking] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  // Load historical steps from database on mount by conversation
+  // ✅ FIX: Reset steps when conversation changes - DON'T load historical steps
+  // Historical steps are already captured in messageSteps Map in the UI component
+  // Only track real-time steps for the current active generation
   useEffect(() => {
     if (!conversationId) return;
 
-    // Reset and load fresh when conversationId changes
-    setLoaded(false);
+    // Reset steps for new conversation - only show real-time steps
     setSteps([]);
-
-    const loadHistoricalSteps = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('thinking_steps')
-          .select('*')
-          .eq('conversation_id', conversationId)
-          .order('timestamp', { ascending: true });
-
-        if (error) {
-          console.warn('Failed to load historical thinking steps:', error);
-          return;
-        }
-
-        if (data && data.length > 0) {
-          const historicalSteps: ThinkingStep[] = data.map((row: any) => ({
-            id: `${row.operation}_${row.timestamp}`,
-            operation: row.operation,
-            detail: row.detail,
-            status: row.status,
-            duration: row.duration,
-            timestamp: row.timestamp
-          }));
-          
-          console.log(`📚 Loaded ${historicalSteps.length} historical thinking steps for conversation`);
-          setSteps(historicalSteps);
-        }
-        setLoaded(true);
-      } catch (err) {
-        console.error('Error loading historical steps:', err);
-        setLoaded(true);
-      }
-    };
-
-    loadHistoricalSteps();
+    setLoaded(true);
+    console.log('🔄 Reset thinking steps for new conversation - will show only real-time steps');
   }, [conversationId]);
 
   useEffect(() => {
