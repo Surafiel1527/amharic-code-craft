@@ -82,13 +82,167 @@ export class ReactBuilder implements IFrameworkBuilder {
 
     const phaseResults = await progressiveBuilder.buildInPhases(analysis._implementationPlan);
 
-    const allFiles = phaseResults
+    const componentFiles = phaseResults
       .flatMap(r => r.phase.files.map(file => ({
         path: file.path,
         content: file.content,
         language: 'typescript',
         imports: file.dependencies
       })));
+
+    // Add infrastructure files to complete the React project
+    const infrastructureFiles = [
+      {
+        path: 'index.html',
+        content: `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>React App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>`,
+        language: 'html',
+        imports: []
+      },
+      {
+        path: 'src/main.tsx',
+        content: `import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)`,
+        language: 'typescript',
+        imports: ['react', 'react-dom']
+      },
+      {
+        path: 'src/index.css',
+        content: `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}`,
+        language: 'css',
+        imports: []
+      },
+      {
+        path: 'package.json',
+        content: JSON.stringify({
+          name: 'react-app',
+          private: true,
+          version: '0.0.0',
+          type: 'module',
+          scripts: {
+            dev: 'vite',
+            build: 'tsc && vite build',
+            preview: 'vite preview'
+          },
+          dependencies: {
+            react: '^18.3.1',
+            'react-dom': '^18.3.1'
+          },
+          devDependencies: {
+            '@types/react': '^18.3.1',
+            '@types/react-dom': '^18.3.1',
+            '@vitejs/plugin-react': '^4.3.1',
+            typescript: '^5.2.2',
+            vite: '^5.0.0',
+            tailwindcss: '^3.4.0',
+            autoprefixer: '^10.4.16',
+            postcss: '^8.4.32'
+          }
+        }, null, 2),
+        language: 'json',
+        imports: []
+      },
+      {
+        path: 'vite.config.ts',
+        content: `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+})`,
+        language: 'typescript',
+        imports: []
+      },
+      {
+        path: 'tsconfig.json',
+        content: JSON.stringify({
+          compilerOptions: {
+            target: 'ES2020',
+            useDefineForClassFields: true,
+            lib: ['ES2020', 'DOM', 'DOM.Iterable'],
+            module: 'ESNext',
+            skipLibCheck: true,
+            moduleResolution: 'bundler',
+            allowImportingTsExtensions: true,
+            resolveJsonModule: true,
+            isolatedModules: true,
+            noEmit: true,
+            jsx: 'react-jsx',
+            strict: true,
+            noUnusedLocals: true,
+            noUnusedParameters: true,
+            noFallthroughCasesInSwitch: true
+          },
+          include: ['src'],
+          references: [{ path: './tsconfig.node.json' }]
+        }, null, 2),
+        language: 'json',
+        imports: []
+      },
+      {
+        path: 'tailwind.config.js',
+        content: `/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}`,
+        language: 'javascript',
+        imports: []
+      },
+      {
+        path: 'postcss.config.js',
+        content: `export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}`,
+        language: 'javascript',
+        imports: []
+      }
+    ];
+
+    const allFiles = [...componentFiles, ...infrastructureFiles];
 
     await broadcast('generation:progressive_complete', {
       status: 'success',
@@ -113,7 +267,7 @@ export class ReactBuilder implements IFrameworkBuilder {
 
     await broadcast('generation:react_simple', {
       status: 'generating',
-      message: '⚛️ Generating React component...',
+      message: '⚛️ Generating React project...',
       progress: 60
     });
 
@@ -208,18 +362,240 @@ Return ONLY the complete React/TypeScript component code. No explanations, no ma
 
     await broadcast('generation:react_complete', {
       status: 'success',
-      message: '✅ React component generated',
+      message: '✅ React project generated',
       progress: 80
     });
 
-    return {
-      files: [{
+    // Generate complete React project structure
+    const files = [
+      {
         path: 'src/App.tsx',
         content,
         language: 'typescript',
         imports: ['react']
-      }],
-      description: 'Generated complete React/TypeScript component',
+      },
+      {
+        path: 'src/main.tsx',
+        content: `import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.tsx'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)`,
+        language: 'typescript',
+        imports: ['react', 'react-dom']
+      },
+      {
+        path: 'src/index.css',
+        content: `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}`,
+        language: 'css',
+        imports: []
+      },
+      {
+        path: 'index.html',
+        content: `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>React App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>`,
+        language: 'html',
+        imports: []
+      },
+      {
+        path: 'package.json',
+        content: JSON.stringify({
+          name: 'react-app',
+          private: true,
+          version: '0.0.0',
+          type: 'module',
+          scripts: {
+            dev: 'vite',
+            build: 'tsc && vite build',
+            preview: 'vite preview'
+          },
+          dependencies: {
+            react: '^18.3.1',
+            'react-dom': '^18.3.1'
+          },
+          devDependencies: {
+            '@types/react': '^18.3.1',
+            '@types/react-dom': '^18.3.1',
+            '@vitejs/plugin-react': '^4.3.1',
+            typescript: '^5.2.2',
+            vite: '^5.0.0',
+            tailwindcss: '^3.4.0',
+            autoprefixer: '^10.4.16',
+            postcss: '^8.4.32'
+          }
+        }, null, 2),
+        language: 'json',
+        imports: []
+      },
+      {
+        path: 'vite.config.ts',
+        content: `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+})`,
+        language: 'typescript',
+        imports: []
+      },
+      {
+        path: 'tsconfig.json',
+        content: JSON.stringify({
+          compilerOptions: {
+            target: 'ES2020',
+            useDefineForClassFields: true,
+            lib: ['ES2020', 'DOM', 'DOM.Iterable'],
+            module: 'ESNext',
+            skipLibCheck: true,
+            moduleResolution: 'bundler',
+            allowImportingTsExtensions: true,
+            resolveJsonModule: true,
+            isolatedModules: true,
+            noEmit: true,
+            jsx: 'react-jsx',
+            strict: true,
+            noUnusedLocals: true,
+            noUnusedParameters: true,
+            noFallthroughCasesInSwitch: true
+          },
+          include: ['src'],
+          references: [{ path: './tsconfig.node.json' }]
+        }, null, 2),
+        language: 'json',
+        imports: []
+      },
+      {
+        path: 'tsconfig.node.json',
+        content: JSON.stringify({
+          compilerOptions: {
+            composite: true,
+            skipLibCheck: true,
+            module: 'ESNext',
+            moduleResolution: 'bundler',
+            allowSyntheticDefaultImports: true
+          },
+          include: ['vite.config.ts']
+        }, null, 2),
+        language: 'json',
+        imports: []
+      },
+      {
+        path: 'tailwind.config.js',
+        content: `/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}`,
+        language: 'javascript',
+        imports: []
+      },
+      {
+        path: 'postcss.config.js',
+        content: `export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}`,
+        language: 'javascript',
+        imports: []
+      },
+      {
+        path: '.gitignore',
+        content: `# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?`,
+        language: 'text',
+        imports: []
+      },
+      {
+        path: 'README.md',
+        content: `# React + TypeScript + Vite
+
+This project was generated with React, TypeScript, and Vite.
+
+## Getting Started
+
+Install dependencies:
+\`\`\`bash
+npm install
+\`\`\`
+
+Run development server:
+\`\`\`bash
+npm run dev
+\`\`\`
+
+Build for production:
+\`\`\`bash
+npm run build
+\`\`\``,
+        language: 'markdown',
+        imports: []
+      }
+    ];
+
+    return {
+      files,
+      description: `Generated complete React/TypeScript project with ${files.length} files`,
       framework: 'react'
     };
   }
