@@ -304,30 +304,26 @@ npm run build
   if (isMobile) {
     if (mobileTab === 'chat') {
       return (
-        <div className="h-full">
-          <Card className="p-4 flex flex-col h-full border-0 rounded-none">
-            <div className="flex-1 overflow-hidden">
-              {conversationId && (
-                <UniversalChatInterface
-                  conversationId={conversationId}
-                  projectId={projectId}
-                  mode="panel"
-                  persistMessages={true}
-                  selectedFiles={selectedFiles}
-                  projectFiles={Object.entries(fileContents).map(([path, content]) => ({
-                    file_path: path,
-                    file_content: typeof content === 'string' ? content : ''
-                  }))}
-                  context={{
-                    currentCode: htmlCode,
-                    projectId,
-                    conversationHistory: [],
-                    framework
-                  }}
-                />
-              )}
-            </div>
-          </Card>
+        <div className="h-full flex flex-col">
+          {conversationId && (
+            <UniversalChatInterface
+              conversationId={conversationId}
+              projectId={projectId}
+              mode="panel"
+              persistMessages={true}
+              selectedFiles={selectedFiles}
+              projectFiles={Object.entries(fileContents).map(([path, content]) => ({
+                file_path: path,
+                file_content: typeof content === 'string' ? content : ''
+              }))}
+              context={{
+                currentCode: htmlCode,
+                projectId,
+                conversationHistory: [],
+                framework
+              }}
+            />
+          )}
         </div>
       );
     }
@@ -415,30 +411,27 @@ npm run build
   return (
     <div className="grid lg:grid-cols-2 gap-4 p-4 h-full">
       {/* Chat Interface */}
-      <Card className="p-4 flex flex-col">
-        <h2 className="text-lg font-semibold mb-4">AI Assistant</h2>
-        <div className="flex-1 overflow-hidden">
-          {conversationId && (
-            <UniversalChatInterface
-              conversationId={conversationId}
-              projectId={projectId}
-              mode="panel"
-              persistMessages={true}
-              selectedFiles={selectedFiles}
-              projectFiles={Object.entries(fileContents).map(([path, content]) => ({
-                file_path: path,
-                file_content: typeof content === 'string' ? content : ''
-              }))}
-              context={{
-                currentCode: htmlCode,
-                projectId,
-                conversationHistory: [],
-                framework
-              }}
-            />
-          )}
-        </div>
-      </Card>
+      <div className="flex flex-col h-full">
+        {conversationId && (
+          <UniversalChatInterface
+            conversationId={conversationId}
+            projectId={projectId}
+            mode="panel"
+            persistMessages={true}
+            selectedFiles={selectedFiles}
+            projectFiles={Object.entries(fileContents).map(([path, content]) => ({
+              file_path: path,
+              file_content: typeof content === 'string' ? content : ''
+            }))}
+            context={{
+              currentCode: htmlCode,
+              projectId,
+              conversationHistory: [],
+              framework
+            }}
+          />
+        )}
+      </div>
 
       {/* Live Preview */}
       <Card className="p-4">
