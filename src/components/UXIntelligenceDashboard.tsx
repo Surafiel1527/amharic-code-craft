@@ -29,11 +29,11 @@ interface UXSignal {
 interface QualityMetric {
   id: string;
   quality_score: number;
-  framework_complete: boolean;
-  preview_renderable: boolean;
-  issues_found: number;
+  issues_found: any;
   quality_healed: boolean;
   created_at: string;
+  framework?: string;
+  healing_applied?: boolean;
 }
 
 interface FrustrationScore {
@@ -296,15 +296,19 @@ export const UXIntelligenceDashboard = () => {
                   <Progress value={metric.quality_score} />
                   
                   <div className="flex gap-2 mt-2">
-                    <Badge variant={metric.framework_complete ? 'default' : 'secondary'}>
-                      Framework: {metric.framework_complete ? 'Complete' : 'Incomplete'}
-                    </Badge>
-                    <Badge variant={metric.preview_renderable ? 'default' : 'secondary'}>
-                      Preview: {metric.preview_renderable ? 'Ready' : 'Not Ready'}
-                    </Badge>
+                    {metric.framework && (
+                      <Badge variant="outline">
+                        {metric.framework}
+                      </Badge>
+                    )}
+                    {metric.healing_applied && (
+                      <Badge variant="default">
+                        Healing Applied
+                      </Badge>
+                    )}
                   </div>
                   
-                  {metric.issues_found > 0 && (
+                  {typeof metric.issues_found === 'number' && metric.issues_found > 0 && (
                     <div className="flex items-center gap-2 mt-2">
                       <AlertTriangle className="h-4 w-4 text-yellow-500" />
                       <span className="text-sm">{metric.issues_found} issues found</span>
@@ -355,3 +359,5 @@ export const UXIntelligenceDashboard = () => {
     </div>
   );
 };
+
+export default UXIntelligenceDashboard;
