@@ -15,80 +15,10 @@ import {
 import { 
   logGenerationSuccess
 } from './productionMonitoring.ts';
-
-/**
- * Generate, validate, and package code using framework-specific builders
- */
-/**
- * Thinking Step Tracker - Same as orchestrator, with DB persistence
- */
-class ThinkingStepTracker {
-  private startTimes: Map<string, number> = new Map();
-  private supabase: any;
-  private jobId: string | null;
-  private projectId: string | null;
-  private conversationId: string | null;
-
-  constructor(supabase: any, jobId: string | null, projectId: string | null, conversationId: string | null = null) {
-    this.supabase = supabase;
-    this.jobId = jobId;
-    this.projectId = projectId;
-    this.conversationId = conversationId;
-  }
-
-  async trackStep(operation: string, detail: string, broadcast: Function, status: 'start' | 'complete' = 'start') {
-    const timestamp = new Date().toISOString();
-    
-    if (status === 'start') {
-      this.startTimes.set(operation, Date.now());
-      await broadcast('thinking_step', {
-        operation,
-        detail,
-        status: 'active',
-        timestamp
-      });
-      
-      // Save to DB with conversation_id
-      if (this.jobId && this.projectId) {
-        await this.supabase.from('thinking_steps').insert({
-          job_id: this.jobId,
-          project_id: this.projectId,
-          conversation_id: this.conversationId,
-          operation,
-          detail,
-          status: 'active',
-          timestamp
-        }).catch((err: any) => console.warn('Failed to save thinking step:', err));
-      }
-    } else {
-      const startTime = this.startTimes.get(operation) || Date.now();
-      const duration = (Date.now() - startTime) / 1000; // seconds
-      this.startTimes.delete(operation);
-      
-      await broadcast('thinking_step', {
-        operation,
-        detail,
-        status: 'complete',
-        duration,
-        timestamp
-      });
-      
-      // Save to DB with conversation_id
-      if (this.jobId && this.projectId) {
-        await this.supabase.from('thinking_steps').insert({
-          job_id: this.jobId,
-          project_id: this.projectId,
-          conversation_id: this.conversationId,
-          operation,
-          detail,
-          status: 'complete',
-          duration,
-          timestamp
-        }).catch((err: any) => console.warn('Failed to save thinking step:', err));
-      }
-    }
-  }
-}
+import { ThinkingStepTracker } from '../_shared/thinkingStepTracker.ts';
+import { createGenerationMetadata, FileMetadata } from '../_shared/generationMetadata.ts';
+import { generateTestsForFiles, generateTestSetup } from '../_shared/autoTestGenerator.ts';
+import { generateNextSteps, formatNextStepsForDisplay } from '../_shared/proactiveAI.ts';
 
 /**
  * Generate, validate, and package code using framework-specific builders
@@ -452,7 +382,132 @@ export async function generateAndPackageCode(ctx: {
     });
   }
 
-  // Step 9: Log success metrics
+  // Step 9: Generate metadata
+  await broadcast('generation:metadata', {
+    status: 'generating',
+    message: '📊 Creating project metadata...',
+    progress: 92
+  });
+
+  const metadata = createGenerationMetadata({
+    request,
+    framework,
+    analysis,
+    generatedCode,
+    startTime,
+    validationResult,
+    autoFixResult
+  });
+
+  // Save metadata to database
+  if (projectId) {
+    await platformSupabase.from('project_metadata').upsert({
+      project_id: projectId,
+      metadata,
+      created_at: new Date().toISOString()
+    }, {
+      onConflict: 'project_id'
+    }).catch((err: any) => console.warn('Failed to save metadata:', err));
+  }
+
+  // Step 10: Auto-generate tests
+  await stepTracker.trackStep('generate_tests', 'Generating automated tests', broadcast, 'start');
+  await broadcast('generation:tests', {
+    status: 'generating',
+    message: '🧪 Generating automated tests...',
+    progress: 94
+  });
+
+  const generatedTests = await generateTestsForFiles(
+    metadata.files,
+    framework,
+    analysis
+  );
+
+  if (generatedTests.length > 0) {
+    console.log(`✅ Generated ${generatedTests.length} test files`);
+    
+    // Add test files to project
+    for (const test of generatedTests) {
+      generatedCode.files.push({
+        path: test.filePath,
+        content: test.testContent,
+        language: 'typescript',
+        imports: []
+      });
+      
+      // Save test file to database
+      if (projectId) {
+        await platformSupabase.from('project_files').upsert({
+          project_id: projectId,
+          file_path: test.filePath,
+          file_content: test.testContent,
+          file_type: 'test',
+          created_by: userId,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'project_id,file_path'
+        }).catch((err: any) => console.warn(`Failed to save test ${test.filePath}:`, err));
+      }
+    }
+    
+    // Generate test setup files
+    const { setupFile, configFile } = generateTestSetup(framework);
+    generatedCode.files.push(
+      {
+        path: 'src/test/setup.ts',
+        content: setupFile,
+        language: 'typescript',
+        imports: []
+      },
+      {
+        path: 'vitest.config.ts',
+        content: configFile,
+        language: 'typescript',
+        imports: []
+      }
+    );
+    
+    await stepTracker.trackStep('generate_tests', `Generated ${generatedTests.length} test files`, broadcast, 'complete');
+  }
+
+  // Step 11: Generate proactive suggestions
+  await stepTracker.trackStep('proactive_suggestions', 'Analyzing next steps', broadcast, 'start');
+  await broadcast('generation:suggestions', {
+    status: 'generating',
+    message: '🤖 Generating smart suggestions...',
+    progress: 96
+  });
+
+  const conversationHistory = conversationContext?.messages || [];
+  const nextSteps = await generateNextSteps({
+    request,
+    framework,
+    analysis,
+    files: metadata.files,
+    conversationHistory,
+    projectContext: { deployed: false }
+  });
+
+  if (nextSteps.length > 0) {
+    const suggestionsMessage = formatNextStepsForDisplay(nextSteps);
+    
+    // Save suggestions as message
+    await platformSupabase.from('messages').insert({
+      conversation_id: conversationId,
+      user_id: userId,
+      role: 'assistant',
+      content: suggestionsMessage,
+      metadata: {
+        category: 'suggestions',
+        suggestions: nextSteps
+      }
+    }).catch((err: any) => console.warn('Failed to save suggestions:', err));
+    
+    await stepTracker.trackStep('proactive_suggestions', `${nextSteps.length} suggestions generated`, broadcast, 'complete');
+  }
+
+  // Step 12: Log success metrics
   const generationTime = Date.now() - startTime;
   await logGenerationSuccess(platformSupabase, {
     userId,
@@ -463,7 +518,7 @@ export async function generateAndPackageCode(ctx: {
     duration: generationTime
   });
 
-  // Step 11: Final operations (non-blocking)
+  // Step 13: Final operations (non-blocking)
   await Promise.allSettled([
     // Store successful pattern
     storeSuccessfulPattern(platformSupabase, {

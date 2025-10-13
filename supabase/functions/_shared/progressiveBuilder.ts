@@ -7,37 +7,7 @@
 
 import { callAIWithFallback } from './aiHelpers.ts';
 import { buildWebsitePrompt } from './promptTemplates.ts';
-
-/**
- * Thinking Step Tracker - Same as orchestrator
- */
-class ThinkingStepTracker {
-  private startTimes: Map<string, number> = new Map();
-
-  async trackStep(operation: string, detail: string, broadcast: Function, status: 'start' | 'complete' = 'start') {
-    if (status === 'start') {
-      this.startTimes.set(operation, Date.now());
-      await broadcast('thinking_step', {
-        operation,
-        detail,
-        status: 'active',
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      const startTime = this.startTimes.get(operation) || Date.now();
-      const duration = (Date.now() - startTime) / 1000;
-      this.startTimes.delete(operation);
-      
-      await broadcast('thinking_step', {
-        operation,
-        detail,
-        status: 'complete',
-        duration,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-}
+import { ThinkingStepTracker } from './thinkingStepTracker.ts';
 
 export interface BuildPhase {
   phaseNumber: number;
@@ -88,13 +58,17 @@ export class ProgressiveBuilder {
     originalRequest: string, 
     analysis: any, 
     framework: string,
-    broadcast: (event: string, data: any) => Promise<void>
+    broadcast: (event: string, data: any) => Promise<void>,
+    supabase?: any,
+    jobId?: string | null,
+    projectId?: string | null,
+    conversationId?: string | null
   ) {
     this.originalRequest = originalRequest;
     this.analysis = analysis;
     this.framework = framework;
     this.broadcast = broadcast;
-    this.stepTracker = new ThinkingStepTracker();
+    this.stepTracker = new ThinkingStepTracker(supabase, jobId ?? null, projectId ?? null, conversationId ?? null);
   }
 
   /**
