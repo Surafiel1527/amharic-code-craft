@@ -1,10 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createLogger } from '../_shared/logger.ts';
+import { trackUXSignal } from '../_shared/uxMonitoring.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const logger = createLogger({ module: 'autonomous-healing-engine' });
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -16,7 +20,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log('🤖 AUTONOMOUS HEALING ENGINE: Starting automated cycle...');
+    logger.info('Autonomous healing engine starting automated cycle');
 
     const results = {
       timestamp: new Date().toISOString(),
@@ -29,7 +33,7 @@ serve(async (req) => {
     };
 
     // CYCLE 1: ERROR DETECTION & AUTO-FIX
-    console.log('📊 Cycle 1: Scanning for errors...');
+    logger.info('Cycle 1: Scanning for errors');
     const { data: pendingErrors } = await supabase
       .from('detected_errors')
       .select('*')
@@ -39,6 +43,7 @@ serve(async (req) => {
 
     if (pendingErrors && pendingErrors.length > 0) {
       results.errors_detected = pendingErrors.length;
+      logger.info(`Found ${pendingErrors.length} pending errors`);
       
       // Automatically apply fixes for high-confidence patterns
       for (const error of pendingErrors) {
@@ -47,7 +52,7 @@ serve(async (req) => {
           .select('*')
           .eq('error_signature', error.error_message)
           .gte('confidence_score', 0.85)
-          .single();
+          .maybeSingle();
 
         if (matchingPattern) {
           // Auto-apply the fix
@@ -62,7 +67,7 @@ serve(async (req) => {
               applied_at: new Date().toISOString(),
             })
             .select()
-            .single();
+            .maybeSingle();
 
           if (autoFix) {
             await supabase
@@ -74,7 +79,7 @@ serve(async (req) => {
               .eq('id', error.id);
 
             results.fixes_applied++;
-            console.log(`✅ Auto-fixed: ${error.error_type}`);
+            logger.info(`Auto-fixed error`, { errorType: error.error_type });
           }
         }
       }
@@ -230,7 +235,11 @@ serve(async (req) => {
 
         // If quality check failed, trigger healing
         if (!qualityReport.passed && qualityReport.qualityScore < 70) {
-          console.log(`🔧 Quality issue detected in project ${project.id} (score: ${qualityReport.qualityScore}/100)`);
+          logger.warn('Quality issue detected', {
+            projectId: project.id,
+            qualityScore: qualityReport.qualityScore,
+            missingFiles: qualityReport.requiredFilesMissing.length
+          });
           
           const { generateMissingInfrastructure } = await import('../_shared/frameworkCompleteness.ts');
           
@@ -243,7 +252,8 @@ serve(async (req) => {
                 language: f.file_type
               })),
               framework,
-              qualityReport.requiredFilesMissing
+              qualityReport.requiredFilesMissing,
+              logger
             );
 
             // Save healed files to database
@@ -256,6 +266,33 @@ serve(async (req) => {
                 created_by: project.user_id
               });
             }
+
+            // Track quality healing in quality metrics table
+            await supabase.from('generation_quality_metrics').insert({
+              generation_id: project.id,
+              user_id: project.user_id,
+              project_id: project.id,
+              quality_score: qualityReport.qualityScore,
+              framework_complete: false,
+              preview_renderable: qualityReport.previewRenderable,
+              issues_found: qualityReport.issues.length,
+              healing_applied: true,
+              quality_healed: true
+            });
+
+            // Track UX signal for autonomous healing
+            await trackUXSignal(supabase, {
+              user_id: project.user_id,
+              project_id: project.id,
+              signal_type: 'fix_request',
+              signal_value: 0, // Autonomous fix
+              signal_data: {
+                type: 'autonomous_quality_healing',
+                qualityScore: qualityReport.qualityScore,
+                filesAdded: missingFiles.length,
+                issues: qualityReport.issues.length
+              }
+            });
 
             // Log healing event
             await supabase.from('build_events').insert({
@@ -272,7 +309,10 @@ serve(async (req) => {
             });
 
             results.fixes_applied++;
-            console.log(`✅ Autonomously healed project ${project.id}: added ${missingFiles.length} files`);
+            logger.info('Autonomously healed project', {
+              projectId: project.id,
+              filesAdded: missingFiles.length
+            });
           }
         }
       }
@@ -313,7 +353,7 @@ serve(async (req) => {
       success: true,
     });
 
-    console.log(`✅ AUTONOMOUS CYCLE COMPLETE:`, results);
+    logger.info('Autonomous cycle complete', results);
 
     return new Response(
       JSON.stringify({ 
@@ -325,7 +365,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in autonomous-healing-engine:', error);
+    logger.error('Error in autonomous-healing-engine', {}, error as Error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

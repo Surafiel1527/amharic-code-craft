@@ -19,6 +19,8 @@ import { ThinkingStepTracker } from '../_shared/thinkingStepTracker.ts';
 import { createGenerationMetadata, FileMetadata } from '../_shared/generationMetadata.ts';
 import { generateTestsForFiles, generateTestSetup } from '../_shared/autoTestGenerator.ts';
 import { generateNextSteps, formatNextStepsForDisplay } from '../_shared/proactiveAI.ts';
+import { trackUXSignal, correlateUXWithQuality, triggerProactiveIntervention } from '../_shared/uxMonitoring.ts';
+import { createLogger } from '../_shared/logger.ts';
 
 /**
  * Generate, validate, and package code using framework-specific builders
@@ -607,8 +609,10 @@ export async function generateAndPackageCode(ctx: {
     await stepTracker.trackStep('proactive_suggestions', `${nextSteps.length} suggestions generated`, broadcast, 'complete');
   }
 
-  // Step 12: Log success metrics
+  // Step 12: Log success metrics and track UX
   const generationTime = Date.now() - startTime;
+  const logger = createLogger({ userId, projectId: projectId || undefined, conversationId });
+  
   await logGenerationSuccess(platformSupabase, {
     userId,
     projectId: projectId || 'unknown',
@@ -617,6 +621,35 @@ export async function generateAndPackageCode(ctx: {
     fileCount: generatedCode.files.length,
     duration: generationTime
   });
+
+  // Track UX signal for generation completion
+  await trackUXSignal(platformSupabase, {
+    user_id: userId,
+    project_id: projectId || undefined,
+    generation_id: jobId || undefined,
+    signal_type: 'download',
+    signal_value: generationTime,
+    signal_data: {
+      framework,
+      fileCount: generatedCode.files.length,
+      qualityScore: qualityReport?.qualityScore || 100,
+      healingApplied: qualityReport && !qualityReport.passed
+    }
+  });
+
+  // Correlate UX with quality and trigger intervention if needed
+  if (jobId) {
+    const correlation = await correlateUXWithQuality(platformSupabase, jobId);
+    if (correlation?.intervention_triggered) {
+      logger.warn('UX intervention triggered', {
+        frustration: correlation.frustration_score,
+        quality: correlation.quality_score,
+        interventionType: correlation.intervention_type
+      });
+      
+      await triggerProactiveIntervention(platformSupabase, correlation, broadcast);
+    }
+  }
 
   // Step 13: Final operations (non-blocking)
   await Promise.allSettled([

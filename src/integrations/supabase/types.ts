@@ -4055,12 +4055,14 @@ export type Database = {
           files_generated: number
           framework: string
           healing_applied: boolean | null
+          healing_pattern_id: string | null
           id: string
           issues_found: Json | null
           metadata: Json | null
           optional_files_missing: string[] | null
           passed: boolean
           project_id: string | null
+          quality_healed: boolean | null
           quality_score: number
           quality_score_after_healing: number | null
           required_files_missing: string[] | null
@@ -4072,12 +4074,14 @@ export type Database = {
           files_generated: number
           framework: string
           healing_applied?: boolean | null
+          healing_pattern_id?: string | null
           id?: string
           issues_found?: Json | null
           metadata?: Json | null
           optional_files_missing?: string[] | null
           passed: boolean
           project_id?: string | null
+          quality_healed?: boolean | null
           quality_score: number
           quality_score_after_healing?: number | null
           required_files_missing?: string[] | null
@@ -4089,12 +4093,14 @@ export type Database = {
           files_generated?: number
           framework?: string
           healing_applied?: boolean | null
+          healing_pattern_id?: string | null
           id?: string
           issues_found?: Json | null
           metadata?: Json | null
           optional_files_missing?: string[] | null
           passed?: boolean
           project_id?: string | null
+          quality_healed?: boolean | null
           quality_score?: number
           quality_score_after_healing?: number | null
           required_files_missing?: string[] | null
@@ -8083,6 +8089,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      ux_quality_signals: {
+        Row: {
+          created_at: string
+          generation_id: string | null
+          id: string
+          project_id: string | null
+          quality_correlation: number | null
+          signal_data: Json | null
+          signal_type: string
+          signal_value: number
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          generation_id?: string | null
+          id?: string
+          project_id?: string | null
+          quality_correlation?: number | null
+          signal_data?: Json | null
+          signal_type: string
+          signal_value: number
+          timestamp?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          generation_id?: string | null
+          id?: string
+          project_id?: string | null
+          quality_correlation?: number | null
+          signal_data?: Json | null
+          signal_type?: string
+          signal_value?: number
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ux_quality_signals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       validation_patterns: {
         Row: {
