@@ -423,10 +423,11 @@ export async function generateAndPackageCode(ctx: {
       (validationResult.success ? '**Status:** ✅ All validations passed\n' : '**Status:** ⚠️ Fixed validation issues\n') +
       (autoFixResult.fixed ? `**Auto-fixes Applied:** ${autoFixResult.fixedErrorTypes.length}` : '');
 
-    // ✅ Save summary as a message directly to database
+    // ✅ Save summary as a message directly to database with user_id
     try {
       await platformSupabase.from('messages').insert({
         conversation_id: conversationId,
+        user_id: userId,
         role: 'assistant',
         content: summary,
         metadata: { 

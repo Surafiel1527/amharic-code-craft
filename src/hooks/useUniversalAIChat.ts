@@ -161,9 +161,18 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
       const typedMessages: Message[] = (data || [])
         .filter(m => {
-          // Filter out generic completion messages and only include valid roles
-          const isGeneric = m.content?.includes('**Generation Complete!**') || 
-                           m.content?.includes('**Request Processed**');
+          // CRITICAL FIX: Don't filter out summary messages (isSummary metadata)
+          // Only filter generic EMPTY or placeholder messages
+          const storedMetadata = (m.metadata as any) || {};
+          const isSummaryMessage = storedMetadata.isSummary === true;
+          
+          // Keep summary messages always
+          if (isSummaryMessage) return true;
+          
+          // Filter out truly generic messages (empty or just "Request Processed")
+          const isGeneric = (m.content?.trim() === '' || 
+                           m.content === '**Request Processed**' ||
+                           m.content === 'Generation started');
           const isValidRole = m.role === 'user' || m.role === 'assistant';
           return isValidRole && !isGeneric;
         })
