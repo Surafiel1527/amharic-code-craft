@@ -192,13 +192,22 @@ export function UniversalChatInterface({
 
   // ❌ REMOVED: Don't clear thinking steps - keep them permanent like Lovable/Replit
 
-  // Auto-scroll on new messages
+  // Auto-scroll on new messages AND on initial load
   useEffect(() => {
-    if (messages.length > lastMessageCountRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Scroll to bottom when:
+    // 1. New messages are added (messages.length increases)
+    // 2. Initial conversation load (messages exist but lastMessageCountRef is 0)
+    const shouldScroll = messages.length > lastMessageCountRef.current || 
+                        (messages.length > 0 && lastMessageCountRef.current === 0);
+    
+    if (shouldScroll) {
+      // Use setTimeout to ensure DOM has fully rendered
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
       lastMessageCountRef.current = messages.length;
     }
-  }, [messages.length]);
+  }, [messages]);
 
   // Syntax highlighting
   useEffect(() => {
