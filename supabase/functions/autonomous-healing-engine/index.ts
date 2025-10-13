@@ -190,15 +190,104 @@ serve(async (req) => {
     results.optimizations_made++;
     results.cycles_run++;
 
-    // CYCLE 5: SELF-IMPROVEMENT
-    console.log('🔄 Cycle 5: Meta-improvement analysis...');
+    // CYCLE 5: QUALITY ASSURANCE MONITORING (NEW)
+    console.log('🎯 Cycle 5: Post-generation quality monitoring...');
+    const { data: recentProjects } = await supabase
+      .from('projects')
+      .select('id, user_id, title, html_code, created_at')
+      .gte('created_at', new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()) // Last 1 hour
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (recentProjects && recentProjects.length > 0) {
+      for (const project of recentProjects) {
+        // Fetch project files
+        const { data: projectFiles } = await supabase
+          .from('project_files')
+          .select('file_path, file_content, file_type')
+          .eq('project_id', project.id);
+
+        if (!projectFiles || projectFiles.length === 0) {
+          console.log(`⚠️ Project ${project.id} has no files - skipping quality check`);
+          continue;
+        }
+
+        // Determine framework from files
+        const hasReactFiles = projectFiles.some((f: any) => f.file_path.endsWith('.tsx'));
+        const framework = hasReactFiles ? 'react' : 'html';
+
+        // Run quality validation
+        const { validatePostGeneration } = await import('../_shared/postGenerationValidator.ts');
+        const qualityReport = await validatePostGeneration(
+          projectFiles.map((f: any) => ({
+            path: f.file_path,
+            content: f.file_content,
+            language: f.file_type
+          })),
+          framework,
+          project.title
+        );
+
+        // If quality check failed, trigger healing
+        if (!qualityReport.passed && qualityReport.qualityScore < 70) {
+          console.log(`🔧 Quality issue detected in project ${project.id} (score: ${qualityReport.qualityScore}/100)`);
+          
+          const { generateMissingInfrastructure } = await import('../_shared/frameworkCompleteness.ts');
+          
+          if (qualityReport.requiredFilesMissing.length > 0) {
+            // Generate missing files
+            const missingFiles = await generateMissingInfrastructure(
+              projectFiles.map((f: any) => ({
+                path: f.file_path,
+                content: f.file_content,
+                language: f.file_type
+              })),
+              framework,
+              qualityReport.requiredFilesMissing
+            );
+
+            // Save healed files to database
+            for (const file of missingFiles) {
+              await supabase.from('project_files').insert({
+                project_id: project.id,
+                file_path: file.path,
+                file_content: file.content,
+                file_type: file.language,
+                created_by: project.user_id
+              });
+            }
+
+            // Log healing event
+            await supabase.from('build_events').insert({
+              user_id: project.user_id,
+              project_id: project.id,
+              event_type: 'autonomous_quality_healing',
+              title: 'Autonomous Quality Fix Applied',
+              status: 'success',
+              details: {
+                qualityScore: qualityReport.qualityScore,
+                filesAdded: missingFiles.map(f => f.path),
+                issues: qualityReport.issues.map(i => i.description)
+              }
+            });
+
+            results.fixes_applied++;
+            console.log(`✅ Autonomously healed project ${project.id}: added ${missingFiles.length} files`);
+          }
+        }
+      }
+    }
+    results.cycles_run++;
+
+    // CYCLE 6: SELF-IMPROVEMENT
+    console.log('🔄 Cycle 6: Meta-improvement analysis...');
     const { data: systemMetrics } = await supabase
       .from('ai_improvement_logs')
       .select('*')
-      .gte('timestamp', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+      .gte('applied_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
     if (systemMetrics && systemMetrics.length > 0) {
-      const successRate = systemMetrics.filter(m => m.success).length / systemMetrics.length;
+      const successRate = systemMetrics.filter((m: any) => m.validation_status === 'success').length / systemMetrics.length;
       
       if (successRate < 0.7) {
         // System performance degraded - log for meta-improvement

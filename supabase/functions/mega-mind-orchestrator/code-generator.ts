@@ -254,12 +254,112 @@ export async function generateAndPackageCode(ctx: {
     }
   }
 
-  await updateJobProgress(90, 'Auto-fix complete', 'Finalizing Project', []);
+  await updateJobProgress(90, 'Auto-fix complete', 'Quality Assurance', []);
+
+  // Step 6.5: POST-GENERATION QUALITY CHECK (META-BRAIN)
+  await stepTracker.trackStep('quality_check', 'Running post-generation quality check', broadcast, 'start');
+  await broadcast('generation:quality_check', {
+    status: 'validating',
+    message: '🔍 Running quality assurance...',
+    progress: 82,
+    currentOperation: 'Checking framework completeness and preview renderability',
+    phaseName: 'Quality Assurance'
+  });
+
+  const { validatePostGeneration, formatQualityReport } = await import('../_shared/postGenerationValidator.ts');
+  const { generateMissingInfrastructure } = await import('../_shared/frameworkCompleteness.ts');
+
+  const qualityReport = await validatePostGeneration(
+    generatedCode.files,
+    framework,
+    request
+  );
+
+  console.log(formatQualityReport(qualityReport));
+
+  // If quality check failed, attempt to heal
+  if (!qualityReport.passed) {
+    await stepTracker.trackStep('quality_check', `Quality issues found (score: ${qualityReport.qualityScore}/100)`, broadcast, 'complete');
+    await broadcast('generation:quality_healing', {
+      status: 'healing',
+      message: `🔧 Fixing quality issues (${qualityReport.issues.length} found)...`,
+      progress: 84,
+      details: {
+        qualityScore: qualityReport.qualityScore,
+        issues: qualityReport.issues.map(i => i.description)
+      }
+    });
+
+    // Generate missing infrastructure files
+    if (qualityReport.requiredFilesMissing.length > 0) {
+      console.log(`🔧 AUTO-HEALING: Generating ${qualityReport.requiredFilesMissing.length} missing files...`);
+      
+      const missingFiles = await generateMissingInfrastructure(
+        generatedCode.files,
+        framework,
+        qualityReport.requiredFilesMissing
+      );
+
+      if (missingFiles.length > 0) {
+        // Add missing files to generated code
+        generatedCode.files.push(...missingFiles);
+        console.log(`✅ HEALED: Added ${missingFiles.length} missing files`);
+
+        // Re-validate after healing
+        const revalidationReport = await validatePostGeneration(
+          generatedCode.files,
+          framework,
+          request
+        );
+
+        console.log(`🔄 RE-VALIDATION: Score ${revalidationReport.qualityScore}/100 ${revalidationReport.passed ? '✅' : '❌'}`);
+
+        if (revalidationReport.passed) {
+          await broadcast('generation:quality_healed', {
+            status: 'success',
+            message: `✅ Quality issues resolved (${qualityReport.qualityScore} → ${revalidationReport.qualityScore})`,
+            progress: 86,
+            details: {
+              before: qualityReport.qualityScore,
+              after: revalidationReport.qualityScore,
+              filesAdded: missingFiles.length
+            }
+          });
+
+          // Log the successful healing
+          await platformSupabase.from('build_events').insert({
+            user_id: userId,
+            project_id: projectId,
+            event_type: 'quality_healing',
+            title: 'Autonomous Quality Healing',
+            status: 'success',
+            details: {
+              before_score: qualityReport.qualityScore,
+              after_score: revalidationReport.qualityScore,
+              files_added: missingFiles.map(f => f.path),
+              issues_resolved: qualityReport.issues.map(i => i.description)
+            }
+          });
+        } else {
+          console.warn(`⚠️ HEALING INCOMPLETE: Quality score ${revalidationReport.qualityScore}/100`);
+        }
+      }
+    }
+  } else {
+    await stepTracker.trackStep('quality_check', `Quality check passed (${qualityReport.qualityScore}/100)`, broadcast, 'complete');
+    await broadcast('generation:quality_passed', {
+      status: 'success',
+      message: `✅ Quality assurance passed (${qualityReport.qualityScore}/100)`,
+      progress: 86
+    });
+  }
+
+  await updateJobProgress(92, 'Quality check complete', 'Finalizing Project', []);
 
   await broadcast('generation:finalizing', { 
     status: 'finalizing', 
     message: '📦 Packaging your project...', 
-    progress: 85,
+    progress: 88,
     currentOperation: 'Finalizing project structure and assets',
     phaseName: 'Finalizing Project'
   });
@@ -530,9 +630,32 @@ export async function generateAndPackageCode(ctx: {
         framework,
         fileCount: generatedCode.files.length,
         validationPassed: validationResult.success,
-        autoFixed: autoFixResult.fixed
+        autoFixed: autoFixResult.fixed,
+        qualityScore: qualityReport?.qualityScore || 100,
+        qualityHealed: qualityReport && !qualityReport.passed
       }
     }),
+
+    // Store quality healing pattern if healing occurred
+    qualityReport && !qualityReport.passed && qualityReport.requiredFilesMissing.length > 0
+      ? platformSupabase.from('universal_error_patterns').upsert({
+          error_category: 'framework_incomplete',
+          pattern_description: `Missing ${framework} infrastructure files`,
+          solution_template: JSON.stringify({
+            framework,
+            missingFiles: qualityReport.requiredFilesMissing,
+            healingApplied: true
+          }),
+          success_count: 1,
+          failure_count: 0,
+          confidence_score: 0.85,
+          context_requirements: {
+            framework,
+            fileCount: generatedCode.files.length,
+            timestamp: new Date().toISOString()
+          }
+        }, { onConflict: 'error_category,pattern_description' })
+      : Promise.resolve(),
     
     // Store file dependencies
     ...generatedCode.files.flatMap((file: any) =>

@@ -4048,6 +4048,68 @@ export type Database = {
           },
         ]
       }
+      generation_quality_metrics: {
+        Row: {
+          created_at: string
+          files_added_by_healing: string[] | null
+          files_generated: number
+          framework: string
+          healing_applied: boolean | null
+          id: string
+          issues_found: Json | null
+          metadata: Json | null
+          optional_files_missing: string[] | null
+          passed: boolean
+          project_id: string | null
+          quality_score: number
+          quality_score_after_healing: number | null
+          required_files_missing: string[] | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          files_added_by_healing?: string[] | null
+          files_generated: number
+          framework: string
+          healing_applied?: boolean | null
+          id?: string
+          issues_found?: Json | null
+          metadata?: Json | null
+          optional_files_missing?: string[] | null
+          passed: boolean
+          project_id?: string | null
+          quality_score: number
+          quality_score_after_healing?: number | null
+          required_files_missing?: string[] | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          files_added_by_healing?: string[] | null
+          files_generated?: number
+          framework?: string
+          healing_applied?: boolean | null
+          id?: string
+          issues_found?: Json | null
+          metadata?: Json | null
+          optional_files_missing?: string[] | null
+          passed?: boolean
+          project_id?: string | null
+          quality_score?: number
+          quality_score_after_healing?: number | null
+          required_files_missing?: string[] | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_quality_metrics_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       installed_packages: {
         Row: {
           auto_detected: boolean | null
@@ -8297,6 +8359,17 @@ export type Database = {
           successful_corrections: number | null
           total_corrections: number | null
           total_decisions: number | null
+        }
+        Relationships: []
+      }
+      quality_analytics: {
+        Row: {
+          avg_healing_improvement: number | null
+          avg_quality_score: number | null
+          framework: string | null
+          healed_count: number | null
+          passed_count: number | null
+          total_generations: number | null
         }
         Relationships: []
       }
