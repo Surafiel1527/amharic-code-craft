@@ -503,13 +503,14 @@ export async function generateAndPackageCode(ctx: {
 
   // Save metadata to database
   if (projectId) {
-    await platformSupabase.from('project_metadata').upsert({
+    const { error } = await platformSupabase.from('project_metadata').upsert({
       project_id: projectId,
       metadata,
       created_at: new Date().toISOString()
     }, {
       onConflict: 'project_id'
-    }).catch((err: any) => console.warn('Failed to save metadata:', err));
+    });
+    if (error) console.warn('Failed to save metadata:', error);
   }
 
   // Step 10: Auto-generate tests
