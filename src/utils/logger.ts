@@ -1,73 +1,155 @@
 /**
- * Production-ready logger utility
- * Replaces all console.log/error/warn statements
+ * Enterprise Frontend Logger
+ * Aligned with backend logger structure
+ * Provides structured, level-based logging with context
  */
 
-type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'success';
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'critical';
 
-interface LogContext {
+export interface LogContext {
+  userId?: string;
+  projectId?: string;
+  conversationId?: string;
+  component?: string;
+  action?: string;
   [key: string]: any;
 }
 
 class Logger {
+  private context: LogContext = {};
+  private minLevel: LogLevel = 'info';
   private isDevelopment = import.meta.env.DEV;
+
+  constructor(context?: LogContext) {
+    if (context) {
+      this.context = context;
+    }
+    
+    // In production, set minimum level to 'warn'
+    if (!this.isDevelopment) {
+      this.minLevel = 'warn';
+    }
+  }
+
+  private shouldLog(level: LogLevel): boolean {
+    const levels: LogLevel[] = ['debug', 'info', 'warn', 'error', 'critical'];
+    const minIndex = levels.indexOf(this.minLevel);
+    const currentIndex = levels.indexOf(level);
+    return currentIndex >= minIndex;
+  }
 
   private formatMessage(level: LogLevel, message: string, context?: LogContext): string {
     const emoji = {
+      debug: '🔍',
       info: 'ℹ️',
       warn: '⚠️',
       error: '❌',
-      debug: '🔍',
-      success: '✅'
-    };
+      critical: '🔴'
+    }[level];
 
     const timestamp = new Date().toISOString();
-    const contextStr = context ? ` ${JSON.stringify(context)}` : '';
+    const fullContext = { ...this.context, ...context };
+    const contextStr = Object.keys(fullContext).length > 0 
+      ? ` [${Object.entries(fullContext).map(([k, v]) => `${k}=${v}`).join(', ')}]` 
+      : '';
     
-    return `${emoji[level]} [${timestamp}] ${message}${contextStr}`;
+    return `${emoji} [${timestamp}] ${level.toUpperCase()}${contextStr}: ${message}`;
   }
 
-  info(message: string, context?: LogContext): void {
+  private log(level: LogLevel, message: string, context?: LogContext, error?: Error): void {
+    if (!this.shouldLog(level)) return;
+
+    const formatted = this.formatMessage(level, message, context);
+
+    // Console output in development
     if (this.isDevelopment) {
-      // Keep console in dev for debugging
-      console.log(this.formatMessage('info', message, context));
+      const logFn = level === 'error' || level === 'critical' ? console.error : 
+                    level === 'warn' ? console.warn : console.log;
+      
+      if (error) {
+        logFn(formatted, error);
+      } else {
+        logFn(formatted);
+      }
+    }
+
+    // In production, send critical errors to monitoring service
+    if (!this.isDevelopment && (level === 'error' || level === 'critical')) {
+      // TODO: Integrate with error tracking service (Sentry, LogRocket, etc.)
+      this.sendToMonitoring(level, message, context, error);
     }
   }
 
-  success(message: string, context?: LogContext): void {
-    if (this.isDevelopment) {
-      console.log(this.formatMessage('success', message, context));
+  private async sendToMonitoring(
+    level: LogLevel,
+    message: string,
+    context?: LogContext,
+    error?: Error
+  ): Promise<void> {
+    try {
+      // This will be implemented when error monitoring is set up
+      // For now, we'll use the unified-monitoring endpoint
+      const response = await fetch('/api/monitoring/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          level,
+          message,
+          context: { ...this.context, ...context },
+          error: error ? {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+          } : undefined,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (!response.ok) {
+        // Silently fail - don't let monitoring break the app
+        console.warn('Failed to send log to monitoring');
+      }
+    } catch (err) {
+      // Silently fail
     }
-  }
-
-  warn(message: string, context?: LogContext): void {
-    if (this.isDevelopment) {
-      console.warn(this.formatMessage('warn', message, context));
-    }
-  }
-
-  error(message: string, error?: Error | unknown, context?: LogContext): void {
-    const errorContext = {
-      ...context,
-      error: error instanceof Error ? {
-        message: error.message,
-        stack: error.stack
-      } : error
-    };
-
-    if (this.isDevelopment) {
-      console.error(this.formatMessage('error', message, errorContext));
-    }
-
-    // In production, send to error tracking service
-    // This could integrate with Sentry, LogRocket, etc.
   }
 
   debug(message: string, context?: LogContext): void {
-    if (this.isDevelopment) {
-      console.log(this.formatMessage('debug', message, context));
-    }
+    this.log('debug', message, context);
+  }
+
+  info(message: string, context?: LogContext): void {
+    this.log('info', message, context);
+  }
+
+  warn(message: string, context?: LogContext, error?: Error): void {
+    this.log('warn', message, context, error);
+  }
+
+  error(message: string, context?: LogContext, error?: Error): void {
+    this.log('error', message, context, error);
+  }
+
+  critical(message: string, context?: LogContext, error?: Error): void {
+    this.log('critical', message, context, error);
+  }
+
+  // Create child logger with additional context
+  child(additionalContext: LogContext): Logger {
+    return new Logger({ ...this.context, ...additionalContext });
+  }
+
+  // Performance timing helper
+  startTimer(): () => number {
+    const start = Date.now();
+    return () => Date.now() - start;
   }
 }
 
+// Export singleton instance
 export const logger = new Logger();
+
+// Export factory function for component-specific loggers
+export function createLogger(context?: LogContext): Logger {
+  return new Logger(context);
+}
