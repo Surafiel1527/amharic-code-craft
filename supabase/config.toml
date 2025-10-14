@@ -181,3 +181,14 @@ verify_jwt = false
 
 [functions.mega-mind]
 verify_jwt = true
+
+# ============================================
+# UNIVERSAL ROUTER SYSTEM (Phase 1)
+# Fast intent classification and routing
+# ============================================
+
+[functions.universal-router]
+verify_jwt = true
+
+[functions.direct-code-editor]
+verify_jwt = true

@@ -6951,6 +6951,75 @@ export type Database = {
           },
         ]
       }
+      routing_decisions: {
+        Row: {
+          confidence: number
+          conversation_id: string | null
+          created_at: string
+          estimated_cost: string | null
+          estimated_time: string | null
+          id: string
+          project_id: string | null
+          reasoning: string | null
+          request_text: string
+          route: string
+          user_id: string
+        }
+        Insert: {
+          confidence: number
+          conversation_id?: string | null
+          created_at?: string
+          estimated_cost?: string | null
+          estimated_time?: string | null
+          id?: string
+          project_id?: string | null
+          reasoning?: string | null
+          request_text: string
+          route: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number
+          conversation_id?: string | null
+          created_at?: string
+          estimated_cost?: string | null
+          estimated_time?: string | null
+          id?: string
+          project_id?: string | null
+          reasoning?: string | null
+          request_text?: string
+          route?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      routing_metrics: {
+        Row: {
+          actual_duration_ms: number
+          created_at: string
+          estimated_time: string | null
+          id: string
+          route: string
+          success: boolean
+        }
+        Insert: {
+          actual_duration_ms: number
+          created_at?: string
+          estimated_time?: string | null
+          id?: string
+          route: string
+          success?: boolean
+        }
+        Update: {
+          actual_duration_ms?: number
+          created_at?: string
+          estimated_time?: string | null
+          id?: string
+          route?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
       security_events: {
         Row: {
           created_at: string
