@@ -119,15 +119,19 @@ async function generateWithStrategy(
     
     if (error) throw error;
     
+    // Handle different response formats from mega-mind-orchestrator
+    const files = data?.files || data?.generatedCode?.files || data?.result?.files || [];
+    
     // Calculate quality score
-    const qualityScore = await calculateQualityScore(data.files, request, supabase);
+    const qualityScore = await calculateQualityScore(files, request, supabase);
     
     return {
       success: true,
-      files: data.files || [],
+      files,
       qualityScore,
       strategy,
-      duration: Date.now() - startTime
+      duration: Date.now() - startTime,
+      metadata: data?.metadata || {}
     };
   } catch (error) {
     console.error(`❌ Strategy ${strategy.model} failed:`, error);
@@ -151,22 +155,25 @@ async function calculateQualityScore(
   request: string,
   supabase: any
 ): Promise<number> {
+  // Handle undefined or empty files
+  if (!files || !Array.isArray(files) || files.length === 0) {
+    return 0;
+  }
+  
   let score = 0;
   
   // File completeness (30 points)
-  if (files && files.length > 0) {
-    score += 30;
-  }
+  score += 30;
   
   // Code structure (20 points)
   const hasMainFile = files.some(f => 
-    f.path.includes('App.tsx') || f.path.includes('index.html')
+    f.path?.includes('App.tsx') || f.path?.includes('index.html')
   );
   if (hasMainFile) score += 20;
   
   // Infrastructure files (20 points)
   const hasPackageJson = files.some(f => f.path === 'package.json');
-  const hasConfig = files.some(f => f.path.includes('config'));
+  const hasConfig = files.some(f => f.path?.includes('config'));
   if (hasPackageJson) score += 10;
   if (hasConfig) score += 10;
   

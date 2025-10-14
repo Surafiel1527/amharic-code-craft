@@ -232,11 +232,15 @@ async function routeRequest(
  * Main request handler with Phase 2 enhancements
  */
 serve(async (req) => {
+  console.log('🔍 [ROUTER FUNCTION] Universal-router received request');
+  
   if (req.method === 'OPTIONS') {
+    console.log('🔍 [ROUTER FUNCTION] Handling OPTIONS request');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log('🔍 [ROUTER FUNCTION] Parsing request body');
     const body = await req.json();
     const { 
       request, 
@@ -246,12 +250,21 @@ serve(async (req) => {
       context = {}
     } = body;
 
+    console.log('🔍 [ROUTER FUNCTION] Request parsed:', { 
+      hasRequest: !!request,
+      hasConversationId: !!conversationId,
+      hasUserId: !!userId,
+      hasProjectId: !!projectId,
+      requestPreview: request?.substring(0, 50)
+    });
+
     console.log('🚀 Universal Router (Phase 2):', { 
       request: request.substring(0, 50) + '...',
       projectId
     });
 
     // Initialize Supabase
+    console.log('🔍 [ROUTER FUNCTION] Initializing Supabase client');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);

@@ -536,15 +536,32 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   const routeThroughUniversalRouter = useCallback(async (message: string, context: any): Promise<any> => {
     const startTime = Date.now();
     try {
+      console.log('🔍 [ROUTER DEBUG] Starting universal-router call');
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) throw new Error('Not authenticated');
+      if (!currentUser) {
+        console.error('🔍 [ROUTER DEBUG] No authenticated user');
+        throw new Error('Not authenticated');
+      }
+
+      console.log('🔍 [ROUTER DEBUG] User authenticated:', currentUser.id);
+      
+      // Ensure conversationId exists
+      const convId = conversationId || await createConversation();
+      console.log('🔍 [ROUTER DEBUG] ConversationId:', convId);
 
       logger.info('⚡ Routing through Universal Router');
+
+      console.log('🔍 [ROUTER DEBUG] Invoking universal-router with:', {
+        messageLength: message.length,
+        projectId,
+        conversationId: convId,
+        userId: currentUser.id
+      });
 
       const { data, error } = await supabase.functions.invoke('universal-router', {
         body: {
           request: message,
-          conversationId: conversationId || await createConversation(),
+          conversationId: convId,
           userId: currentUser.id,
           projectId,
           context: {
@@ -555,7 +572,16 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         }
       });
 
-      if (error) throw error;
+      console.log('🔍 [ROUTER DEBUG] Universal-router response:', { 
+        hasData: !!data, 
+        hasError: !!error,
+        errorDetails: error 
+      });
+
+      if (error) {
+        console.error('🔍 [ROUTER DEBUG] Universal-router returned error:', error);
+        throw error;
+      }
 
       const duration = Date.now() - startTime;
       logger.info(`✅ Universal Router completed`, {
@@ -566,9 +592,11 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
       return data;
     } catch (error) {
+      console.error('🔍 [ROUTER DEBUG] Exception in universal-router:', error);
       logger.error('Universal Router failed, falling back', error);
       
       // Fallback to direct orchestrator
+      console.log('🔍 [ROUTER DEBUG] Falling back to mega-mind-orchestrator');
       return await routeToOrchestrator(message, context);
     }
   }, [conversationId, projectId, createConversation]);
