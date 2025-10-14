@@ -16,6 +16,7 @@ import {
 import { AlertTriangle, Undo2, CheckCircle2, XCircle, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SafetyCheckAlert } from "./SafetyCheckAlert";
 
 interface AppliedImprovement {
   id: string;
@@ -233,40 +234,7 @@ export function RollbackManager({ improvementId, onClose }: RollbackManagerProps
 
           <div className="space-y-4 py-4">
             {/* Safety Check Results */}
-            {safetyCheck && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  {safetyCheck.safe ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-red-500" />
-                  )}
-                  <span className="font-medium">
-                    Safety Check: {safetyCheck.safe ? "Passed" : "Failed"}
-                  </span>
-                </div>
-
-                {safetyCheck.warnings?.length > 0 && (
-                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-                    <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4" />
-                      Warnings
-                    </h4>
-                    <ul className="space-y-1 text-sm">
-                      {safetyCheck.warnings.map((warning: string, idx: number) => (
-                        <li key={idx}>⚠️ {warning}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {safetyCheck.error && (
-                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-                    <p className="text-sm text-red-500">{safetyCheck.error}</p>
-                  </div>
-                )}
-              </div>
-            )}
+            {safetyCheck && <SafetyCheckAlert safetyCheck={safetyCheck} />}
 
             {/* Previous vs New State Preview */}
             {selectedImprovement && (

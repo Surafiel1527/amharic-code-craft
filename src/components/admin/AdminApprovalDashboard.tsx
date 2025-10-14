@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import { ImprovementReviewCard } from './ImprovementReviewCard';
 import { VersionComparisonDialog } from './VersionComparisonDialog';
+import { RollbackManager } from './RollbackManager';
+import { RollbackHistory } from './RollbackHistory';
 
 interface ApprovalItem {
   id: string;
@@ -62,6 +64,7 @@ export const AdminApprovalDashboard = () => {
   const [selectedItem, setSelectedItem] = useState<ApprovalItem | null>(null);
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [activeTab, setActiveTab] = useState<'approvals' | 'rollbacks' | 'history'>('approvals');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -204,10 +207,10 @@ export const AdminApprovalDashboard = () => {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Brain className="h-8 w-8 text-primary" />
-            AI Learning Approval Center
+            AI Learning Control Center
           </h1>
           <p className="text-muted-foreground mt-1">
-            Review and approve AI-generated improvements
+            Approve improvements, manage rollbacks, and track system changes
           </p>
         </div>
         <Button onClick={fetchApprovalItems} variant="outline" size="sm">
@@ -278,40 +281,59 @@ export const AdminApprovalDashboard = () => {
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-2">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        <Button
-          variant={activeFilter === 'all' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setActiveFilter('all')}
-        >
-          All ({items.length})
-        </Button>
-        <Button
-          variant={activeFilter === 'pending' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setActiveFilter('pending')}
-        >
-          Pending ({stats.pending})
-        </Button>
-        <Button
-          variant={activeFilter === 'approved' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setActiveFilter('approved')}
-        >
-          Approved ({stats.approved})
-        </Button>
-        <Button
-          variant={activeFilter === 'rejected' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setActiveFilter('rejected')}
-        >
-          Rejected ({stats.rejected})
-        </Button>
-      </div>
+      {/* Main Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="approvals" className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4" />
+            Approvals ({stats.pending})
+          </TabsTrigger>
+          <TabsTrigger value="rollbacks" className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Rollback Manager
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            History
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Approval Items List */}
+        {/* Approvals Tab */}
+        <TabsContent value="approvals" className="space-y-4 mt-6">
+          {/* Filters */}
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Button
+              variant={activeFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveFilter('all')}
+            >
+              All ({items.length})
+            </Button>
+            <Button
+              variant={activeFilter === 'pending' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveFilter('pending')}
+            >
+              Pending ({stats.pending})
+            </Button>
+            <Button
+              variant={activeFilter === 'approved' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveFilter('approved')}
+            >
+              Approved ({stats.approved})
+            </Button>
+            <Button
+              variant={activeFilter === 'rejected' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveFilter('rejected')}
+            >
+              Rejected ({stats.rejected})
+            </Button>
+          </div>
+
+          {/* Approval Items List */}
       <div className="space-y-4">
         {loading ? (
           <Card>
@@ -344,6 +366,19 @@ export const AdminApprovalDashboard = () => {
           ))
         )}
       </div>
+
+        </TabsContent>
+
+        {/* Rollback Manager Tab */}
+        <TabsContent value="rollbacks" className="mt-6">
+          <RollbackManager />
+        </TabsContent>
+
+        {/* History Tab */}
+        <TabsContent value="history" className="mt-6">
+          <RollbackHistory />
+        </TabsContent>
+      </Tabs>
 
       {/* Version Comparison Dialog */}
       {selectedItem && (
