@@ -339,7 +339,11 @@ npm run build
       return (
         <div className="h-full">
           <Card className="p-4 h-full border-0 rounded-none">
-            <DevicePreview generatedCode={fileContents['index.html'] || htmlCode} />
+            <DevicePreview 
+              generatedCode={fileContents['index.html'] || htmlCode}
+              projectFiles={framework === 'react' ? fileContents : undefined}
+              framework={framework}
+            />
           </Card>
         </div>
       );
@@ -453,7 +457,11 @@ npm run build
       <Card className="p-4 h-full min-h-0 flex flex-col">
         <h2 className="text-lg font-semibold mb-4">Live Preview</h2>
         <div className="flex-1 min-h-0">
-          <DevicePreview generatedCode={fileContents['index.html'] || htmlCode} />
+          <DevicePreview 
+            generatedCode={fileContents['index.html'] || htmlCode}
+            projectFiles={framework === 'react' ? fileContents : undefined}
+            framework={framework}
+          />
         </div>
       </Card>
     </div>

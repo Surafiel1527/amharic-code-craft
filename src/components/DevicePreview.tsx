@@ -3,16 +3,22 @@ import { Monitor, Smartphone, Tablet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Sandpack } from "@codesandbox/sandpack-react";
 
 type DeviceSize = "mobile" | "tablet" | "desktop";
 
 interface DevicePreviewProps {
   generatedCode: string;
+  projectFiles?: Record<string, string>;
+  framework?: 'react' | 'html' | 'vue';
 }
 
-export function DevicePreview({ generatedCode }: DevicePreviewProps) {
+export function DevicePreview({ generatedCode, projectFiles, framework = 'html' }: DevicePreviewProps) {
   const { t } = useLanguage();
   const [deviceSize, setDeviceSize] = useState<DeviceSize>("desktop");
+  
+  // Check if this is a React project with multiple files
+  const isReactProject = framework === 'react' && projectFiles && Object.keys(projectFiles).length > 1;
   
   // Clean code by removing markdown code fences and any JSON artifacts - PRODUCTION READY
   const cleanCode = (() => {
@@ -89,7 +95,37 @@ export function DevicePreview({ generatedCode }: DevicePreviewProps) {
       </div>
 
       <div className="relative rounded-lg border border-border bg-background/50 overflow-hidden h-[calc(100vh-250px)] flex items-start justify-center">
-        {cleanCode ? (
+        {isReactProject && projectFiles ? (
+          <div
+            className={cn(
+              "h-full transition-all duration-300 ease-in-out",
+              deviceSize === "desktop" && "w-full",
+              deviceSize === "tablet" && "max-w-[768px] border-x border-border",
+              deviceSize === "mobile" && "max-w-[375px] border-x border-border"
+            )}
+            style={{
+              width: deviceSizes[deviceSize].width,
+            }}
+          >
+            <Sandpack
+              template="react-ts"
+              files={projectFiles}
+              theme="auto"
+              options={{
+                showNavigator: false,
+                showTabs: false,
+                showLineNumbers: false,
+                editorHeight: "100%",
+                editorWidthPercentage: 0,
+                classes: {
+                  "sp-wrapper": "h-full",
+                  "sp-layout": "h-full",
+                  "sp-preview-container": "h-full"
+                }
+              }}
+            />
+          </div>
+        ) : cleanCode ? (
           <div
             className={cn(
               "h-full transition-all duration-300 ease-in-out",
