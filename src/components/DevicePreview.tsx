@@ -19,68 +19,26 @@ export function DevicePreview({ generatedCode, projectFiles, framework = 'html' 
   // Check if this is a React project
   const isReactProject = framework === 'react';
   
-  // Strip TypeScript annotations for browser preview
-  const stripTypeScript = (code: string): string => {
-    if (!code) return '';
-    
-    return code
-      // Remove interface/type declarations
-      .replace(/interface\s+\w+\s*{[^}]*}/g, '')
-      .replace(/type\s+\w+\s*=\s*[^;]+;/g, '')
-      // Remove type annotations from variables
-      .replace(/:\s*\w+(\[\])?(\s*\|\s*\w+)*(?=\s*[=,)\]])/g, '')
-      // Remove type parameters
-      .replace(/<[^>]+>/g, '')
-      // Remove 'as' type assertions
-      .replace(/\s+as\s+\w+/g, '')
-      // Remove readonly/public/private/protected
-      .replace(/\b(readonly|public|private|protected)\s+/g, '')
-      // Remove generic constraints
-      .replace(/extends\s+\w+/g, '')
-      // Clean up extra spaces
-      .replace(/\s+/g, ' ')
-      .trim();
-  };
-  
-  // For React projects, create a standalone HTML document with React CDN
-  const reactPreviewHTML = isReactProject && projectFiles ? (() => {
-    const appCode = projectFiles['src/App.tsx'] || projectFiles['App.tsx'] || generatedCode;
-    const cleanedCode = stripTypeScript(appCode);
-    
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <style>
-    ${projectFiles['src/index.css'] || projectFiles['index.css'] || `
-      body {
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-      }
-      * { box-sizing: border-box; }
-    `}
-  </style>
-</head>
-<body>
-  <div id="root"></div>
-  <script type="text/babel">
-    const { useState, useEffect, useCallback, useMemo, useRef } = React;
-    
-    ${cleanedCode}
-    
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-  </script>
-</body>
-</html>
-    `;
-  })() : null;
+  // For React projects, show a helpful message with download option
+  const reactPreviewMessage = isReactProject ? (
+    <div className="absolute inset-0 flex items-center justify-center text-muted-foreground p-8">
+      <div className="text-center space-y-4 max-w-md">
+        <div className="text-5xl opacity-20">⚛️</div>
+        <h3 className="text-lg font-semibold">React Project Generated</h3>
+        <p className="text-sm">
+          React projects require a build tool to preview. Your project has been fully generated with {projectFiles ? Object.keys(projectFiles).length : 0} files.
+        </p>
+        <div className="space-y-2 text-sm text-left bg-muted/50 p-4 rounded-lg">
+          <p className="font-medium">To see your project:</p>
+          <ol className="list-decimal list-inside space-y-1 ml-2">
+            <li>Click "Multi-File" tab to see all generated files</li>
+            <li>Download the ZIP file</li>
+            <li>Extract and run: <code className="bg-background px-2 py-1 rounded">npm install && npm run dev</code></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  ) : null;
   
   // Clean code by removing markdown code fences and any JSON artifacts - PRODUCTION READY
   const cleanCode = (() => {
@@ -157,25 +115,8 @@ export function DevicePreview({ generatedCode, projectFiles, framework = 'html' 
       </div>
 
       <div className="relative rounded-lg border border-border bg-background/50 overflow-hidden h-[calc(100vh-250px)] flex items-start justify-center">
-        {isReactProject && reactPreviewHTML ? (
-          <div
-            className={cn(
-              "h-full transition-all duration-300 ease-in-out",
-              deviceSize === "desktop" && "w-full",
-              deviceSize === "tablet" && "max-w-[768px] border-x border-border",
-              deviceSize === "mobile" && "max-w-[375px] border-x border-border"
-            )}
-            style={{
-              width: deviceSizes[deviceSize].width,
-            }}
-          >
-            <iframe
-              srcDoc={reactPreviewHTML}
-              className="w-full h-full border-0"
-              title="React Preview"
-              sandbox="allow-scripts"
-            />
-          </div>
+        {isReactProject ? (
+          reactPreviewMessage
         ) : cleanCode ? (
           <div
             className={cn(
