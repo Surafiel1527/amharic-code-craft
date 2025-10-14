@@ -850,17 +850,18 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       }
     }
 
-    // 🚀 ENTERPRISE FIX: Create placeholder message immediately for generation requests
-    const isGenerationRequest = detectIntentType(message) !== 'error' && 
-      (message.length > 50 || /build|create|make|generate|add|implement/i.test(message));
+    // 🚀 ENTERPRISE FIX: Create placeholder message immediately for ALL orchestrator requests
+    // Detects any build/modification request (new projects, improvements, changes, etc.)
+    const isOrchestratorRequest = detectIntentType(message) !== 'error' && 
+      (message.length > 50 || /build|create|make|generate|add|implement|improve|update|change|modify|fix|enhance|refactor|adjust|tweak|edit|remove|delete/i.test(message));
     
     let placeholderMessageId: string | null = null;
     
-    if (isGenerationRequest) {
+    if (isOrchestratorRequest) {
       const placeholderMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: '🚀 **Starting Generation**\n\nAnalyzing your request and preparing to build...',
+        content: '🚀 **Processing Request**\n\nAnalyzing your request and preparing changes...',
         timestamp: new Date().toISOString(),
         streaming: true,
         metadata: {
@@ -872,7 +873,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       placeholderMessageId = placeholderMessage.id;
       setMessages(prev => [...prev, placeholderMessage]);
       
-      logger.info('Created placeholder message for generation', { placeholderMessageId });
+      logger.info('Created placeholder message for orchestrator request', { placeholderMessageId });
     }
 
     try {
@@ -909,11 +910,11 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         // Full orchestration with progress tracking
         logger.info('Routing to Mega Mind Orchestrator');
         
-        // 🚀 ENTERPRISE FIX: Subscribe to real-time generation events to update placeholder
+        // 🚀 ENTERPRISE FIX: Subscribe to real-time orchestrator events to update placeholder
         // ✅ CRITICAL FIX: Use correct channel name that matches orchestrator broadcasts
         let realtimeChannel: any = null;
         
-        if (isGenerationRequest && activeConvId && placeholderMessageId) {
+        if (isOrchestratorRequest && activeConvId && placeholderMessageId) {
           logger.info('Subscribing to generation events', { conversationId: activeConvId });
           
           // ✅ FIXED: Subscribe to the SAME channel orchestrator broadcasts to
@@ -979,27 +980,29 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         }
       }
 
-      // 🚀 ENTERPRISE FIX: Generate summary message for generation requests
+      // 🚀 ENTERPRISE FIX: Generate unified summary message for ALL orchestrator requests
       let assistantMessage: Message | null = null;
       
-      if (isGenerationRequest && placeholderMessageId) {
-        // For generation requests, create a comprehensive summary
+      if (isOrchestratorRequest && placeholderMessageId) {
+        // For ALL orchestrator requests (generation + modifications), create a comprehensive summary
         const generatedFilesCount = response?.generatedCode?.files?.length || 
                                     response?.result?.files?.length || 0;
+        const modifiedFilesCount = response?.modifiedFiles?.length || 0;
+        const totalFilesAffected = generatedFilesCount + modifiedFilesCount;
         const framework = response?.framework || projectContext?.framework || 'React';
         
         // Build summary content
-        let summaryContent = '✅ **Generation Complete!**\n\n';
+        let summaryContent = '✅ **Complete!**\n\n';
         
-        if (generatedFilesCount > 0) {
-          summaryContent += `Successfully generated **${generatedFilesCount} files** using ${framework}.\n\n`;
+        if (totalFilesAffected > 0) {
+          summaryContent += `Successfully processed **${totalFilesAffected} file${totalFilesAffected > 1 ? 's' : ''}** using ${framework}.\n\n`;
         } else {
-          summaryContent += `Your project has been built and is ready to preview.\n\n`;
+          summaryContent += `Your changes have been applied and are ready to preview.\n\n`;
         }
         
-        // Add key features if available
+        // Add key features/changes if available
         if (response?.features && Array.isArray(response.features)) {
-          summaryContent += '**Features implemented:**\n';
+          summaryContent += '**Changes implemented:**\n';
           response.features.forEach((feature: string) => {
             summaryContent += `• ${feature}\n`;
           });
@@ -1009,7 +1012,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         // Add next steps
         summaryContent += '**What you can do now:**\n';
         summaryContent += '• Check the preview on the right →\n';
-        summaryContent += '• Ask me to modify or enhance any part\n';
+        summaryContent += '• Ask me to make further changes\n';
         summaryContent += '• Deploy your project when ready\n';
         
         assistantMessage = {
@@ -1030,10 +1033,10 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
           m.id === placeholderMessageId ? assistantMessage! : m
         ));
         
-        logger.info('✅ Replaced placeholder with generation summary', { placeholderMessageId });
+        logger.info('✅ Replaced placeholder with orchestrator summary', { placeholderMessageId, filesAffected: totalFilesAffected });
         
       } else {
-        // For non-generation requests, process response normally
+        // For non-orchestrator requests (error healing, questions), process response normally
         try {
           assistantMessage = await processResponse(response, routedTo);
         } catch (error) {
