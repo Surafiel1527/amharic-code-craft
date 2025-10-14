@@ -9020,6 +9020,17 @@ export type Database = {
           total_count: number
         }[]
       }
+      get_routing_metrics: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          avg_duration_ms: number
+          max_duration_ms: number
+          min_duration_ms: number
+          route: string
+          success_rate: number
+          total_executions: number
+        }[]
+      }
       get_user_storage_summary: {
         Args: { p_user_id: string }
         Returns: {

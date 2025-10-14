@@ -531,21 +531,62 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   }, [conversationId, projectId, projectContext]);
 
   /**
-   * Routes the message to Unified Mega Mind Orchestrator
-   * Handles both modifications and new generation with operationMode
+   * Routes through Universal Router for optimal performance
+   */
+  const routeThroughUniversalRouter = useCallback(async (message: string, context: any): Promise<any> => {
+    const startTime = Date.now();
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) throw new Error('Not authenticated');
+
+      logger.info('⚡ Routing through Universal Router');
+
+      const { data, error } = await supabase.functions.invoke('universal-router', {
+        body: {
+          request: message,
+          conversationId: conversationId || await createConversation(),
+          userId: currentUser.id,
+          projectId,
+          context: {
+            framework: 'react',
+            projectId,
+            ...context
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      const duration = Date.now() - startTime;
+      logger.info(`✅ Universal Router completed`, {
+        route: data?.decision?.route,
+        duration,
+        estimatedCost: data?.decision?.estimatedCost
+      });
+
+      return data;
+    } catch (error) {
+      logger.error('Universal Router failed, falling back', error);
+      
+      // Fallback to direct orchestrator
+      return await routeToOrchestrator(message, context);
+    }
+  }, [conversationId, projectId, createConversation]);
+
+  /**
+   * Routes the message to Unified Mega Mind Orchestrator (fallback path)
    */
   const routeToOrchestrator = useCallback(async (message: string, context: any): Promise<any> => {
     const startTime = Date.now();
-    try {
-      // CRITICAL: Get current user ID
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) {
-        throw new Error('Not authenticated - user ID required');
-      }
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) throw new Error('Not authenticated');
 
-      // UNIFIED ROUTING: Always use mega-mind-orchestrator with appropriate operationMode
-      const isModification = mode === 'enhance' && projectId && context.currentCode;
-      const operationMode = isModification ? 'modify' : 'generate';
+    const isModification = mode === 'enhance' && projectId && context.currentCode;
+    const operationMode = isModification ? 'modify' : 'generate';
+    
+    logger.info(`Routing to mega-mind-orchestrator (operationMode: ${operationMode})`);
+
+    try {
       
       logger.info(`Routing to mega-mind-orchestrator (operationMode: ${operationMode}, mode: ${mode}, isModification: ${isModification})`);
 
@@ -907,82 +948,15 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         }
       }
 
-      // Route to orchestrator if no error teacher solution
+      // ⚡ NEW PHASE 1: Route through Universal Router for optimal performance
+      // Universal Router handles all intent classification and routing internally
       if (!response) {
-        // Full orchestration with progress tracking
-        logger.info('Routing to Mega Mind Orchestrator');
-        
-        // 🚀 ENTERPRISE FIX: Subscribe to real-time orchestrator events to update placeholder
-        // ✅ CRITICAL FIX: Use correct channel name that matches orchestrator broadcasts
-        let realtimeChannel: any = null;
-        
-        if (isOrchestratorRequest && activeConvId && placeholderMessageId) {
-          logger.info('Subscribing to generation events', { conversationId: activeConvId });
-          
-          // ✅ FIXED: Subscribe to the SAME channel orchestrator broadcasts to
-          realtimeChannel = supabase
-            .channel(`ai-status-${activeConvId}`)
-            .on('broadcast', { event: 'status-update' }, ({ payload }) => {
-              logger.info('Received generation status', payload);
-              
-              // Update placeholder message with real-time progress
-              setMessages(prev => prev.map(m => {
-                if (m.id === placeholderMessageId) {
-                  let updatedContent = '';
-                  
-                  // Build progress display
-                  if (payload.progress !== undefined) {
-                    const progressBar = '█'.repeat(Math.floor(payload.progress / 5)) + 
-                                       '░'.repeat(20 - Math.floor(payload.progress / 5));
-                    updatedContent = `🚀 **${payload.phaseName || 'Generating'}** (${payload.progress}%)\n\n` +
-                                   `${progressBar}\n\n` +
-                                   `${payload.message || payload.currentOperation || 'Building your project...'}`;
-                  } else {
-                    updatedContent = `🚀 **${payload.message || 'Processing'}**\n\n${payload.currentOperation || ''}`;
-                  }
-                  
-                  return {
-                    ...m,
-                    content: updatedContent,
-                    streaming: payload.status !== 'complete'
-                  };
-                }
-                return m;
-              }));
-              
-              // Update global progress
-              if (payload.progress !== undefined) {
-                setProgress(payload.progress);
-              }
-              if (payload.phaseName) {
-                setCurrentPhase(payload.phaseName);
-              }
-            })
-            .on('broadcast', { event: 'generation_event' }, ({ payload }) => {
-              logger.info('Received generation event', payload);
-              
-              // Handle completion event
-              if (payload.type === 'execution_complete') {
-                logger.info('Generation complete event received');
-              }
-            })
-            .subscribe();
-        }
-
-        try {
-          response = await routeToOrchestrator(message, context);
-          routedTo = 'orchestrator';
-        } finally {
-          // Cleanup realtime subscription
-          if (realtimeChannel) {
-            await supabase.removeChannel(realtimeChannel);
-          }
-          setProgress(100);
-          setCurrentPhase('Complete');
-        }
+        logger.info('Routing to Universal Router');
+        response = await routeThroughUniversalRouter(message, context);
+        routedTo = 'orchestrator';
       }
 
-      // 🚀 ENTERPRISE FIX: Generate unified summary message for ALL orchestrator requests
+      // Process and display response
       let assistantMessage: Message | null = null;
       
       if (isOrchestratorRequest && placeholderMessageId) {
