@@ -88,7 +88,9 @@ export function RollbackManager({ improvementId, onClose }: RollbackManagerProps
       });
 
       if (error) throw error;
-      if (!data.success) throw new Error(data.error);
+      
+      const result = data as any;
+      if (!result?.success) throw new Error(result?.error || "Rollback failed");
 
       // Call the edge function to apply the actual rollback
       const { error: functionError } = await supabase.functions.invoke(
