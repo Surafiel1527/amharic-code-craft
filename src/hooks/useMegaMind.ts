@@ -33,41 +33,41 @@ export function useMegaMind() {
     projectId?: string
   ) => {
     setIsProcessing(true);
-    setCurrentPhase('Understanding request...');
+    setCurrentPhase('Analyzing request with AI...');
 
     try {
-      // STEP 1: Understand
-      const { data: understandResult, error: understandError } = await supabase.functions.invoke(
+      // Get user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Call unified Universal Mega Mind endpoint
+      const { data: result, error } = await supabase.functions.invoke(
         'mega-mind',
         {
           body: {
-            operation: 'understand',
             userRequest,
-            userId: (await supabase.auth.getUser()).data.user?.id,
+            userId: user.id,
             conversationId,
             projectId
           }
         }
       );
 
-      if (understandError) throw understandError;
+      if (error) throw error;
 
-      const megaDecision = understandResult.decision as MegaMindDecision;
-      setDecision(megaDecision);
-
-      // Show what Mega Mind understood
+      // Display AI-generated analysis
       toast({
-        title: "🧠 Mega Mind Analysis",
-        description: `Complexity: ${megaDecision.complexity} | ${megaDecision.requiredFunctions} functions needed`,
+        title: "🧠 Universal Mega Mind",
+        description: result.analysis.intent,
       });
 
-      return megaDecision;
+      return result;
 
     } catch (error) {
-      console.error('Mega Mind error:', error);
+      console.error('Universal Mega Mind error:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : 'Failed to analyze',
+        description: error instanceof Error ? error.message : 'Failed to process request',
         variant: "destructive"
       });
       return null;
@@ -78,38 +78,46 @@ export function useMegaMind() {
   };
 
   const execute = async (
-    decision: MegaMindDecision,
-    resources: Record<string, string> = {}
+    userRequest: string,
+    conversationId: string,
+    projectId?: string
   ) => {
     setIsProcessing(true);
-    setCurrentPhase('Executing plan...');
+    setCurrentPhase('Executing with AI...');
 
     try {
-      const { data: executeResult, error: executeError } = await supabase.functions.invoke(
+      // Get user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Universal Mega Mind handles everything in one call
+      const { data: result, error } = await supabase.functions.invoke(
         'mega-mind',
         {
           body: {
-            operation: 'execute',
-            decision,
-            resources
+            userRequest,
+            userId: user.id,
+            conversationId,
+            projectId
           }
         }
       );
 
-      if (executeError) throw executeError;
+      if (error) throw error;
 
+      // AI-generated completion message
       toast({
-        title: "✅ Execution Complete",
-        description: "Code generated successfully",
+        title: "✅ Complete",
+        description: result.result.message,
       });
 
-      return executeResult.result;
+      return result;
 
     } catch (error) {
       console.error('Execution error:', error);
       toast({
         title: "Error",
-        description: "Failed to execute plan",
+        description: error instanceof Error ? error.message : "Failed to execute",
         variant: "destructive"
       });
       return null;

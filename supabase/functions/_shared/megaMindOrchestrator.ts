@@ -1,22 +1,20 @@
 /**
- * MEGA MIND ORCHESTRATOR
- * The AGI-level autonomous development system
+ * MEGA MIND ORCHESTRATOR - UNIFIED INTELLIGENCE
+ * Award-Winning Enterprise Architecture
  * 
- * Capabilities:
- * - Understands ANY request complexity
- * - Searches internet for missing information
- * - Requests resources when needed (DB, APIs, credentials)
- * - Self-tests and auto-fixes
- * - Scales dynamically (decides how many functions needed)
- * - Heals at ALL levels (RLS, auth, code, deployment)
+ * Now powered by:
+ * - Meta-Cognitive Analyzer: AI determines intent & strategy
+ * - Natural Communicator: AI generates all messages
+ * - Adaptive Executor: Dynamic strategy-based execution
  */
 
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { analyzeContext, makeIntelligentDecision } from './intelligenceEngine.ts';
-import { FeatureOrchestrator } from './featureOrchestrator.ts';
+import { MetaCognitiveAnalyzer, QueryAnalysis } from './intelligence/metaCognitiveAnalyzer.ts';
+import { NaturalCommunicator } from './intelligence/naturalCommunicator.ts';
+import { AdaptiveExecutor, ExecutionContext, ExecutionResult } from './intelligence/adaptiveExecutor.ts';
 import { logger } from './logger.ts';
-import { validateString, validateUuid, ValidationResult } from './validation.ts';
-import { retryWithBackoff, ValidationError } from './errorHandler.ts';
+import { validateString, validateUuid } from './validation.ts';
+import { ValidationError } from './errorHandler.ts';
 
 export interface MegaMindRequest {
   userRequest: string;
@@ -65,6 +63,7 @@ export interface MegaMindDecision {
 export class MegaMindOrchestrator {
   private analyzer: MetaCognitiveAnalyzer;
   private communicator: NaturalCommunicator;
+  private executor: AdaptiveExecutor;
   private currentAnalysis?: QueryAnalysis;
   
   constructor(
@@ -73,90 +72,122 @@ export class MegaMindOrchestrator {
   ) {
     this.analyzer = new MetaCognitiveAnalyzer(lovableApiKey);
     this.communicator = new NaturalCommunicator(lovableApiKey);
+    this.executor = new AdaptiveExecutor(supabase, this.communicator, lovableApiKey);
   }
 
   /**
-   * STEP 1: UNDERSTAND - Deep analysis of what user wants
+   * UNIFIED PROCESS REQUEST
+   * Single entry point that handles: analyze → determine strategy → execute
    */
-  async understand(request: MegaMindRequest): Promise<MegaMindDecision> {
+  async processRequest(request: MegaMindRequest): Promise<{
+    analysis: QueryAnalysis;
+    result: ExecutionResult;
+  }> {
     // Validate inputs
     const requestValidation = validateString(request.userRequest, { 
       minLength: 1, 
       maxLength: 10000 
     });
     if (!requestValidation.success) {
-      throw new ValidationError('Invalid user request', { error: requestValidation.error });
+      throw new ValidationError('Invalid user request');
     }
 
     const userIdValidation = validateUuid(request.userId);
     if (!userIdValidation.success) {
-      throw new ValidationError('Invalid user ID', { error: userIdValidation.error });
+      throw new ValidationError('Invalid user ID');
     }
 
-    const conversationIdValidation = validateUuid(request.conversationId);
-    if (!conversationIdValidation.success) {
-      throw new ValidationError('Invalid conversation ID', { error: conversationIdValidation.error });
-    }
-
-    logger.info('Mega Mind: Analyzing request', {
+    logger.info('🧠 Universal Mega Mind: Processing request', {
       userId: request.userId,
       conversationId: request.conversationId,
       requestLength: request.userRequest.length
     });
     
-    // Get context intelligence with retry
-    const context = await retryWithBackoff(
-      () => analyzeContext(
-        this.supabase,
-        request.conversationId,
-        request.userId,
-        request.userRequest,
-        request.projectId
-      ),
-      { maxAttempts: 2 }
-    );
-
-    // Assess TRUE complexity
-    const complexity = await this.assessTrueComplexity(request.userRequest, context);
-    
-    // Determine if we need to search internet
-    const needsInternet = await this.needsInternetResearch(request.userRequest);
-    
-    // Identify required resources
-    const resourceRequests = await this.identifyRequiredResources(
+    // STEP 1: Meta-Cognitive Analysis (AI determines strategy)
+    const analysis = await this.analyzer.analyzeQuery(
       request.userRequest,
-      context
+      {
+        conversationId: request.conversationId,
+        userId: request.userId,
+        projectId: request.projectId,
+        existingContext: await this.getProjectContext(request.projectId)
+      }
     );
     
-    // Estimate scope
-    const scope = await this.estimateScope(request.userRequest, complexity);
+    this.currentAnalysis = analysis;
     
-    // Generate intelligent plan
-    const plan = await this.generateIntelligentPlan(
-      request.userRequest,
-      context,
-      scope
-    );
+    logger.info('✅ Analysis complete', {
+      intent: analysis.userIntent.primaryGoal,
+      complexity: analysis.complexity.level,
+      strategy: analysis.executionStrategy.primaryApproach
+    });
     
-    // Determine self-test strategy
-    const selfTest = await this.planSelfTest(request.userRequest, scope);
+    // STEP 2: Execute with Adaptive Strategy
+    const executionContext: ExecutionContext = {
+      userRequest: request.userRequest,
+      userId: request.userId,
+      conversationId: request.conversationId,
+      projectId: request.projectId,
+      framework: analysis.technicalRequirements.framework
+    };
+    
+    let result: ExecutionResult;
+    
+    // Route to appropriate execution mode based on AI's decision
+    switch (analysis.executionStrategy.primaryApproach) {
+      case 'instant':
+        result = await this.executor.executeInstant(executionContext, analysis);
+        break;
+      case 'progressive':
+        result = await this.executor.executeProgressive(executionContext, analysis);
+        break;
+      case 'conversational':
+        result = await this.executor.executeConversational(executionContext, analysis);
+        break;
+      case 'hybrid':
+        result = await this.executor.executeHybrid(executionContext, analysis);
+        break;
+      default:
+        throw new Error(`Unknown execution strategy: ${analysis.executionStrategy.primaryApproach}`);
+    }
+    
+    logger.info('✅ Execution complete', {
+      success: result.success,
+      duration: result.duration,
+      filesGenerated: result.filesGenerated?.length || 0
+    });
     
     return {
-      understood: true,
-      confidence: context.confidenceScore,
-      complexity: complexity,
-      requiredPhases: scope.phases,
-      requiredFunctions: scope.functions,
-      requiredTables: scope.tables,
-      needsInternet,
-      needsCredentials: resourceRequests
-        .filter(r => r.required)
-        .map(r => r.name),
-      reasoning: this.buildReasoning(request.userRequest, context, scope),
-      plan,
-      resourceRequests,
-      selfTest
+      analysis,
+      result
     };
+  }
+  
+  /**
+   * Get analysis for introspection
+   */
+  getCurrentAnalysis(): QueryAnalysis | undefined {
+    return this.currentAnalysis;
+  }
+  
+  /**
+   * Get project context for analysis
+   */
+  private async getProjectContext(projectId?: string): Promise<any> {
+    if (!projectId) return {};
+    
+    try {
+      const { data } = await this.supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+      
+      return data || {};
+    } catch (error) {
+      logger.warn('Could not fetch project context', { error });
+      return {};
+    }
   }
 
   /**

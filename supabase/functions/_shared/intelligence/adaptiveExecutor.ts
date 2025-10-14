@@ -63,22 +63,28 @@ export class AdaptiveExecutor {
     console.log(`💬 ${statusMsg.emoji} ${statusMsg.content}`);
     
     try {
-      // For instant mode, delegate to appropriate handler
-      // This could be a simple edit, color change, text update, etc.
-      const result = await this.executeDirectChange(context, analysis);
+      // For instant mode, use existing code generation with reasoning
+      const { generateCodeWithReasoning } = await import('../aiReasoningEngine.ts');
+      
+      const generatedCode = await generateCodeWithReasoning({
+        functionality: analysis.userIntent.primaryGoal,
+        requirements: analysis.userIntent.specificRequirements.join(', '),
+        framework: context.framework || 'react',
+        existingCode: context.existingFiles || {}
+      });
       
       const completionMsg = await this.communicator.generateCompletionSummary(
         analysis.userIntent.primaryGoal,
-        result.filesChanged || [],
+        generatedCode.files?.map((f: any) => f.path) || [],
         Date.now() - startTime,
         analysis
       );
       
       return {
         success: true,
-        output: result,
+        output: generatedCode,
         message: completionMsg.content,
-        filesGenerated: result.filesChanged,
+        filesGenerated: generatedCode.files?.map((f: any) => f.path) || [],
         duration: Date.now() - startTime
       };
       
@@ -287,13 +293,21 @@ export class AdaptiveExecutor {
     context: ExecutionContext,
     analysis: QueryAnalysis
   ): Promise<{ success: boolean; filesChanged?: string[] }> {
-    // This would call the appropriate code generation/editing logic
-    // For now, placeholder
     console.log('✏️ Executing direct change...');
+    
+    // Integrated with aiReasoningEngine for instant modifications
+    const { generateCodeWithReasoning } = await import('../aiReasoningEngine.ts');
+    
+    const result = await generateCodeWithReasoning({
+      functionality: analysis.userIntent.primaryGoal,
+      requirements: analysis.userIntent.specificRequirements.join(', '),
+      framework: context.framework || 'react',
+      existingCode: context.existingFiles || {}
+    });
     
     return {
       success: true,
-      filesChanged: ['example.tsx']
+      filesChanged: result.files?.map((f: any) => f.path) || []
     };
   }
   
@@ -336,9 +350,48 @@ export class AdaptiveExecutor {
   ): Promise<string[]> {
     console.log(`⚙️ Executing phase ${phaseNumber}...`);
     
-    // Phase-specific implementation logic
-    // This would integrate with existing code generators
-    return [`phase${phaseNumber}-file.tsx`];
+    // Use FeatureOrchestrator for complex multi-feature phases
+    if (analysis.complexity.level === 'expert' || analysis.complexity.level === 'advanced') {
+      const { FeatureOrchestrator } = await import('../featureOrchestrator.ts');
+      const orchestrator = new FeatureOrchestrator();
+      
+      const plan = await orchestrator.orchestrateFeatures(context.userRequest, {
+        framework: context.framework || 'react',
+        projectId: context.projectId
+      });
+      
+      // Execute features in this phase
+      const phaseIndex = Math.min(phaseNumber - 1, plan.phases.length - 1);
+      const phaseFeatures = plan.phases[phaseIndex]?.features || [];
+      const generatedFiles: string[] = [];
+      
+      const { generateCodeWithReasoning } = await import('../aiReasoningEngine.ts');
+      
+      for (const feature of phaseFeatures) {
+        const featureCode = await generateCodeWithReasoning({
+          functionality: feature.name,
+          requirements: feature.components.join(', '),
+          framework: context.framework || 'react',
+          existingCode: context.existingFiles || {}
+        });
+        
+        generatedFiles.push(...(featureCode.files?.map((f: any) => f.path) || []));
+      }
+      
+      return generatedFiles;
+    }
+    
+    // For simpler cases, use direct code generation
+    const { generateCodeWithReasoning } = await import('../aiReasoningEngine.ts');
+    
+    const result = await generateCodeWithReasoning({
+      functionality: analysis.userIntent.primaryGoal,
+      requirements: analysis.userIntent.specificRequirements.join(', '),
+      framework: context.framework || 'react',
+      existingCode: context.existingFiles || {}
+    });
+    
+    return result.files?.map((f: any) => f.path) || [];
   }
   
   private async validateOutput(files: string[]): Promise<void> {

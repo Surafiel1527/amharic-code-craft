@@ -1,6 +1,11 @@
 /**
- * MEGA MIND EDGE FUNCTION
- * AGI-level autonomous development endpoint
+ * UNIVERSAL MEGA MIND EDGE FUNCTION
+ * Award-Winning Enterprise AI Development Platform
+ * 
+ * Single endpoint powered by:
+ * - Meta-Cognitive Analyzer (AI determines strategy)
+ * - Natural Communicator (AI generates all messages)
+ * - Adaptive Executor (Dynamic execution)
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -20,105 +25,79 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY not configured');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const {
       userRequest,
       userId,
       conversationId,
-      projectId,
-      operation
+      projectId
     } = await req.json();
 
-    const megaMind = new MegaMindOrchestrator(supabase);
+    // Initialize Universal Mega Mind
+    const megaMind = new MegaMindOrchestrator(supabase, lovableApiKey);
 
-    // STEP 1: UNDERSTAND
-    if (operation === 'understand') {
-      const decision = await megaMind.understand({
-        userRequest,
-        userId,
-        conversationId,
-        projectId
-      });
+    console.log('🧠 Universal Mega Mind: Processing request', {
+      userId,
+      conversationId,
+      projectId,
+      requestLength: userRequest?.length
+    });
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          decision
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Single unified processing - AI handles everything
+    const { analysis, result } = await megaMind.processRequest({
+      userRequest,
+      userId,
+      conversationId,
+      projectId
+    });
 
-    // STEP 2: RESEARCH
-    if (operation === 'research') {
-      const { topic } = await req.json();
-      const research = await megaMind.research(topic);
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          research
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // STEP 3: EXECUTE
-    if (operation === 'execute') {
-      const { decision, resources } = await req.json();
-      const result = await megaMind.execute(
-        decision,
-        new Map(Object.entries(resources || {}))
-      );
-
-      return new Response(
-        JSON.stringify({
-          success: result.success,
-          result
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // STEP 4: TEST
-    if (operation === 'test') {
-      const { generated, testStrategy } = await req.json();
-      const testResult = await megaMind.test(generated, testStrategy);
-
-      return new Response(
-        JSON.stringify({
-          success: testResult.passed,
-          testResult
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // STEP 5: FIX
-    if (operation === 'fix') {
-      const { errors } = await req.json();
-      const fixes = await megaMind.autoFix(errors);
-
-      return new Response(
-        JSON.stringify({
-          success: fixes.fixed,
-          fixes
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
+    // Return unified response
     return new Response(
-      JSON.stringify({ error: 'Invalid operation' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        success: result.success,
+        analysis: {
+          intent: analysis.userIntent.primaryGoal,
+          complexity: analysis.complexity.level,
+          strategy: analysis.executionStrategy.primaryApproach,
+          confidence: analysis.confidence
+        },
+        result: {
+          message: result.message,
+          output: result.output,
+          filesGenerated: result.filesGenerated,
+          duration: result.duration
+        },
+        error: result.error?.message
+      }),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
     );
 
   } catch (error) {
-    console.error('[Mega Mind] Error:', error);
+    console.error('[Universal Mega Mind] Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        success: false,
+        error: error.message || 'Unknown error occurred'
+      }),
+      { 
+        status: 500, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
     );
   }
 });
