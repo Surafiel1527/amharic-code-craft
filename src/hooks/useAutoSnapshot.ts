@@ -94,7 +94,7 @@ export function useAutoSnapshot(onChange?: () => void) {
         if (error) throw error;
 
         setLastSnapshot(new Date());
-        logger.info('Auto-snapshot created');
+        logger.success('Auto-snapshot created');
         
         // Clean up old snapshots if needed
         await cleanupOldSnapshots();

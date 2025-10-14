@@ -73,7 +73,7 @@ export const useErrorMonitor = () => {
       if (error) {
         logger.error('Failed to report error', error);
       } else {
-        logger.info('Error reported to auto-fix system');
+        logger.success('Error reported to auto-fix system');
       }
     } catch (err) {
       logger.error('Error reporting failed', err);
