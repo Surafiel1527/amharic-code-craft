@@ -72,14 +72,17 @@ Meta-requests are RARE exceptions. Use "meta-conversation" ONLY if the request i
    
    Examples of TRUE meta-requests:
    - "What can you do?" / "What are your capabilities?"
+   - "How can we enhance/improve the platform?" / "What features does our project have?"
    - "Explain what you just did" / "Why did that happen?"
-   - "What technologies do you support?"
+   - "What technologies do you support?" / "What's the current state of the project?"
+   - Questions starting with: "How can we...", "What is...", "What are...", "Tell me about..."
    
    Examples that are NOT meta-requests (these need code):
    - "Create privacy policy page" → CODE GENERATION
    - "Add terms of service" → CODE GENERATION  
    - "Create about page" → CODE GENERATION
    - "Add contact form" → CODE GENERATION
+   - "Build a dashboard" → CODE GENERATION
    - "Show me the logs" → CODE GENERATION (needs UI to display logs)
 
 2. **CODE MODIFICATION** (outputType: "modification"):

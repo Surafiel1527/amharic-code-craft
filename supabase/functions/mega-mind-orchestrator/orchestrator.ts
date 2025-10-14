@@ -522,15 +522,18 @@ export async function executeGeneration(ctx: {
   const analysis = conversationContext._analysis;
 
   // Step 2: Validate classification - NEVER treat code generation as meta-request
-  const codeGenerationKeywords = [
-    'create', 'add', 'build', 'make', 'generate', 'implement', 
-    'page', 'component', 'feature', 'form', 'button', 'section',
-    'privacy', 'terms', 'about', 'contact', 'faq', 'help',
-    'update', 'change', 'modify', 'fix', 'remove', 'delete'
+  const codeActionPatterns = [
+    /\b(create|add|build|make|generate|implement)\b/i,
+    /\b(update|change|modify|fix|remove|delete)\b/i,
+    /\b(page|component|form|button|section)\b/i,
+    // Specific requests that are always code generation
+    /(privacy|terms|contact|faq)\s+(page|policy|form)/i,
+    /add\s+\w+\s+(to|in|on)/i,
+    /create\s+\w+\s+(page|component|feature)/i
   ];
   
-  const needsCodeGeneration = codeGenerationKeywords.some(keyword => 
-    request.toLowerCase().includes(keyword)
+  const needsCodeGeneration = codeActionPatterns.some(pattern => 
+    pattern.test(request)
   );
   
   // Override misclassification: if request needs code generation, it's NOT a meta-request
