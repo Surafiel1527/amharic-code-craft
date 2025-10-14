@@ -31,7 +31,6 @@ import {
 import { logDecision, reflectOnDecision, checkForCorrection } from '../_shared/agiIntegration.ts';
 import { evolvePatterns, detectPatternCategory } from '../_shared/patternLearning.ts';
 import { ThinkingStepTracker } from '../_shared/thinkingStepTracker.ts';
-import { protectedAICall } from '../_shared/circuitBreakerIntegration.ts';
 
 // Learning integration
 import {
@@ -1038,15 +1037,12 @@ export async function analyzeRequest(
     prompt += 'Consider using these patterns if they fit the current request.\n';
   }
 
-  const response = await protectedAICall(
-    'request-analysis',
-    async () => await callAIWithFallback(
-      [{ role: 'user', content: prompt }],
-      { 
-        systemPrompt: 'You are an expert at analyzing user requests for web development. Always respond with valid JSON. Use learned patterns when relevant.',
-        preferredModel: 'google/gemini-2.5-flash'
-      }
-    )
+  const response = await callAIWithFallback(
+    [{ role: 'user', content: prompt }],
+    { 
+      systemPrompt: 'You are an expert at analyzing user requests for web development. Always respond with valid JSON. Use learned patterns when relevant.',
+      preferredModel: 'google/gemini-2.5-flash'
+    }
   );
 
   return parseAIJsonResponse(response.data.content, {
@@ -1088,15 +1084,12 @@ ${JSON.stringify(conversationContext.recentTurns || [])}
 Please provide a helpful, detailed response about the system capabilities, recent work, or platform features.
 `;
 
-  const response = await protectedAICall(
-    'meta-request-handling',
-    async () => await callAIWithFallback(
-      [{ role: 'user', content: enhancedPrompt }],
-      { 
-        systemPrompt: 'You are a helpful AI assistant explaining platform capabilities and features.',
-        preferredModel: 'google/gemini-2.5-flash'
-      }
-    )
+  const response = await callAIWithFallback(
+    [{ role: 'user', content: enhancedPrompt }],
+    { 
+      systemPrompt: 'You are a helpful AI assistant explaining platform capabilities and features.',
+      preferredModel: 'google/gemini-2.5-flash'
+    }
   );
 
   await broadcast('generation:response_ready', {
