@@ -6,7 +6,7 @@
 import { SurgicalEditor } from '../_shared/surgicalEditor.ts';
 import { SurgicalPromptBuilder } from '../_shared/surgicalPromptBuilder.ts';
 import { ResponseParser } from '../_shared/responseParser.ts';
-import { buildRichContext } from '../_shared/contextBuilder.ts';
+import { ContextBuilder } from '../_shared/contextBuilder.ts';
 import { callAIWithFallback } from '../_shared/aiHelpers.ts';
 import { ThinkingStepTracker } from '../_shared/thinkingStepTracker.ts';
 
@@ -63,13 +63,13 @@ export async function handleSurgicalEdit(ctx: {
   // Step 2: Build rich context
   await stepTracker.trackStep('build_context', 'Building project context', broadcast, 'start');
   
-  const richContext = await buildRichContext(
+  const contextBuilder = new ContextBuilder(
     platformSupabase,
     projectId,
     userId,
-    currentFiles,
     conversationId
   );
+  const richContext = await contextBuilder.buildRichContext();
 
   await stepTracker.trackStep('build_context', 'Context ready', broadcast, 'complete');
   await updateJobProgress(50, 'Context built', 'Analyzing Changes', []);
