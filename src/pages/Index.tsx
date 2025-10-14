@@ -303,7 +303,8 @@ const Index = () => {
           .from("conversations")
           .insert({
             user_id: user.id,
-            title: prompt.substring(0, 100)
+            title: prompt.substring(0, 100),
+            project_id: null // Will be updated after project is created
           })
           .select()
           .single();
@@ -332,10 +333,25 @@ const Index = () => {
       const projectId = project.id;
       setCurrentProjectId(projectId);
       
+      // Update conversation with project_id
+      await supabase
+        .from("conversations")
+        .update({ project_id: projectId })
+        .eq('id', conversationId);
+      
       // Navigate to workspace immediately
       const frameworkLabel = framework === 'html' ? 'HTML/CSS/JS' : framework === 'react' ? 'React' : 'Vue';
       
-      // Add initial message to conversation to show in chat
+      // Add user message first (their request)
+      await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        role: 'user',
+        content: prompt,
+        user_id: user.id,
+        metadata: { framework: frameworkLabel }
+      });
+      
+      // Then add system message to show generation started
       await supabase.from('messages').insert({
         conversation_id: conversationId,
         role: 'system',
