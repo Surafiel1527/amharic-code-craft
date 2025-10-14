@@ -255,6 +255,25 @@ serve(async (req) => {
       userSupabaseConnection,
       broadcast
     }).then(async (orchestrationResult) => {
+      // 🔍 Check if this was a meta-request or surgical edit (early return)
+      if (orchestrationResult.conversationOnly) {
+        // Meta-request: just conversation response, no code generation
+        console.log('✅ Meta-request handled, no code generation needed');
+        return;
+      }
+      
+      if (orchestrationResult.type === 'surgical_edit') {
+        // Surgical edit: already completed, no need for full generation
+        console.log('✅ Surgical edit completed, no full generation needed');
+        return;
+      }
+      
+      // 🔍 Validate orchestration result has required fields
+      if (!orchestrationResult.analysis || !orchestrationResult.conversationContext) {
+        console.error('❌ Invalid orchestration result:', Object.keys(orchestrationResult));
+        throw new Error('Orchestration did not return required analysis and context');
+      }
+      
       // Continue with code generation
       const packagedCode = await generateAndPackageCode({
         request,
