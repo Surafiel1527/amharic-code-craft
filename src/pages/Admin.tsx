@@ -33,6 +33,7 @@ import { PreviewBanner } from "@/components/PreviewBanner";
 import { ModificationHistory } from "@/components/ModificationHistory";
 import { SnapshotManager } from "@/components/SnapshotManager";
 import { ThemeGallery } from "@/components/ThemeGallery";
+import AutonomousDashboard from "@/components/admin/AutonomousDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -480,6 +481,11 @@ function AdminContent() {
               <span className="hidden sm:inline">{t("adminPage.selfHealing")}</span>
               <span className="sm:hidden">{t("adminPage.healing")}</span>
             </TabsTrigger>
+            <TabsTrigger value="autonomous" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
+              <Brain className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Autonomous</span>
+              <span className="sm:hidden">Auto</span>
+            </TabsTrigger>
             <TabsTrigger value="customize" className="gap-1 sm:gap-2 text-xs sm:text-sm py-2">
               <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">{t("adminPage.selfModify")}</span>
@@ -591,6 +597,10 @@ function AdminContent() {
                 <ProductionTestingDashboard />
               </TabsContent>
             </Tabs>
+          </TabsContent>
+
+          <TabsContent value="autonomous">
+            <AutonomousDashboard />
           </TabsContent>
 
           <TabsContent value="customize" className="space-y-4">

@@ -11,6 +11,12 @@ verify_jwt = true
 [functions.mega-mind-self-healer]
 verify_jwt = false
 
+[functions.backend-self-monitor]
+verify_jwt = false
+
+[functions.unified-autonomous-coordinator]
+verify_jwt = false
+
 [functions.advanced-reasoning-engine]
 verify_jwt = false
 
