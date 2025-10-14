@@ -164,14 +164,12 @@ async function routeRequest(
           body: {
             request,
             ...context,
-            // Use parallel execution for important features
             parallelExecution: decision.confidence >= 0.85
           }
         });
         
-        if (multiModelError) {
+        if (multiModelError || !multiModelData) {
           console.warn('⚠️ Multi-model orchestrator failed, falling back to mega-mind');
-          // Fallback to mega-mind if multi-model fails
           const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('mega-mind-orchestrator', {
             body: {
               request,
@@ -197,8 +195,8 @@ async function routeRequest(
           route: 'FEATURE_BUILD',
           duration: Date.now() - startTime,
           result: multiModelData,
-          qualityScore: multiModelData.qualityScore,
-          modelUsed: multiModelData.strategy?.model
+          qualityScore: multiModelData?.qualityScore || 0,
+          modelUsed: multiModelData?.strategy?.model || 'unknown'
         };
         
       case 'REFACTOR':
