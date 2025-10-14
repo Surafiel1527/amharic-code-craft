@@ -62,13 +62,25 @@ ${context.suggestionsPrompt || ''}
 
 **CRITICAL: Determine Request Category:**
 
-1. **META-REQUEST** (outputType: "meta-conversation"):
-   - Questions about logs, errors, or system behavior
-   - Requests to "improve understanding", "see logs", "check what happened"
-   - Debugging or troubleshooting the system itself
-   - Questions about how the system works
-   - Keywords: "see log", "check", "understand", "didn't work", "what happened", "debug"
-   - **IMPORTANT**: "update README", "add instructions", "modify documentation" are NOT meta-requests - they are CODE MODIFICATIONS
+🚨 **DEFAULT ASSUMPTION: ALL REQUESTS ARE CODE GENERATION** 🚨
+
+Meta-requests are RARE exceptions. Use "meta-conversation" ONLY if the request is:
+
+1. **META-REQUEST** (outputType: "meta-conversation") - USE SPARINGLY:
+   ❌ NEVER use for: creating pages, components, features, or modifying any code/files
+   ✅ ONLY use for: asking about system capabilities, explaining past actions, or pure Q&A
+   
+   Examples of TRUE meta-requests:
+   - "What can you do?" / "What are your capabilities?"
+   - "Explain what you just did" / "Why did that happen?"
+   - "What technologies do you support?"
+   
+   Examples that are NOT meta-requests (these need code):
+   - "Create privacy policy page" → CODE GENERATION
+   - "Add terms of service" → CODE GENERATION  
+   - "Create about page" → CODE GENERATION
+   - "Add contact form" → CODE GENERATION
+   - "Show me the logs" → CODE GENERATION (needs UI to display logs)
 
 2. **CODE MODIFICATION** (outputType: "modification"):
    - ${hasExistingProject ? '🚨 **DEFAULT CHOICE when project exists** 🚨' : ''}

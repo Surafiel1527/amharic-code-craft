@@ -521,8 +521,36 @@ export async function executeGeneration(ctx: {
 
   const analysis = conversationContext._analysis;
 
-  // Step 2: Handle meta-requests
+  // Step 2: Validate classification - NEVER treat code generation as meta-request
+  const codeGenerationKeywords = [
+    'create', 'add', 'build', 'make', 'generate', 'implement', 
+    'page', 'component', 'feature', 'form', 'button', 'section',
+    'privacy', 'terms', 'about', 'contact', 'faq', 'help',
+    'update', 'change', 'modify', 'fix', 'remove', 'delete'
+  ];
+  
+  const needsCodeGeneration = codeGenerationKeywords.some(keyword => 
+    request.toLowerCase().includes(keyword)
+  );
+  
+  // Override misclassification: if request needs code generation, it's NOT a meta-request
+  if (analysis.isMetaRequest && needsCodeGeneration) {
+    console.log('🔧 CLASSIFICATION OVERRIDE: Request needs code generation, not meta-response');
+    analysis.isMetaRequest = false;
+    analysis.outputType = isModifyMode ? 'modification' : 'react-app';
+    
+    await broadcast('classification:corrected', {
+      status: 'corrected',
+      message: '✅ Classification corrected - proceeding with code generation',
+      progress: 20,
+      originalClassification: 'meta-request',
+      correctedClassification: analysis.outputType
+    });
+  }
+
+  // Step 2.5: Handle genuine meta-requests (pure Q&A only)
   if (analysis.isMetaRequest) {
+    console.log('💬 META-REQUEST: Providing conversational response only');
     return handleMetaRequest(request, conversationContext, broadcast);
   }
 
