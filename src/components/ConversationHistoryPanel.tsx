@@ -41,10 +41,15 @@ export function ConversationHistoryPanel({ projectId, conversationId }: Conversa
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
 
-      if (error) throw error;
-      setMessages(data || []);
+      if (error) {
+        // Only show error toast if it's an actual error, not just "no rows"
+        console.error("Error loading conversation:", error);
+        toast.error("Failed to load conversation history");
+      } else {
+        setMessages(data || []);
+      }
     } catch (error) {
-      console.error("Error loading conversation:", error);
+      console.error("Unexpected error loading conversation:", error);
       toast.error("Failed to load conversation history");
     } finally {
       setIsLoading(false);

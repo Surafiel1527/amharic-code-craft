@@ -208,10 +208,18 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         });
 
       setMessages(typedMessages);
-      logger.success('Loaded messages', { count: typedMessages.length });
+      logger.info('Loaded messages', { count: typedMessages.length });
     } catch (error) {
-      logger.error('Failed to load conversation', error);
-      toast.error('Failed to load conversation history');
+      // Only show error if it's not just an empty conversation
+      const isEmptyConversation = error instanceof Error && 
+        (error.message.includes('No rows') || error.message.includes('not found'));
+      
+      if (!isEmptyConversation) {
+        logger.error('Failed to load conversation', error);
+        toast.error('Failed to load conversation history');
+      } else {
+        logger.info('New conversation - no history yet');
+      }
     }
   }, [persistMessages]);
 
@@ -238,7 +246,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
       if (error) throw error;
 
-      logger.success('Created conversation', { conversationId: data.id });
+      logger.info('Created conversation', { conversationId: data.id });
       setConversationId(data.id);
       if (onConversationChange) {
         onConversationChange(data.id);
@@ -295,7 +303,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         if (updateError) {
           logger.warn('Failed to link thinking steps to message', updateError);
         } else {
-          logger.success('Linked thinking steps to message', { messageId: data.id });
+          logger.info('Linked thinking steps to message', { messageId: data.id });
         }
       }
       
