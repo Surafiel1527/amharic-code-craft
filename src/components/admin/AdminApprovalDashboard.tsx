@@ -284,7 +284,7 @@ export const AdminApprovalDashboard = () => {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="approvals" className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4" />
             Approvals ({stats.pending})
@@ -296,6 +296,10 @@ export const AdminApprovalDashboard = () => {
           <TabsTrigger value="history" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             History
+          </TabsTrigger>
+          <TabsTrigger value="abtesting" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            A/B Testing
           </TabsTrigger>
         </TabsList>
 
@@ -378,6 +382,10 @@ export const AdminApprovalDashboard = () => {
         {/* History Tab */}
         <TabsContent value="history" className="mt-6">
           <RollbackHistory />
+        </TabsContent>
+
+        <TabsContent value="abtesting" className="mt-6">
+          <ABTestingDashboard />
         </TabsContent>
       </Tabs>
 

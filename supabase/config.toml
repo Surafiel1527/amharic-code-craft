@@ -167,3 +167,9 @@ verify_jwt = true
 
 [functions.admin-approval-handler]
 verify_jwt = true
+
+[functions.trigger-deployment]
+verify_jwt = false
+
+[functions.prompt-evolution-engine]
+verify_jwt = false
