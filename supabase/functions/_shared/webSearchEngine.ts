@@ -31,6 +31,24 @@ export async function searchWeb(
 ): Promise<WebSearchResponse> {
   const startTime = Date.now();
   
+  // Validate inputs
+  if (!query || typeof query !== 'string' || query.trim().length === 0) {
+    return {
+      found: false,
+      query: '',
+      results: [],
+      totalResults: 0,
+      searchTime: 0,
+      sources: [],
+      confidence: 0
+    };
+  }
+
+  if (query.length > 2048) {
+    console.warn('Search query too long, truncating');
+    query = query.slice(0, 2048);
+  }
+
   const apiKey = Deno.env.get('GOOGLE_SEARCH_API_KEY');
   const searchEngineId = Deno.env.get('GOOGLE_SEARCH_ENGINE_ID');
 
@@ -47,10 +65,13 @@ export async function searchWeb(
     };
   }
 
+  // Validate maxResults
+  const safeMaxResults = Math.max(1, Math.min(maxResults, 10));
+
   try {
-    const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&num=${Math.min(maxResults, 10)}`;
+    const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&num=${safeMaxResults}`;
     
-    console.log('🔍 Searching web:', query);
+    console.log('🔍 Searching web:', query.slice(0, 100));
     
     const response = await fetch(url);
     

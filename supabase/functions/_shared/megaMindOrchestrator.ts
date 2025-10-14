@@ -14,6 +14,9 @@
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { analyzeContext, makeIntelligentDecision } from './intelligenceEngine.ts';
 import { FeatureOrchestrator } from './featureOrchestrator.ts';
+import { logger } from './logger.ts';
+import { validateString, validateUuid, ValidationResult } from './validation.ts';
+import { retryWithBackoff, ValidationError } from './errorHandler.ts';
 
 export interface MegaMindRequest {
   userRequest: string;
@@ -66,15 +69,41 @@ export class MegaMindOrchestrator {
    * STEP 1: UNDERSTAND - Deep analysis of what user wants
    */
   async understand(request: MegaMindRequest): Promise<MegaMindDecision> {
-    console.log('🧠 Mega Mind: Analyzing request...');
+    // Validate inputs
+    const requestValidation = validateString(request.userRequest, { 
+      minLength: 1, 
+      maxLength: 10000 
+    });
+    if (!requestValidation.success) {
+      throw new ValidationError('Invalid user request', { error: requestValidation.error });
+    }
+
+    const userIdValidation = validateUuid(request.userId);
+    if (!userIdValidation.success) {
+      throw new ValidationError('Invalid user ID', { error: userIdValidation.error });
+    }
+
+    const conversationIdValidation = validateUuid(request.conversationId);
+    if (!conversationIdValidation.success) {
+      throw new ValidationError('Invalid conversation ID', { error: conversationIdValidation.error });
+    }
+
+    logger.info('Mega Mind: Analyzing request', {
+      userId: request.userId,
+      conversationId: request.conversationId,
+      requestLength: request.userRequest.length
+    });
     
-    // Get context intelligence
-    const context = await analyzeContext(
-      this.supabase,
-      request.conversationId,
-      request.userId,
-      request.userRequest,
-      request.projectId
+    // Get context intelligence with retry
+    const context = await retryWithBackoff(
+      () => analyzeContext(
+        this.supabase,
+        request.conversationId,
+        request.userId,
+        request.userRequest,
+        request.projectId
+      ),
+      { maxAttempts: 2 }
     );
 
     // Assess TRUE complexity

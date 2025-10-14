@@ -62,7 +62,7 @@ export async function requestResource(
 }
 
 /**
- * Wait for user to provide resource (with timeout)
+ * Wait for user to provide resource using realtime subscriptions (no polling)
  */
 export async function waitForResource(
   supabase: SupabaseClient,
@@ -70,33 +70,44 @@ export async function waitForResource(
   timeoutMs: number = 300000 // 5 minutes default
 ): Promise<string | null> {
   
-  const startTime = Date.now();
-  
   console.log(`⏳ Waiting for resource: ${requestId}`);
 
-  while (Date.now() - startTime < timeoutMs) {
-    const { data } = await supabase
-      .from('resource_requests')
-      .select('*')
-      .eq('id', requestId)
-      .single();
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      console.log(`⏱️ Resource request timed out: ${requestId}`);
+      channel.unsubscribe();
+      resolve(null);
+    }, timeoutMs);
 
-    if (data?.status === 'provided' && data.value) {
-      console.log(`✅ Resource provided: ${requestId}`);
-      return data.value;
-    }
-
-    if (data?.status === 'skipped') {
-      console.log(`⏭️ Resource skipped: ${requestId}`);
-      return null;
-    }
-
-    // Wait 2 seconds before checking again
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  }
-
-  console.log(`⏱️ Resource request timed out: ${requestId}`);
-  return null;
+    // Subscribe to realtime changes instead of polling
+    const channel = supabase
+      .channel(`resource_${requestId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'resource_requests',
+          filter: `id=eq.${requestId}`
+        },
+        (payload: any) => {
+          const newData = payload.new;
+          
+          if (newData.status === 'provided' && newData.value) {
+            console.log(`✅ Resource provided: ${requestId}`);
+            clearTimeout(timeoutId);
+            channel.unsubscribe();
+            resolve(newData.value);
+          } else if (newData.status === 'skipped') {
+            console.log(`⏭️ Resource skipped: ${requestId}`);
+            clearTimeout(timeoutId);
+            channel.unsubscribe();
+            resolve(null);
+          }
+        }
+      )
+      .subscribe();
+  });
 }
 
 /**

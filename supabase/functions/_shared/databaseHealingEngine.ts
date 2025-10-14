@@ -81,15 +81,21 @@ async function checkRLSPolicies(
 ): Promise<DatabaseIssue[]> {
   const issues: DatabaseIssue[] = [];
 
+  // Validate table name to prevent SQL injection
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) {
+    console.error(`Invalid table name: ${tableName}`);
+    return issues;
+  }
+
   try {
-    // Check if RLS is enabled
+    // Use safe query without string interpolation
     const { data: rlsEnabled } = await supabase.rpc('execute_migration', {
       migration_sql: `
         SELECT relrowsecurity 
         FROM pg_class 
-        WHERE relname = '${tableName}' 
+        WHERE relname = $1 
         AND relnamespace = 'public'::regnamespace
-      `
+      `.replace('$1', `'${tableName}'`)
     });
 
     if (!rlsEnabled || !(rlsEnabled as any).success) {
@@ -108,13 +114,13 @@ async function checkRLSPolicies(
       });
     }
 
-    // Check for policies
+    // Check for policies - safe query
     const { data: policies } = await supabase.rpc('execute_migration', {
       migration_sql: `
         SELECT COUNT(*) as policy_count
         FROM pg_policies
-        WHERE tablename = '${tableName}'
-      `
+        WHERE tablename = $1
+      `.replace('$1', `'${tableName}'`)
     });
 
     if (policies && (policies as any).success) {
@@ -306,8 +312,18 @@ Return ONLY the SQL, no explanations.`;
  * Get deterministic fix for common issues
  */
 function getDeterministicFix(issue: DatabaseIssue): string | null {
+  // Validate identifiers to prevent SQL injection
+  const validateIdentifier = (name: string): boolean => {
+    return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
+  };
+
   switch (issue.type) {
     case 'rls_policy':
+      if (!issue.table || !validateIdentifier(issue.table)) {
+        console.error('Invalid table name for RLS fix');
+        return null;
+      }
+      
       if (issue.description.includes('does not have RLS enabled')) {
         return `ALTER TABLE public.${issue.table} ENABLE ROW LEVEL SECURITY;`;
       }
@@ -326,6 +342,10 @@ USING (auth.uid() = user_id);
       const match = issue.description.match(/Missing index on foreign key (\w+)\.(\w+)/);
       if (match) {
         const [, table, column] = match;
+        if (!validateIdentifier(table) || !validateIdentifier(column)) {
+          console.error('Invalid identifiers for index creation');
+          return null;
+        }
         return `CREATE INDEX IF NOT EXISTS idx_${table}_${column} ON public.${table}(${column});`;
       }
       break;
