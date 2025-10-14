@@ -29,6 +29,7 @@ const PlatformAnalytics = lazy(() => import("./pages/PlatformAnalytics"));
 const AdminInsights = lazy(() => import("./pages/AdminInsights"));
 const AGIInsights = lazy(() => import("./pages/AGIInsights"));
 const UXIntelligenceDashboard = lazy(() => import("./components/UXIntelligenceDashboard"));
+const AGITest = lazy(() => import("./pages/AGITest"));
 const AdminApprovalPage = lazy(() => import("./pages/AdminApprovalPage"));
 const PromptEvolutionPage = lazy(() => import("./pages/PromptEvolutionPage"));
 const UXPatternFeedbackPage = lazy(() => import("./pages/UXPatternFeedbackPage"));
@@ -74,6 +75,7 @@ const App = () => {
           <Route path="/admin/ai-dashboard" element={<UnifiedAIDashboardPage />} />
           <Route path="/agi-insights" element={<AGIInsights />} />
           <Route path="/ux-intelligence" element={<UXIntelligenceDashboard />} />
+          <Route path="/agi-test" element={<AGITest />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
