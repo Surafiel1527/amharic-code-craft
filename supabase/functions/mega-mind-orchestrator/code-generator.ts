@@ -622,7 +622,10 @@ export async function generateAndPackageCode(ctx: {
     userRequest: request,
     framework,
     fileCount: generatedCode.files.length,
-    duration: generationTime
+    duration: generationTime,
+    qualityScore: qualityReport?.qualityScore || 100, // ✅ ENTERPRISE: Include quality score
+    validationWarnings: qualityReport?.warnings?.map(w => typeof w === 'string' ? w : w.description) || [], // ✅ ENTERPRISE: Include warnings
+    validationErrors: qualityReport?.issues?.filter(i => i.severity === 'error').map(i => i.description) || [] // ✅ ENTERPRISE: Include errors
   });
 
   // Track UX signal for generation completion

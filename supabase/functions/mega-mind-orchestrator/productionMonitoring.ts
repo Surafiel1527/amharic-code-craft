@@ -84,6 +84,9 @@ export async function logGenerationSuccess(
     duration?: number;
     phases?: any[];
     userId?: string;
+    qualityScore?: number; // ✅ NEW: 0-100 quality score
+    validationWarnings?: string[]; // ✅ NEW: Validation warnings
+    validationErrors?: string[]; // ✅ NEW: Validation errors
   }
 ): Promise<void> {
   try {
@@ -98,11 +101,15 @@ export async function logGenerationSuccess(
         project_id: details.projectId,
         user_id: details.userId,
         user_prompt: details.userRequest,
-        system_prompt: 'Platform auto-generation system', // CRITICAL FIX: Required field
-        model_used: 'google/gemini-2.5-flash', // CRITICAL FIX: Required field
+        system_prompt: 'Platform auto-generation system',
+        model_used: 'google/gemini-2.5-flash',
         prompt_version: 'v1.0.0',
+        status: 'success', // ✅ ENTERPRISE FIX: Explicitly set status
         success: true,
         framework: details.framework,
+        quality_score: details.qualityScore || null, // ✅ NEW: Quality metrics
+        validation_warnings: details.validationWarnings || [],
+        validation_errors: details.validationErrors || [],
         metadata: {
           fileCount: details.fileCount,
           duration: details.duration,
@@ -110,8 +117,8 @@ export async function logGenerationSuccess(
           timestamp: new Date().toISOString()
         }
       },
-      autoFix: true, // Attempt to auto-fix missing columns
-      critical: false // Don't fail if some fields can't be logged
+      autoFix: true,
+      critical: false
     });
 
     if (!result.success) {

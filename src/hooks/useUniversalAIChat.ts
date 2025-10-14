@@ -26,13 +26,15 @@ export interface Message {
       phases: string[];
       duration: number;
       qualityScore?: number;
+      hasWarnings?: boolean; // ✅ ENTERPRISE: Quality validation flags
+      hasErrors?: boolean;
     };
     toolUsed?: string;
     toolResult?: any;
     isSummary?: boolean;
     isGenerationStart?: boolean;
     framework?: string;
-    error?: boolean; // ✅ ADD: Error flag for fallback messages
+    error?: boolean;
   };
   plan?: {
     summary: string;
@@ -990,6 +992,9 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         const modifiedFilesCount = response?.modifiedFiles?.length || 0;
         const totalFilesAffected = generatedFilesCount + modifiedFilesCount;
         const framework = response?.framework || projectContext?.framework || 'React';
+        const qualityScore = response?.qualityScore || response?.qualityReport?.qualityScore;
+        const validationWarnings = response?.validationWarnings || response?.qualityReport?.warnings;
+        const validationErrors = response?.validationErrors || response?.qualityReport?.issues;
         
         // Build summary content
         let summaryContent = '✅ **Complete!**\n\n';
@@ -998,6 +1003,42 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
           summaryContent += `Successfully processed **${totalFilesAffected} file${totalFilesAffected > 1 ? 's' : ''}** using ${framework}.\n\n`;
         } else {
           summaryContent += `Your changes have been applied and are ready to preview.\n\n`;
+        }
+        
+        // ✅ ENTERPRISE: Show quality score
+        if (qualityScore !== undefined) {
+          const scoreEmoji = qualityScore >= 90 ? '🏆' : qualityScore >= 70 ? '✅' : '⚠️';
+          summaryContent += `**Quality Score:** ${scoreEmoji} **${qualityScore}/100**\n\n`;
+        }
+        
+        // ✅ ENTERPRISE: Show validation warnings
+        if (validationWarnings && validationWarnings.length > 0) {
+          summaryContent += `**⚠️ Validation Warnings (${validationWarnings.length}):**\n`;
+          validationWarnings.slice(0, 3).forEach((warning: any) => {
+            const desc = typeof warning === 'string' ? warning : warning.description;
+            summaryContent += `• ${desc}\n`;
+          });
+          if (validationWarnings.length > 3) {
+            summaryContent += `• ...and ${validationWarnings.length - 3} more\n`;
+          }
+          summaryContent += '\n';
+        }
+        
+        // ✅ ENTERPRISE: Show validation errors
+        if (validationErrors && validationErrors.length > 0) {
+          const errors = Array.isArray(validationErrors) ? validationErrors : 
+                        validationErrors.filter((i: any) => i.severity === 'error');
+          if (errors.length > 0) {
+            summaryContent += `**❌ Validation Errors (${errors.length}):**\n`;
+            errors.slice(0, 2).forEach((error: any) => {
+              const desc = typeof error === 'string' ? error : error.description;
+              summaryContent += `• ${desc}\n`;
+            });
+            if (errors.length > 2) {
+              summaryContent += `• ...and ${errors.length - 2} more\n`;
+            }
+            summaryContent += '\n';
+          }
         }
         
         // Add key features/changes if available
@@ -1024,7 +1065,14 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
           metadata: {
             routedTo: 'orchestrator',
             isSummary: true,
-            framework
+            framework,
+            orchestration: {
+              phases: response?.phases || [],
+              duration: response?.duration || 0,
+              qualityScore, // ✅ ENTERPRISE: Include quality metrics
+              hasWarnings: validationWarnings && validationWarnings.length > 0,
+              hasErrors: validationErrors && validationErrors.length > 0
+            }
           }
         };
         
@@ -1033,7 +1081,13 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
           m.id === placeholderMessageId ? assistantMessage! : m
         ));
         
-        logger.info('✅ Replaced placeholder with orchestrator summary', { placeholderMessageId, filesAffected: totalFilesAffected });
+        logger.info('✅ Replaced placeholder with orchestrator summary', { 
+          placeholderMessageId, 
+          filesAffected: totalFilesAffected,
+          qualityScore,
+          warningCount: validationWarnings?.length || 0,
+          errorCount: validationErrors?.length || 0
+        });
         
       } else {
         // For non-orchestrator requests (error healing, questions), process response normally

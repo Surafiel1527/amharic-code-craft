@@ -1974,6 +1974,7 @@ export type Database = {
           depends_on: Json | null
           id: string
           last_modified_at: string
+          updated_at: string | null
           used_by: Json | null
         }
         Insert: {
@@ -1986,6 +1987,7 @@ export type Database = {
           depends_on?: Json | null
           id?: string
           last_modified_at?: string
+          updated_at?: string | null
           used_by?: Json | null
         }
         Update: {
@@ -1998,6 +2000,7 @@ export type Database = {
           depends_on?: Json | null
           id?: string
           last_modified_at?: string
+          updated_at?: string | null
           used_by?: Json | null
         }
         Relationships: []
@@ -4191,6 +4194,7 @@ export type Database = {
           modifications_made: string | null
           project_id: string | null
           prompt_version: string
+          quality_score: number | null
           status: Database["public"]["Enums"]["generation_status"]
           success: boolean | null
           system_prompt: string
@@ -4202,6 +4206,8 @@ export type Database = {
           user_prompt: string
           user_request: string | null
           user_satisfaction_score: number | null
+          validation_errors: Json | null
+          validation_warnings: Json | null
         }
         Insert: {
           code_worked?: boolean | null
@@ -4220,7 +4226,8 @@ export type Database = {
           modifications_made?: string | null
           project_id?: string | null
           prompt_version?: string
-          status: Database["public"]["Enums"]["generation_status"]
+          quality_score?: number | null
+          status?: Database["public"]["Enums"]["generation_status"]
           success?: boolean | null
           system_prompt: string
           time_to_accept_seconds?: number | null
@@ -4231,6 +4238,8 @@ export type Database = {
           user_prompt: string
           user_request?: string | null
           user_satisfaction_score?: number | null
+          validation_errors?: Json | null
+          validation_warnings?: Json | null
         }
         Update: {
           code_worked?: boolean | null
@@ -4249,6 +4258,7 @@ export type Database = {
           modifications_made?: string | null
           project_id?: string | null
           prompt_version?: string
+          quality_score?: number | null
           status?: Database["public"]["Enums"]["generation_status"]
           success?: boolean | null
           system_prompt?: string
@@ -4260,6 +4270,8 @@ export type Database = {
           user_prompt?: string
           user_request?: string | null
           user_satisfaction_score?: number | null
+          validation_errors?: Json | null
+          validation_warnings?: Json | null
         }
         Relationships: [
           {
@@ -4664,6 +4676,7 @@ export type Database = {
           is_summary: boolean | null
           metadata: Json | null
           role: string
+          user_id: string | null
         }
         Insert: {
           content: string
@@ -4674,6 +4687,7 @@ export type Database = {
           is_summary?: boolean | null
           metadata?: Json | null
           role: string
+          user_id?: string | null
         }
         Update: {
           content?: string
@@ -4684,6 +4698,7 @@ export type Database = {
           is_summary?: boolean | null
           metadata?: Json | null
           role?: string
+          user_id?: string | null
         }
         Relationships: [
           {
