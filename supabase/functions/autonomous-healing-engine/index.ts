@@ -346,6 +346,34 @@ serve(async (req) => {
     }
     results.cycles_run++;
 
+    // CYCLE 7: TRIGGER AUTO-DEPLOYMENT IF FIXES APPLIED
+    if (results.fixes_applied > 0) {
+      console.log('🚀 Triggering autonomous deployment...');
+      try {
+        const { error: deployError } = await supabase.functions.invoke('trigger-deployment', {
+          body: {
+            project_id: recentProjects[0]?.id || 'system',
+            reason: 'autonomous_fixes_applied',
+            fix_ids: [], // Would track actual fix IDs in production
+            changes: {
+              fixes_applied: results.fixes_applied,
+              patterns_learned: results.patterns_learned,
+              errors_detected: results.errors_detected
+            }
+          }
+        });
+
+        if (!deployError) {
+          console.log('✅ Deployment triggered successfully');
+        } else {
+          console.error('⚠️  Deployment trigger failed:', deployError);
+        }
+      } catch (error) {
+        console.error('❌ Failed to trigger deployment:', error);
+      }
+      results.cycles_run++;
+    }
+
     // Log the autonomous cycle
     await supabase.from('ai_improvement_logs').insert({
       operation_type: 'autonomous_healing_cycle',

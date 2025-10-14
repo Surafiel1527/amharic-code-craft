@@ -3509,6 +3509,56 @@ export type Database = {
           },
         ]
       }
+      deployment_triggers: {
+        Row: {
+          completed_at: string | null
+          deployment_id: string | null
+          error_message: string | null
+          fix_ids: string[] | null
+          id: string
+          metadata: Json | null
+          project_id: string
+          status: string
+          trigger_reason: string
+          triggered_at: string
+          triggered_by: string
+        }
+        Insert: {
+          completed_at?: string | null
+          deployment_id?: string | null
+          error_message?: string | null
+          fix_ids?: string[] | null
+          id?: string
+          metadata?: Json | null
+          project_id: string
+          status?: string
+          trigger_reason: string
+          triggered_at?: string
+          triggered_by?: string
+        }
+        Update: {
+          completed_at?: string | null
+          deployment_id?: string | null
+          error_message?: string | null
+          fix_ids?: string[] | null
+          id?: string
+          metadata?: Json | null
+          project_id?: string
+          status?: string
+          trigger_reason?: string
+          triggered_at?: string
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployment_triggers_deployment_id_fkey"
+            columns: ["deployment_id"]
+            isOneToOne: false
+            referencedRelation: "vercel_deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deployment_validations: {
         Row: {
           auto_fixed: boolean | null
@@ -3752,6 +3802,57 @@ export type Database = {
         }
         Relationships: []
       }
+      experiment_results: {
+        Row: {
+          applied_at: string
+          error_id: string | null
+          error_message: string | null
+          execution_time_ms: number | null
+          experiment_id: string
+          id: string
+          metadata: Json | null
+          success: boolean
+          variant_used: string
+        }
+        Insert: {
+          applied_at?: string
+          error_id?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          experiment_id: string
+          id?: string
+          metadata?: Json | null
+          success: boolean
+          variant_used: string
+        }
+        Update: {
+          applied_at?: string
+          error_id?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          experiment_id?: string
+          id?: string
+          metadata?: Json | null
+          success?: boolean
+          variant_used?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experiment_results_error_id_fkey"
+            columns: ["error_id"]
+            isOneToOne: false
+            referencedRelation: "detected_errors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experiment_results_experiment_id_fkey"
+            columns: ["experiment_id"]
+            isOneToOne: false
+            referencedRelation: "fix_experiments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       external_integrations: {
         Row: {
           config: Json | null
@@ -3822,6 +3923,77 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: true
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fix_experiments: {
+        Row: {
+          concluded_at: string | null
+          confidence_level: number | null
+          created_at: string
+          error_pattern_id: string | null
+          experiment_status: string
+          fix_variant_a: Json
+          fix_variant_b: Json
+          id: string
+          metadata: Json | null
+          sample_size: number | null
+          started_at: string
+          variant_a_failure_count: number | null
+          variant_a_success_count: number | null
+          variant_a_success_rate: number | null
+          variant_b_failure_count: number | null
+          variant_b_success_count: number | null
+          variant_b_success_rate: number | null
+          winning_variant: string | null
+        }
+        Insert: {
+          concluded_at?: string | null
+          confidence_level?: number | null
+          created_at?: string
+          error_pattern_id?: string | null
+          experiment_status?: string
+          fix_variant_a: Json
+          fix_variant_b: Json
+          id?: string
+          metadata?: Json | null
+          sample_size?: number | null
+          started_at?: string
+          variant_a_failure_count?: number | null
+          variant_a_success_count?: number | null
+          variant_a_success_rate?: number | null
+          variant_b_failure_count?: number | null
+          variant_b_success_count?: number | null
+          variant_b_success_rate?: number | null
+          winning_variant?: string | null
+        }
+        Update: {
+          concluded_at?: string | null
+          confidence_level?: number | null
+          created_at?: string
+          error_pattern_id?: string | null
+          experiment_status?: string
+          fix_variant_a?: Json
+          fix_variant_b?: Json
+          id?: string
+          metadata?: Json | null
+          sample_size?: number | null
+          started_at?: string
+          variant_a_failure_count?: number | null
+          variant_a_success_count?: number | null
+          variant_a_success_rate?: number | null
+          variant_b_failure_count?: number | null
+          variant_b_success_count?: number | null
+          variant_b_success_rate?: number | null
+          winning_variant?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fix_experiments_error_pattern_id_fkey"
+            columns: ["error_pattern_id"]
+            isOneToOne: false
+            referencedRelation: "universal_error_patterns"
             referencedColumns: ["id"]
           },
         ]
@@ -8769,6 +8941,10 @@ export type Database = {
           p_metric_value: number
         }
         Returns: string
+      }
+      record_experiment_result: {
+        Args: { p_experiment_id: string; p_success: boolean; p_variant: string }
+        Returns: undefined
       }
       send_alert: {
         Args: {
