@@ -118,11 +118,20 @@ async function routeRequest(
   console.log(`🎯 Routing to ${decision.route}:`, decision.reasoning);
   
   const startTime = Date.now();
+  const broadcast = context.broadcast; // Extract broadcast function
   
   try {
     switch (decision.route) {
       case 'DIRECT_EDIT':
         // Fast path: Direct surgical edit
+        if (broadcast) {
+          await broadcast('route:direct_edit', {
+            status: 'editing',
+            message: '✏️ Making quick surgical edit...',
+            progress: 30
+          });
+        }
+        
         const { data: editData, error: editError } = await supabase.functions.invoke('direct-code-editor', {
           body: {
             request,
@@ -131,6 +140,14 @@ async function routeRequest(
         });
         
         if (editError) throw editError;
+        
+        if (broadcast) {
+          await broadcast('route:complete', {
+            status: 'complete',
+            message: '✅ Direct edit complete',
+            progress: 100
+          });
+        }
         
         return {
           success: true,
@@ -141,6 +158,14 @@ async function routeRequest(
         
       case 'META_CHAT':
         // Conversational AI for questions
+        if (broadcast) {
+          await broadcast('route:meta_chat', {
+            status: 'thinking',
+            message: '💭 Analyzing your question...',
+            progress: 30
+          });
+        }
+        
         const { data: chatData, error: chatError } = await supabase.functions.invoke('conversational-ai', {
           body: {
             request,
@@ -150,6 +175,14 @@ async function routeRequest(
         
         if (chatError) throw chatError;
         
+        if (broadcast) {
+          await broadcast('route:complete', {
+            status: 'complete',
+            message: '✅ Response ready',
+            progress: 100
+          });
+        }
+        
         return {
           success: true,
           route: 'META_CHAT',
@@ -158,8 +191,17 @@ async function routeRequest(
         };
         
       case 'FEATURE_BUILD':
-        // Phase 3: Use Multi-Model Orchestrator for best quality
+        // 🚀 Phase 3: Use Multi-Model Orchestrator for best quality
         console.log('🎨 Using Multi-Model Orchestrator (Phase 3)');
+        
+        if (broadcast) {
+          await broadcast('orchestration:start', {
+            status: 'orchestrating',
+            message: '🎯 Selecting optimal AI model...',
+            progress: 35
+          });
+        }
+        
         const { data: multiModelData, error: multiModelError } = await supabase.functions.invoke('multi-model-orchestrator', {
           body: {
             request,
@@ -170,6 +212,15 @@ async function routeRequest(
         
         if (multiModelError || !multiModelData) {
           console.warn('⚠️ Multi-model orchestrator failed, falling back to mega-mind');
+          
+          if (broadcast) {
+            await broadcast('orchestration:fallback', {
+              status: 'retrying',
+              message: '🔄 Using fallback strategy...',
+              progress: 40
+            });
+          }
+          
           const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('mega-mind-orchestrator', {
             body: {
               request,
@@ -190,6 +241,14 @@ async function routeRequest(
           };
         }
         
+        if (broadcast) {
+          await broadcast('orchestration:complete', {
+            status: 'validating',
+            message: `✅ Generated with ${multiModelData?.strategy?.model || 'AI'} (Quality: ${multiModelData?.qualityScore || 0}/100)`,
+            progress: 95
+          });
+        }
+        
         return {
           success: true,
           route: 'FEATURE_BUILD',
@@ -201,6 +260,14 @@ async function routeRequest(
         
       case 'REFACTOR':
         // Refactoring still uses mega-mind for now
+        if (broadcast) {
+          await broadcast('route:refactor', {
+            status: 'refactoring',
+            message: '🔧 Optimizing code structure...',
+            progress: 30
+          });
+        }
+        
         const { data: orchData, error: orchError } = await supabase.functions.invoke('mega-mind-orchestrator', {
           body: {
             request,
@@ -211,6 +278,14 @@ async function routeRequest(
         });
         
         if (orchError) throw orchError;
+        
+        if (broadcast) {
+          await broadcast('route:complete', {
+            status: 'complete',
+            message: '✅ Refactoring complete',
+            progress: 100
+          });
+        }
         
         return {
           success: true,
@@ -224,6 +299,15 @@ async function routeRequest(
     }
   } catch (error) {
     console.error(`❌ Routing failed for ${decision.route}:`, error);
+    
+    if (broadcast) {
+      await broadcast('route:error', {
+        status: 'error',
+        message: `❌ ${decision.route} failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        progress: 0
+      });
+    }
+    
     throw error;
   }
 }
@@ -240,7 +324,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🔍 [ROUTER FUNCTION] Parsing request body');
+    console.log('🚀 [UNIVERSAL ROUTER] ====== REQUEST RECEIVED ======');
     const body = await req.json();
     const { 
       request, 
@@ -250,26 +334,55 @@ serve(async (req) => {
       context = {}
     } = body;
 
-    console.log('🔍 [ROUTER FUNCTION] Request parsed:', { 
-      hasRequest: !!request,
+    console.log('📋 [UNIVERSAL ROUTER] Request details:', { 
+      requestPreview: request?.substring(0, 100) + '...',
       hasConversationId: !!conversationId,
       hasUserId: !!userId,
       hasProjectId: !!projectId,
-      requestPreview: request?.substring(0, 50)
-    });
-
-    console.log('🚀 Universal Router (Phase 2):', { 
-      request: request.substring(0, 50) + '...',
-      projectId
+      mode: context.mode
     });
 
     // Initialize Supabase
-    console.log('🔍 [ROUTER FUNCTION] Initializing Supabase client');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // PHASE 2: Check cache first
+    // 🚀 ENTERPRISE: Create unified broadcast function
+    const broadcast = async (eventType: string, data: any) => {
+      const channelId = projectId || conversationId;
+      if (!channelId) return;
+      
+      try {
+        await supabase.channel(`ai-status-${channelId}`)
+          .send({
+            type: 'broadcast',
+            event: eventType,
+            payload: { 
+              ...data, 
+              timestamp: new Date().toISOString(),
+              source: 'universal-router'
+            }
+          });
+        console.log(`📡 [BROADCAST] ${eventType}:`, data.message || data.status);
+      } catch (error) {
+        console.error('❌ Broadcast failed:', error);
+      }
+    };
+
+    // Broadcast: Starting routing
+    await broadcast('routing:start', {
+      status: 'analyzing',
+      message: '🔍 Understanding your request...',
+      progress: 2
+    });
+
+    // 🚀 PHASE 2: Check cache first (autonomous decision gate #1)
+    await broadcast('cache:checking', {
+      status: 'checking',
+      message: '💾 Checking if I\'ve seen this before...',
+      progress: 5
+    });
+    
     const { data: cacheData } = await supabase.functions.invoke('intelligent-cache-manager', {
       body: {
         operation: 'get',
@@ -279,7 +392,14 @@ serve(async (req) => {
     });
 
     if (cacheData?.cached) {
-      console.log('⚡ Returning cached result');
+      console.log('⚡ [CACHE HIT] Returning instant cached result');
+      
+      await broadcast('cache:hit', {
+        status: 'complete',
+        message: '⚡ Found it! Using cached result (instant)',
+        progress: 100
+      });
+      
       return new Response(
         JSON.stringify({
           success: true,
@@ -294,11 +414,44 @@ serve(async (req) => {
       );
     }
 
-    // Step 1: Fast intent classification (pattern-based, no AI)
+    console.log('❌ [CACHE MISS] No cached result found, proceeding with classification');
+    
+    await broadcast('routing:classifying', {
+      status: 'analyzing',
+      message: '🎯 Determining best approach...',
+      progress: 10
+    });
+
+    // 🚀 STEP 1: Fast intent classification (autonomous decision gate #2)
     let decision = classifyIntent(request, context);
     
-    // PHASE 2: Adjust routing based on user preferences
+    console.log(`🤖 [CLASSIFICATION] Initial decision:`, {
+      route: decision.route,
+      confidence: decision.confidence,
+      reasoning: decision.reasoning
+    });
+    
+    // Broadcast classification decision
+    await broadcast('routing:classified', {
+      status: 'classified',
+      message: `✅ Classified as: ${decision.route}`,
+      progress: 15,
+      decision: {
+        route: decision.route,
+        confidence: decision.confidence,
+        reasoning: decision.reasoning,
+        estimatedTime: decision.estimatedTime
+      }
+    });
+    
+    // 🚀 PHASE 2: Adjust routing with learned preferences (autonomous decision gate #3)
     if (userId) {
+      await broadcast('routing:learning', {
+        status: 'optimizing',
+        message: '🧠 Applying learned preferences...',
+        progress: 18
+      });
+      
       const { data: prefData } = await supabase.functions.invoke('user-preference-learner', {
         body: {
           operation: 'adjust-routing',
@@ -309,20 +462,29 @@ serve(async (req) => {
       });
 
       if (prefData?.adjusted) {
+        console.log('🧠 [LEARNING] Adjusted routing with user preferences:', prefData.adjusted);
+        
         decision = {
           ...decision,
           route: prefData.adjusted.route as any,
           confidence: prefData.adjusted.confidence,
           reasoning: `${decision.reasoning} | ${prefData.adjusted.reasoning}`
         };
-        console.log('🧠 Adjusted routing with user preferences:', prefData.adjusted);
+        
+        await broadcast('routing:adjusted', {
+          status: 'optimized',
+          message: '✨ Applied learned optimizations',
+          progress: 20,
+          adjustment: prefData.adjusted
+        });
       }
     }
     
-    console.log(`📊 Classification:`, {
+    console.log(`📊 [FINAL DECISION]`, {
       route: decision.route,
       confidence: decision.confidence,
-      reasoning: decision.reasoning
+      estimatedTime: decision.estimatedTime,
+      estimatedCost: decision.estimatedCost
     });
 
     // Log routing decision
@@ -338,12 +500,20 @@ serve(async (req) => {
       estimated_cost: decision.estimatedCost
     });
 
-    // Step 2: Route to appropriate handler
+    // 🚀 STEP 2: Route to appropriate handler with event broadcasting
+    await broadcast('routing:executing', {
+      status: 'routing',
+      message: `🎯 Routing to: ${decision.route}`,
+      progress: 25,
+      route: decision.route
+    });
+    
     const result = await routeRequest(decision, request, {
       conversationId,
       userId,
       projectId,
-      context
+      context,
+      broadcast // Pass broadcast function to route handlers
     }, supabase);
 
     // Log metrics
