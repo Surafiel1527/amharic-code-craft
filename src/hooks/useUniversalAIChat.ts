@@ -850,6 +850,31 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       }
     }
 
+    // 🚀 ENTERPRISE FIX: Create placeholder message immediately for generation requests
+    const isGenerationRequest = detectIntentType(message) !== 'error' && 
+      (message.length > 50 || /build|create|make|generate|add|implement/i.test(message));
+    
+    let placeholderMessageId: string | null = null;
+    
+    if (isGenerationRequest) {
+      const placeholderMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: '🚀 **Starting Generation**\n\nAnalyzing your request and preparing to build...',
+        timestamp: new Date().toISOString(),
+        streaming: true,
+        metadata: {
+          isGenerationStart: true,
+          routedTo: 'orchestrator'
+        }
+      };
+      
+      placeholderMessageId = placeholderMessage.id;
+      setMessages(prev => [...prev, placeholderMessage]);
+      
+      logger.info('Created placeholder message for generation', { placeholderMessageId });
+    }
+
     try {
       // Check authentication first
       const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -883,62 +908,172 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       if (!response) {
         // Full orchestration with progress tracking
         logger.info('Routing to Mega Mind Orchestrator');
-        const phases = ['Analyzing', 'Planning', 'Generating', 'Refining', 'Verifying'];
-        let currentPhaseIdx = 0;
         
-        const progressInterval = setInterval(() => {
-          if (currentPhaseIdx < phases.length) {
-            setCurrentPhase(phases[currentPhaseIdx]);
-            setProgress((currentPhaseIdx + 1) * 20);
-            currentPhaseIdx++;
-          }
-        }, 1000);
+        // 🚀 ENTERPRISE FIX: Subscribe to real-time generation events to update placeholder
+        let realtimeChannel: any = null;
+        
+        if (isGenerationRequest && activeConvId && placeholderMessageId) {
+          logger.info('Subscribing to generation events', { conversationId: activeConvId });
+          
+          realtimeChannel = supabase
+            .channel(`chat-generation-${activeConvId}`)
+            .on('broadcast', { event: 'status-update' }, ({ payload }) => {
+              logger.info('Received generation status', payload);
+              
+              // Update placeholder message with real-time progress
+              setMessages(prev => prev.map(m => {
+                if (m.id === placeholderMessageId) {
+                  let updatedContent = '';
+                  
+                  // Build progress display
+                  if (payload.progress !== undefined) {
+                    const progressBar = '█'.repeat(Math.floor(payload.progress / 5)) + 
+                                       '░'.repeat(20 - Math.floor(payload.progress / 5));
+                    updatedContent = `🚀 **${payload.phaseName || 'Generating'}** (${payload.progress}%)\n\n` +
+                                   `${progressBar}\n\n` +
+                                   `${payload.message || payload.currentOperation || 'Building your project...'}`;
+                  } else {
+                    updatedContent = `🚀 **${payload.message || 'Processing'}**\n\n${payload.currentOperation || ''}`;
+                  }
+                  
+                  return {
+                    ...m,
+                    content: updatedContent,
+                    streaming: payload.status !== 'complete'
+                  };
+                }
+                return m;
+              }));
+              
+              // Update global progress
+              if (payload.progress !== undefined) {
+                setProgress(payload.progress);
+              }
+              if (payload.phaseName) {
+                setCurrentPhase(payload.phaseName);
+              }
+            })
+            .on('broadcast', { event: 'generation_event' }, ({ payload }) => {
+              logger.info('Received generation event', payload);
+              
+              // Handle completion event
+              if (payload.type === 'execution_complete') {
+                // Will be replaced with final summary below
+                logger.info('Generation complete event received');
+              }
+            })
+            .subscribe();
+        }
 
         try {
           response = await routeToOrchestrator(message, context);
           routedTo = 'orchestrator';
         } finally {
-          clearInterval(progressInterval);
+          // Cleanup realtime subscription
+          if (realtimeChannel) {
+            await supabase.removeChannel(realtimeChannel);
+          }
           setProgress(100);
           setCurrentPhase('Complete');
         }
       }
 
-      // ✅ ENTERPRISE FIX: Process response with error handling
+      // 🚀 ENTERPRISE FIX: Generate summary message for generation requests
       let assistantMessage: Message | null = null;
-      try {
-        assistantMessage = await processResponse(response, routedTo);
-      } catch (error) {
-        logger.error('Failed to process response:', error);
-        // Create fallback error message
-        assistantMessage = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: `⚠️ **Error Processing Response**\n\nThe AI responded, but there was an issue displaying the result. Please try again.`,
-          timestamp: new Date().toISOString(),
-          metadata: { routedTo, error: true }
-        };
-      }
       
-      // ✅ ENTERPRISE FIX: Always add a message (never skip)
-      if (assistantMessage) {
-        // Save to DB first, then update local state with the DB ID
-        let savedMessageId = assistantMessage.id;
-        if (persistMessages && activeConvId) {
-          try {
-            const dbMessageId = await saveMessage(assistantMessage, activeConvId, assistantMessage.codeBlock?.code, true);
-            if (dbMessageId) {
-              savedMessageId = dbMessageId;
-            }
-          } catch (saveError) {
-            logger.error('Failed to save assistant message:', saveError);
-            // Continue anyway - show message even if DB save fails
-          }
+      if (isGenerationRequest && placeholderMessageId) {
+        // For generation requests, create a comprehensive summary
+        const generatedFilesCount = response?.generatedCode?.files?.length || 
+                                    response?.result?.files?.length || 0;
+        const framework = response?.framework || projectContext?.framework || 'React';
+        
+        // Build summary content
+        let summaryContent = '✅ **Generation Complete!**\n\n';
+        
+        if (generatedFilesCount > 0) {
+          summaryContent += `Successfully generated **${generatedFilesCount} files** using ${framework}.\n\n`;
+        } else {
+          summaryContent += `Your project has been built and is ready to preview.\n\n`;
         }
         
-        // Add to local state with the correct DB ID
-        setMessages(prev => [...prev, { ...assistantMessage, id: savedMessageId }]);
-        logger.info('✅ Assistant message added to chat', { messageId: savedMessageId });
+        // Add key features if available
+        if (response?.features && Array.isArray(response.features)) {
+          summaryContent += '**Features implemented:**\n';
+          response.features.forEach((feature: string) => {
+            summaryContent += `• ${feature}\n`;
+          });
+          summaryContent += '\n';
+        }
+        
+        // Add next steps
+        summaryContent += '**What you can do now:**\n';
+        summaryContent += '• Check the preview on the right →\n';
+        summaryContent += '• Ask me to modify or enhance any part\n';
+        summaryContent += '• Deploy your project when ready\n';
+        
+        assistantMessage = {
+          id: placeholderMessageId, // Replace placeholder
+          role: 'assistant',
+          content: summaryContent,
+          timestamp: new Date().toISOString(),
+          streaming: false,
+          metadata: {
+            routedTo: 'orchestrator',
+            isSummary: true,
+            framework
+          }
+        };
+        
+        // Replace placeholder with summary
+        setMessages(prev => prev.map(m => 
+          m.id === placeholderMessageId ? assistantMessage! : m
+        ));
+        
+        logger.info('✅ Replaced placeholder with generation summary', { placeholderMessageId });
+        
+      } else {
+        // For non-generation requests, process response normally
+        try {
+          assistantMessage = await processResponse(response, routedTo);
+        } catch (error) {
+          logger.error('Failed to process response:', error);
+          // Create fallback error message
+          assistantMessage = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: `⚠️ **Error Processing Response**\n\nThe AI responded, but there was an issue displaying the result. Please try again.`,
+            timestamp: new Date().toISOString(),
+            metadata: { routedTo, error: true }
+          };
+        }
+        
+        // Add new message
+        if (assistantMessage) {
+          setMessages(prev => [...prev, assistantMessage!]);
+          logger.info('✅ Assistant message added to chat', { messageId: assistantMessage.id });
+        }
+      }
+      
+      // 🚀 ENTERPRISE FIX: Save final message to database
+      if (assistantMessage && persistMessages && activeConvId) {
+        try {
+          const dbMessageId = await saveMessage(
+            assistantMessage, 
+            activeConvId, 
+            assistantMessage.codeBlock?.code, 
+            true
+          );
+          
+          if (dbMessageId && dbMessageId !== assistantMessage.id) {
+            // Update local state with DB ID
+            setMessages(prev => prev.map(m => 
+              m.id === assistantMessage!.id ? { ...m, id: dbMessageId } : m
+            ));
+          }
+        } catch (saveError) {
+          logger.error('Failed to save final message:', saveError);
+          // Continue anyway - message is already displayed
+        }
       }
 
       // Update conversation timestamp

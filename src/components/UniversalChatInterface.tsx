@@ -187,7 +187,7 @@ export function UniversalChatInterface({
     mode: operationMode // Pass operation mode to the hook
   });
 
-  // ✅ FIX: Subscribe to conversation-level generation status (matches orchestrator broadcast)
+  // ✅ ENTERPRISE FIX: Subscribe to generation events for inline progress display
   useEffect(() => {
     if (!conversationId) return;
     
@@ -197,6 +197,22 @@ export function UniversalChatInterface({
       .channel(`chat-gen-status-${conversationId}`)
       .on('broadcast', { event: 'status-update' }, ({ payload }) => {
         console.log('📥 Chat received status-update:', payload);
+        
+        // Update inline generation status for progress display
+        if (payload.status === 'generating' || payload.progress !== undefined) {
+          setGenerationStatus({
+            isGenerating: true,
+            message: payload.message || payload.currentOperation || 'Generating...',
+            progress: payload.progress || 0
+          });
+        } else if (payload.status === 'complete' || payload.status === 'error') {
+          // Clear generation status on completion
+          setGenerationStatus({
+            isGenerating: false,
+            message: '',
+            progress: 100
+          });
+        }
         
         const isGenerating = payload.status !== 'idle' && payload.status !== 'complete';
         setGenerationStatus({
@@ -450,7 +466,10 @@ export function UniversalChatInterface({
               
               // PERMANENT THINKING STEPS - Lovable/Replit style
               // For assistant messages: always show steps from previous user message (permanent)
-              const showStepsForAssistant = message.role === 'assistant' && stepsForMessage && stepsForMessage.length > 0;
+              const showStepsForAssistant = message.role === 'assistant' && 
+                stepsForMessage && 
+                stepsForMessage.length > 0 &&
+                !message.metadata?.isSummary; // Don't show steps above summary messages (they're integrated)
               
               // For user messages: show steps if it's the last one OR if we have stored steps for it
               const hasAssistantResponseAfter = message.role === 'user' && messages[index + 1]?.role === 'assistant';
@@ -523,7 +542,28 @@ export function UniversalChatInterface({
                       {/* Message Content */}
                       <div className="text-sm whitespace-pre-wrap prose prose-sm dark:prose-invert max-w-none">
                         {message.streaming ? (
-                          <span>{message.content}<span className="animate-pulse">▋</span></span>
+                          <div className="space-y-2">
+                            <span>{message.content}</span>
+                            <span className="animate-pulse">▋</span>
+                            {/* Show inline progress for streaming generation messages */}
+                            {message.metadata?.isGenerationStart && generationStatus.isGenerating && (
+                              <div className="mt-3 p-3 bg-muted/50 rounded-md border border-border">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
+                                  <span className="text-xs font-medium">{generationStatus.message}</span>
+                                </div>
+                                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-primary transition-all duration-300 ease-out"
+                                    style={{ width: `${generationStatus.progress}%` }}
+                                  />
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1 text-right">
+                                  {generationStatus.progress}%
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           message.content
                         )}
