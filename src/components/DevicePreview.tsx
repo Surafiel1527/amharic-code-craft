@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Monitor, Smartphone, Tablet } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Monitor, Smartphone, Tablet, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import sdk from '@stackblitz/sdk';
 
 type DeviceSize = "mobile" | "tablet" | "desktop";
 
@@ -15,30 +16,105 @@ interface DevicePreviewProps {
 export function DevicePreview({ generatedCode, projectFiles, framework = 'html' }: DevicePreviewProps) {
   const { t } = useLanguage();
   const [deviceSize, setDeviceSize] = useState<DeviceSize>("desktop");
+  const [isLoadingReact, setIsLoadingReact] = useState(false);
+  const stackblitzRef = useRef<HTMLDivElement>(null);
   
   // Check if this is a React project
   const isReactProject = framework === 'react';
   
-  // For React projects, show a helpful message with download option
-  const reactPreviewMessage = isReactProject ? (
-    <div className="absolute inset-0 flex items-center justify-center text-muted-foreground p-8">
-      <div className="text-center space-y-4 max-w-md">
-        <div className="text-5xl opacity-20">⚛️</div>
-        <h3 className="text-lg font-semibold">React Project Generated</h3>
-        <p className="text-sm">
-          React projects require a build tool to preview. Your project has been fully generated with {projectFiles ? Object.keys(projectFiles).length : 0} files.
-        </p>
-        <div className="space-y-2 text-sm text-left bg-muted/50 p-4 rounded-lg">
-          <p className="font-medium">To see your project:</p>
-          <ol className="list-decimal list-inside space-y-1 ml-2">
-            <li>Click "Multi-File" tab to see all generated files</li>
-            <li>Download the ZIP file</li>
-            <li>Extract and run: <code className="bg-background px-2 py-1 rounded">npm install && npm run dev</code></li>
-          </ol>
-        </div>
-      </div>
-    </div>
-  ) : null;
+  // Embed StackBlitz for React projects
+  useEffect(() => {
+    if (!isReactProject || !projectFiles || !stackblitzRef.current) return;
+    
+    const embedStackBlitz = async () => {
+      setIsLoadingReact(true);
+      
+      try {
+        // Convert projectFiles to StackBlitz format
+        const files: Record<string, string> = {};
+        
+        Object.entries(projectFiles).forEach(([path, content]) => {
+          // Remove 'src/' prefix if present for StackBlitz
+          const stackblitzPath = path.startsWith('src/') ? path : `src/${path}`;
+          files[stackblitzPath] = typeof content === 'string' ? content : '';
+        });
+        
+        // Ensure we have required files
+        if (!files['package.json']) {
+          files['package.json'] = JSON.stringify({
+            name: 'react-app',
+            version: '1.0.0',
+            type: 'module',
+            scripts: {
+              dev: 'vite',
+              build: 'vite build',
+              preview: 'vite preview'
+            },
+            dependencies: {
+              'react': '^18.3.1',
+              'react-dom': '^18.3.1'
+            },
+            devDependencies: {
+              '@types/react': '^18.3.1',
+              '@types/react-dom': '^18.3.1',
+              '@vitejs/plugin-react': '^4.3.1',
+              'typescript': '^5.2.2',
+              'vite': '^5.0.0'
+            }
+          }, null, 2);
+        }
+        
+        if (!files['vite.config.ts'] && !files['vite.config.js']) {
+          files['vite.config.ts'] = `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+})`;
+        }
+        
+        if (!files['index.html']) {
+          files['index.html'] = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>React App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>`;
+        }
+        
+        // Embed StackBlitz
+        await sdk.embedProject(
+          stackblitzRef.current,
+          {
+            title: 'React App',
+            description: 'Generated React application',
+            template: 'node',
+            files
+          },
+          {
+            openFile: 'src/App.tsx',
+            view: 'preview',
+            hideExplorer: true,
+            hideNavigation: true,
+            forceEmbedLayout: true,
+            height: '100%'
+          }
+        );
+      } catch (error) {
+        console.error('StackBlitz embed error:', error);
+      } finally {
+        setIsLoadingReact(false);
+      }
+    };
+    
+    embedStackBlitz();
+  }, [isReactProject, projectFiles]);
   
   // Clean code by removing markdown code fences and any JSON artifacts - PRODUCTION READY
   const cleanCode = (() => {
@@ -116,7 +192,17 @@ export function DevicePreview({ generatedCode, projectFiles, framework = 'html' 
 
       <div className="relative rounded-lg border border-border bg-background/50 overflow-hidden h-[calc(100vh-250px)] flex items-start justify-center">
         {isReactProject ? (
-          reactPreviewMessage
+          <div className="w-full h-full relative">
+            {isLoadingReact && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+                <div className="text-center space-y-2">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading React dev server...</p>
+                </div>
+              </div>
+            )}
+            <div ref={stackblitzRef} className="w-full h-full" />
+          </div>
         ) : cleanCode ? (
           <div
             className={cn(
