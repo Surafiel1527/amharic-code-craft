@@ -699,6 +699,74 @@ export type Database = {
         }
         Relationships: []
       }
+      applied_improvements: {
+        Row: {
+          affected_functions: string[] | null
+          affected_tables: string[] | null
+          applied_at: string
+          applied_by: string
+          approval_id: string
+          created_at: string
+          deployment_safe: boolean | null
+          id: string
+          item_id: string
+          item_type: string
+          metadata: Json | null
+          new_state: Json
+          previous_state: Json
+          rollback_reason: string | null
+          rolled_back: boolean | null
+          rolled_back_at: string | null
+          rolled_back_by: string | null
+        }
+        Insert: {
+          affected_functions?: string[] | null
+          affected_tables?: string[] | null
+          applied_at?: string
+          applied_by: string
+          approval_id: string
+          created_at?: string
+          deployment_safe?: boolean | null
+          id?: string
+          item_id: string
+          item_type: string
+          metadata?: Json | null
+          new_state: Json
+          previous_state: Json
+          rollback_reason?: string | null
+          rolled_back?: boolean | null
+          rolled_back_at?: string | null
+          rolled_back_by?: string | null
+        }
+        Update: {
+          affected_functions?: string[] | null
+          affected_tables?: string[] | null
+          applied_at?: string
+          applied_by?: string
+          approval_id?: string
+          created_at?: string
+          deployment_safe?: boolean | null
+          id?: string
+          item_id?: string
+          item_type?: string
+          metadata?: Json | null
+          new_state?: Json
+          previous_state?: Json
+          rollback_reason?: string | null
+          rolled_back?: boolean | null
+          rolled_back_at?: string | null
+          rolled_back_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applied_improvements_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "admin_approval_queue"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       architecture_plans: {
         Row: {
           approved: boolean | null
@@ -6589,6 +6657,62 @@ export type Database = {
           },
         ]
       }
+      rollback_history: {
+        Row: {
+          after_rollback: Json
+          before_rollback: Json
+          error_message: string | null
+          id: string
+          improvement_id: string
+          metadata: Json | null
+          reason: string
+          rolled_back_at: string
+          rolled_back_by: string
+          success: boolean
+          verification_result: Json | null
+          verified: boolean | null
+          verified_at: string | null
+        }
+        Insert: {
+          after_rollback: Json
+          before_rollback: Json
+          error_message?: string | null
+          id?: string
+          improvement_id: string
+          metadata?: Json | null
+          reason: string
+          rolled_back_at?: string
+          rolled_back_by: string
+          success: boolean
+          verification_result?: Json | null
+          verified?: boolean | null
+          verified_at?: string | null
+        }
+        Update: {
+          after_rollback?: Json
+          before_rollback?: Json
+          error_message?: string | null
+          id?: string
+          improvement_id?: string
+          metadata?: Json | null
+          reason?: string
+          rolled_back_at?: string
+          rolled_back_by?: string
+          success?: boolean
+          verification_result?: Json | null
+          verified?: boolean | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rollback_history_improvement_id_fkey"
+            columns: ["improvement_id"]
+            isOneToOne: false
+            referencedRelation: "applied_improvements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       security_events: {
         Row: {
           created_at: string
@@ -8517,6 +8641,10 @@ export type Database = {
         Args: { p_credential_id: string; p_hours?: number }
         Returns: number
       }
+      check_rollback_safety: {
+        Args: { p_improvement_id: string }
+        Returns: Json
+      }
       cleanup_expired_cache: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -8531,6 +8659,10 @@ export type Database = {
       }
       execute_migration: {
         Args: { migration_sql: string }
+        Returns: Json
+      }
+      execute_rollback: {
+        Args: { p_improvement_id: string; p_reason: string; p_user_id: string }
         Returns: Json
       }
       generate_share_token: {

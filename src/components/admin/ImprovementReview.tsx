@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, XCircle, Code, FileText, AlertCircle } from "lucide-react";
+import { CheckCircle, XCircle, Code, FileText, AlertCircle, Undo2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RollbackManager } from "./RollbackManager";
 
 interface ImprovementReviewProps {
   item: any;
