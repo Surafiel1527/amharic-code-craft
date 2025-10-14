@@ -5,6 +5,9 @@
  */
 
 import { callAIWithFallback } from './aiHelpers.ts';
+import { logger } from './logger.ts';
+import { retryWithBackoff, withTimeout, TimeoutError } from './errorHandler.ts';
+import { validateString, validateObject } from './validation.ts';
 
 export interface ReasoningContext {
   userRequest: string;
@@ -33,24 +36,62 @@ export interface ReasoningResult {
 export async function reasonAboutRequest(
   context: ReasoningContext
 ): Promise<ReasoningResult> {
+  // Validate inputs
+  const requestValidation = validateString(context.userRequest, { 
+    minLength: 1, 
+    maxLength: 50000 
+  });
+  if (!requestValidation.success) {
+    logger.error('Invalid user request for reasoning', requestValidation.error);
+    throw new Error(`Invalid user request: ${requestValidation.error}`);
+  }
+
+  const contextValidation = validateObject(context.projectContext);
+  if (!contextValidation.success) {
+    logger.error('Invalid project context', contextValidation.error);
+    throw new Error(`Invalid project context: ${contextValidation.error}`);
+  }
+
+  logger.info('Starting AI reasoning', { 
+    requestLength: context.userRequest.length,
+    hasSearchResults: !!context.searchResults
+  });
   
   const prompt = buildReasoningPrompt(context);
   
   try {
-    const response = await callAIWithFallback(
-      [{ role: 'user', content: prompt }],
-      {
-        systemPrompt: 'You are an expert software architect and developer. Provide deep, structured reasoning about development requests.',
-        preferredModel: 'google/gemini-2.5-pro', // Use most powerful model
-        maxTokens: 2000
+    const response = await retryWithBackoff(
+      () => withTimeout(
+        () => callAIWithFallback(
+          [{ role: 'user', content: prompt }],
+          {
+            systemPrompt: 'You are an expert software architect and developer. Provide deep, structured reasoning about development requests.',
+            preferredModel: 'google/gemini-2.5-pro',
+            maxTokens: 2000
+          }
+        ),
+        30000 // 30 second timeout
+      ),
+      { 
+        maxAttempts: 2,
+        onRetry: (attempt, error) => {
+          logger.warn(`AI reasoning retry attempt ${attempt}`, { error: error.message });
+        }
       }
     );
 
     const reasoning = response.data.choices[0].message.content;
-    return parseReasoningResponse(reasoning);
+    const result = parseReasoningResponse(reasoning);
+    
+    logger.info('AI reasoning completed', { 
+      decision: result.decision, 
+      confidence: result.confidence 
+    });
+    
+    return result;
 
   } catch (error) {
-    console.error('AI reasoning error:', error);
+    logger.error('AI reasoning failed', error);
     return {
       decision: 'proceed_cautiously',
       confidence: 0.5,
@@ -150,6 +191,27 @@ export async function generateCodeWithReasoning(
   explanation: string;
   reasoning: string[];
 }> {
+  // Validate inputs
+  const funcValidation = validateString(requirements.functionality, { 
+    minLength: 1, 
+    maxLength: 10000 
+  });
+  if (!funcValidation.success) {
+    throw new Error(`Invalid functionality: ${funcValidation.error}`);
+  }
+
+  const frameworkValidation = validateString(requirements.framework, { 
+    minLength: 1, 
+    maxLength: 100 
+  });
+  if (!frameworkValidation.success) {
+    throw new Error(`Invalid framework: ${frameworkValidation.error}`);
+  }
+
+  logger.info('Starting code generation with reasoning', { 
+    framework: requirements.framework,
+    constraintCount: requirements.constraints.length 
+  });
   
   const prompt = `Generate production-ready code for this requirement:
 
@@ -176,12 +238,23 @@ Return JSON:
 }`;
 
   try {
-    const response = await callAIWithFallback(
-      [{ role: 'user', content: prompt }],
-      {
-        systemPrompt: 'You are an expert developer. Write clean, production-ready code with clear reasoning.',
-        preferredModel: 'google/gemini-2.5-flash',
-        maxTokens: 4000
+    const response = await retryWithBackoff(
+      () => withTimeout(
+        () => callAIWithFallback(
+          [{ role: 'user', content: prompt }],
+          {
+            systemPrompt: 'You are an expert developer. Write clean, production-ready code with clear reasoning.',
+            preferredModel: 'google/gemini-2.5-flash',
+            maxTokens: 4000
+          }
+        ),
+        45000 // 45 second timeout for code generation
+      ),
+      { 
+        maxAttempts: 2,
+        onRetry: (attempt, error) => {
+          logger.warn(`Code generation retry attempt ${attempt}`, { error: error.message });
+        }
       }
     );
 
@@ -190,14 +263,22 @@ Return JSON:
     
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      return {
+      const result = {
         code: parsed.code || '',
         explanation: parsed.explanation || '',
         reasoning: parsed.reasoning || []
       };
+      
+      logger.info('Code generation completed', { 
+        codeLength: result.code.length,
+        hasExplanation: !!result.explanation 
+      });
+      
+      return result;
     }
 
     // Fallback: treat entire response as code
+    logger.warn('Could not parse structured response, using raw content');
     return {
       code: content,
       explanation: 'Generated code',
@@ -205,7 +286,7 @@ Return JSON:
     };
 
   } catch (error) {
-    console.error('Code generation error:', error);
+    logger.error('Code generation failed', error);
     throw error;
   }
 }
@@ -226,6 +307,21 @@ export async function analyzeErrorWithAI(
     reasoning: string;
   }>;
 }> {
+  // Validate inputs
+  const errorValidation = validateString(error, { minLength: 1, maxLength: 10000 });
+  if (!errorValidation.success) {
+    throw new Error(`Invalid error string: ${errorValidation.error}`);
+  }
+
+  const codeValidation = validateString(code, { minLength: 0, maxLength: 50000 });
+  if (!codeValidation.success) {
+    throw new Error(`Invalid code string: ${codeValidation.error}`);
+  }
+
+  logger.info('Starting error analysis', { 
+    errorLength: error.length,
+    codeLength: code.length 
+  });
   
   const prompt = `Analyze this error and suggest fixes:
 
@@ -253,12 +349,23 @@ Return JSON:
 }`;
 
   try {
-    const response = await callAIWithFallback(
-      [{ role: 'user', content: prompt }],
-      {
-        systemPrompt: 'You are a debugging expert. Identify root causes and provide precise fixes.',
-        preferredModel: 'google/gemini-2.5-flash',
-        maxTokens: 2000
+    const response = await retryWithBackoff(
+      () => withTimeout(
+        () => callAIWithFallback(
+          [{ role: 'user', content: prompt }],
+          {
+            systemPrompt: 'You are a debugging expert. Identify root causes and provide precise fixes.',
+            preferredModel: 'google/gemini-2.5-flash',
+            maxTokens: 2000
+          }
+        ),
+        30000 // 30 second timeout
+      ),
+      { 
+        maxAttempts: 2,
+        onRetry: (attempt, error) => {
+          logger.warn(`Error analysis retry attempt ${attempt}`, { error: error.message });
+        }
       }
     );
 
@@ -266,9 +373,14 @@ Return JSON:
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      const result = JSON.parse(jsonMatch[0]);
+      logger.info('Error analysis completed', { 
+        fixCount: result.suggestedFixes?.length || 0 
+      });
+      return result;
     }
 
+    logger.warn('Could not parse structured error analysis response');
     return {
       diagnosis: content,
       rootCause: 'Unknown',
@@ -276,7 +388,7 @@ Return JSON:
     };
 
   } catch (error) {
-    console.error('Error analysis failed:', error);
+    logger.error('Error analysis failed', error);
     throw error;
   }
 }
