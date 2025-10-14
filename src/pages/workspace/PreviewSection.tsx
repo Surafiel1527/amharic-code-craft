@@ -310,6 +310,7 @@ npm run build
               conversationId={conversationId}
               projectId={projectId}
               mode="panel"
+              operationMode="enhance"
               persistMessages={true}
               selectedFiles={selectedFiles}
               projectFiles={Object.entries(fileContents).map(([path, content]) => ({
@@ -428,6 +429,7 @@ npm run build
             conversationId={conversationId}
             projectId={projectId}
             mode="inline"
+            operationMode="enhance"
             height="h-full"
             persistMessages={true}
             selectedFiles={selectedFiles}
