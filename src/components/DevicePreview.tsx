@@ -3,7 +3,6 @@ import { Monitor, Smartphone, Tablet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Sandpack } from "@codesandbox/sandpack-react";
 
 type DeviceSize = "mobile" | "tablet" | "desktop";
 
@@ -17,8 +16,43 @@ export function DevicePreview({ generatedCode, projectFiles, framework = 'html' 
   const { t } = useLanguage();
   const [deviceSize, setDeviceSize] = useState<DeviceSize>("desktop");
   
-  // Check if this is a React project with multiple files
-  const isReactProject = framework === 'react' && projectFiles && Object.keys(projectFiles).length > 1;
+  // Check if this is a React project
+  const isReactProject = framework === 'react';
+  
+  // For React projects, create a standalone HTML document with React CDN
+  const reactPreviewHTML = isReactProject && projectFiles ? `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    ${projectFiles['src/index.css'] || projectFiles['index.css'] || `
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      }
+      * { box-sizing: border-box; }
+    `}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    
+    ${projectFiles['src/App.tsx'] || projectFiles['App.tsx'] || generatedCode}
+    
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
+  ` : null;
   
   // Clean code by removing markdown code fences and any JSON artifacts - PRODUCTION READY
   const cleanCode = (() => {
@@ -95,7 +129,7 @@ export function DevicePreview({ generatedCode, projectFiles, framework = 'html' 
       </div>
 
       <div className="relative rounded-lg border border-border bg-background/50 overflow-hidden h-[calc(100vh-250px)] flex items-start justify-center">
-        {isReactProject && projectFiles ? (
+        {isReactProject && reactPreviewHTML ? (
           <div
             className={cn(
               "h-full transition-all duration-300 ease-in-out",
@@ -107,22 +141,11 @@ export function DevicePreview({ generatedCode, projectFiles, framework = 'html' 
               width: deviceSizes[deviceSize].width,
             }}
           >
-            <Sandpack
-              template="react-ts"
-              files={projectFiles}
-              theme="auto"
-              options={{
-                showNavigator: false,
-                showTabs: false,
-                showLineNumbers: false,
-                editorHeight: "100%",
-                editorWidthPercentage: 0,
-                classes: {
-                  "sp-wrapper": "h-full",
-                  "sp-layout": "h-full",
-                  "sp-preview-container": "h-full"
-                }
-              }}
+            <iframe
+              srcDoc={reactPreviewHTML}
+              className="w-full h-full border-0"
+              title="React Preview"
+              sandbox="allow-scripts"
             />
           </div>
         ) : cleanCode ? (
