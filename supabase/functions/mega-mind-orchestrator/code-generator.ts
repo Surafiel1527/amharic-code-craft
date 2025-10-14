@@ -541,7 +541,7 @@ export async function generateAndPackageCode(ctx: {
       
       // Save test file to database
       if (projectId) {
-        await platformSupabase.from('project_files').upsert({
+        const { error: testSaveError } = await platformSupabase.from('project_files').upsert({
           project_id: projectId,
           file_path: test.filePath,
           file_content: test.testContent,
@@ -550,7 +550,8 @@ export async function generateAndPackageCode(ctx: {
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'project_id,file_path'
-        }).catch((err: any) => console.warn(`Failed to save test ${test.filePath}:`, err));
+        });
+        if (testSaveError) console.warn(`Failed to save test ${test.filePath}:`, testSaveError);
       }
     }
     
@@ -596,7 +597,7 @@ export async function generateAndPackageCode(ctx: {
     const suggestionsMessage = formatNextStepsForDisplay(nextSteps);
     
     // Save suggestions as message
-    await platformSupabase.from('messages').insert({
+    const { error: suggestionsError } = await platformSupabase.from('messages').insert({
       conversation_id: conversationId,
       user_id: userId,
       role: 'assistant',
@@ -605,7 +606,8 @@ export async function generateAndPackageCode(ctx: {
         category: 'suggestions',
         suggestions: nextSteps
       }
-    }).catch((err: any) => console.warn('Failed to save suggestions:', err));
+    });
+    if (suggestionsError) console.warn('Failed to save suggestions:', suggestionsError);
     
     await stepTracker.trackStep('proactive_suggestions', `${nextSteps.length} suggestions generated`, broadcast, 'complete');
   }
