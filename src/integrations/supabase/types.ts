@@ -6951,6 +6951,48 @@ export type Database = {
           },
         ]
       }
+      routing_cache: {
+        Row: {
+          context_hash: string
+          created_at: string
+          expires_at: string
+          hit_count: number | null
+          id: string
+          last_accessed: string
+          request_hash: string
+          request_text: string
+          result: Json
+          route: string
+          user_id: string | null
+        }
+        Insert: {
+          context_hash: string
+          created_at?: string
+          expires_at: string
+          hit_count?: number | null
+          id?: string
+          last_accessed?: string
+          request_hash: string
+          request_text: string
+          result: Json
+          route: string
+          user_id?: string | null
+        }
+        Update: {
+          context_hash?: string
+          created_at?: string
+          expires_at?: string
+          hit_count?: number | null
+          id?: string
+          last_accessed?: string
+          request_hash?: string
+          request_text?: string
+          result?: Json
+          route?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       routing_decisions: {
         Row: {
           confidence: number
@@ -7001,6 +7043,7 @@ export type Database = {
           id: string
           route: string
           success: boolean
+          user_id: string | null
         }
         Insert: {
           actual_duration_ms: number
@@ -7009,6 +7052,7 @@ export type Database = {
           id?: string
           route: string
           success?: boolean
+          user_id?: string | null
         }
         Update: {
           actual_duration_ms?: number
@@ -7017,6 +7061,7 @@ export type Database = {
           id?: string
           route?: string
           success?: boolean
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -8976,6 +9021,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_cache_statistics: {
+        Args: { p_user_id?: string }
+        Returns: Json
+      }
       get_error_rate: {
         Args: { time_window?: unknown }
         Returns: number
@@ -9029,6 +9078,16 @@ export type Database = {
           route: string
           success_rate: number
           total_executions: number
+        }[]
+      }
+      get_user_route_preferences: {
+        Args: { p_user_id: string }
+        Returns: {
+          avg_duration_ms: number
+          route: string
+          success_count: number
+          success_rate: number
+          total_count: number
         }[]
       }
       get_user_storage_summary: {

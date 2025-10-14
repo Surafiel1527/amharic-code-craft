@@ -192,3 +192,14 @@ verify_jwt = true
 
 [functions.direct-code-editor]
 verify_jwt = true
+
+# ============================================
+# PHASE 2: INTELLIGENT ROUTING ENHANCEMENTS
+# Caching, Learning, and Optimization
+# ============================================
+
+[functions.intelligent-cache-manager]
+verify_jwt = true
+
+[functions.user-preference-learner]
+verify_jwt = true

@@ -188,7 +188,7 @@ async function routeRequest(
 }
 
 /**
- * Main request handler
+ * Main request handler with Phase 2 enhancements
  */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -205,7 +205,7 @@ serve(async (req) => {
       context = {}
     } = body;
 
-    console.log('🚀 Universal Router:', { 
+    console.log('🚀 Universal Router (Phase 2):', { 
       request: request.substring(0, 50) + '...',
       projectId
     });
@@ -215,8 +215,55 @@ serve(async (req) => {
     const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
+    // PHASE 2: Check cache first
+    const { data: cacheData } = await supabase.functions.invoke('intelligent-cache-manager', {
+      body: {
+        operation: 'get',
+        request,
+        context: { projectId, route: null }
+      }
+    });
+
+    if (cacheData?.cached) {
+      console.log('⚡ Returning cached result');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          cached: true,
+          result: cacheData.result,
+          metrics: {
+            duration: 0,
+            route: 'CACHED'
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Step 1: Fast intent classification (pattern-based, no AI)
-    const decision = classifyIntent(request, context);
+    let decision = classifyIntent(request, context);
+    
+    // PHASE 2: Adjust routing based on user preferences
+    if (userId) {
+      const { data: prefData } = await supabase.functions.invoke('user-preference-learner', {
+        body: {
+          operation: 'adjust-routing',
+          userId,
+          route: decision.route,
+          originalConfidence: decision.confidence
+        }
+      });
+
+      if (prefData?.adjusted) {
+        decision = {
+          ...decision,
+          route: prefData.adjusted.route as any,
+          confidence: prefData.adjusted.confidence,
+          reasoning: `${decision.reasoning} | ${prefData.adjusted.reasoning}`
+        };
+        console.log('🧠 Adjusted routing with user preferences:', prefData.adjusted);
+      }
+    }
     
     console.log(`📊 Classification:`, {
       route: decision.route,
@@ -247,11 +294,39 @@ serve(async (req) => {
 
     // Log metrics
     await supabase.from('routing_metrics').insert({
+      user_id: userId,
       route: decision.route,
       actual_duration_ms: result.duration,
       success: result.success,
       estimated_time: decision.estimatedTime
     });
+
+    // PHASE 2: Cache successful results
+    if (result.success && decision.route !== 'META_CHAT') {
+      await supabase.functions.invoke('intelligent-cache-manager', {
+        body: {
+          operation: 'set',
+          request,
+          context: { projectId, userId },
+          route: decision.route,
+          result: result.result,
+          ttlMinutes: decision.route === 'DIRECT_EDIT' ? 30 : 60
+        }
+      });
+    }
+
+    // PHASE 2: Record preference feedback
+    if (userId) {
+      await supabase.functions.invoke('user-preference-learner', {
+        body: {
+          operation: 'record-feedback',
+          userId,
+          route: decision.route,
+          success: result.success,
+          duration: result.duration
+        }
+      });
+    }
 
     console.log(`✅ Routed successfully to ${decision.route} in ${result.duration}ms`);
 
