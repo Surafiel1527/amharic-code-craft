@@ -38,7 +38,7 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      logger.success('Modification created', { data });
+      logger.info('Modification created', { data });
       toast.success('Change saved for review');
       
       // Close the inspector panel after successful modification
