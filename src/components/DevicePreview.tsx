@@ -19,8 +19,35 @@ export function DevicePreview({ generatedCode, projectFiles, framework = 'html' 
   // Check if this is a React project
   const isReactProject = framework === 'react';
   
+  // Strip TypeScript annotations for browser preview
+  const stripTypeScript = (code: string): string => {
+    if (!code) return '';
+    
+    return code
+      // Remove interface/type declarations
+      .replace(/interface\s+\w+\s*{[^}]*}/g, '')
+      .replace(/type\s+\w+\s*=\s*[^;]+;/g, '')
+      // Remove type annotations from variables
+      .replace(/:\s*\w+(\[\])?(\s*\|\s*\w+)*(?=\s*[=,)\]])/g, '')
+      // Remove type parameters
+      .replace(/<[^>]+>/g, '')
+      // Remove 'as' type assertions
+      .replace(/\s+as\s+\w+/g, '')
+      // Remove readonly/public/private/protected
+      .replace(/\b(readonly|public|private|protected)\s+/g, '')
+      // Remove generic constraints
+      .replace(/extends\s+\w+/g, '')
+      // Clean up extra spaces
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+  
   // For React projects, create a standalone HTML document with React CDN
-  const reactPreviewHTML = isReactProject && projectFiles ? `
+  const reactPreviewHTML = isReactProject && projectFiles ? (() => {
+    const appCode = projectFiles['src/App.tsx'] || projectFiles['App.tsx'] || generatedCode;
+    const cleanedCode = stripTypeScript(appCode);
+    
+    return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -43,16 +70,17 @@ export function DevicePreview({ generatedCode, projectFiles, framework = 'html' 
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
     
-    ${projectFiles['src/App.tsx'] || projectFiles['App.tsx'] || generatedCode}
+    ${cleanedCode}
     
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
   </script>
 </body>
 </html>
-  ` : null;
+    `;
+  })() : null;
   
   // Clean code by removing markdown code fences and any JSON artifacts - PRODUCTION READY
   const cleanCode = (() => {
