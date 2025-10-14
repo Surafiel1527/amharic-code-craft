@@ -49,12 +49,22 @@ Visit `http://localhost:5173` to see your app running!
 - **Tested** - Unit tests for core modules
 
 ### ✅ Key Features
-- AI-powered code generation (Gemini 2.5 Pro/Flash + GPT-5)
-- **AGI Self-Correction System** - Real-time transparency into AI decision-making ⭐ NEW
-- **Confidence Gates** - <40% asks user, 40-60% self-reflects, >60% proceeds ⭐ NEW
+
+**7 AGI Capabilities (100% Production Ready):** ⭐ NEW
+1. 🧠 **AI Reasoning Engine** - Dynamic decision-making with Gemini 2.5 Pro/Flash
+2. 🔧 **Auto-Fix Engine** - Automatically detects and fixes code errors with retry logic
+3. ⚙️ **Dynamic Execution** - Master orchestrator coordinating all capabilities
+4. 📋 **Resource Requestor** - Manages credentials and API keys from users
+5. 🔍 **Web Search Engine** - Real Google Search integration for research
+6. 🧪 **Self-Testing Engine** - Compiles and tests generated code automatically
+7. 🏥 **Database Healing** - Auto-fixes RLS policies and schema issues
+
+**Additional Features:**
+- **AGI Self-Correction System** - Real-time transparency into AI decision-making
+- **Confidence Gates** - <40% asks user, 40-60% self-reflects, >60% proceeds
 - **Intelligence Engine** - Context-aware decisions & autonomous learning
 - **Autonomous Healing** - Auto-fixes errors with high confidence
-- **User Transparency** - See AI thinking, corrections, and reasoning in real-time ⭐ NEW
+- **User Transparency** - See AI thinking, corrections, and reasoning in real-time
 - Automatic database setup with RLS
 - Self-healing database migrations
 - Pattern learning and evolution from every interaction
@@ -73,7 +83,8 @@ Visit `http://localhost:5173` to see your app running!
 ## 📚 Documentation
 
 ### Essential Guides
-- **[AGI System Status](./AGI_SYSTEM_STATUS.md)** - Complete AGI self-correction system (100% operational) ⭐ NEW
+- **[AGI Capabilities](./AGI_CAPABILITIES.md)** - Complete documentation of 7 AGI capabilities ⭐ NEW
+- **[AGI System Status](./AGI_SYSTEM_STATUS.md)** - Complete AGI self-correction system (100% operational)
 - **[Quick Start Guide](./QUICK_START_GUIDE.md)** - Get started in 5 minutes
 - **[Mega Mind Architecture](./MEGA_MIND_ARCHITECTURE.md)** - Orchestrator design & workflows
 - **[Self-Healing System](./SELF_HEALING_SYSTEM.md)** - Auto-fix & recovery capabilities

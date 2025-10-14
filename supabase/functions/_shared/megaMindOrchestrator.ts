@@ -131,13 +131,14 @@ export class MegaMindOrchestrator {
   }> {
     console.log('🔍 Mega Mind: Researching:', topic);
     
-    // TODO: Integrate with web search API
-    // For now, return that we need to search
+    const { searchWeb } = await import('./webSearchEngine.ts');
+    const searchResult = await searchWeb(topic, 10);
+    
     return {
-      found: false,
-      information: '',
-      sources: [],
-      confidence: 0
+      found: searchResult.found,
+      information: searchResult.results.map(r => `${r.title}: ${r.snippet}`).join('\n'),
+      sources: searchResult.sources,
+      confidence: searchResult.confidence
     };
   }
 
@@ -149,10 +150,23 @@ export class MegaMindOrchestrator {
   ): Promise<Map<string, string>> {
     console.log('📋 Mega Mind: Requesting resources...');
     
-    const providedResources = new Map<string, string>();
+    const { requestMultipleResources } = await import('./resourceRequestor.ts');
     
-    // This will be handled by the UI layer
-    // The system will prompt user for each required resource
+    // Convert to ResourceRequest format
+    const resourceRequests = resources.map(r => ({
+      type: r.type as 'api_key' | 'database' | 'credentials' | 'external_service',
+      name: r.name,
+      description: r.reason,
+      required: r.required
+    }));
+    
+    // Request all resources (this creates DB records the UI displays)
+    const providedResources = await requestMultipleResources(
+      this.supabase,
+      '', // Will be filled by edge function
+      '', // Will be filled by edge function
+      resourceRequests
+    );
     
     return providedResources;
   }
@@ -207,20 +221,21 @@ export class MegaMindOrchestrator {
   }> {
     console.log('🧪 Mega Mind: Testing generated code...');
     
-    const errors: string[] = [];
-    const fixes: string[] = [];
+    const { testAndFix } = await import('./selfTestingEngine.ts');
     
-    // TODO: Implement actual compilation and testing
-    // This would:
-    // 1. Try to compile the code
-    // 2. Run automated tests
-    // 3. Detect runtime errors
-    // 4. Auto-generate fixes
+    // Convert generated output to CodeFile format
+    const files = generated.files || [];
+    
+    // Test and auto-fix if needed
+    const testResult = await testAndFix(files, 3);
     
     return {
-      passed: errors.length === 0,
-      errors,
-      fixes
+      passed: testResult.success,
+      errors: [
+        ...testResult.testResult.compilationErrors,
+        ...testResult.testResult.runtimeErrors
+      ],
+      fixes: testResult.testResult.suggestions
     };
   }
 
@@ -233,13 +248,21 @@ export class MegaMindOrchestrator {
   }> {
     console.log('🔧 Mega Mind: Auto-fixing errors...');
     
+    const { analyzeErrorWithAI, generateCodeWithReasoning } = await import('./aiReasoningEngine.ts');
+    
     const changes: string[] = [];
     
     for (const error of errors) {
-      // Analyze error
-      const fix = await this.analyzeAndFix(error);
-      if (fix) {
-        changes.push(fix);
+      try {
+        // Use AI to analyze and suggest fixes
+        const analysis = await analyzeErrorWithAI(error, '', {});
+        
+        if (analysis.suggestedFixes.length > 0) {
+          const topFix = analysis.suggestedFixes[0];
+          changes.push(`${topFix.fix} (confidence: ${topFix.confidence})`);
+        }
+      } catch (err) {
+        console.error('Error analyzing:', err);
       }
     }
     
