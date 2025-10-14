@@ -157,13 +157,56 @@ async function routeRequest(
           result: chatData
         };
         
-      case 'REFACTOR':
       case 'FEATURE_BUILD':
-        // Complex path: Full orchestration
+        // Phase 3: Use Multi-Model Orchestrator for best quality
+        console.log('🎨 Using Multi-Model Orchestrator (Phase 3)');
+        const { data: multiModelData, error: multiModelError } = await supabase.functions.invoke('multi-model-orchestrator', {
+          body: {
+            request,
+            ...context,
+            // Use parallel execution for important features
+            parallelExecution: decision.confidence >= 0.85
+          }
+        });
+        
+        if (multiModelError) {
+          console.warn('⚠️ Multi-model orchestrator failed, falling back to mega-mind');
+          // Fallback to mega-mind if multi-model fails
+          const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('mega-mind-orchestrator', {
+            body: {
+              request,
+              requestType: 'generation',
+              operationMode: context.projectId ? 'modify' : 'generate',
+              ...context
+            }
+          });
+          
+          if (fallbackError) throw fallbackError;
+          
+          return {
+            success: true,
+            route: 'FEATURE_BUILD',
+            duration: Date.now() - startTime,
+            result: fallbackData,
+            usedFallback: true
+          };
+        }
+        
+        return {
+          success: true,
+          route: 'FEATURE_BUILD',
+          duration: Date.now() - startTime,
+          result: multiModelData,
+          qualityScore: multiModelData.qualityScore,
+          modelUsed: multiModelData.strategy?.model
+        };
+        
+      case 'REFACTOR':
+        // Refactoring still uses mega-mind for now
         const { data: orchData, error: orchError } = await supabase.functions.invoke('mega-mind-orchestrator', {
           body: {
             request,
-            requestType: decision.route === 'REFACTOR' ? 'refactor' : 'generation',
+            requestType: 'refactor',
             operationMode: context.projectId ? 'modify' : 'generate',
             ...context
           }
@@ -173,7 +216,7 @@ async function routeRequest(
         
         return {
           success: true,
-          route: decision.route,
+          route: 'REFACTOR',
           duration: Date.now() - startTime,
           result: orchData
         };
