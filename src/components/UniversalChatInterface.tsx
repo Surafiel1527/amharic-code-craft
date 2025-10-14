@@ -188,13 +188,15 @@ export function UniversalChatInterface({
   });
 
   // ✅ ENTERPRISE FIX: Subscribe to generation events for inline progress display
+  // ✅ CRITICAL FIX: Use correct channel name that matches orchestrator broadcasts
   useEffect(() => {
     if (!conversationId) return;
     
     console.log('🔌 Chat subscribing to generation status:', `ai-status-${conversationId}`);
     
+    // ✅ FIXED: Subscribe to the SAME channel orchestrator broadcasts to
     const statusChannel = supabase
-      .channel(`chat-gen-status-${conversationId}`)
+      .channel(`ai-status-${conversationId}`)
       .on('broadcast', { event: 'status-update' }, ({ payload }) => {
         console.log('📥 Chat received status-update:', payload);
         

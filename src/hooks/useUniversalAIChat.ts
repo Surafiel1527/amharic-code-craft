@@ -910,13 +910,15 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         logger.info('Routing to Mega Mind Orchestrator');
         
         // 🚀 ENTERPRISE FIX: Subscribe to real-time generation events to update placeholder
+        // ✅ CRITICAL FIX: Use correct channel name that matches orchestrator broadcasts
         let realtimeChannel: any = null;
         
         if (isGenerationRequest && activeConvId && placeholderMessageId) {
           logger.info('Subscribing to generation events', { conversationId: activeConvId });
           
+          // ✅ FIXED: Subscribe to the SAME channel orchestrator broadcasts to
           realtimeChannel = supabase
-            .channel(`chat-generation-${activeConvId}`)
+            .channel(`ai-status-${activeConvId}`)
             .on('broadcast', { event: 'status-update' }, ({ payload }) => {
               logger.info('Received generation status', payload);
               
@@ -958,7 +960,6 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
               
               // Handle completion event
               if (payload.type === 'execution_complete') {
-                // Will be replaced with final summary below
                 logger.info('Generation complete event received');
               }
             })
