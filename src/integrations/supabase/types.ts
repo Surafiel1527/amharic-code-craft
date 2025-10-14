@@ -6829,6 +6829,57 @@ export type Database = {
           },
         ]
       }
+      resource_requests: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          description: string
+          documentation_url: string | null
+          example: string | null
+          id: string
+          provided_at: string | null
+          required: boolean
+          resource_name: string
+          resource_type: string
+          status: string
+          updated_at: string
+          user_id: string
+          value: string | null
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          description: string
+          documentation_url?: string | null
+          example?: string | null
+          id?: string
+          provided_at?: string | null
+          required?: boolean
+          resource_name: string
+          resource_type: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          value?: string | null
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          description?: string
+          documentation_url?: string | null
+          example?: string | null
+          id?: string
+          provided_at?: string | null
+          required?: boolean
+          resource_name?: string
+          resource_type?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
       rollback_history: {
         Row: {
           after_rollback: Json
