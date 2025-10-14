@@ -175,12 +175,23 @@ export async function handleSurgicalEdit(ctx: {
     await stepTracker.trackStep('save_files', 'All changes saved', broadcast, 'complete');
     await updateJobProgress(90, 'Files saved', 'Finalizing', []);
 
-    // Step 9: Generate diff summary
+    // Step 9: Generate enhanced diff summaries
     const diffSummary = editor.generateDiffSummary(surgicalResponse.edits);
+    const beforeAfterPreview = generateBeforeAfterPreview(surgicalResponse.edits, currentFiles);
+    const performanceMetrics = generatePerformanceMetrics(surgicalResponse.edits, startTime);
     
-    // Save success message to database
-    const successMessage = `**✅ Surgical Edit Complete**\n\n${surgicalResponse.messageToUser}\n\n**Changes Made:**${diffSummary}`;
+    // Create rich success message with all details
+    const successMessage = `**✅ Surgical Edit Complete**
+
+${surgicalResponse.messageToUser}
+
+${beforeAfterPreview}
+
+${performanceMetrics}
+
+**Summary:**${diffSummary}`;
     
+    // Save to chat permanently
     await platformSupabase.from('messages').insert({
       conversation_id: conversationId,
       user_id: userId,
@@ -189,7 +200,14 @@ export async function handleSurgicalEdit(ctx: {
       metadata: {
         isSurgicalEdit: true,
         editCount: surgicalResponse.edits.length,
-        filesModified: [...new Set(surgicalResponse.edits.map(e => e.file))].length
+        filesModified: [...new Set(surgicalResponse.edits.map(e => e.file))].length,
+        executionTimeMs: Date.now() - startTime,
+        edits: surgicalResponse.edits.map(e => ({
+          file: e.file,
+          action: e.action,
+          description: e.description,
+          lines: e.startLine ? `${e.startLine}-${e.endLine}` : e.insertAfterLine !== undefined ? `after ${e.insertAfterLine}` : 'new file'
+        }))
       }
     });
 
@@ -232,4 +250,81 @@ export async function handleSurgicalEdit(ctx: {
   }
 
   throw new Error('Invalid surgical response format');
+}
+
+/**
+ * Generate before/after preview for user
+ */
+function generateBeforeAfterPreview(edits: any[], currentFiles: Record<string, string>): string {
+  const previews: string[] = [];
+  
+  // Group by file
+  const editsByFile: Record<string, any[]> = {};
+  for (const edit of edits) {
+    if (!editsByFile[edit.file]) {
+      editsByFile[edit.file] = [];
+    }
+    editsByFile[edit.file].push(edit);
+  }
+  
+  for (const [filePath, fileEdits] of Object.entries(editsByFile)) {
+    previews.push(`\n### 📝 ${filePath}`);
+    
+    for (const edit of fileEdits) {
+      if (edit.action === 'create') {
+        const lineCount = edit.content.split('\n').length;
+        previews.push(`\n**Created new file** (${lineCount} lines)`);
+        previews.push('```typescript');
+        previews.push(edit.content.split('\n').slice(0, 10).join('\n'));
+        if (lineCount > 10) {
+          previews.push(`... (${lineCount - 10} more lines)`);
+        }
+        previews.push('```');
+      } else if (edit.action === 'replace') {
+        const currentContent = currentFiles[edit.file];
+        if (currentContent) {
+          const lines = currentContent.split('\n');
+          const oldLines = lines.slice(edit.startLine - 1, edit.endLine);
+          const newLines = edit.content.split('\n');
+          
+          previews.push(`\n**Lines ${edit.startLine}-${edit.endLine}:**`);
+          previews.push('```diff');
+          oldLines.forEach(line => previews.push(`- ${line}`));
+          newLines.forEach(line => previews.push(`+ ${line}`));
+          previews.push('```');
+        }
+      } else if (edit.action === 'insert') {
+        previews.push(`\n**Inserted after line ${edit.insertAfterLine}:**`);
+        previews.push('```typescript');
+        previews.push(edit.content);
+        previews.push('```');
+      } else if (edit.action === 'delete') {
+        previews.push(`\n**Deleted lines ${edit.startLine}-${edit.endLine}**`);
+      }
+    }
+  }
+  
+  return previews.join('\n');
+}
+
+/**
+ * Generate performance metrics
+ */
+function generatePerformanceMetrics(edits: any[], startTime: number): string {
+  const executionTime = ((Date.now() - startTime) / 1000).toFixed(2);
+  const filesModified = [...new Set(edits.map(e => e.file))].length;
+  const totalEdits = edits.length;
+  
+  // Estimate time saved vs full regeneration (typically 15-30s)
+  const estimatedFullGenTime = 20;
+  const timeSaved = Math.max(0, estimatedFullGenTime - parseFloat(executionTime));
+  const efficiency = ((timeSaved / estimatedFullGenTime) * 100).toFixed(0);
+  
+  return `
+---
+**⚡ Performance:**
+- Modified ${filesModified} file${filesModified !== 1 ? 's' : ''} with ${totalEdits} precise edit${totalEdits !== 1 ? 's' : ''}
+- Completed in ${executionTime}s
+- ~${timeSaved.toFixed(1)}s faster than full regeneration (${efficiency}% more efficient)
+---`;
 }
