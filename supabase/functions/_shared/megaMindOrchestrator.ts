@@ -63,7 +63,17 @@ export interface MegaMindDecision {
 }
 
 export class MegaMindOrchestrator {
-  constructor(private supabase: SupabaseClient) {}
+  private analyzer: MetaCognitiveAnalyzer;
+  private communicator: NaturalCommunicator;
+  private currentAnalysis?: QueryAnalysis;
+  
+  constructor(
+    private supabase: SupabaseClient,
+    private lovableApiKey: string
+  ) {
+    this.analyzer = new MetaCognitiveAnalyzer(lovableApiKey);
+    this.communicator = new NaturalCommunicator(lovableApiKey);
+  }
 
   /**
    * STEP 1: UNDERSTAND - Deep analysis of what user wants
