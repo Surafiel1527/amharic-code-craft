@@ -316,22 +316,15 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
   /**
    * Initialize conversation on mount and when conversationId changes
+   * ✅ FIX: Avoid duplicate loads - only load once when external ID changes
    */
   useEffect(() => {
     if (externalConversationId && persistMessages) {
       logger.info('🔄 Conversation ID changed, loading messages', { conversationId: externalConversationId });
-      loadConversation(externalConversationId);
       setConversationId(externalConversationId);
+      loadConversation(externalConversationId);
     }
-  }, [externalConversationId, persistMessages]);
-
-  // Reload conversation when it's set
-  useEffect(() => {
-    if (conversationId && persistMessages) {
-      logger.info('📨 Loading conversation messages', { conversationId });
-      loadConversation(conversationId);
-    }
-  }, [conversationId, persistMessages]);
+  }, [externalConversationId, persistMessages, loadConversation]);
 
   /**
    * Detects if the message is a question/help request vs build request
@@ -778,9 +771,15 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       activeConvId = await createConversation();
     }
 
-    // Save user message
+    // Save user message and get DB ID
     if (persistMessages && activeConvId) {
-      await saveMessage(userMessage, activeConvId);
+      const dbMessageId = await saveMessage(userMessage, activeConvId);
+      if (dbMessageId) {
+        // Update local message with DB ID
+        setMessages(prev => prev.map(m => 
+          m.id === userMessage.id ? { ...m, id: dbMessageId } : m
+        ));
+      }
     }
 
     try {
@@ -842,12 +841,17 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       
       // Only add message if it's not null
       if (assistantMessage) {
-        setMessages(prev => [...prev, assistantMessage]);
-        
-        // Save assistant message and link thinking steps
+        // ✅ FIX: Save to DB first, then update local state with the DB ID
+        let savedMessageId = assistantMessage.id;
         if (persistMessages && activeConvId) {
-          await saveMessage(assistantMessage, activeConvId, assistantMessage.codeBlock?.code, true);
+          const dbMessageId = await saveMessage(assistantMessage, activeConvId, assistantMessage.codeBlock?.code, true);
+          if (dbMessageId) {
+            savedMessageId = dbMessageId;
+          }
         }
+        
+        // Add to local state with the correct DB ID
+        setMessages(prev => [...prev, { ...assistantMessage, id: savedMessageId }]);
       }
 
       // Update conversation timestamp
