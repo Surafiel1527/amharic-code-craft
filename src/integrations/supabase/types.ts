@@ -1403,6 +1403,45 @@ export type Database = {
         }
         Relationships: []
       }
+      circuit_breaker_alerts: {
+        Row: {
+          acknowledged: boolean | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          severity: string
+          title: string
+        }
+        Insert: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          severity: string
+          title: string
+        }
+        Update: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          severity?: string
+          title?: string
+        }
+        Relationships: []
+      }
       code_analysis: {
         Row: {
           analysis_type: string
@@ -8596,6 +8635,16 @@ export type Database = {
           p_metadata?: Json
           p_metric_type: string
           p_metric_value: number
+        }
+        Returns: string
+      }
+      send_alert: {
+        Args: {
+          p_alert_type: string
+          p_message: string
+          p_metadata?: Json
+          p_severity: string
+          p_title: string
         }
         Returns: string
       }
