@@ -4857,6 +4857,42 @@ export type Database = {
         }
         Relationships: []
       }
+      model_selections: {
+        Row: {
+          alternative_models: string[] | null
+          created_at: string
+          id: string
+          quality_score: number | null
+          selected_model: string
+          selection_reasoning: string | null
+          task_profile: Json
+          user_id: string
+          was_optimal: boolean | null
+        }
+        Insert: {
+          alternative_models?: string[] | null
+          created_at?: string
+          id?: string
+          quality_score?: number | null
+          selected_model: string
+          selection_reasoning?: string | null
+          task_profile: Json
+          user_id: string
+          was_optimal?: boolean | null
+        }
+        Update: {
+          alternative_models?: string[] | null
+          created_at?: string
+          id?: string
+          quality_score?: number | null
+          selected_model?: string
+          selection_reasoning?: string | null
+          task_profile?: Json
+          user_id?: string
+          was_optimal?: boolean | null
+        }
+        Relationships: []
+      }
       multi_modal_generations: {
         Row: {
           created_at: string
@@ -9020,6 +9056,16 @@ export type Database = {
       generate_share_token: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_best_model_for_task: {
+        Args: { p_limit?: number; p_task_type: string; p_user_id: string }
+        Returns: {
+          avg_duration_ms: number
+          avg_quality_score: number
+          model_name: string
+          success_rate: number
+          total_uses: number
+        }[]
       }
       get_cache_statistics: {
         Args: { p_user_id?: string }

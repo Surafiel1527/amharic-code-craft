@@ -203,3 +203,11 @@ verify_jwt = true
 
 [functions.user-preference-learner]
 verify_jwt = true
+
+# ============================================
+# PHASE 3: MULTI-MODEL ORCHESTRATION
+# Quality Scoring and Automatic Fallbacks
+# ============================================
+
+[functions.multi-model-orchestrator]
+verify_jwt = true
