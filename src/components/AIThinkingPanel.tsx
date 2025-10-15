@@ -53,10 +53,10 @@ export function AIThinkingPanel({
     // ✅ ENTERPRISE FIX: Hide panel after a delay when generation is complete
     if (isComplete && hasStarted) {
       setIsFinalState(true);
-      // Keep showing for 2 seconds after completion, then hide
+      // Keep showing for 10 seconds after completion to show final summary
       const timer = setTimeout(() => {
         setShouldShow(false);
-      }, 2000);
+      }, 10000);
       return () => clearTimeout(timer);
     }
   }, [hasStarted, isComplete]);

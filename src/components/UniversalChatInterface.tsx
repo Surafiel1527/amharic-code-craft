@@ -170,7 +170,8 @@ export function UniversalChatInterface({
     stopGeneration,
     conversationId: activeConversationId,
     currentPhase,
-    progress
+    progress,
+    loadConversation
   } = useUniversalAIChat({
     projectId,
     conversationId,
@@ -197,7 +198,7 @@ export function UniversalChatInterface({
     // ✅ FIXED: Subscribe to the SAME channel orchestrator broadcasts to
     const statusChannel = supabase
       .channel(`ai-status-${conversationId}`)
-      .on('broadcast', { event: 'status-update' }, ({ payload }) => {
+      .on('broadcast', { event: 'status-update' }, async ({ payload }) => {
         console.log('📥 Chat received status-update:', payload);
         
         // Handle error status
@@ -210,12 +211,20 @@ export function UniversalChatInterface({
           return;
         }
         
-        // Handle idle status (completion)
+        // ✅ NEW: Handle idle status (completion) - Reload messages to show AI response
         if (payload.status === 'idle') {
-          setTimeout(() => {
+          console.log('✅ Generation completed, reloading messages to show AI response');
+          
+          // Reload conversation to get the AI's completion message
+          setTimeout(async () => {
+            if (conversationId && loadConversation) {
+              console.log('📨 Reloading conversation to fetch AI completion message');
+              await loadConversation(conversationId);
+            }
+            
             setGenerationStatus({ isGenerating: false, message: '', progress: 0 });
-          }, 2000);
-          return; // Exit early for idle/complete status
+          }, 1000); // Small delay to ensure DB write completes
+          return;
         }
         
         // Update generation status for active generation
@@ -240,7 +249,7 @@ export function UniversalChatInterface({
       console.log('🔌 Chat unsubscribing from generation status');
       supabase.removeChannel(statusChannel);
     };
-  }, [conversationId]);
+  }, [conversationId, loadConversation]);
 
   // ✅ FIX: Populate messageSteps from loaded messages with thinkingSteps
   // This ensures historical thinking steps appear when conversation loads
