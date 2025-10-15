@@ -339,7 +339,7 @@ const Index = () => {
         .update({ project_id: projectId })
         .eq('id', conversationId);
       
-      // Navigate to workspace immediately
+      // Navigate to workspace immediately WITH conversationId in URL
       const frameworkLabel = framework === 'html' ? 'HTML/CSS/JS' : framework === 'react' ? 'React' : 'Vue';
       
       // Add user message first (their request)
@@ -360,7 +360,8 @@ const Index = () => {
         metadata: { isGenerationStart: true, framework: frameworkLabel }
       });
       
-      navigate(`/workspace/${projectId}`);
+      // ✅ Pass conversationId as URL param so Workspace can subscribe immediately
+      navigate(`/workspace/${projectId}?conversationId=${conversationId}`);
       
       // Continue generation in background (edge function handles project update)
       const { data: session } = await supabase.auth.getSession();

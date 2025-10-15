@@ -29,10 +29,14 @@ export default function Workspace() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   
+  // ✅ Read conversationId from URL params immediately (for realtime subscription)
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlConversationId = urlParams.get('conversationId');
+  
   const [project, setProject] = useState<Project | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(urlConversationId);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [conversations, setConversations] = useState<any[]>([]);
   const [showConversations, setShowConversations] = useState(false);
