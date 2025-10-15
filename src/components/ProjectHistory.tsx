@@ -71,6 +71,32 @@ export const ProjectHistory = ({ onLoadProject }: ProjectHistoryProps) => {
   const handleDeleteProject = async (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      // Check authentication and ownership
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Please log in to delete projects");
+        return;
+      }
+
+      // Verify project ownership
+      const { data: project, error: fetchError } = await supabase
+        .from('projects')
+        .select('user_id')
+        .eq('id', projectId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching project:', fetchError);
+        toast.error("Project not found");
+        return;
+      }
+
+      if (project.user_id !== user.id) {
+        toast.error("You don't have permission to delete this project");
+        return;
+      }
+
+      // Delete the project
       const { error } = await supabase
         .from('projects')
         .delete()
@@ -80,9 +106,9 @@ export const ProjectHistory = ({ onLoadProject }: ProjectHistoryProps) => {
       
       setProjects(projects.filter(p => p.id !== projectId));
       toast.success("Project deleted successfully");
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting project:', error);
-      toast.error("Failed to delete project");
+      toast.error(error.message || "Failed to delete project");
     }
   };
 

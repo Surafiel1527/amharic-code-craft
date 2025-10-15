@@ -22,10 +22,18 @@ const Auth = () => {
   // Redirect if already logged in
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        logger.info('User already logged in, redirecting to home');
-        window.location.href = "/";
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          logger.error('Error checking auth session:', error);
+          return;
+        }
+        if (session) {
+          logger.info('User already logged in, redirecting to home');
+          navigate("/");
+        }
+      } catch (error) {
+        logger.error('Auth check failed:', error);
       }
     };
     checkAuth();
@@ -73,8 +81,8 @@ const Auth = () => {
       // Auto-confirm is enabled, so user should be logged in immediately
       if (data.user && data.session) {
         toast.success("Account created successfully!");
-        // Force immediate navigation
-        window.location.href = "/";
+        // Navigate using React Router instead of full page reload
+        navigate("/");
       } else {
         toast.success("Account created. Please sign in.");
         setEmail("");
@@ -114,8 +122,8 @@ const Auth = () => {
       }
 
       toast.success("Signed in successfully!");
-      // Force immediate navigation with page reload to ensure clean state
-      window.location.href = "/";
+      // Navigate using React Router to prevent full page reload
+      navigate("/");
     } catch (error) {
       logger.error("Signin error", error);
       toast.error("Sign in failed. Please try again.");
