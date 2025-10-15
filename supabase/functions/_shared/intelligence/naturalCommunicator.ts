@@ -249,56 +249,22 @@ Generate messages that feel natural, helpful, and contextually appropriate.`;
   }
   
   /**
-   * Fallback to template-based messages when AI fails
+   * Minimal fallback when AI generation fails (should rarely happen)
    */
   private fallbackMessage(context: CommunicationContext): GeneratedMessage {
-    const templates: Record<CommunicationContext['phase'], GeneratedMessage> = {
-      starting: {
-        type: 'status',
-        content: "Starting to work on your request...",
-        emoji: '🚀',
-        timestamp: new Date()
-      },
-      analyzing: {
-        type: 'status',
-        content: "Analyzing what needs to be done...",
-        emoji: '🔍',
-        timestamp: new Date()
-      },
-      planning: {
-        type: 'status',
-        content: "Planning the implementation...",
-        emoji: '📋',
-        timestamp: new Date()
-      },
-      building: {
-        type: 'progress',
-        content: context.currentAction || "Building your project...",
-        emoji: '⚙️',
-        timestamp: new Date()
-      },
-      validating: {
-        type: 'status',
-        content: "Validating the changes...",
-        emoji: '✅',
-        timestamp: new Date()
-      },
-      completing: {
-        type: 'completion',
-        content: "All done! Your project is ready.",
-        emoji: '🎉',
-        actions: ['What would you like to do next?'],
-        timestamp: new Date()
-      },
-      error: {
-        type: 'error',
-        content: context.errors?.[0] || "Something went wrong. Let me try a different approach.",
-        emoji: '⚠️',
-        timestamp: new Date()
-      }
-    };
+    // Minimal autonomous fallback - uses context intelligently
+    const action = context.currentAction || `${context.phase} your project`;
+    const emoji = context.phase === 'error' ? '⚠️' : 
+                  context.phase === 'completing' ? '✅' : 
+                  context.phase === 'building' ? '⚙️' : '🔄';
     
-    return templates[context.phase];
+    return {
+      type: context.phase === 'error' ? 'error' : 
+            context.phase === 'completing' ? 'completion' : 'status',
+      content: context.errors?.[0] || action,
+      emoji,
+      timestamp: new Date()
+    };
   }
   
   /**

@@ -33,11 +33,20 @@ export interface ExecutionResult {
 }
 
 export class AdaptiveExecutor {
+  private broadcastCallback?: (status: any) => Promise<void>;
+  
   constructor(
     private supabase: SupabaseClient,
     private communicator: NaturalCommunicator,
     private lovableApiKey: string
   ) {}
+  
+  /**
+   * Set broadcast callback from orchestrator
+   */
+  setBroadcastCallback(callback: (status: any) => Promise<void>): void {
+    this.broadcastCallback = callback;
+  }
   
   /**
    * Execute with instant strategy - direct, no planning needed
@@ -287,6 +296,18 @@ export class AdaptiveExecutor {
     );
     
     console.log(`💬 ${message.emoji} ${message.content}`);
+    
+    // Broadcast to frontend if callback is set
+    if (this.broadcastCallback) {
+      await this.broadcastCallback({
+        status: phase === 'planning' ? 'reading' : phase === 'building' ? 'editing' : 'validating',
+        message: message.content,
+        metadata: {
+          phase,
+          emoji: message.emoji
+        }
+      });
+    }
   }
   
   private async executeDirectChange(

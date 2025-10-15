@@ -73,7 +73,16 @@ export class MegaMindOrchestrator {
     this.analyzer = new MetaCognitiveAnalyzer(lovableApiKey);
     this.communicator = new NaturalCommunicator(lovableApiKey);
     this.executor = new AdaptiveExecutor(supabase, this.communicator, lovableApiKey);
+    
+    // Wire up broadcast callback to executor
+    this.executor.setBroadcastCallback(async (status) => {
+      if (this.currentRequest) {
+        await this.broadcastStatus(this.currentRequest, status);
+      }
+    });
   }
+  
+  private currentRequest?: MegaMindRequest;
 
   /**
    * UNIFIED PROCESS REQUEST
@@ -83,6 +92,9 @@ export class MegaMindOrchestrator {
     analysis: QueryAnalysis;
     result: ExecutionResult;
   }> {
+    // Store current request for broadcast callback
+    this.currentRequest = request;
+    
     // Validate inputs
     const requestValidation = validateString(request.userRequest, { 
       minLength: 1, 
@@ -97,16 +109,33 @@ export class MegaMindOrchestrator {
       throw new ValidationError('Invalid user ID');
     }
 
-    // Broadcast workspace context
+    // Broadcast workspace context with AI-generated initial message
+    const initMsg = await this.communicator.generateStatusUpdate(
+      {
+        phase: 'starting',
+        taskDescription: 'initializing workspace',
+        metadata: {
+          projectId: request.projectId,
+          conversationId: request.conversationId
+        }
+      },
+      // Minimal analysis for initial message
+      {
+        userIntent: { primaryGoal: request.userRequest, specificRequirements: [] },
+        communicationStyle: { tone: 'friendly', verbosity: 'concise', emojiUsage: 'moderate' }
+      } as any
+    );
+    
     await this.broadcastStatus(request, {
       status: 'analyzing',
-      message: '🎯 Initializing in your workspace...',
+      message: initMsg.content,
       metadata: {
         workspace: {
           projectId: request.projectId,
           conversationId: request.conversationId,
           userId: request.userId
-        }
+        },
+        emoji: initMsg.emoji
       }
     });
 
@@ -117,6 +146,12 @@ export class MegaMindOrchestrator {
     });
     
     // STEP 1: Meta-Cognitive Analysis (AI determines strategy)
+    await this.broadcastStatus(request, {
+      status: 'thinking',
+      message: '🧠 Analyzing your request with AI...',
+      metadata: { phase: 'meta-cognitive-analysis' }
+    });
+    
     const analysis = await this.analyzer.analyzeQuery(
       request.userRequest,
       {
@@ -128,6 +163,30 @@ export class MegaMindOrchestrator {
     );
     
     this.currentAnalysis = analysis;
+    
+    // Broadcast analysis completion with AI-generated message
+    const analysisMsg = await this.communicator.generateStatusUpdate(
+      {
+        phase: 'analyzing',
+        taskDescription: analysis.userIntent.primaryGoal,
+        currentAction: `Detected ${analysis.complexity.level} complexity task`,
+        metadata: {
+          strategy: analysis.executionStrategy.primaryApproach,
+          estimatedPhases: analysis.complexity.estimatedPhases
+        }
+      },
+      analysis
+    );
+    
+    await this.broadcastStatus(request, {
+      status: 'reading',
+      message: analysisMsg.content,
+      metadata: { 
+        complexity: analysis.complexity.level,
+        strategy: analysis.executionStrategy.primaryApproach,
+        emoji: analysisMsg.emoji
+      }
+    });
     
     logger.info('✅ Analysis complete', {
       intent: analysis.userIntent.primaryGoal,
@@ -143,6 +202,28 @@ export class MegaMindOrchestrator {
       projectId: request.projectId,
       framework: analysis.technicalRequirements.framework
     };
+    
+    // Broadcast execution start with AI-generated message
+    const executionStartMsg = await this.communicator.generateStatusUpdate(
+      {
+        phase: 'starting',
+        taskDescription: analysis.userIntent.primaryGoal,
+        currentAction: `Preparing ${analysis.executionStrategy.primaryApproach} execution`,
+        metadata: {
+          mode: analysis.executionStrategy.primaryApproach
+        }
+      },
+      analysis
+    );
+    
+    await this.broadcastStatus(request, {
+      status: 'editing',
+      message: executionStartMsg.content,
+      metadata: {
+        mode: analysis.executionStrategy.primaryApproach,
+        emoji: executionStartMsg.emoji
+      }
+    });
     
     let result: ExecutionResult;
     
