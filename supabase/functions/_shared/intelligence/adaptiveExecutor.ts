@@ -351,7 +351,7 @@ export class AdaptiveExecutor {
     console.log(`⚙️ Executing phase ${phaseNumber}...`);
     
     // Use FeatureOrchestrator for complex multi-feature phases
-    if (analysis.complexity.level === 'expert' || analysis.complexity.level === 'advanced') {
+    if (analysis.complexity.level === 'expert' || analysis.complexity.level === 'complex') {
       const { FeatureOrchestrator } = await import('../featureOrchestrator.ts');
       const orchestrator = new FeatureOrchestrator();
       

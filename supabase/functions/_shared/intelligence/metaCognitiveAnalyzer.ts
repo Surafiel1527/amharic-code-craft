@@ -16,6 +16,7 @@ export interface QueryAnalysis {
     primaryGoal: string;
     secondaryGoals: string[];
     implicitNeeds: string[];
+    specificRequirements: string[];  // Added for executor compatibility
   };
   
   // Complexity Assessment
@@ -29,6 +30,7 @@ export interface QueryAnalysis {
   
   // Execution Strategy
   executionStrategy: {
+    primaryApproach: 'instant' | 'progressive' | 'conversational' | 'hybrid';  // For orchestrator compatibility
     mode: 'instant' | 'progressive' | 'conversational' | 'hybrid';
     shouldThink: boolean;
     shouldPlan: boolean;
@@ -43,6 +45,13 @@ export interface QueryAnalysis {
     verbosity: 'concise' | 'detailed' | 'verbose';
     shouldExplain: boolean;
     shouldSummarize: boolean;
+  };
+  
+  // Technical Requirements (added for executor compatibility)
+  technicalRequirements: {
+    framework: string;
+    dependencies?: string[];
+    integrations?: string[];
   };
   
   // Metadata
@@ -100,9 +109,10 @@ export class MetaCognitiveAnalyzer {
                     properties: {
                       primaryGoal: { type: 'string' },
                       secondaryGoals: { type: 'array', items: { type: 'string' } },
-                      implicitNeeds: { type: 'array', items: { type: 'string' } }
+                      implicitNeeds: { type: 'array', items: { type: 'string' } },
+                      specificRequirements: { type: 'array', items: { type: 'string' } }
                     },
-                    required: ['primaryGoal', 'secondaryGoals', 'implicitNeeds']
+                    required: ['primaryGoal', 'secondaryGoals', 'implicitNeeds', 'specificRequirements']
                   },
                   complexity: {
                     type: 'object',
@@ -121,6 +131,10 @@ export class MetaCognitiveAnalyzer {
                   executionStrategy: {
                     type: 'object',
                     properties: {
+                      primaryApproach: { 
+                        type: 'string', 
+                        enum: ['instant', 'progressive', 'conversational', 'hybrid'] 
+                      },
                       mode: { 
                         type: 'string', 
                         enum: ['instant', 'progressive', 'conversational', 'hybrid'] 
@@ -131,7 +145,7 @@ export class MetaCognitiveAnalyzer {
                       shouldIterate: { type: 'boolean' },
                       maxIterations: { type: 'number' }
                     },
-                    required: ['mode', 'shouldThink', 'shouldPlan', 'shouldValidate', 'shouldIterate']
+                    required: ['primaryApproach', 'mode', 'shouldThink', 'shouldPlan', 'shouldValidate', 'shouldIterate']
                   },
                   communicationStyle: {
                     type: 'object',
@@ -149,11 +163,20 @@ export class MetaCognitiveAnalyzer {
                     },
                     required: ['tone', 'verbosity', 'shouldExplain', 'shouldSummarize']
                   },
+                  technicalRequirements: {
+                    type: 'object',
+                    properties: {
+                      framework: { type: 'string' },
+                      dependencies: { type: 'array', items: { type: 'string' } },
+                      integrations: { type: 'array', items: { type: 'string' } }
+                    },
+                    required: ['framework']
+                  },
                   confidence: { type: 'number', minimum: 0, maximum: 1 },
                   reasoning: { type: 'array', items: { type: 'string' } },
                   suggestedApproach: { type: 'string' }
                 },
-                required: ['userIntent', 'complexity', 'executionStrategy', 'communicationStyle', 'confidence', 'reasoning', 'suggestedApproach']
+                required: ['userIntent', 'complexity', 'executionStrategy', 'communicationStyle', 'technicalRequirements', 'confidence', 'reasoning', 'suggestedApproach']
               }
             }
           }],
@@ -173,6 +196,14 @@ export class MetaCognitiveAnalyzer {
       }
       
       const analysis: QueryAnalysis = JSON.parse(toolCall.function.arguments);
+      
+      // Ensure primaryApproach and mode are synced
+      if (!analysis.executionStrategy.primaryApproach) {
+        analysis.executionStrategy.primaryApproach = analysis.executionStrategy.mode;
+      }
+      if (!analysis.executionStrategy.mode) {
+        analysis.executionStrategy.mode = analysis.executionStrategy.primaryApproach;
+      }
       
       console.log('✅ Meta-Cognitive Analysis Complete:', {
         intent: analysis.userIntent.primaryGoal,
@@ -271,7 +302,8 @@ Analyze the user's query and return a comprehensive strategy.`;
       userIntent: {
         primaryGoal: isQuestion ? 'Get information' : 'Modify project',
         secondaryGoals: [],
-        implicitNeeds: []
+        implicitNeeds: [],
+        specificRequirements: []
       },
       complexity: {
         level: isComplexFeature ? 'complex' : isSimpleEdit ? 'simple' : 'moderate',
@@ -281,6 +313,7 @@ Analyze the user's query and return a comprehensive strategy.`;
         requiresValidation: isComplexFeature
       },
       executionStrategy: {
+        primaryApproach: isQuestion ? 'conversational' : isComplexFeature ? 'progressive' : 'instant',
         mode: isQuestion ? 'conversational' : isComplexFeature ? 'progressive' : 'instant',
         shouldThink: isComplexFeature,
         shouldPlan: isComplexFeature,
@@ -292,6 +325,11 @@ Analyze the user's query and return a comprehensive strategy.`;
         verbosity: 'concise',
         shouldExplain: isQuestion,
         shouldSummarize: !isQuestion
+      },
+      technicalRequirements: {
+        framework: context.framework || 'react',
+        dependencies: [],
+        integrations: []
       },
       confidence: 0.6,
       reasoning: ['Fallback heuristic analysis'],
