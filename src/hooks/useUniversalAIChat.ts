@@ -288,9 +288,10 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       setProgress(0);
       setCurrentPhase('');
       
-      // ✅ FIX: Only clear messages if it's truly a different conversation
-      // Don't clear if just refreshing the same conversation
+      // ✅ FIX: Only clear messages when switching BETWEEN two existing conversations
+      // Don't clear when going from null to a new ID (new conversation being created)
       if (conversationId && conversationId !== externalConversationId) {
+        logger.info('🧹 Clearing messages for conversation switch');
         setMessages([]);
       }
       

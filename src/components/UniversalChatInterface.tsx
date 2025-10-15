@@ -200,35 +200,31 @@ export function UniversalChatInterface({
       .on('broadcast', { event: 'status-update' }, ({ payload }) => {
         console.log('📥 Chat received status-update:', payload);
         
-        // Update inline generation status for progress display
-        if (payload.status === 'generating' || payload.progress !== undefined) {
-          setGenerationStatus({
-            isGenerating: true,
-            message: payload.message || payload.currentOperation || 'Generating...',
-            progress: payload.progress || 0
-          });
-        } else if (payload.status === 'complete' || payload.status === 'error') {
-          // Clear generation status on completion
+        // Handle error status
+        if (payload.status === 'error') {
           setGenerationStatus({
             isGenerating: false,
             message: '',
-            progress: 100
+            progress: 0
           });
+          return;
         }
         
-        const isGenerating = payload.status !== 'idle' && payload.status !== 'complete';
-        setGenerationStatus({
-          isGenerating,
-          message: payload.message || payload.currentOperation || 'Generating project...',
-          progress: payload.progress || 0
-        });
-        
-        // Clear when complete
+        // Handle complete status
         if (payload.status === 'complete' || payload.message?.includes('complete')) {
           setTimeout(() => {
             setGenerationStatus({ isGenerating: false, message: '', progress: 0 });
           }, 2000);
+          return; // Exit early for complete status
         }
+        
+        // Update generation status for active generation
+        const isGenerating = payload.status !== 'idle' && payload.status !== 'complete';
+        setGenerationStatus({
+          isGenerating,
+          message: payload.message || payload.currentOperation || 'Generating...',
+          progress: payload.progress || 0
+        });
       })
       .on('broadcast', { event: 'generation:coding' }, ({ payload }) => {
         console.log('📥 Chat received generation:coding:', payload);
