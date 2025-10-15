@@ -98,18 +98,20 @@ serve(async (req) => {
     });
 
     // Broadcast completion or error with AI-generated message
-    const statusType = result.success ? 'idle' : 'error';
-    const errorDetails = result.error ? [result.error.message || String(result.error)] : undefined;
+    const finalStatus = result.success ? 'idle' : 'error';
+    const errorArray = result.error 
+      ? [typeof result.error === 'string' ? result.error : (result.error.message || 'Unknown error')]
+      : undefined;
     
     await broadcastStatus(
       supabase,
       channelId,
       result.message || (result.success ? "All done! Your request has been processed. ✅" : "Something went wrong"),
-      statusType,
+      finalStatus,
       {
         filesGenerated: result.filesGenerated,
         duration: result.duration,
-        errors: errorDetails
+        errors: errorArray
       }
     );
 
@@ -154,7 +156,7 @@ serve(async (req) => {
           channelId,
           error.message || 'An unexpected error occurred. Please try again.',
           'error',
-          { error: error.message }
+          { errors: [error.message || 'Unknown error occurred'] }
         );
       }
     } catch {}

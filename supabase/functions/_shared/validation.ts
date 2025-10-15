@@ -198,3 +198,18 @@ export function validateNumber(
 
   return { success: true, data: value };
 }
+
+/**
+ * Validate object (any object type)
+ */
+export function validateObject(value: any): ValidationResult<object> {
+  if (value === null || value === undefined) {
+    return { success: true, data: {} };
+  }
+
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    return { success: false, error: 'Value must be an object' };
+  }
+
+  return { success: true, data: value };
+}
