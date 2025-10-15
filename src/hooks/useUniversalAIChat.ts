@@ -997,11 +997,34 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       // Process and display response
       let assistantMessage: Message | null = null;
       
-      // ✅ CRITICAL FIX: Check for AI-generated messages from Universal Mega Mind FIRST
-      if (response?.result?.answer) {
+      // ✅ CRITICAL FIX: Check for errors FIRST before processing success responses
+      if (response?.success === false || response?.result?.error) {
+        // Error response from Universal Mega Mind with naturalCommunication
+        const errorContent = response?.result?.message || response?.message || 'An error occurred while processing your request.';
+        
+        assistantMessage = {
+          id: placeholderMessageId || crypto.randomUUID(), // Use placeholder ID to replace it
+          role: 'assistant',
+          content: errorContent,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            routedTo: 'orchestrator',
+            error: true,
+            isSummary: false
+          }
+        };
+        
+        // Replace placeholder with error message
+        if (placeholderMessageId) {
+          setMessages(prev => prev.map(m => 
+            m.id === placeholderMessageId ? assistantMessage! : m
+          ));
+          logger.info('✅ Replaced placeholder with error message', { placeholderMessageId });
+        }
+      } else if (response?.result?.answer) {
         // Natural Communicator generated conversational response
         assistantMessage = {
-          id: crypto.randomUUID(),
+          id: placeholderMessageId || crypto.randomUUID(), // Use placeholder ID if exists
           role: 'assistant',
           content: response.result.answer,
           timestamp: new Date().toISOString(),
@@ -1010,10 +1033,18 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
             isSummary: false
           }
         };
+        
+        // Replace placeholder if it exists
+        if (placeholderMessageId) {
+          setMessages(prev => prev.map(m => 
+            m.id === placeholderMessageId ? assistantMessage! : m
+          ));
+          logger.info('✅ Replaced placeholder with answer', { placeholderMessageId });
+        }
       } else if (response?.result?.message && typeof response.result.message === 'string') {
         // Natural Communicator generated execution message
         assistantMessage = {
-          id: crypto.randomUUID(),
+          id: placeholderMessageId || crypto.randomUUID(), // Use placeholder ID if exists
           role: 'assistant',
           content: response.result.message,
           timestamp: new Date().toISOString(),
@@ -1022,6 +1053,14 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
             isSummary: true
           }
         };
+        
+        // Replace placeholder if it exists
+        if (placeholderMessageId) {
+          setMessages(prev => prev.map(m => 
+            m.id === placeholderMessageId ? assistantMessage! : m
+          ));
+          logger.info('✅ Replaced placeholder with message', { placeholderMessageId });
+        }
       } else if (isOrchestratorRequest && placeholderMessageId) {
         // For ALL orchestrator requests (generation + modifications), create a comprehensive summary
         const generatedFilesCount = response?.generatedCode?.files?.length || 
@@ -1144,8 +1183,11 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         }
       }
       
-      // ✅ CRITICAL FIX: Always add assistantMessage if not already added by placeholder replacement
-      if (assistantMessage && assistantMessage.id !== placeholderMessageId) {
+      // ✅ CRITICAL FIX: Only add assistantMessage if it wasn't already added by placeholder replacement
+      // Check if the assistantMessage was already added by replacing the placeholder
+      const messageAlreadyAdded = placeholderMessageId && assistantMessage?.id === placeholderMessageId;
+      
+      if (assistantMessage && !messageAlreadyAdded) {
         setMessages(prev => [...prev, assistantMessage!]);
         logger.info('✅ Assistant message added to chat', { messageId: assistantMessage.id });
       }
@@ -1196,14 +1238,22 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         });
         
         const authErrorMessage: Message = {
-          id: crypto.randomUUID(),
+          id: placeholderMessageId || crypto.randomUUID(), // Replace placeholder if exists
           role: 'system',
           content: `🔐 **Authentication Required**\n\nYou need to sign in to use the AI chat.\n\n**To continue:**\n• Sign up for a new account\n• Or log in if you already have one\n\nOnce logged in, you'll be able to generate and modify code with AI assistance.`,
           timestamp: new Date().toISOString(),
-          metadata: { isGenerationStart: true }
+          metadata: { isGenerationStart: true, error: true }
         };
         
-        setMessages(prev => [...prev, authErrorMessage]);
+        // Replace placeholder or add message
+        if (placeholderMessageId) {
+          setMessages(prev => prev.map(m => 
+            m.id === placeholderMessageId ? authErrorMessage : m
+          ));
+        } else {
+          setMessages(prev => [...prev, authErrorMessage]);
+        }
+        
         setIsLoading(false);
         setCurrentPhase('');
         setProgress(0);
@@ -1221,13 +1271,22 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       }
 
       const errorMessage: Message = {
-        id: crypto.randomUUID(),
+        id: placeholderMessageId || crypto.randomUUID(), // Replace placeholder if exists
         role: 'assistant',
         content: `❌ **Error**\n\n${errorMsg}\n\n**What to try:**\n• Simplify your request\n• Check file selections\n• Try again in a moment\n• Break complex requests into smaller steps`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        metadata: { error: true }
       };
 
-      setMessages(prev => [...prev, errorMessage]);
+      // Replace placeholder or add message
+      if (placeholderMessageId) {
+        setMessages(prev => prev.map(m => 
+          m.id === placeholderMessageId ? errorMessage : m
+        ));
+        logger.info('✅ Replaced placeholder with caught error message', { placeholderMessageId });
+      } else {
+        setMessages(prev => [...prev, errorMessage]);
+      }
     } finally {
       setIsLoading(false);
       setCurrentPhase('');
