@@ -109,33 +109,16 @@ export class MegaMindOrchestrator {
       throw new ValidationError('Invalid user ID');
     }
 
-    // Broadcast workspace context with AI-generated initial message
-    const initMsg = await this.communicator.generateStatusUpdate(
-      {
-        phase: 'starting',
-        taskDescription: 'initializing workspace',
-        metadata: {
-          projectId: request.projectId,
-          conversationId: request.conversationId
-        }
-      },
-      // Minimal analysis for initial message
-      {
-        userIntent: { primaryGoal: request.userRequest, specificRequirements: [] },
-        communicationStyle: { tone: 'friendly', verbosity: 'concise', emojiUsage: 'moderate' }
-      } as any
-    );
-    
+    // Simple initial broadcast - no AI needed yet
     await this.broadcastStatus(request, {
       status: 'analyzing',
-      message: initMsg.content,
+      message: 'Starting analysis...',
       metadata: {
         workspace: {
           projectId: request.projectId,
           conversationId: request.conversationId,
           userId: request.userId
-        },
-        emoji: initMsg.emoji
+        }
       }
     });
 
