@@ -31,7 +31,6 @@ import {
 import { logDecision, reflectOnDecision, checkForCorrection } from '../_shared/agiIntegration.ts';
 import { evolvePatterns, detectPatternCategory } from '../_shared/patternLearning.ts';
 import { ThinkingStepTracker } from '../_shared/thinkingStepTracker.ts';
-import { detectConversationalRequest } from '../_shared/conversationalDetection.ts';
 
 // Learning integration
 import {
@@ -130,24 +129,6 @@ export async function executeGeneration(ctx: {
     userSupabase,
     broadcast 
   } = ctx;
-  
-  // ✅ SMART EARLY DETECTION: Check if this is conversational (no code needed)
-  const isConversational = detectConversationalRequest(request);
-  if (isConversational) {
-    // Generate AI response for conversation
-    const aiResponse = await callAIWithFallback(
-      `You are a helpful AI assistant. Respond naturally to: "${request}"`,
-      'google/gemini-2.5-flash'
-    );
-    
-    await storeConversationTurn(platformSupabase, conversationId, userId, 'assistant', aiResponse);
-    
-    return {
-      conversationOnly: true,
-      response: aiResponse,
-      analysis: { isMetaRequest: true }
-    };
-  }
   
   // Check if in modify mode
   const isModifyMode = operationMode === 'modify' && projectId;
