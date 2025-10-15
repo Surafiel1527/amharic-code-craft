@@ -97,6 +97,19 @@ export class MegaMindOrchestrator {
       throw new ValidationError('Invalid user ID');
     }
 
+    // Broadcast workspace context
+    await this.broadcastStatus(request, {
+      status: 'analyzing',
+      message: '🎯 Initializing in your workspace...',
+      metadata: {
+        workspace: {
+          projectId: request.projectId,
+          conversationId: request.conversationId,
+          userId: request.userId
+        }
+      }
+    });
+
     logger.info('🧠 Universal Mega Mind: Processing request', {
       userId: request.userId,
       conversationId: request.conversationId,
@@ -602,5 +615,38 @@ export class MegaMindOrchestrator {
     // TODO: Implement intelligent error analysis and fixing
     console.log(`  🔧 Analyzing: ${error}`);
     return `Fixed: ${error}`;
+  }
+
+  /**
+   * Broadcast status updates with workspace context
+   */
+  private async broadcastStatus(
+    request: MegaMindRequest,
+    update: {
+      status: string;
+      message: string;
+      metadata?: any;
+    }
+  ): Promise<void> {
+    try {
+      const channelId = request.projectId || request.conversationId;
+      const channel = this.supabase.channel(`ai-status-${channelId}`);
+      
+      await channel.send({
+        type: 'broadcast',
+        event: 'status-update',
+        payload: {
+          ...update,
+          timestamp: new Date().toISOString(),
+          workspace: {
+            projectId: request.projectId,
+            conversationId: request.conversationId,
+            userId: request.userId
+          }
+        }
+      });
+    } catch (error) {
+      logger.warn('Failed to broadcast status', { error });
+    }
   }
 }

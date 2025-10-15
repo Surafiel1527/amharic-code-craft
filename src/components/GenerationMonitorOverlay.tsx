@@ -1,5 +1,4 @@
 import { useGenerationMonitor } from "@/hooks/useGenerationMonitor";
-import { AIThinkingPanel } from "./AIThinkingPanel";
 import { CorrectionIndicator } from "./CorrectionIndicator";
 import { ConfidenceDialog } from "./ConfidenceDialog";
 import { useState } from "react";
@@ -24,43 +23,13 @@ export function GenerationMonitorOverlay({
 
   const [showClarificationDialog, setShowClarificationDialog] = useState(true);
 
-  // Show thinking panel when executing
-  const shouldShowThinking = isExecuting || executionStatus === 'running';
-
   // Show correction indicator when correction happens
   const shouldShowCorrection = currentCorrection !== null;
 
   return (
     <>
-      {/* AI Thinking Panel */}
-      {currentDecision && shouldShowThinking && (
-        <AIThinkingPanel
-          isVisible={true}
-          currentStep={currentDecision.reasoning || "Processing request..."}
-          confidence={currentDecision.confidence || 0.5}
-          reasoning={currentDecision.reasoning || "Processing request..."}
-          classificationResult={{
-            type: currentDecision.type || currentDecision.classified_as || "unknown",
-            intent: currentDecision.intent || "analyze",
-            complexity: currentDecision.confidence > 0.7 ? "simple" : currentDecision.confidence > 0.4 ? "moderate" : "complex"
-          }}
-          steps={[
-            { 
-              step: "Analyze user intent", 
-              status: "complete", 
-              confidence: currentDecision.confidence,
-              timestamp: new Date(),
-              reasoning: currentDecision.reasoning
-            },
-            { 
-              step: "Execute generation", 
-              status: executionStatus === 'running' ? "active" : executionStatus === 'success' ? "complete" : "pending",
-              timestamp: new Date() 
-            }
-          ]}
-        />
-      )}
-
+      {/* AI Thinking now handled by AIProcessChat and AIThinkingPanel in Workspace */}
+      
       {/* Correction Indicator */}
       {shouldShowCorrection && currentCorrection && (
         <CorrectionIndicator

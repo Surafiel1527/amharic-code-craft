@@ -1,185 +1,242 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Brain, CheckCircle2, AlertCircle, Lightbulb, Zap } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import { motion, AnimatePresence } from "framer-motion";
-
-interface ThinkingStep {
-  step: string;
-  status: 'analyzing' | 'complete' | 'active' | 'pending';
-  confidence?: number;
-  reasoning?: string;
-  timestamp: Date;
-}
+import { useEffect, useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Brain, Layers, FileCode, CheckCircle2, Sparkles, FolderOpen } from 'lucide-react';
+import { useRealtimeAI } from '@/hooks/useRealtimeAI';
+import { cn } from '@/lib/utils';
 
 interface AIThinkingPanelProps {
-  isVisible: boolean;
-  currentStep?: string;
-  confidence?: number;
-  reasoning?: string;
-  steps?: ThinkingStep[];
-  classificationResult?: {
-    type: string;
-    intent: string;
-    complexity: string;
-  };
+  projectId?: string;
+  conversationId?: string;
+  workspaceName?: string;
+  className?: string;
 }
 
-export function AIThinkingPanel({
-  isVisible,
-  currentStep,
-  confidence,
-  reasoning,
-  steps = [],
-  classificationResult
+interface ThinkingStage {
+  stage: 'analyzing' | 'planning' | 'building' | 'complete';
+  title: string;
+  description: string;
+  details?: string[];
+  icon: React.ReactNode;
+  color: string;
+  progress?: number;
+}
+
+export function AIThinkingPanel({ 
+  projectId, 
+  conversationId,
+  workspaceName = 'Your Workspace',
+  className 
 }: AIThinkingPanelProps) {
-  if (!isVisible) return null;
+  const { status, isActive } = useRealtimeAI({ projectId, conversationId });
+  const [thinkingStages, setThinkingStages] = useState<ThinkingStage[]>([]);
+  const [currentStage, setCurrentStage] = useState<number>(0);
 
-  const getConfidenceColor = (conf: number) => {
-    if (conf >= 0.8) return 'text-green-500';
-    if (conf >= 0.6) return 'text-yellow-500';
-    return 'text-orange-500';
-  };
+  // Convert status updates to thinking stages
+  useEffect(() => {
+    if (!status.message) return;
 
-  const getConfidenceLabel = (conf: number) => {
-    if (conf >= 0.8) return 'High';
-    if (conf >= 0.6) return 'Moderate';
-    return 'Low';
-  };
+    const statusType = status.status;
+    
+    if (statusType === 'analyzing') {
+      setThinkingStages([{
+        stage: 'analyzing',
+        title: 'Understanding Your Request',
+        description: 'AI is analyzing what you want to build...',
+        details: [
+          'Determining project complexity',
+          'Identifying required features',
+          'Checking workspace context'
+        ],
+        icon: <Brain className="h-5 w-5" />,
+        color: 'text-primary bg-primary/10',
+        progress: 25
+      }]);
+      setCurrentStage(0);
+    } else if (statusType === 'thinking') {
+      setThinkingStages(prev => [...prev, {
+        stage: 'planning',
+        title: 'Planning Implementation',
+        description: 'AI is deciding how to build this...',
+        details: [
+          'Determining file structure',
+          'Planning component architecture',
+          'Selecting best approach'
+        ],
+        icon: <Layers className="h-5 w-5" />,
+        color: 'text-accent bg-accent/10',
+        progress: 50
+      }]);
+      setCurrentStage(1);
+    } else if (statusType === 'generating' || statusType === 'editing') {
+      setThinkingStages(prev => {
+        const hasBuilding = prev.some(s => s.stage === 'building');
+        if (hasBuilding) return prev;
+        
+        return [...prev, {
+          stage: 'building',
+          title: 'Creating Files',
+          description: 'AI is writing code autonomously...',
+          details: [
+            'Generating components',
+            'Setting up structure',
+            'Adding functionality'
+          ],
+          icon: <FileCode className="h-5 w-5" />,
+          color: 'text-success bg-success/10',
+          progress: 75
+        }];
+      });
+      setCurrentStage(2);
+    } else if (statusType === 'idle' && status.message.includes('done')) {
+      setThinkingStages(prev => [...prev, {
+        stage: 'complete',
+        title: 'Complete!',
+        description: 'AI finished building your project',
+        details: ['All files generated', 'Ready to use'],
+        icon: <CheckCircle2 className="h-5 w-5" />,
+        color: 'text-green-500 bg-green-500/10',
+        progress: 100
+      }]);
+      setCurrentStage(3);
+    }
+  }, [status]);
+
+  if (!isActive && thinkingStages.length === 0) {
+    return null;
+  }
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ duration: 0.3 }}
-      >
-        <Card className="border-primary/20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-primary animate-pulse" />
-              <CardTitle className="text-lg">AI Thinking Process</CardTitle>
+    <Card className={cn("p-6 space-y-6 border-primary/20 shadow-lg", className)}>
+      {/* Workspace Context Header */}
+      <div className="flex items-center gap-3 pb-4 border-b border-border/50">
+        <div className="flex-shrink-0 p-2 rounded-lg bg-primary/10">
+          <FolderOpen className="h-5 w-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            {workspaceName}
+            {isActive && (
+              <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary">
+                <Sparkles className="h-3 w-3 mr-1" />
+                AI Active
+              </Badge>
+            )}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Workspace ID: {projectId?.slice(0, 8)}...{projectId?.slice(-4)}
+          </p>
+        </div>
+      </div>
+
+      {/* AI Thinking Process */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Brain className="h-4 w-4 text-primary" />
+          <h4 className="text-sm font-semibold text-foreground">AI's Autonomous Process</h4>
+        </div>
+
+        {/* Thinking Stages */}
+        <div className="space-y-3">
+          {thinkingStages.map((stage, index) => (
+            <div
+              key={index}
+              className={cn(
+                "relative rounded-lg border p-4 transition-all duration-300",
+                index === currentStage 
+                  ? "border-primary/50 bg-primary/5 shadow-sm scale-[1.02]" 
+                  : index < currentStage 
+                    ? "border-border/30 bg-muted/20 opacity-70"
+                    : "border-border/20 bg-card/50 opacity-50"
+              )}
+            >
+              {/* Connector Line */}
+              {index < thinkingStages.length - 1 && (
+                <div 
+                  className={cn(
+                    "absolute left-8 top-full h-3 w-0.5 -translate-x-1/2 transition-colors",
+                    index < currentStage ? "bg-primary" : "bg-border/30"
+                  )}
+                />
+              )}
+
+              <div className="flex gap-3">
+                {/* Icon */}
+                <div className={cn(
+                  "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all",
+                  stage.color,
+                  index === currentStage && "animate-pulse"
+                )}>
+                  {stage.icon}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 space-y-2">
+                  <div>
+                    <h5 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      {stage.title}
+                      {index === currentStage && (
+                        <span className="flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-primary opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                        </span>
+                      )}
+                    </h5>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {stage.description}
+                    </p>
+                  </div>
+
+                  {/* Details */}
+                  {stage.details && index <= currentStage && (
+                    <ul className="space-y-1 text-xs text-muted-foreground">
+                      {stage.details.map((detail, i) => (
+                        <li key={i} className="flex items-center gap-1.5">
+                          <span className={cn(
+                            "w-1 h-1 rounded-full",
+                            index < currentStage ? "bg-primary" : "bg-muted-foreground/50"
+                          )} />
+                          {detail}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Progress */}
+                  {stage.progress !== undefined && index === currentStage && (
+                    <div className="space-y-1 pt-1">
+                      <Progress value={stage.progress} className="h-1.5" />
+                      <p className="text-xs text-muted-foreground">
+                        {stage.progress}% complete
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <CardDescription>
-              Real-time transparency into decision-making
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Current Step */}
-            {currentStep && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Current Step</span>
-                  <Badge variant="outline" className="animate-pulse">
-                    <Zap className="h-3 w-3 mr-1" />
-                    Processing
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">{currentStep}</p>
-              </div>
-            )}
+          ))}
+        </div>
 
-            {/* Confidence Score */}
-            {confidence !== undefined && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Confidence Level</span>
-                  <span className={`text-sm font-bold ${getConfidenceColor(confidence)}`}>
-                    {(confidence * 100).toFixed(0)}% ({getConfidenceLabel(confidence)})
-                  </span>
-                </div>
-                <Progress value={confidence * 100} className="h-2" />
-                {confidence < 0.6 && (
-                  <p className="text-xs text-orange-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    Low confidence - may request clarification
-                  </p>
-                )}
-              </div>
-            )}
+        {/* Status Message */}
+        {isActive && (
+          <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/30">
+            <p className="text-sm text-foreground">
+              {status.message}
+            </p>
+          </div>
+        )}
+      </div>
 
-            {/* Reasoning */}
-            {reasoning && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Lightbulb className="h-4 w-4 text-yellow-500" />
-                  <span className="text-sm font-medium">Reasoning</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {reasoning}
-                </p>
-              </div>
-            )}
-
-            {/* Classification Result */}
-            {classificationResult && (
-              <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
-                <span className="text-sm font-medium">Classification</span>
-                <div className="grid grid-cols-3 gap-2 mt-2">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Type</p>
-                    <p className="text-sm font-medium">{classificationResult.type}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Intent</p>
-                    <p className="text-sm font-medium">{classificationResult.intent}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Complexity</p>
-                    <p className="text-sm font-medium capitalize">{classificationResult.complexity}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Processing Steps */}
-            {steps.length > 0 && (
-              <div className="space-y-2">
-                <span className="text-sm font-medium">Processing Steps</span>
-                <div className="space-y-2">
-                  {steps.map((step, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="flex items-start gap-2 text-sm"
-                    >
-                      {step.status === 'complete' && (
-                        <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      )}
-                      {step.status === 'active' && (
-                        <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin mt-0.5 flex-shrink-0" />
-                      )}
-                      {step.status === 'pending' && (
-                        <div className="h-4 w-4 border-2 border-muted rounded-full mt-0.5 flex-shrink-0" />
-                      )}
-                      <div className="flex-1">
-                        <p className={step.status === 'complete' ? 'text-muted-foreground' : ''}>
-                          {step.step}
-                        </p>
-                        {step.confidence !== undefined && (
-                          <span className="text-xs text-muted-foreground">
-                            Confidence: {(step.confidence * 100).toFixed(0)}%
-                          </span>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Info Footer */}
-            <div className="pt-2 border-t">
-              <p className="text-xs text-muted-foreground">
-                💡 This panel shows you exactly how the AI is analyzing your request and making decisions
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </AnimatePresence>
+      {/* Footer Info */}
+      <div className="pt-4 border-t border-border/50 text-xs text-muted-foreground flex items-center gap-2">
+        <div className="flex-1">
+          AI autonomously decides:
+          <span className="font-mono text-primary ml-1">
+            what to build • how to structure • which files to create
+          </span>
+        </div>
+      </div>
+    </Card>
   );
 }

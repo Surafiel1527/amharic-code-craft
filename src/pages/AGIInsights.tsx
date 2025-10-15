@@ -52,42 +52,22 @@ const AGIInsights = () => {
           </div>
         </div>
 
-        {/* Live AI Thinking Panel - Always visible when processing */}
-        {currentDecision && (
-          <AIThinkingPanel
-            isVisible={isProcessing}
-            currentStep={isProcessing ? "Analyzing request and making decisions..." : "Decision complete"}
-            confidence={currentDecision.confidence_score}
-            reasoning={currentDecision.reasoning}
-            classificationResult={{
-              type: currentDecision.classified_as,
-              intent: currentDecision.intent_detected,
-              complexity: currentDecision.confidence_score > 0.7 ? "simple" : currentDecision.confidence_score > 0.4 ? "moderate" : "complex"
-            }}
-            steps={[
-              { step: "Load conversation history", status: "complete", timestamp: new Date(currentDecision.created_at) },
-              { step: "Analyze user intent", status: "complete", confidence: currentDecision.confidence_score, timestamp: new Date(currentDecision.created_at) },
-              { step: "Execute generation", status: isProcessing ? "active" : "complete", timestamp: new Date() }
-            ]}
-          />
+        {/* Live AI Thinking - Now using new autonomous system */}
+        {currentDecision && isProcessing && (
+          <Card className="p-4 border-primary/20">
+            <div className="flex items-center gap-2">
+              <Brain className="h-4 w-4 text-primary animate-pulse" />
+              <p className="text-sm text-foreground">
+                <strong>AI Decision:</strong> {currentDecision.classified_as} - {currentDecision.reasoning}
+              </p>
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">
+              Confidence: {(currentDecision.confidence_score * 100).toFixed(1)}% •{' '}
+              Intent: {currentDecision.intent_detected}
+            </div>
+          </Card>
         )}
 
-        {/* Live Correction Indicator */}
-        {latestCorrection && (
-          <CorrectionIndicator
-            isVisible={true}
-            status={latestCorrection.was_successful ? "corrected" : "failed"}
-            correction={{
-              issue: `Original classification: ${latestCorrection.original_classification}`,
-              fix: `Corrected to: ${latestCorrection.corrected_classification}`,
-              confidence: latestCorrection.correction_confidence,
-              from: latestCorrection.original_classification,
-              to: latestCorrection.corrected_classification,
-              reasoning: latestCorrection.correction_reasoning
-            }}
-            onDismiss={() => {}}
-          />
-        )}
 
         {/* Confidence Dialog - Shows when confidence is low */}
         <ConfidenceDialog
