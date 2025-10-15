@@ -97,15 +97,19 @@ serve(async (req) => {
       projectId
     });
 
-    // Broadcast completion with AI-generated message
+    // Broadcast completion or error with AI-generated message
+    const statusType = result.success ? 'idle' : 'error';
+    const errorDetails = result.error ? [result.error.message || String(result.error)] : undefined;
+    
     await broadcastStatus(
       supabase,
       channelId,
-      result.message || "All done! Your request has been processed. ✅",
-      'idle',
+      result.message || (result.success ? "All done! Your request has been processed. ✅" : "Something went wrong"),
+      statusType,
       {
         filesGenerated: result.filesGenerated,
-        duration: result.duration
+        duration: result.duration,
+        errors: errorDetails
       }
     );
 
