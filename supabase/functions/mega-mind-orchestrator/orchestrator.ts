@@ -108,7 +108,7 @@ export async function executeGeneration(ctx: {
   framework: string;
   projectId: string | null;
   conversationContext: any;
-  projectMemory?: any;
+  projectMemory?: any; // 🆕 Cross-conversation memory
   dependencies: any[];
   platformSupabase: any;
   userSupabase: any;
@@ -124,7 +124,7 @@ export async function executeGeneration(ctx: {
     framework,
     projectId, 
     conversationContext,
-    projectMemory,
+    projectMemory, // 🆕 Extract project memory
     platformSupabase,
     userSupabase,
     broadcast 
@@ -153,11 +153,14 @@ export async function executeGeneration(ctx: {
   // Initialize thinking step tracker with DB persistence
   const stepTracker = new ThinkingStepTracker(platformSupabase, jobId, projectId, conversationId);
 
+  // Retry logic
   const isRetry = conversationContext.isRetry || false;
   const resumeProgress = conversationContext.resumeFromProgress || 0;
   const existingFiles = conversationContext.existingFiles || [];
 
   if (isRetry && resumeProgress > 0) {
+    console.log(`🔄 RETRY MODE: Resuming from ${resumeProgress}% with ${existingFiles.length} existing files`);
+    
     await broadcast('generation:retrying', {
       status: 'retrying',
       message: `🔄 Resuming generation from ${resumeProgress}%...`,
@@ -165,6 +168,7 @@ export async function executeGeneration(ctx: {
     });
   }
 
+  // Helper: Update job progress in database and project title
   const updateJobProgress = async (progress: number, currentStep: string, phaseName: string, phases: any[] = []) => {
     if (!projectId) return;
     
@@ -193,9 +197,11 @@ export async function executeGeneration(ctx: {
         await platformSupabase.from('projects').update({
           title: newTitle
         }).eq('id', projectId);
+        
+        console.log(`📝 Updated project title: "${newTitle}"`);
       }
     } catch (error) {
-      // Silent failure
+      console.error('⚠️ Failed to update job progress:', error);
     }
   };
 
@@ -212,6 +218,7 @@ export async function executeGeneration(ctx: {
     
     await updateJobProgress(5, 'Analyzing requirements', 'Analyzing Requirements', []);
 
+    console.log('🧠 Running Intelligence Engine analysis...');
     const contextAnalysis = await analyzeContext(
       platformSupabase as any,
       conversationId,
@@ -219,11 +226,20 @@ export async function executeGeneration(ctx: {
       request,
       projectId || undefined
     );
+    
+    console.log('📊 Context Analysis:', {
+      intent: contextAnalysis.userIntent,
+      complexity: contextAnalysis.complexity,
+      confidence: contextAnalysis.confidenceScore,
+      contextQuality: contextAnalysis.contextQuality
+    });
 
     (conversationContext as any)._contextAnalysis = contextAnalysis;
     
+    // ✅ CRITICAL FIX: Load existing project files if projectId exists
     let existingProjectCode: any = null;
     if (projectId) {
+      console.log(`🔍 Loading existing project files for project ${projectId}...`);
       const { data: projectData } = await platformSupabase
         .from('projects')
         .select('html_code, framework')
@@ -243,17 +259,27 @@ export async function executeGeneration(ctx: {
           files: projectFiles || [],
           hasExistingCode: true
         };
+        console.log(`✅ Loaded ${projectFiles?.length || 0} existing files from project`);
         (conversationContext as any)._existingProject = existingProjectCode;
       }
     }
 
+    // Find relevant learned patterns before analysis
+    console.log('🎯 Searching for relevant learned patterns...');
     const patternCategory = detectPatternCategory(request);
     const learnedPatterns = await findRelevantPatterns(platformSupabase, request, patternCategory);
+    console.log(`📚 Found ${learnedPatterns.length} relevant patterns from past successes`);
     (conversationContext as any)._learnedPatterns = learnedPatterns;
 
     const analysis = await analyzeRequest(request, conversationContext, framework, broadcast, platformSupabase, projectMemory);
     
+    // 🚨 CRITICAL SAFETY CHECK: Force modification mode when appropriate
+    // Case 1: Explicit modify mode with existing project
     if (isModifyMode && existingProjectCode?.hasExistingCode) {
+      console.log(`🔧 MODIFY MODE: Forcing modification for existing project`);
+      console.log(`📁 Existing project has ${existingProjectCode.files?.length || 0} files`);
+      
+      // Force modification
       analysis.outputType = 'modification';
       analysis.isMetaRequest = false;
       
@@ -263,8 +289,13 @@ export async function executeGeneration(ctx: {
         progress: 8
       });
     }
+    // Case 2: Existing project detected but not in explicit modify mode (safety fallback)
     else if (existingProjectCode?.hasExistingCode && 
         (analysis.outputType === 'html-website' || analysis.outputType === 'react-app')) {
+      console.log(`🚨 SAFETY OVERRIDE: Forcing outputType from "${analysis.outputType}" to "modification" because existing project detected!`);
+      console.log(`📁 Existing project has ${existingProjectCode.files?.length || 0} files`);
+      
+      // Force modification
       analysis.outputType = 'modification';
       analysis.isMetaRequest = false;
       
@@ -590,7 +621,7 @@ export async function executeGeneration(ctx: {
 
   // ONLY run codebase analysis and planning if NOT a simple update
   if (needsPlanning && !isSimpleUpdate) {
-    const { UnifiedCodebaseAnalyzer } = await import('../_shared/unifiedCodebaseAnalyzer.ts');
+    const { analyzeCodebase } = await import('../_shared/codebaseAnalyzer.ts');
     const { generateDetailedPlan, formatPlanForDisplay } = await import('../_shared/implementationPlanner.ts');
     
     await stepTracker.trackStep('read_codebase', 'Scanning project files and structure', broadcast, 'start');
@@ -602,8 +633,7 @@ export async function executeGeneration(ctx: {
       phaseName: 'Analyzing Codebase'
     });
 
-    const analyzer = new UnifiedCodebaseAnalyzer();
-    const codebaseAnalysis = await analyzer.analyzeCodebase(
+    const codebaseAnalysis = await analyzeCodebase(
       request,
       analysis,
       conversationContext,

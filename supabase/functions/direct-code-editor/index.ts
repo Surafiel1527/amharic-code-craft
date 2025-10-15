@@ -13,7 +13,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { generateNaturalResponse } from '../_shared/aiResponseGenerator.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -188,20 +187,11 @@ serve(async (req) => {
       progress: 60
     });
 
-    // Generate natural AI response instead of hardcoded text
-    const aiResponse = await generateNaturalResponse(request, {
-      action: 'edit_complete',
-      details: {
-        filesChanged: editResult.edits.map((e: any) => e.file),
-        timeElapsed: `${Math.round((Date.now() - startTime) / 100) / 10}s`
-      }
-    });
-
-    // Store edit in conversation history with AI-generated response
+    // Store edit in conversation history
     await supabase.from('messages').insert({
       conversation_id: conversationId,
       role: 'assistant',
-      content: aiResponse,
+      content: `Applied edit: ${editResult.summary}`,
       metadata: {
         editType: 'surgical',
         edits: editResult.edits,

@@ -5,7 +5,7 @@
 
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { VirtualFileSystem } from "./virtualFileSystem.ts";
-import { UnifiedCodebaseAnalyzer } from "./unifiedCodebaseAnalyzer.ts";
+import { EnhancedCodebaseAnalyzer } from "./enhancedCodebaseAnalyzer.ts";
 
 export interface RichProjectContext {
   currentFiles: Record<string, string>;
@@ -25,7 +25,7 @@ export interface RichProjectContext {
 
 export class ContextBuilder {
   private vfs: VirtualFileSystem;
-  private analyzer: UnifiedCodebaseAnalyzer;
+  private analyzer: EnhancedCodebaseAnalyzer;
 
   constructor(
     private supabase: SupabaseClient,
@@ -34,7 +34,7 @@ export class ContextBuilder {
     private conversationId?: string
   ) {
     this.vfs = new VirtualFileSystem(supabase, projectId, userId);
-    this.analyzer = new UnifiedCodebaseAnalyzer();
+    this.analyzer = new EnhancedCodebaseAnalyzer();
   }
 
   /**
@@ -45,12 +45,7 @@ export class ContextBuilder {
     const currentFiles = await this.vfs.captureProjectState();
 
     // 2. Analyze codebase structure
-    const structure = await this.analyzer.analyzeCodebase(
-      'Context building',
-      {},
-      { projectId: this.projectId, conversationId: this.conversationId },
-      this.supabase
-    );
+    const structure = this.analyzer.analyzeCodebase(currentFiles);
 
     // 3. Get project metadata
     const projectMetadata = await this.getProjectMetadata(currentFiles);
@@ -66,8 +61,8 @@ export class ContextBuilder {
 
     return {
       currentFiles,
-      discoveredFunctions: structure.relevantFiles.flatMap(f => f.functions),
-      discoveredComponents: structure.relevantFiles.flatMap(f => f.components),
+      discoveredFunctions: structure.functions,
+      discoveredComponents: structure.components,
       projectMetadata,
       recentChanges,
       conversationHistory,

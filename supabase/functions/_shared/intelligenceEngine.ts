@@ -232,13 +232,10 @@ function detectUserIntent(
     // Enhancement: "better", "enhance", "upgrade"
     /\b(better|enhance|upgrade|optimize|refine)\b/,
     // Removal: "remove", "delete", "take out"
-    /\b(remove|delete|take\s+out|get\s+rid\s+of)\b/,
-    // Color/style updates
-    /\b(background|color|font|style|border|shadow)\b/
+    /\b(remove|delete|take\s+out|get\s+rid\s+of)\b/
   ];
   
-  if (modifyPatterns.some(pattern => lowerRequest.match(pattern)) &&
-      !lowerRequest.match(/\b(create|add|build|new)\b/)) {
+  if (modifyPatterns.some(pattern => lowerRequest.match(pattern))) {
     return 'modify';
   }
 

@@ -2101,42 +2101,6 @@ export type Database = {
         }
         Relationships: []
       }
-      context_cache: {
-        Row: {
-          cache_key: string
-          context_data: Json
-          created_at: string
-          expires_at: string
-          hit_count: number | null
-          id: string
-          project_id: string | null
-          route: string
-          user_id: string | null
-        }
-        Insert: {
-          cache_key: string
-          context_data: Json
-          created_at?: string
-          expires_at: string
-          hit_count?: number | null
-          id?: string
-          project_id?: string | null
-          route: string
-          user_id?: string | null
-        }
-        Update: {
-          cache_key?: string
-          context_data?: Json
-          created_at?: string
-          expires_at?: string
-          hit_count?: number | null
-          id?: string
-          project_id?: string | null
-          route?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       conversation_context_log: {
         Row: {
           conversation_id: string
@@ -9070,10 +9034,6 @@ export type Database = {
         Returns: Json
       }
       cleanup_expired_cache: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_expired_context_cache: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }

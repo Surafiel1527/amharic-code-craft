@@ -58,7 +58,16 @@ serve(async (req) => {
     // Log operation mode
     const isModifyMode = operationMode === 'modify' && projectId;
 
-    // Processing request silently
+    console.log('🚀 Mega Mind Orchestrator started', { 
+      request: request.substring(0, 100), 
+      conversationId, 
+      userId, 
+      requestType,
+      operationMode,
+      isModifyMode,
+      framework,
+      projectId
+    });
 
     // Initialize Supabase clients
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -89,7 +98,8 @@ serve(async (req) => {
     
     const dependencies = await loadFileDependencies(platformSupabase, conversationId);
 
-    // Context loaded
+    console.log(`📚 Loaded context: ${conversationContext.totalTurns} turns, ${dependencies.length} dependencies, Q&A mode: ${isQuestion}`);
+    console.log(`🔗 Cross-conversation memory: ${projectMemory.recentMessages.length} messages from ${projectMemory.conversationCount} conversations`);
 
     // ✅ Create and subscribe to BOTH conversation and project channels
     const conversationChannel = platformSupabase.channel(`ai-status-${conversationId}`);
@@ -99,6 +109,9 @@ serve(async (req) => {
     conversationChannel.subscribe();
     if (projectChannel) {
       projectChannel.subscribe();
+      console.log(`✅ Realtime channels created: conversation=${conversationId}, project=${projectId}`);
+    } else {
+      console.log(`✅ Realtime channel created: ai-status-${conversationId}`);
     }
 
     // Helper to broadcast via Supabase Realtime Channels to BOTH conversation and project channels
@@ -141,9 +154,13 @@ serve(async (req) => {
               duration: data.duration || null,
               timestamp: data.timestamp
             });
+            console.log(`💾 Thinking step saved [${conversationId}]:`, data.operation, data.status);
           } catch (dbError) {
-            // Continue even if DB insert fails
+            console.error('Failed to persist thinking step:', dbError);
+            // Don't throw - continue even if DB insert fails
           }
+          
+          console.log(`📡 Thinking step broadcast [${conversationId}]:`, data.operation, data.status);
           return;
         }
         
@@ -177,7 +194,7 @@ serve(async (req) => {
             });
           }
           
-          
+          console.log(`🧠 AGI Event: ${agiEventType}`, data.message || data.status);
         } else {
           // Send general status updates to BOTH channels
           const statusPayload = {
@@ -201,7 +218,7 @@ serve(async (req) => {
             });
           }
           
-          
+          console.log(`📡 Status: ${event}`, data.message || data.status);
         }
       } catch (error) {
         console.error('❌ Broadcast error:', error);
@@ -238,8 +255,16 @@ serve(async (req) => {
       userSupabaseConnection,
       broadcast
     }).then(async (orchestrationResult) => {
-      // Check if this was a meta-request or surgical edit (early return)
-      if (orchestrationResult.conversationOnly || orchestrationResult.type === 'surgical_edit') {
+      // 🔍 Check if this was a meta-request or surgical edit (early return)
+      if (orchestrationResult.conversationOnly) {
+        // Meta-request: just conversation response, no code generation
+        console.log('✅ Meta-request handled, no code generation needed');
+        return;
+      }
+      
+      if (orchestrationResult.type === 'surgical_edit') {
+        // Surgical edit: already completed, no need for full generation
+        console.log('✅ Surgical edit completed, no full generation needed');
         return;
       }
       
@@ -276,6 +301,8 @@ serve(async (req) => {
       // AGI: Validate outcome for successful generation
       const decisionId = (orchestrationResult.conversationContext as any)._decisionId;
       if (decisionId) {
+        console.log('✅ Validating successful generation outcome...');
+        
         const { validateOutcome } = await import('../_shared/agiIntegration.ts');
         await validateOutcome(decisionId, {
           userId,
@@ -289,6 +316,8 @@ serve(async (req) => {
             backendSetup: orchestrationResult.analysis.backendRequirements?.needsDatabase
           }
         });
+
+        console.log('✅ Successful outcome validated and learned');
       }
     }).catch(async (error) => {
       console.error('❌ Generation failed:', error);
