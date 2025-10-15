@@ -6,7 +6,6 @@
 import { SurgicalEditor } from '../_shared/surgicalEditor.ts';
 import { SurgicalPromptBuilder } from '../_shared/surgicalPromptBuilder.ts';
 import { ResponseParser } from '../_shared/responseParser.ts';
-import { ContextBuilder } from '../_shared/contextBuilder.ts';
 import { callAIWithFallback } from '../_shared/aiHelpers.ts';
 import { ThinkingStepTracker } from '../_shared/thinkingStepTracker.ts';
 
@@ -60,16 +59,33 @@ export async function handleSurgicalEdit(ctx: {
   await stepTracker.trackStep('load_files', `Loaded ${Object.keys(currentFiles).length} files`, broadcast, 'complete');
   await updateJobProgress(40, 'Files loaded', 'Analyzing Changes', []);
 
-  // Step 2: Build rich context
+  // Step 2: Build rich context via intelligent context manager
   await stepTracker.trackStep('build_context', 'Building project context', broadcast, 'start');
   
-  const contextBuilder = new ContextBuilder(
-    platformSupabase,
-    projectId,
-    userId,
-    conversationId
+  const { data: contextResult, error: contextError } = await platformSupabase.functions.invoke(
+    'project-context-manager',
+    {
+      body: {
+        projectId,
+        route: 'DIRECT_EDIT',
+        request,
+        userId
+      }
+    }
   );
-  const richContext = await contextBuilder.buildRichContext();
+
+  if (contextError || !contextResult?.success) {
+    throw new Error(`Failed to load context: ${contextError?.message || 'Unknown error'}`);
+  }
+
+  const richContext = {
+    currentFiles,
+    projectContext: contextResult.context,
+    discoveredFunctions: contextResult.context.relevantFiles?.flatMap((f: any) => f.functions) || [],
+    discoveredComponents: contextResult.context.relevantFiles?.flatMap((f: any) => f.components) || [],
+    recentChanges: [],
+    conversationHistory: []
+  };
 
   await stepTracker.trackStep('build_context', 'Context ready', broadcast, 'complete');
   await updateJobProgress(50, 'Context built', 'Analyzing Changes', []);

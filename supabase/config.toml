@@ -211,3 +211,11 @@ verify_jwt = true
 
 [functions.multi-model-orchestrator]
 verify_jwt = true
+
+# ============================================
+# PROJECT CONTEXT MANAGER
+# Intelligent workspace awareness
+# ============================================
+
+[functions.project-context-manager]
+verify_jwt = true
