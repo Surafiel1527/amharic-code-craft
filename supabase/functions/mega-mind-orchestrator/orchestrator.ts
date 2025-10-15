@@ -621,7 +621,7 @@ export async function executeGeneration(ctx: {
 
   // ONLY run codebase analysis and planning if NOT a simple update
   if (needsPlanning && !isSimpleUpdate) {
-    const { analyzeCodebase } = await import('../_shared/codebaseAnalyzer.ts');
+    const { UnifiedCodebaseAnalyzer } = await import('../_shared/unifiedCodebaseAnalyzer.ts');
     const { generateDetailedPlan, formatPlanForDisplay } = await import('../_shared/implementationPlanner.ts');
     
     await stepTracker.trackStep('read_codebase', 'Scanning project files and structure', broadcast, 'start');
@@ -633,7 +633,8 @@ export async function executeGeneration(ctx: {
       phaseName: 'Analyzing Codebase'
     });
 
-    const codebaseAnalysis = await analyzeCodebase(
+    const analyzer = new UnifiedCodebaseAnalyzer();
+    const codebaseAnalysis = await analyzer.analyzeCodebase(
       request,
       analysis,
       conversationContext,
