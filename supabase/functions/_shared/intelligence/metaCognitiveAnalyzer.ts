@@ -1,66 +1,74 @@
 /**
- * Meta-Cognitive Analyzer - Universal Intelligence Layer
+ * Deep Understanding Analyzer - Autonomous Intelligence Layer
  * 
- * This module uses AI to analyze user queries and determine:
- * - What the user truly wants (semantic intent)
- * - How complex the task is (computational complexity)
- * - What execution strategy to use (routing decision)
- * - How to communicate progress (natural language)
+ * Enterprise Pattern: Autonomous Agent with Deep Reasoning
  * 
- * Enterprise Pattern: Self-Aware AI Orchestration
+ * Instead of classifying into rigid modes, this analyzer:
+ * 1. Deeply understands user intent in context
+ * 2. Determines what actions are needed autonomously
+ * 3. Plans execution based on true understanding
+ * 4. Adapts communication style naturally
  */
 
-export interface QueryAnalysis {
-  // Semantic Understanding
-  userIntent: {
-    primaryGoal: string;
-    secondaryGoals: string[];
-    implicitNeeds: string[];
-    specificRequirements: string[];  // Added for executor compatibility
+export interface DeepUnderstanding {
+  // Core Understanding - What user TRULY needs
+  understanding: {
+    userGoal: string;                    // What user wants to achieve
+    expectedOutcome: string;             // What should exist when done
+    successCriteria: string;             // How user will know it succeeded
+    contextualNeeds: string[];           // What's needed given workspace state
+    implicitRequirements: string[];      // Unspoken but necessary
   };
   
-  // Complexity Assessment
-  complexity: {
-    level: 'trivial' | 'simple' | 'moderate' | 'complex' | 'expert';
-    estimatedPhases: number;
-    estimatedDuration: string;
-    requiresPlanning: boolean;
-    requiresValidation: boolean;
+  // Autonomous Action Plan
+  actionPlan: {
+    requiresCodeGeneration: boolean;     // Need to create/modify files?
+    requiresExplanation: boolean;        // Need to explain concepts?
+    requiresClarification: boolean;      // Need to ask questions?
+    
+    // If code generation needed
+    codeActions?: {
+      filesToCreate: string[];           // New files to generate
+      filesToModify: string[];           // Existing files to change
+      estimatedComplexity: 'simple' | 'moderate' | 'complex' | 'advanced';
+      architectureChanges: boolean;      // Requires structural changes?
+      dependencies: string[];            // New packages needed
+    };
+    
+    // If explanation needed
+    explanationNeeds?: {
+      conceptsToExplain: string[];
+      shouldProvideExamples: boolean;
+      shouldShowAlternatives: boolean;
+    };
+    
+    // Execution approach decided by AI
+    executionSteps: {
+      step: number;
+      action: string;
+      reason: string;
+      toolsNeeded: string[];
+    }[];
   };
   
-  // Execution Strategy
-  executionStrategy: {
-    primaryApproach: 'instant' | 'progressive' | 'conversational' | 'hybrid';  // For orchestrator compatibility
-    mode: 'instant' | 'progressive' | 'conversational' | 'hybrid';
-    shouldThink: boolean;
-    shouldPlan: boolean;
-    shouldValidate: boolean;
-    shouldIterate: boolean;
-    maxIterations?: number;
+  // Natural Communication
+  communication: {
+    tone: 'collaborative' | 'instructive' | 'exploratory' | 'direct';
+    shouldStreamThinking: boolean;       // Show reasoning process?
+    shouldProvideContext: boolean;       // Explain why doing this?
+    updateFrequency: 'realtime' | 'phase' | 'completion';
   };
   
-  // Communication Style
-  communicationStyle: {
-    tone: 'friendly' | 'professional' | 'technical' | 'casual';
-    verbosity: 'concise' | 'detailed' | 'verbose';
-    shouldExplain: boolean;
-    shouldSummarize: boolean;
+  // Confidence & Reasoning
+  meta: {
+    confidence: number;                  // 0-1, based on context clarity
+    reasoning: string[];                 // Why AI decided this approach
+    uncertainties: string[];             // What's unclear/assumed
+    suggestedUserActions?: string[];     // What user might need to provide
   };
-  
-  // Technical Requirements (added for executor compatibility)
-  technicalRequirements: {
-    framework: string;
-    dependencies?: string[];
-    integrations?: string[];
-  };
-  
-  // Metadata
-  confidence: number;
-  reasoning: string[];
-  suggestedApproach: string;
 }
 
-export class MetaCognitiveAnalyzer {
+export class DeepUnderstandingAnalyzer {
   private lovableApiKey: string;
   
   constructor(lovableApiKey: string) {
@@ -68,20 +76,24 @@ export class MetaCognitiveAnalyzer {
   }
   
   /**
-   * Analyze user query with AI to determine execution strategy
+   * Deeply understand user request and autonomously plan execution
+   * 
+   * This uses AI reasoning to truly understand intent, not classify into templates
    */
-  async analyzeQuery(
+  async analyzeRequest(
     userQuery: string,
     context: {
       conversationHistory?: any[];
-      projectContext?: any;
+      projectContext?: any;          // Full Awash context
       existingFiles?: Record<string, string>;
       framework?: string;
+      currentRoute?: string;
+      recentErrors?: any[];
     }
-  ): Promise<QueryAnalysis> {
-    console.log('🧠 Meta-Cognitive Analyzer: Starting deep analysis...');
+  ): Promise<DeepUnderstanding> {
+    console.log('🧠 Deep Understanding Analyzer: Starting autonomous analysis...');
     
-    const systemPrompt = this.buildAnalysisPrompt(context);
+    const systemPrompt = this.buildDeepUnderstandingPrompt(context);
     
     try {
       const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -99,88 +111,178 @@ export class MetaCognitiveAnalyzer {
           tools: [{
             type: 'function',
             function: {
-              name: 'analyze_query',
-              description: 'Analyze user query and determine execution strategy',
+              name: 'understand_and_plan',
+              description: 'Deeply understand user request and autonomously create execution plan',
               parameters: {
                 type: 'object',
                 properties: {
-                  userIntent: {
+                  understanding: {
                     type: 'object',
                     properties: {
-                      primaryGoal: { type: 'string' },
-                      secondaryGoals: { type: 'array', items: { type: 'string' } },
-                      implicitNeeds: { type: 'array', items: { type: 'string' } },
-                      specificRequirements: { type: 'array', items: { type: 'string' } }
+                      userGoal: { 
+                        type: 'string',
+                        description: 'What the user wants to achieve in their own words'
+                      },
+                      expectedOutcome: { 
+                        type: 'string',
+                        description: 'What should exist/be different when this is complete'
+                      },
+                      successCriteria: { 
+                        type: 'string',
+                        description: 'How will the user know you succeeded'
+                      },
+                      contextualNeeds: { 
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'What is needed given the current workspace state'
+                      },
+                      implicitRequirements: { 
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'Requirements not stated but necessary for success'
+                      }
                     },
-                    required: ['primaryGoal', 'secondaryGoals', 'implicitNeeds', 'specificRequirements']
+                    required: ['userGoal', 'expectedOutcome', 'successCriteria', 'contextualNeeds', 'implicitRequirements']
                   },
-                  complexity: {
+                  actionPlan: {
                     type: 'object',
                     properties: {
-                      level: { 
-                        type: 'string', 
-                        enum: ['trivial', 'simple', 'moderate', 'complex', 'expert'] 
+                      requiresCodeGeneration: { 
+                        type: 'boolean',
+                        description: 'Does this require creating or modifying code files?'
                       },
-                      estimatedPhases: { type: 'number' },
-                      estimatedDuration: { type: 'string' },
-                      requiresPlanning: { type: 'boolean' },
-                      requiresValidation: { type: 'boolean' }
+                      requiresExplanation: { 
+                        type: 'boolean',
+                        description: 'Does this require explaining concepts or providing information?'
+                      },
+                      requiresClarification: { 
+                        type: 'boolean',
+                        description: 'Is the request unclear and needs user clarification?'
+                      },
+                      codeActions: {
+                        type: 'object',
+                        properties: {
+                          filesToCreate: { 
+                            type: 'array',
+                            items: { type: 'string' },
+                            description: 'New files that need to be created with paths'
+                          },
+                          filesToModify: { 
+                            type: 'array',
+                            items: { type: 'string' },
+                            description: 'Existing files that need changes'
+                          },
+                          estimatedComplexity: { 
+                            type: 'string',
+                            enum: ['simple', 'moderate', 'complex', 'advanced'],
+                            description: 'Overall complexity of code changes'
+                          },
+                          architectureChanges: { 
+                            type: 'boolean',
+                            description: 'Requires structural/architectural changes?'
+                          },
+                          dependencies: { 
+                            type: 'array',
+                            items: { type: 'string' },
+                            description: 'NPM packages that need to be installed'
+                          }
+                        }
+                      },
+                      explanationNeeds: {
+                        type: 'object',
+                        properties: {
+                          conceptsToExplain: { 
+                            type: 'array',
+                            items: { type: 'string' }
+                          },
+                          shouldProvideExamples: { type: 'boolean' },
+                          shouldShowAlternatives: { type: 'boolean' }
+                        }
+                      },
+                      executionSteps: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            step: { type: 'number' },
+                            action: { 
+                              type: 'string',
+                              description: 'What action to take'
+                            },
+                            reason: { 
+                              type: 'string',
+                              description: 'Why this action is needed'
+                            },
+                            toolsNeeded: { 
+                              type: 'array',
+                              items: { type: 'string' },
+                              description: 'Tools/capabilities needed for this step'
+                            }
+                          },
+                          required: ['step', 'action', 'reason', 'toolsNeeded']
+                        },
+                        description: 'Step-by-step execution plan decided by AI'
+                      }
                     },
-                    required: ['level', 'estimatedPhases', 'estimatedDuration', 'requiresPlanning', 'requiresValidation']
+                    required: ['requiresCodeGeneration', 'requiresExplanation', 'requiresClarification', 'executionSteps']
                   },
-                  executionStrategy: {
-                    type: 'object',
-                    properties: {
-                      primaryApproach: { 
-                        type: 'string', 
-                        enum: ['instant', 'progressive', 'conversational', 'hybrid'] 
-                      },
-                      mode: { 
-                        type: 'string', 
-                        enum: ['instant', 'progressive', 'conversational', 'hybrid'] 
-                      },
-                      shouldThink: { type: 'boolean' },
-                      shouldPlan: { type: 'boolean' },
-                      shouldValidate: { type: 'boolean' },
-                      shouldIterate: { type: 'boolean' },
-                      maxIterations: { type: 'number' }
-                    },
-                    required: ['primaryApproach', 'mode', 'shouldThink', 'shouldPlan', 'shouldValidate', 'shouldIterate']
-                  },
-                  communicationStyle: {
+                  communication: {
                     type: 'object',
                     properties: {
                       tone: { 
-                        type: 'string', 
-                        enum: ['friendly', 'professional', 'technical', 'casual'] 
+                        type: 'string',
+                        enum: ['collaborative', 'instructive', 'exploratory', 'direct'],
+                        description: 'Natural tone matching the interaction'
                       },
-                      verbosity: { 
-                        type: 'string', 
-                        enum: ['concise', 'detailed', 'verbose'] 
+                      shouldStreamThinking: { 
+                        type: 'boolean',
+                        description: 'Show AI reasoning process to user?'
                       },
-                      shouldExplain: { type: 'boolean' },
-                      shouldSummarize: { type: 'boolean' }
+                      shouldProvideContext: { 
+                        type: 'boolean',
+                        description: 'Explain why doing this approach?'
+                      },
+                      updateFrequency: { 
+                        type: 'string',
+                        enum: ['realtime', 'phase', 'completion'],
+                        description: 'How often to update user on progress'
+                      }
                     },
-                    required: ['tone', 'verbosity', 'shouldExplain', 'shouldSummarize']
+                    required: ['tone', 'shouldStreamThinking', 'shouldProvideContext', 'updateFrequency']
                   },
-                  technicalRequirements: {
+                  meta: {
                     type: 'object',
                     properties: {
-                      framework: { type: 'string' },
-                      dependencies: { type: 'array', items: { type: 'string' } },
-                      integrations: { type: 'array', items: { type: 'string' } }
+                      confidence: { 
+                        type: 'number',
+                        minimum: 0,
+                        maximum: 1,
+                        description: 'How confident in understanding (0-1)'
+                      },
+                      reasoning: { 
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'Why AI decided this approach'
+                      },
+                      uncertainties: { 
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'What is unclear or assumed'
+                      },
+                      suggestedUserActions: { 
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'What user might need to provide or clarify'
+                      }
                     },
-                    required: ['framework']
-                  },
-                  confidence: { type: 'number', minimum: 0, maximum: 1 },
-                  reasoning: { type: 'array', items: { type: 'string' } },
-                  suggestedApproach: { type: 'string' }
+                    required: ['confidence', 'reasoning', 'uncertainties']
+                  }
                 },
-                required: ['userIntent', 'complexity', 'executionStrategy', 'communicationStyle', 'technicalRequirements', 'confidence', 'reasoning', 'suggestedApproach']
+                required: ['understanding', 'actionPlan', 'communication', 'meta']
               }
             }
           }],
-          tool_choice: { type: 'function', function: { name: 'analyze_query' } }
+          tool_choice: { type: 'function', function: { name: 'understand_and_plan' } }
         }),
       });
       
@@ -195,90 +297,146 @@ export class MetaCognitiveAnalyzer {
         throw new Error('No tool call in AI response');
       }
       
-      const analysis: QueryAnalysis = JSON.parse(toolCall.function.arguments);
+      const understanding: DeepUnderstanding = JSON.parse(toolCall.function.arguments);
       
-      // Ensure primaryApproach and mode are synced
-      if (!analysis.executionStrategy.primaryApproach) {
-        analysis.executionStrategy.primaryApproach = analysis.executionStrategy.mode;
-      }
-      if (!analysis.executionStrategy.mode) {
-        analysis.executionStrategy.mode = analysis.executionStrategy.primaryApproach;
-      }
-      
-      console.log('✅ Meta-Cognitive Analysis Complete:', {
-        intent: analysis.userIntent.primaryGoal,
-        complexity: analysis.complexity.level,
-        mode: analysis.executionStrategy.mode,
-        confidence: analysis.confidence
+      console.log('✅ Deep Understanding Complete:', {
+        goal: understanding.understanding.userGoal,
+        needsCode: understanding.actionPlan.requiresCodeGeneration,
+        needsExplanation: understanding.actionPlan.requiresExplanation,
+        steps: understanding.actionPlan.executionSteps.length,
+        confidence: understanding.meta.confidence
       });
       
-      return analysis;
+      return understanding;
       
     } catch (error) {
-      console.error('❌ Meta-Cognitive Analyzer error:', error);
+      console.error('❌ Deep Understanding Analyzer error:', error);
       
-      // Fallback to heuristic analysis
-      return this.fallbackAnalysis(userQuery, context);
+      // Fallback to basic understanding
+      return this.fallbackUnderstanding(userQuery, context);
     }
   }
   
   /**
-   * Build comprehensive analysis prompt
+   * Build deep understanding prompt that encourages autonomous reasoning
    */
-  private buildAnalysisPrompt(context: any): string {
-    return `You are a Meta-Cognitive Analyzer for an AI-powered development platform.
+  private buildDeepUnderstandingPrompt(context: any): string {
+    const workspaceInfo = context.projectContext 
+      ? `Current workspace state:
+- Total files: ${context.projectContext.workspace?.fileTree?.length || 0}
+- Framework: ${context.projectContext.workspace?.project?.framework || 'Unknown'}
+- Has preview: ${context.projectContext.workspace?.preview?.available ? 'Yes' : 'No'}
+- Current route: ${context.currentRoute || '/'}
+- Recent errors: ${context.recentErrors?.length || 0}`
+      : 'No workspace context available';
 
-Your role is to deeply understand user queries and determine the optimal execution strategy.
+    return `You are an Autonomous AI Agent for the Awash development platform.
 
-CONTEXT:
-- Framework: ${context.framework || 'Unknown'}
-- Has existing project: ${context.existingFiles ? 'Yes' : 'No'}
-- Conversation history: ${context.conversationHistory?.length || 0} messages
+Your role is NOT to classify requests into predefined categories.
+Your role is to DEEPLY UNDERSTAND what the user needs and AUTONOMOUSLY DECIDE how to help.
 
-ANALYSIS GUIDELINES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CURRENT WORKSPACE CONTEXT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${workspaceInfo}
 
-1. USER INTENT - What does the user TRULY want?
-   - Primary goal (the main objective)
-   - Secondary goals (implied or related needs)
-   - Implicit needs (things not stated but needed)
+Conversation history: ${context.conversationHistory?.length || 0} messages
+User has existing code: ${context.existingFiles && Object.keys(context.existingFiles).length > 0 ? 'Yes' : 'No'}
 
-2. COMPLEXITY ASSESSMENT:
-   - Trivial: Single word/color change, typo fix
-   - Simple: Add/remove small feature, style tweak
-   - Moderate: Multiple file changes, new component
-   - Complex: Architecture changes, new feature with multiple components
-   - Expert: Full system refactor, complex integrations
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+YOUR REASONING FRAMEWORK:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-3. EXECUTION STRATEGY:
-   - instant: Direct execution, no planning needed
-   - progressive: Multi-phase build with validation
-   - conversational: Discussion only, no code
-   - hybrid: Explain + implement
+1. UNDERSTAND THE TRUE NEED
+   Ask yourself these fundamental questions:
+   
+   a) "What does the user want to achieve?" (userGoal)
+      - Not just surface request, but deeper objective
+   
+   b) "When this is complete, what should exist that doesn't now?" (expectedOutcome)
+      - Tangible deliverable: code, files, features, understanding
+      - Intangible outcome: knowledge, clarity, decision
+   
+   c) "How will the user know I succeeded?" (successCriteria)
+      - Can see it working in preview?
+      - Understands the concept?
+      - Has answer to their question?
+      - Problem is solved?
+   
+   d) "Given the current workspace, what is ACTUALLY needed?" (contextualNeeds)
+      - Consider what already exists
+      - What's missing
+      - What needs to change
+   
+   e) "What isn't stated but is necessary?" (implicitRequirements)
+      - Dependencies, setup, prerequisites
+      - Design patterns, best practices
+      - Error handling, validation
 
-4. COGNITIVE NEEDS:
-   - shouldThink: Complex problems requiring reasoning
-   - shouldPlan: Multi-step tasks needing coordination
-   - shouldValidate: Critical changes needing verification
-   - shouldIterate: Likely to need refinement
+2. AUTONOMOUS ACTION PLANNING
+   Based on TRUE understanding, decide:
+   
+   a) Does this require CODE GENERATION? (requiresCodeGeneration)
+      Test: "Will the user expect to see new/modified files in their workspace?"
+      - If YES: Plan code actions (files to create/modify, complexity, architecture)
+      - If NO: This might be explanation or clarification
+   
+   b) Does this require EXPLANATION? (requiresExplanation)
+      Test: "Does the user need to UNDERSTAND something before proceeding?"
+      - Concepts, approaches, trade-offs
+      - How things work, why certain choices
+   
+   c) Is the request UNCLEAR? (requiresClarification)
+      Test: "Do I have enough information to proceed with confidence?"
+      - If confidence < 0.7, might need clarification
+   
+   d) What are the EXECUTION STEPS? (executionSteps)
+      - You decide the steps autonomously
+      - Each step has clear action, reason, tools needed
+      - NOT predefined phases - you create the plan
 
-5. COMMUNICATION STYLE:
-   - Match user's tone (friendly, professional, technical, casual)
-   - Adjust verbosity based on query complexity
-   - Explain when teaching, summarize when executing
+3. NATURAL COMMUNICATION
+   Adapt your communication style based on:
+   - User's tone and expertise level
+   - Complexity of what you're doing
+   - Whether user needs to understand process
+   - How much context helps vs overwhelms
 
-IMPORTANT:
-- Be honest about complexity - don't oversimplify
-- Choose execution mode that matches task nature
-- High confidence (>0.8) only for clear, simple queries
-- Provide detailed reasoning for your decisions
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CRITICAL: YOU ARE AUTONOMOUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Analyze the user's query and return a comprehensive strategy.`;
+- Don't classify into templates
+- Don't follow rigid rules
+- DO understand deeply
+- DO plan autonomously
+- DO decide what's truly needed
+- DO be honest about uncertainties
+
+Examples of TRUE UNDERSTANDING:
+
+Request: "Create a coffee shop website"
+Understanding: User wants a WORKING website (code generation = YES)
+Plan: Create components, pages, routing, styling - show in preview
+NOT: "This is a complex request, use progressive mode"
+
+Request: "What's the best way to handle forms?"
+Understanding: User wants KNOWLEDGE (explanation = YES, code = MAYBE)
+Plan: Explain approaches, offer to implement preferred one
+NOT: "This is conversational mode"
+
+Request: "The button isn't working"
+Understanding: User has a PROBLEM in existing code (modify = YES)
+Plan: Analyze context, identify issue, fix code, explain what was wrong
+NOT: "This is instant mode"
+
+Your understanding should read like natural reasoning, not category labels.`;
   }
   
   /**
-   * Fallback analysis using heuristics when AI fails
+   * Fallback understanding using heuristics when AI fails
    */
-  private fallbackAnalysis(userQuery: string, context: any): QueryAnalysis {
+  private fallbackUnderstanding(userQuery: string, context: any): DeepUnderstanding {
     const queryLower = userQuery.toLowerCase();
     const wordCount = userQuery.split(' ').length;
     
@@ -288,52 +446,64 @@ Analyze the user's query and return a comprehensive strategy.`;
                       queryLower.startsWith('how') ||
                       queryLower.startsWith('why');
     
+    const needsCode = queryLower.includes('create') ||
+                     queryLower.includes('build') ||
+                     queryLower.includes('add') ||
+                     queryLower.includes('make') ||
+                     queryLower.includes('implement');
+    
     const isSimpleEdit = wordCount < 10 && (
       queryLower.includes('change') ||
       queryLower.includes('update') ||
       queryLower.includes('fix')
     );
     
-    const isComplexFeature = wordCount > 20 || (
-      queryLower.includes('add') && queryLower.includes('feature')
-    );
-    
     return {
-      userIntent: {
-        primaryGoal: isQuestion ? 'Get information' : 'Modify project',
-        secondaryGoals: [],
-        implicitNeeds: [],
-        specificRequirements: []
+      understanding: {
+        userGoal: userQuery,
+        expectedOutcome: needsCode ? 'Working code in workspace' : 'Understanding or answer',
+        successCriteria: needsCode ? 'Can see it in preview' : 'Question answered',
+        contextualNeeds: [],
+        implicitRequirements: []
       },
-      complexity: {
-        level: isComplexFeature ? 'complex' : isSimpleEdit ? 'simple' : 'moderate',
-        estimatedPhases: isComplexFeature ? 3 : 1,
-        estimatedDuration: isComplexFeature ? '2-3 minutes' : '30 seconds',
-        requiresPlanning: isComplexFeature,
-        requiresValidation: isComplexFeature
+      actionPlan: {
+        requiresCodeGeneration: needsCode,
+        requiresExplanation: isQuestion,
+        requiresClarification: false,
+        codeActions: needsCode ? {
+          filesToCreate: [],
+          filesToModify: [],
+          estimatedComplexity: isSimpleEdit ? 'simple' : 'moderate',
+          architectureChanges: false,
+          dependencies: []
+        } : undefined,
+        explanationNeeds: isQuestion ? {
+          conceptsToExplain: [],
+          shouldProvideExamples: true,
+          shouldShowAlternatives: false
+        } : undefined,
+        executionSteps: [{
+          step: 1,
+          action: needsCode ? 'Generate code' : 'Provide explanation',
+          reason: 'Based on user request',
+          toolsNeeded: needsCode ? ['code_generator'] : ['explanation']
+        }]
       },
-      executionStrategy: {
-        primaryApproach: isQuestion ? 'conversational' : isComplexFeature ? 'progressive' : 'instant',
-        mode: isQuestion ? 'conversational' : isComplexFeature ? 'progressive' : 'instant',
-        shouldThink: isComplexFeature,
-        shouldPlan: isComplexFeature,
-        shouldValidate: isComplexFeature,
-        shouldIterate: false
+      communication: {
+        tone: 'collaborative',
+        shouldStreamThinking: false,
+        shouldProvideContext: true,
+        updateFrequency: 'completion'
       },
-      communicationStyle: {
-        tone: 'professional',
-        verbosity: 'concise',
-        shouldExplain: isQuestion,
-        shouldSummarize: !isQuestion
-      },
-      technicalRequirements: {
-        framework: context.framework || 'react',
-        dependencies: [],
-        integrations: []
-      },
-      confidence: 0.6,
-      reasoning: ['Fallback heuristic analysis'],
-      suggestedApproach: 'Using rule-based detection'
+      meta: {
+        confidence: 0.5,
+        reasoning: ['Fallback heuristic understanding'],
+        uncertainties: ['Using basic pattern matching']
+      }
     };
   }
 }
+
+// Legacy compatibility export
+export type QueryAnalysis = DeepUnderstanding;
+export const MetaCognitiveAnalyzer = DeepUnderstandingAnalyzer;
