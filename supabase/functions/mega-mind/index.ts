@@ -165,7 +165,7 @@ serve(async (req) => {
             filesGenerated: result.filesGenerated?.length || 0,
             duration: result.duration,
             intent: analysis.understanding.userGoal,
-            complexity: analysis.actionPlan.complexity,
+            complexity: analysis.actionPlan.codeActions?.estimatedComplexity || 'unknown',
             confidence: analysis.meta.confidence,
             error: result.error ? {
               message: typeof result.error === 'string' ? result.error : result.error.message,
@@ -220,7 +220,7 @@ serve(async (req) => {
         success: result.success,
         analysis: {
           intent: analysis.understanding.userGoal,
-          complexity: analysis.actionPlan.complexity,
+          complexity: analysis.actionPlan.codeActions?.estimatedComplexity || 'unknown',
           confidence: analysis.meta.confidence
         },
         result: {

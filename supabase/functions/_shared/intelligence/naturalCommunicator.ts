@@ -187,7 +187,7 @@ COMMUNICATION STYLE GUIDELINES:
 
 TASK CONTEXT:
 - User's primary goal: ${analysis.understanding.userGoal}
-- Complexity level: ${analysis.actionPlan.complexity}
+- Complexity level: ${analysis.actionPlan.codeActions?.estimatedComplexity || 'unknown'}
 - Requires Code: ${analysis.actionPlan.requiresCodeGeneration}
 - Requires Explanation: ${analysis.actionPlan.requiresExplanation}
 
