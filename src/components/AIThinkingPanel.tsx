@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Brain, Layers, FileCode, CheckCircle2, Sparkles, FolderOpen } from 'lucide-react';
+import { Brain, Layers, FileCode, CheckCircle2, Sparkles, FolderOpen, AlertCircle } from 'lucide-react';
 import { useRealtimeAI } from '@/hooks/useRealtimeAI';
 import { cn } from '@/lib/utils';
 
@@ -14,13 +14,14 @@ interface AIThinkingPanelProps {
 }
 
 interface ThinkingStage {
-  stage: 'analyzing' | 'planning' | 'building' | 'complete';
+  stage: 'analyzing' | 'planning' | 'building' | 'complete' | 'error';
   title: string;
   description: string;
   details?: string[];
   icon: React.ReactNode;
   color: string;
   progress?: number;
+  persistent?: boolean; // Stages that should remain visible
 }
 
 export function AIThinkingPanel({ 
@@ -29,15 +30,24 @@ export function AIThinkingPanel({
   workspaceName = 'Your Workspace',
   className 
 }: AIThinkingPanelProps) {
-  const { status, isActive } = useRealtimeAI({ projectId, conversationId });
+  const { status, isActive, hasStarted } = useRealtimeAI({ projectId, conversationId });
   const [thinkingStages, setThinkingStages] = useState<ThinkingStage[]>([]);
   const [currentStage, setCurrentStage] = useState<number>(0);
+  const [shouldShow, setShouldShow] = useState(false);
+
+  // Control panel visibility
+  useEffect(() => {
+    if (hasStarted) {
+      setShouldShow(true);
+    }
+  }, [hasStarted]);
 
   // Convert status updates to thinking stages
   useEffect(() => {
     if (!status.message) return;
 
     const statusType = status.status;
+    console.log('🎯 Processing status:', statusType, status.message);
     
     if (statusType === 'analyzing') {
       setThinkingStages([{
@@ -89,21 +99,44 @@ export function AIThinkingPanel({
         }];
       });
       setCurrentStage(2);
-    } else if (statusType === 'idle' && status.message.includes('done')) {
+    } else if (statusType === 'error') {
+      // Error state - show the actual AI-generated error message
+      setThinkingStages(prev => [...prev, {
+        stage: 'error',
+        title: 'Issue Encountered',
+        description: status.message,
+        details: status.errors || [
+          'The AI encountered an unexpected issue',
+          'Please try again or rephrase your request'
+        ],
+        icon: <AlertCircle className="h-5 w-5" />,
+        color: 'text-destructive bg-destructive/10',
+        progress: 0,
+        persistent: true // Keep visible
+      }]);
+      setCurrentStage(prev => prev + 1);
+    } else if ((statusType === 'idle' || statusType === 'complete') && (status.message.includes('done') || status.message.includes('complete') || status.message.includes('finished'))) {
+      // Success completion
       setThinkingStages(prev => [...prev, {
         stage: 'complete',
         title: 'Complete!',
-        description: 'AI finished building your project',
-        details: ['All files generated', 'Ready to use'],
+        description: status.message,
+        details: [
+          status.filesGenerated ? `Generated ${status.filesGenerated} files` : 'All files generated',
+          status.duration ? `Completed in ${Math.round(status.duration / 1000)}s` : 'Ready to use'
+        ],
         icon: <CheckCircle2 className="h-5 w-5" />,
         color: 'text-green-500 bg-green-500/10',
-        progress: 100
+        progress: 100,
+        persistent: true // Keep visible
       }]);
-      setCurrentStage(3);
+      setCurrentStage(prev => prev + 1);
     }
   }, [status]);
 
-  if (!isActive && thinkingStages.length === 0) {
+  // Only hide if: never started OR (not active AND no persistent stages)
+  const hasPersistentStages = thinkingStages.some(s => s.persistent);
+  if (!shouldShow || (!isActive && !hasPersistentStages)) {
     return null;
   }
 
@@ -118,9 +151,21 @@ export function AIThinkingPanel({
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
             {workspaceName}
             {isActive && (
-              <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30 text-primary">
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-xs",
+                  status.status === 'error' 
+                    ? "bg-destructive/10 border-destructive/30 text-destructive" 
+                    : status.status === 'complete'
+                    ? "bg-green-500/10 border-green-500/30 text-green-500"
+                    : "bg-primary/10 border-primary/30 text-primary"
+                )}
+              >
                 <Sparkles className="h-3 w-3 mr-1" />
-                AI Active
+                {status.status === 'error' ? 'Issue Detected' : 
+                 status.status === 'complete' ? 'Complete' : 
+                 'AI Active'}
               </Badge>
             )}
           </h3>
@@ -142,14 +187,18 @@ export function AIThinkingPanel({
           {thinkingStages.map((stage, index) => (
             <div
               key={index}
-              className={cn(
-                "relative rounded-lg border p-4 transition-all duration-300",
-                index === currentStage 
-                  ? "border-primary/50 bg-primary/5 shadow-sm scale-[1.02]" 
-                  : index < currentStage 
-                    ? "border-border/30 bg-muted/20 opacity-70"
-                    : "border-border/20 bg-card/50 opacity-50"
-              )}
+               className={cn(
+                 "relative rounded-lg border p-4 transition-all duration-300",
+                 stage.stage === 'error'
+                   ? "border-destructive/50 bg-destructive/5 shadow-sm scale-[1.02]"
+                   : stage.stage === 'complete'
+                   ? "border-green-500/50 bg-green-500/5 shadow-sm scale-[1.02]"
+                   : index === currentStage 
+                   ? "border-primary/50 bg-primary/5 shadow-sm scale-[1.02]" 
+                   : index < currentStage 
+                     ? "border-border/30 bg-muted/20 opacity-70"
+                     : "border-border/20 bg-card/50 opacity-50"
+               )}
             >
               {/* Connector Line */}
               {index < thinkingStages.length - 1 && (

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-type AIStatus = 'idle' | 'thinking' | 'reading' | 'editing' | 'fixing' | 'analyzing' | 'generating';
+type AIStatus = 'idle' | 'thinking' | 'reading' | 'editing' | 'fixing' | 'analyzing' | 'generating' | 'error' | 'complete';
 
 interface StatusUpdate {
   status: AIStatus;
@@ -9,6 +9,8 @@ interface StatusUpdate {
   timestamp: string;
   progress?: number;
   errors?: string[];
+  filesGenerated?: number;
+  duration?: number;
 }
 
 interface CodeUpdate {
@@ -31,6 +33,7 @@ export function useRealtimeAI({ projectId, conversationId }: UseRealtimeAIProps)
   });
   const [codeUpdates, setCodeUpdates] = useState<CodeUpdate[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
+  const [hasStarted, setHasStarted] = useState(false);
 
   useEffect(() => {
     const channelId = projectId || conversationId;
@@ -40,10 +43,18 @@ export function useRealtimeAI({ projectId, conversationId }: UseRealtimeAIProps)
     const statusChannel = supabase
       .channel(`ai-status-${channelId}`)
       .on('broadcast', { event: 'status-update' }, ({ payload }) => {
+        console.log('📡 Received status update:', payload);
+        
+        // Mark that AI has started working
+        if (payload.status !== 'idle') {
+          setHasStarted(true);
+        }
+        
         setStatus({
           ...payload,
           timestamp: payload.timestamp || new Date().toISOString()
         });
+        
         if (payload.errors) {
           setErrors(payload.errors);
         }
@@ -64,10 +75,15 @@ export function useRealtimeAI({ projectId, conversationId }: UseRealtimeAIProps)
     };
   }, [projectId, conversationId]);
 
+  // AI is "active" if it's not idle OR if it has started working
+  // Once started, stay active until explicitly told to stop
+  const isActive = status.status !== 'idle' || hasStarted;
+
   return {
     status,
     codeUpdates,
     errors,
-    isActive: status.status !== 'idle'
+    isActive,
+    hasStarted
   };
 }

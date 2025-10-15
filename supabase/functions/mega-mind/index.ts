@@ -138,16 +138,21 @@ serve(async (req) => {
   } catch (error) {
     console.error('[Universal Mega Mind] Error:', error);
     
-    // Broadcast error
+    // Broadcast error with proper status
     try {
-      const { conversationId, projectId } = await req.json();
+      const bodyClone = await req.clone().json();
+      const { conversationId, projectId } = bodyClone;
       const channelId = projectId || conversationId;
-      await broadcastStatus(
-        createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!),
-        channelId,
-        `I encountered an issue: ${error.message}. Let me try a different approach. ⚠️`,
-        'error'
-      );
+      
+      if (channelId) {
+        await broadcastStatus(
+          createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!),
+          channelId,
+          error.message || 'An unexpected error occurred. Please try again.',
+          'error',
+          { error: error.message }
+        );
+      }
     } catch {}
     
     return new Response(
