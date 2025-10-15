@@ -30,17 +30,36 @@ export function AIThinkingPanel({
   workspaceName = 'Your Workspace',
   className 
 }: AIThinkingPanelProps) {
-  const { status, isActive, hasStarted } = useRealtimeAI({ projectId, conversationId });
+  const { status, isActive, hasStarted, isComplete } = useRealtimeAI({ projectId, conversationId });
   const [thinkingStages, setThinkingStages] = useState<ThinkingStage[]>([]);
   const [currentStage, setCurrentStage] = useState<number>(0);
   const [shouldShow, setShouldShow] = useState(false);
+  const [isFinalState, setIsFinalState] = useState(false);
+
+  // ✅ ENTERPRISE FIX: Reset state when conversation changes
+  useEffect(() => {
+    console.log('🔄 Conversation changed in AIThinkingPanel, resetting state');
+    setThinkingStages([]);
+    setCurrentStage(0);
+    setShouldShow(false);
+    setIsFinalState(false);
+  }, [projectId, conversationId]);
 
   // Control panel visibility
   useEffect(() => {
     if (hasStarted) {
       setShouldShow(true);
     }
-  }, [hasStarted]);
+    // ✅ ENTERPRISE FIX: Hide panel after a delay when generation is complete
+    if (isComplete && hasStarted) {
+      setIsFinalState(true);
+      // Keep showing for 2 seconds after completion, then hide
+      const timer = setTimeout(() => {
+        setShouldShow(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [hasStarted, isComplete]);
 
   // Convert status updates to thinking stages
   useEffect(() => {
@@ -101,6 +120,7 @@ export function AIThinkingPanel({
       setCurrentStage(2);
     } else if (statusType === 'error') {
       // Error state - FINAL STATE, stop progressing
+      setIsFinalState(true);
       setThinkingStages(prev => {
         // Prevent duplicate error stages
         if (prev.some(s => s.stage === 'error')) {
@@ -130,6 +150,7 @@ export function AIThinkingPanel({
       });
     } else if ((statusType === 'idle' || statusType === 'complete') && (status.message.includes('done') || status.message.includes('complete') || status.message.includes('finished'))) {
       // Success completion - FINAL STATE, stop progressing
+      setIsFinalState(true);
       setThinkingStages(prev => {
         // Prevent duplicate completion stages
         if (prev.some(s => s.stage === 'complete')) {
@@ -160,9 +181,9 @@ export function AIThinkingPanel({
     }
   }, [status]);
 
-  // Only hide if: never started OR (not active AND no persistent stages)
+  // ✅ ENTERPRISE FIX: Only show if we should and there's activity or persistent stages
   const hasPersistentStages = thinkingStages.some(s => s.persistent);
-  if (!shouldShow || (!isActive && !hasPersistentStages)) {
+  if (!shouldShow) {
     return null;
   }
 

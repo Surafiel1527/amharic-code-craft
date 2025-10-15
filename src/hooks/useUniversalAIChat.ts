@@ -274,6 +274,11 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       // Update conversation ID first
       setConversationId(externalConversationId);
       
+      // ✅ CRITICAL: Reset loading states to prevent UI glitches
+      setIsLoading(false);
+      setProgress(0);
+      setCurrentPhase('');
+      
       // Clear messages immediately to prevent showing old conversation
       setMessages([]);
       
@@ -1014,12 +1019,23 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
           }
         };
         
-        // Replace placeholder with error message
+        // ✅ ENTERPRISE FIX: Replace placeholder with error message, preserving user message
         if (placeholderMessageId) {
-          setMessages(prev => prev.map(m => 
-            m.id === placeholderMessageId ? assistantMessage! : m
-          ));
-          logger.info('✅ Replaced placeholder with error message', { placeholderMessageId });
+          setMessages(prev => {
+            const updatedMessages = prev.map(m => 
+              m.id === placeholderMessageId ? assistantMessage! : m
+            );
+            logger.info('✅ Replaced placeholder with error message', { 
+              placeholderMessageId, 
+              messageCount: updatedMessages.length,
+              userMessagePreserved: updatedMessages.some(m => m.role === 'user' && m.content === message)
+            });
+            return updatedMessages;
+          });
+        } else {
+          // If no placeholder exists, add as new message (should not happen in normal flow)
+          setMessages(prev => [...prev, assistantMessage!]);
+          logger.warn('⚠️ No placeholder found, added error as new message');
         }
       } else if (response?.result?.answer) {
         // Natural Communicator generated conversational response
