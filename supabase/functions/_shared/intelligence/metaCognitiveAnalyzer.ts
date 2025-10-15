@@ -10,6 +10,8 @@
  * 4. Adapts communication style naturally
  */
 
+import { buildAwashSystemPrompt } from '../../universal-ai/awashIntegration.ts';
+
 export interface DeepUnderstanding {
   // Core Understanding - What user TRULY needs
   understanding: {
@@ -319,29 +321,45 @@ export class DeepUnderstandingAnalyzer {
   
   /**
    * Build deep understanding prompt that encourages autonomous reasoning
+   * Now with FULL Awash platform awareness
    */
   private buildDeepUnderstandingPrompt(context: any): string {
-    const workspaceInfo = context.projectContext 
-      ? `Current workspace state:
-- Total files: ${context.projectContext.workspace?.fileTree?.length || 0}
-- Framework: ${context.projectContext.workspace?.project?.framework || 'Unknown'}
-- Has preview: ${context.projectContext.workspace?.preview?.available ? 'Yes' : 'No'}
+    // Get comprehensive workspace awareness if available
+    const awashSystemPrompt = context.projectContext 
+      ? buildAwashSystemPrompt(context.projectContext, 'generation')
+      : '';
+    
+    // Build complete context picture
+    const workspaceInfo = context.projectContext?.workspace
+      ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏗️ COMPLETE WORKSPACE AWARENESS (Awash Platform):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${awashSystemPrompt}
+
+Additional Context:
+- Conversation history: ${context.conversationHistory?.length || 0} messages
+- User has existing code: ${context.existingFiles && Object.keys(context.existingFiles).length > 0 ? 'Yes' : 'No'}
+- Recent errors: ${context.projectContext.workspace.recentErrors?.length || 0} active
+`
+      : `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ LIMITED WORKSPACE AWARENESS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+No complete workspace context available.
+Working with minimal information:
+- Conversation history: ${context.conversationHistory?.length || 0} messages
+- Framework: ${context.framework || 'Unknown'}
 - Current route: ${context.currentRoute || '/'}
-- Recent errors: ${context.recentErrors?.length || 0}`
-      : 'No workspace context available';
+`;
 
     return `You are an Autonomous AI Agent for the Awash development platform.
 
 Your role is NOT to classify requests into predefined categories.
 Your role is to DEEPLY UNDERSTAND what the user needs and AUTONOMOUSLY DECIDE how to help.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CURRENT WORKSPACE CONTEXT:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${workspaceInfo}
-
-Conversation history: ${context.conversationHistory?.length || 0} messages
-User has existing code: ${context.existingFiles && Object.keys(context.existingFiles).length > 0 ? 'Yes' : 'No'}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 YOUR REASONING FRAMEWORK:

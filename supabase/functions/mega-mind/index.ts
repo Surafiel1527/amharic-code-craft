@@ -66,10 +66,19 @@ serve(async (req) => {
       request: userRequest,  // Frontend sends 'request', alias to 'userRequest'
       userId,
       conversationId,
-      projectId
+      projectId,
+      awashContext  // ✨ FULL PLATFORM AWARENESS
     } = body;
 
     const channelId = projectId || conversationId;
+    
+    console.log('📊 Awash Context Received:', {
+      hasContext: !!awashContext,
+      totalFiles: awashContext?.workspace?.totalFiles || 0,
+      framework: awashContext?.workspace?.framework || 'Unknown',
+      hasBackend: awashContext?.workspace?.hasBackend || false,
+      hasAuth: awashContext?.workspace?.hasAuth || false
+    });
 
     // Initialize Universal Mega Mind with broadcast callback
     const megaMind = new UniversalMegaMind(supabase, lovableApiKey);
@@ -101,11 +110,13 @@ serve(async (req) => {
     );
 
     // Single unified processing - AI handles everything
+    // Now with FULL Awash workspace awareness
     const result = await megaMind.processRequest({
       userRequest,
       userId,
       conversationId,
-      projectId
+      projectId,
+      context: awashContext  // ✨ Pass complete platform state
     });
     
     const analysis = result.analysis;
