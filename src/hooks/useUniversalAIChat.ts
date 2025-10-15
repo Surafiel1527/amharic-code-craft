@@ -113,7 +113,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
     maxContextLength = 1000,
     autoLearn = true,
     autoApply = true,
-    persistMessages = false,
+    persistMessages = true, // ✅ ENTERPRISE: Always persist for enterprise-grade conversation history
     onConversationChange,
     enableStreaming = false,
     enableTools = false,
@@ -263,48 +263,36 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
     }
   }, [persistMessages]);
   
-  // ✅ ENTERPRISE FIX: Properly manage conversation changes and prevent race conditions
+  // ✅ ENTERPRISE: Load conversation on mount and when conversation changes
   const previousConversationIdRef = useRef<string | null>(null);
   const isLoadingConversationRef = useRef(false);
   
   useEffect(() => {
-    // Only process if conversation ID actually changed and we're not already loading
+    // Load conversation when component mounts or conversation ID changes
     const hasChanged = externalConversationId !== previousConversationIdRef.current;
     
     if (externalConversationId && hasChanged && !isLoadingConversationRef.current) {
-      logger.info('🔄 Conversation changed', { 
-        from: previousConversationIdRef.current, 
-        to: externalConversationId 
+      logger.info('🔄 Loading conversation from database', { 
+        conversationId: externalConversationId 
       });
       
       isLoadingConversationRef.current = true;
       previousConversationIdRef.current = externalConversationId;
       
-      // Update conversation ID first
+      // Update conversation ID
       setConversationId(externalConversationId);
       
-      // ✅ CRITICAL: Reset loading states to prevent UI glitches
+      // Reset states
       setIsLoading(false);
       setProgress(0);
       setCurrentPhase('');
       
-      // ✅ FIX: Only clear messages when switching BETWEEN two existing conversations
-      // Don't clear when going from null to a new ID (new conversation being created)
-      if (conversationId && conversationId !== externalConversationId) {
-        logger.info('🧹 Clearing messages for conversation switch');
-        setMessages([]);
-      }
-      
-      // Load new conversation if persistence is enabled
-      if (persistMessages) {
-        loadConversation(externalConversationId).finally(() => {
-          isLoadingConversationRef.current = false;
-        });
-      } else {
+      // Load messages from database
+      loadConversation(externalConversationId).finally(() => {
         isLoadingConversationRef.current = false;
-      }
+      });
     }
-  }, [externalConversationId, conversationId, persistMessages, loadConversation]);
+  }, [externalConversationId, loadConversation]);
 
   /**
    * Create new conversation

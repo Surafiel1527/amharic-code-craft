@@ -97,13 +97,75 @@ serve(async (req) => {
       projectId
     });
 
+    // ✅ ENTERPRISE: Save conversation to database for permanent persistence
+    console.log('💾 Persisting conversation to database...');
+    
+    try {
+      // 1. Save user message
+      const { error: userMsgError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          role: 'user',
+          content: userRequest,
+          user_id: userId,
+          metadata: {
+            projectId,
+            timestamp: new Date().toISOString()
+          }
+        });
+      
+      if (userMsgError) {
+        console.error('❌ Failed to save user message:', userMsgError);
+      } else {
+        console.log('✅ User message saved to database');
+      }
+
+      // 2. Save AI response (success or error)
+      const aiMessage = result.message || 
+        (result.success 
+          ? "All done! Your request has been processed. ✅" 
+          : "Something went wrong");
+      
+      const { error: aiMsgError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          role: 'assistant',
+          content: aiMessage,
+          user_id: userId,
+          metadata: {
+            success: result.success,
+            filesGenerated: result.filesGenerated?.length || 0,
+            duration: result.duration,
+            intent: analysis.userIntent.primaryGoal,
+            complexity: analysis.complexity.level,
+            strategy: analysis.executionStrategy.primaryApproach,
+            error: result.error ? {
+              message: typeof result.error === 'string' ? result.error : result.error.message,
+              type: 'generation_error'
+            } : undefined,
+            timestamp: new Date().toISOString()
+          },
+          generated_code: result.output ? JSON.stringify(result.output) : null
+        });
+      
+      if (aiMsgError) {
+        console.error('❌ Failed to save AI message:', aiMsgError);
+      } else {
+        console.log('✅ AI response saved to database');
+      }
+    } catch (dbError) {
+      console.error('❌ Database persistence error:', dbError);
+      // Don't fail the request if DB save fails - just log it
+    }
+
     // Broadcast completion or error with AI-generated message
     const finalStatus = result.success ? 'idle' : 'error';
     const errorArray = result.error 
       ? [typeof result.error === 'string' ? result.error : (result.error.message || 'Unknown error')]
       : undefined;
     
-    // ✅ FIX: Safely handle filesGenerated which may be undefined on errors
     const safeFilesGenerated = result.filesGenerated?.length || 0;
     
     await broadcastStatus(
@@ -118,8 +180,7 @@ serve(async (req) => {
       }
     );
     
-    // ✅ FIX: Add delay before returning to ensure broadcast is sent
-    // This prevents race condition where function shuts down before client receives message
+    // ✅ Add delay to ensure broadcast delivery
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // Return unified response

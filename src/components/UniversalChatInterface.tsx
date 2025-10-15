@@ -57,7 +57,7 @@ export interface UniversalChatInterfaceProps {
   // Behavior
   autoLearn?: boolean;
   autoApply?: boolean;
-  persistMessages?: boolean;
+  persistMessages?: boolean; // ✅ ENTERPRISE: Persistence enabled by default
   enableTools?: boolean;
   enableStreaming?: boolean;
   placeholder?: string;
@@ -178,9 +178,9 @@ export function UniversalChatInterface({
     selectedFiles: contextMode === 'selected' ? selectedFiles : contextMode === 'all' ? projectFiles.map(f => f.file_path) : [],
     onCodeApply,
     onConversationChange,
+    persistMessages: true, // ✅ ENTERPRISE: Always persist messages for permanent conversation history
     autoLearn,
     autoApply,
-    persistMessages,
     enableTools,
     enableStreaming,
     projectContext: { ...projectContext, ...(context || {}) }, // Merge contexts
