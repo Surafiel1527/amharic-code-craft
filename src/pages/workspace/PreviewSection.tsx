@@ -9,6 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import JSZip from "jszip";
 import { toast } from "sonner";
 import { useState, useMemo } from "react";
+import { AIThinkingPanel } from "@/components/AIThinkingPanel";
+import { useRealtimeAI } from "@/hooks/useRealtimeAI";
 
 interface PreviewSectionProps {
   projectId: string;
@@ -35,6 +37,9 @@ export function PreviewSection({
 }: PreviewSectionProps) {
   const isMobile = useIsMobile();
   const [selectedFile, setSelectedFile] = useState<string>(framework === 'react' ? 'src/App.tsx' : 'index.html');
+  
+  // Monitor AI activity
+  const { status, isActive } = useRealtimeAI({ projectId, conversationId: conversationId || undefined });
   
   // Generate all file contents - use real project files if available
   const fileContents = useMemo(() => {
@@ -304,26 +309,38 @@ npm run build
   if (isMobile) {
     if (mobileTab === 'chat') {
       return (
-        <div className="h-full flex flex-col">
-          {conversationId ? (
-            <UniversalChatInterface
-              conversationId={conversationId}
+        <div className="h-full flex flex-col gap-4 p-4">
+          {/* AI Thinking Panel - Shows when AI is active */}
+          {isActive && (
+            <AIThinkingPanel 
               projectId={projectId}
-              mode="panel"
-              operationMode="enhance"
-              persistMessages={true}
-              selectedFiles={selectedFiles}
-              projectFiles={Object.entries(fileContents).map(([path, content]) => ({
-                file_path: path,
-                file_content: typeof content === 'string' ? content : ''
-              }))}
-              context={{
-                currentCode: htmlCode,
-                projectId,
-                conversationHistory: [],
-                framework
-              }}
+              conversationId={conversationId || undefined}
+              workspaceName={projectTitle}
+              className="flex-shrink-0"
             />
+          )}
+          
+          {conversationId ? (
+            <div className="flex-1 min-h-0">
+              <UniversalChatInterface
+                conversationId={conversationId}
+                projectId={projectId}
+                mode="panel"
+                operationMode="enhance"
+                persistMessages={true}
+                selectedFiles={selectedFiles}
+                projectFiles={Object.entries(fileContents).map(([path, content]) => ({
+                  file_path: path,
+                  file_content: typeof content === 'string' ? content : ''
+                }))}
+                context={{
+                  currentCode: htmlCode,
+                  projectId,
+                  conversationHistory: [],
+                  framework
+                }}
+              />
+            </div>
           ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center text-muted-foreground">
@@ -423,28 +440,39 @@ npm run build
   return (
     <div className="grid lg:grid-cols-2 gap-4 p-4 h-full overflow-hidden">
       {/* Chat Interface - Full height */}
-      <div className="flex flex-col h-full min-h-0">
-        {conversationId ? (
-          <UniversalChatInterface
-            conversationId={conversationId}
+      <div className="flex flex-col h-full min-h-0 gap-4">
+        {/* AI Thinking Panel - Shows when AI is active */}
+        {isActive && (
+          <AIThinkingPanel 
             projectId={projectId}
-            mode="inline"
-            operationMode="enhance"
-            height="h-full"
-            persistMessages={true}
-            selectedFiles={selectedFiles}
-            projectFiles={Object.entries(fileContents).map(([path, content]) => ({
-              file_path: path,
-              file_content: typeof content === 'string' ? content : ''
-            }))}
-            context={{
-              currentCode: htmlCode,
-              projectId,
-              conversationHistory: [],
-              framework
-            }}
-            className="h-full"
+            conversationId={conversationId || undefined}
+            workspaceName={projectTitle}
           />
+        )}
+        
+        {conversationId ? (
+          <div className="flex-1 min-h-0">
+            <UniversalChatInterface
+              conversationId={conversationId}
+              projectId={projectId}
+              mode="inline"
+              operationMode="enhance"
+              height="h-full"
+              persistMessages={true}
+              selectedFiles={selectedFiles}
+              projectFiles={Object.entries(fileContents).map(([path, content]) => ({
+                file_path: path,
+                file_content: typeof content === 'string' ? content : ''
+              }))}
+              context={{
+                currentCode: htmlCode,
+                projectId,
+                conversationHistory: [],
+                framework
+              }}
+              className="h-full"
+            />
+          </div>
         ) : (
           <Card className="flex items-center justify-center h-full">
             <div className="text-center text-muted-foreground">

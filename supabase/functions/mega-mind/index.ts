@@ -39,6 +39,7 @@ async function broadcastStatus(
         ...metadata
       }
     });
+    console.log(`📡 Broadcast sent: ${message}`);
   } catch (error) {
     console.error('Failed to broadcast status:', error);
   }

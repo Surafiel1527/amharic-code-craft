@@ -11,6 +11,7 @@ import { PreviewSection } from "./workspace/PreviewSection";
 import { LiveGenerationProgress } from "@/components/LiveGenerationProgress";
 import { GenerationMonitorOverlay } from "@/components/GenerationMonitorOverlay";
 import { SecretsRequiredModal } from "@/components/SecretsRequiredModal";
+import { AIThinkingPanel } from "@/components/AIThinkingPanel";
 
 interface Project {
   id: string;

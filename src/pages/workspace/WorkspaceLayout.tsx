@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ArrowLeft, Maximize2, Minimize2, 
-  RotateCcw, MessageSquarePlus, Save, Loader2, FileCode2, Code2, Sparkles, MessageSquare, Eye
+  RotateCcw, Save, Loader2, FileCode2, Code2, Sparkles, MessageSquare, Eye, FileJson
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,9 +14,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { PatternLearner } from "@/components/PatternLearner";
 import { VersionHistory } from "@/components/VersionHistory";
-import { ConversationSidebar } from "@/components/ConversationSidebar";
 import { CollaborativePresence } from "@/components/CollaborativePresence";
 import { LiveGenerationProgress } from "@/components/LiveGenerationProgress";
+import { CodeFilesViewer } from "@/components/CodeFilesViewer";
 
 interface Project {
   id: string;
@@ -185,21 +185,16 @@ export function WorkspaceLayout({
             <Sheet open={showConversations} onOpenChange={setShowConversations}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm">
-                  <MessageSquarePlus className="w-4 h-4 mr-2" />
-                  Chats
+                  <FileJson className="w-4 h-4 mr-2" />
+                  Code
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[350px]">
-                <SheetHeader>
-                  <SheetTitle>Conversations</SheetTitle>
-                </SheetHeader>
-                <div className="mt-6">
-                  <ConversationSidebar
-                    conversations={conversations}
-                    activeConversation={conversationId}
-                    onConversationSelect={handleConversationSelect}
-                    onNewConversation={handleNewConversation}
-                    onConversationsChange={loadConversations}
+              <SheetContent side="right" className="w-[800px] max-w-[90vw] p-0">
+                <div className="h-full">
+                  <CodeFilesViewer 
+                    projectCode={project?.html_code || ''}
+                    projectTitle={project?.title || 'Project'}
+                    framework={project?.framework}
                   />
                 </div>
               </SheetContent>
