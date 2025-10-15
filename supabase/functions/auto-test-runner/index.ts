@@ -60,9 +60,9 @@ serve(async (req) => {
       try {
         console.log(`🏃 Running test: ${test.test_name}`);
         
-        // Call mega-mind-orchestrator with test prompt
-        const { data: generationResult, error: genError } = await supabase.functions.invoke(
-          'mega-mind-orchestrator',
+        // Call unified mega-mind with test prompt
+        const { data, error } = await supabase.functions.invoke(
+          'mega-mind',
           {
             body: {
               request: test.test_prompt,

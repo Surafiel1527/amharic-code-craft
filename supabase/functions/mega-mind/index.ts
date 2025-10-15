@@ -17,6 +17,33 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Broadcast AI-generated status updates to frontend
+ */
+async function broadcastStatus(
+  supabase: any,
+  channelId: string,
+  message: string,
+  status: string = 'thinking',
+  metadata?: any
+) {
+  try {
+    const channel = supabase.channel(`ai-status-${channelId}`);
+    await channel.send({
+      type: 'broadcast',
+      event: 'status-update',
+      payload: {
+        status,
+        message,
+        timestamp: new Date().toISOString(),
+        ...metadata
+      }
+    });
+  } catch (error) {
+    console.error('Failed to broadcast status:', error);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -40,6 +67,8 @@ serve(async (req) => {
       projectId
     } = await req.json();
 
+    const channelId = projectId || conversationId;
+
     // Initialize Universal Mega Mind
     const megaMind = new MegaMindOrchestrator(supabase, lovableApiKey);
 
@@ -50,6 +79,14 @@ serve(async (req) => {
       requestLength: userRequest?.length
     });
 
+    // Broadcast initial thinking message
+    await broadcastStatus(
+      supabase,
+      channelId,
+      "I'm analyzing your request to understand what you need... 🤔",
+      'analyzing'
+    );
+
     // Single unified processing - AI handles everything
     const { analysis, result } = await megaMind.processRequest({
       userRequest,
@@ -57,6 +94,18 @@ serve(async (req) => {
       conversationId,
       projectId
     });
+
+    // Broadcast completion with AI-generated message
+    await broadcastStatus(
+      supabase,
+      channelId,
+      result.message || "All done! Your request has been processed. ✅",
+      'idle',
+      {
+        filesGenerated: result.filesGenerated,
+        duration: result.duration
+      }
+    );
 
     // Return unified response
     return new Response(
@@ -86,6 +135,19 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[Universal Mega Mind] Error:', error);
+    
+    // Broadcast error
+    try {
+      const { conversationId, projectId } = await req.json();
+      const channelId = projectId || conversationId;
+      await broadcastStatus(
+        createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!),
+        channelId,
+        `I encountered an issue: ${error.message}. Let me try a different approach. ⚠️`,
+        'error'
+      );
+    } catch {}
+    
     return new Response(
       JSON.stringify({ 
         success: false,

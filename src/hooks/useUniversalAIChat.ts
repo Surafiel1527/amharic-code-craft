@@ -596,7 +596,7 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       logger.error('Universal Router failed, falling back', error);
       
       // Fallback to direct orchestrator
-      console.log('🔍 [ROUTER DEBUG] Falling back to mega-mind-orchestrator');
+      console.log('🔍 [ROUTER DEBUG] Routing to unified mega-mind');
       return await routeToOrchestrator(message, context);
     }
   }, [conversationId, projectId, createConversation]);
@@ -613,15 +613,15 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
     const isModification = mode === 'enhance' && projectId && context.currentCode;
     const operationMode = isModification ? 'modify' : 'generate';
     
-    logger.info(`Routing to mega-mind-orchestrator (operationMode: ${operationMode})`);
+    logger.info(`Routing to unified mega-mind (operationMode: ${operationMode})`);
 
     try {
       
-      logger.info(`Routing to mega-mind-orchestrator (operationMode: ${operationMode}, mode: ${mode}, isModification: ${isModification})`);
+      logger.info(`Routing to unified mega-mind (operationMode: ${operationMode}, mode: ${mode}, isModification: ${isModification})`);
 
       // Use retry logic for reliability
       const data = await retryWithBackoff(async () => {
-        const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
+        const { data, error } = await supabase.functions.invoke('mega-mind', {
           body: {
             // CRITICAL: Pass userId and conversationId at TOP LEVEL
             userId: currentUser.id,

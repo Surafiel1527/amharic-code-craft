@@ -93,7 +93,7 @@ export default function BeyondMegaMindDashboard() {
     try {
       const base64Data = designImagePreview.split(',')[1];
       
-      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
+      const { data, error } = await supabase.functions.invoke('mega-mind', {
         body: {
           imageBase64: base64Data,
           description: designDescription,

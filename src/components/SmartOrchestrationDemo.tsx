@@ -45,7 +45,7 @@ export const SmartOrchestrationDemo = () => {
         setProgress(prev => Math.min(prev + 5, 90));
       }, 500);
 
-      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
+      const { data, error } = await supabase.functions.invoke('mega-mind', {
         body: {
           request: userRequest,
           requestType: 'demo',

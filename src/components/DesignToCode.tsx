@@ -42,8 +42,8 @@ export const DesignToCode = ({ onCodeGenerated }: DesignToCodeProps) => {
 
     setIsGenerating(true);
     try {
-      // Route to mega-mind-orchestrator for design-to-code
-      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
+      // Route to unified mega-mind for design-to-code
+      const { data, error } = await supabase.functions.invoke('mega-mind', {
         body: {
           request: `Convert this design to code: ${requirements.trim() || 'Create a clean, responsive UI'}`,
           requestType: 'design-to-code',

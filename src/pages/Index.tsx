@@ -368,7 +368,7 @@ const Index = () => {
         throw new Error("Not authenticated");
       }
 
-      const { data, error } = await supabase.functions.invoke("mega-mind-orchestrator", {
+      const { data, error } = await supabase.functions.invoke("mega-mind", {
         headers: {
           Authorization: `Bearer ${session.session.access_token}`,
         },

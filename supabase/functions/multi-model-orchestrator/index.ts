@@ -108,7 +108,7 @@ async function generateWithStrategy(
     console.log(`🔨 Attempting generation with ${strategy.model} (${strategy.approach})`);
     
     // Call the framework builder with the specific model
-    const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
+    const { data, error } = await supabase.functions.invoke('mega-mind', {
       body: {
         request,
         ...context,
@@ -119,7 +119,7 @@ async function generateWithStrategy(
     
     if (error) throw error;
     
-    // Handle different response formats from mega-mind-orchestrator
+    // Handle different response formats from unified mega-mind
     const files = data?.files || data?.generatedCode?.files || data?.result?.files || [];
     
     // Calculate quality score

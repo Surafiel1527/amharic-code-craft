@@ -32,7 +32,7 @@ export const MegaMindDashboard = () => {
     setOrchestration(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
+      const { data, error } = await supabase.functions.invoke('mega-mind', {
         body: {
           request,
           requestType,

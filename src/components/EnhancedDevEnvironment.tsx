@@ -32,7 +32,7 @@ export default function EnhancedDevEnvironment() {
       const checks = await Promise.all([
         supabase.functions.invoke('unified-code-operations', { body: { operation: 'execute', params: { code: 'return "OK"', language: 'javascript' } } }),
         supabase.functions.invoke('unified-package-manager', { body: { operation: 'auto_detect' } }),
-        supabase.functions.invoke('mega-mind-orchestrator', { body: { request: 'health check', requestType: 'system' } })
+        supabase.functions.invoke('mega-mind', { body: { userRequest: 'health check', userId: 'system' } })
       ]);
 
       setSystemStatus({
@@ -152,7 +152,7 @@ export default function EnhancedDevEnvironment() {
                     AI Orchestrator
                   </Badge>
                 </TooltipTrigger>
-                <TooltipContent>Intelligent code generation via mega-mind-orchestrator</TooltipContent>
+                <TooltipContent>Intelligent code generation via Universal Mega Mind</TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
@@ -215,7 +215,7 @@ export default function EnhancedDevEnvironment() {
                   </h3>
                   <ul className="space-y-3 text-sm">
                     <li className="flex items-start gap-2 hover-scale">
-                      <Badge variant="outline" className="mt-0.5">mega-mind-orchestrator</Badge>
+                      <Badge variant="outline" className="mt-0.5">Universal Mega Mind</Badge>
                       <span className="text-muted-foreground">AI-powered code generation & intelligent orchestration</span>
                     </li>
                     <li className="flex items-start gap-2 hover-scale">

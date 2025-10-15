@@ -209,7 +209,7 @@ async function routeRequest(
             });
           }
           
-          const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('mega-mind-orchestrator', {
+          const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('mega-mind', {
             body: {
               request,
               requestType: 'generation',
@@ -257,7 +257,7 @@ async function routeRequest(
           });
         }
         
-        const { data: orchData, error: orchError } = await supabase.functions.invoke('mega-mind-orchestrator', {
+        const { data: orchData, error: orchError } = await supabase.functions.invoke('mega-mind', {
           body: {
             request,
             requestType: 'refactor',

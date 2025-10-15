@@ -59,8 +59,8 @@ export const AdvancedGenerationPanel: React.FC<AdvancedGenerationPanelProps> = (
     setPhase('planning');
 
     try {
-      // Route to mega-mind-orchestrator for planning
-      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
+      // Route to unified mega-mind for planning
+      const { data, error } = await supabase.functions.invoke('mega-mind', {
         body: {
           request: `Create a detailed plan for: ${userRequest}`,
           requestType: 'planning',
@@ -98,8 +98,8 @@ export const AdvancedGenerationPanel: React.FC<AdvancedGenerationPanelProps> = (
     try {
       const { data: userData } = await supabase.auth.getUser();
       
-      // Already fixed above - this section now uses mega-mind-orchestrator
-      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
+      // Use unified mega-mind
+      const { data, error } = await supabase.functions.invoke('mega-mind', {
         body: {
           request: userRequest,
           requestType: 'code-generation',
@@ -142,8 +142,8 @@ export const AdvancedGenerationPanel: React.FC<AdvancedGenerationPanelProps> = (
     try {
       const { data: userData } = await supabase.auth.getUser();
       
-      // Route to mega-mind-orchestrator instead of non-existent smart-diff-update
-      const { data, error } = await supabase.functions.invoke('mega-mind-orchestrator', {
+      // Route to unified mega-mind
+      const { data, error } = await supabase.functions.invoke('mega-mind', {
         body: {
           request: userRequest,
           requestType: 'code-modification',

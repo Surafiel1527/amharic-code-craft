@@ -1,6 +1,6 @@
 /**
  * Database Operations and Auto-Healing
- * Centralized database utilities for mega-mind-orchestrator
+ * Centralized database utilities for Universal Mega Mind
  */
 
 import { createLogger, type LogContext } from './logger.ts';

@@ -94,7 +94,7 @@ export function LiveGenerationProgress({ projectId, onComplete, onCancel }: Live
       }
 
       // Call the orchestrator to resume
-      const { error: invokeError } = await supabase.functions.invoke('mega-mind-orchestrator', {
+      const { error: invokeError } = await supabase.functions.invoke('mega-mind', {
         body: {
           request: inputData.request || 'Continue from where we left off',
           conversationId: job.conversation_id,

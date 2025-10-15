@@ -670,7 +670,7 @@ export default function Workspace() {
       toast.info("Sending clarification to AGI system...");
       
       // Call orchestrator with clarification
-      const response = await supabase.functions.invoke('mega-mind-orchestrator', {
+      const response = await supabase.functions.invoke('mega-mind', {
         body: {
           userMessage: clarification,
           conversationId,
@@ -702,7 +702,7 @@ export default function Workspace() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         
-        await supabase.functions.invoke('mega-mind-orchestrator', {
+        await supabase.functions.invoke('mega-mind', {
           body: {
             userId: user.id,
             conversationId,

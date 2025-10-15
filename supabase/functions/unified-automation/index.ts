@@ -635,7 +635,7 @@ async function processJobQueue(
 
       // Call orchestrator
       const orchestratorResponse = await fetch(
-        `${supabaseUrl}/functions/v1/mega-mind-orchestrator`,
+        `${supabaseUrl}/functions/v1/mega-mind`,
         {
           method: 'POST',
           headers: {
