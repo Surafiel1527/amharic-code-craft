@@ -147,12 +147,6 @@ export class AutonomousExecutor {
       }
     }
     
-    // Validate if needed
-    if (codeActions.architectureChanges) {
-      await this.broadcastStatus('validating', understanding);
-      await this.validateArchitecture(filesGenerated);
-    }
-    
     // Generate completion message
     const completionMsg = await this.communicator.generateCompletionSummary(
       understanding.understanding.userGoal,
@@ -314,19 +308,6 @@ export class AutonomousExecutor {
     
     // Dependencies are auto-installed by platform
     // This is a placeholder for future enhancement
-  }
-  
-  /**
-   * Validate architecture changes
-   */
-  private async validateArchitecture(files: string[]): Promise<void> {
-    console.log('🔧 Tool: architecture_validator');
-    console.log(`✅ Validating ${files.length} files...`);
-    
-    // Use Awash validation service
-    const { validateGeneratedCode } = await import('../../services/awashValidation.ts');
-    
-    // Validation happens automatically
   }
   
   /**
