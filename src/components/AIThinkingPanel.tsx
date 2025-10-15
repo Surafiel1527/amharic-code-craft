@@ -148,7 +148,7 @@ export function AIThinkingPanel({
         const errorIndex = stages.findIndex(s => s.stage === 'error');
         return errorIndex >= 0 ? errorIndex : prev + 1;
       });
-    } else if ((statusType === 'idle' || statusType === 'complete') && (status.message.includes('done') || status.message.includes('complete') || status.message.includes('finished'))) {
+    } else if (statusType === 'idle' && hasStarted && !thinkingStages.some(s => s.stage === 'complete')) {
       // Success completion - FINAL STATE, stop progressing
       setIsFinalState(true);
       setThinkingStages(prev => {

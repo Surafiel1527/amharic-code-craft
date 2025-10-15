@@ -160,7 +160,7 @@ serve(async (req) => {
     }
 
     // Broadcast completion or error - MUST use AI-generated message only
-    const finalStatus = result.success ? 'complete' : 'error';
+    const finalStatus = result.success ? 'idle' : 'error';
     const errorArray = result.error 
       ? [typeof result.error === 'string' ? result.error : (result.error.message || 'Unknown error')]
       : undefined;

@@ -210,19 +210,19 @@ export function UniversalChatInterface({
           return;
         }
         
-        // Handle complete status
-        if (payload.status === 'complete' || payload.message?.includes('complete')) {
+        // Handle idle status (completion)
+        if (payload.status === 'idle') {
           setTimeout(() => {
             setGenerationStatus({ isGenerating: false, message: '', progress: 0 });
           }, 2000);
-          return; // Exit early for complete status
+          return; // Exit early for idle/complete status
         }
         
         // Update generation status for active generation
-        const isGenerating = payload.status !== 'idle' && payload.status !== 'complete';
+        const isGenerating = payload.status !== 'idle' && payload.status !== 'error';
         setGenerationStatus({
           isGenerating,
-          message: payload.message || payload.currentOperation || 'Generating...',
+          message: payload.message || 'Generating...',
           progress: payload.progress || 0
         });
       })

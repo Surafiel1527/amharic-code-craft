@@ -83,9 +83,9 @@ export function useRealtimeAI({ projectId, conversationId }: UseRealtimeAIProps)
           setHasStarted(true);
         }
         
-        // Mark as complete if we receive complete/idle with completion message
-        if ((payload.status === 'complete' || payload.status === 'idle') && 
-            (payload.message?.includes('complete') || payload.message?.includes('done'))) {
+        // Mark as complete when AI returns to idle AFTER it has started
+        // This prevents false completion on initial idle state
+        if (payload.status === 'idle' && hasStarted) {
           setIsComplete(true);
         }
         
