@@ -100,37 +100,63 @@ export function AIThinkingPanel({
       });
       setCurrentStage(2);
     } else if (statusType === 'error') {
-      // Error state - show the actual AI-generated error message
-      setThinkingStages(prev => [...prev, {
-        stage: 'error',
-        title: 'Issue Encountered',
-        description: status.message,
-        details: status.errors || [
-          'The AI encountered an unexpected issue',
-          'Please try again or rephrase your request'
-        ],
-        icon: <AlertCircle className="h-5 w-5" />,
-        color: 'text-destructive bg-destructive/10',
-        progress: 0,
-        persistent: true // Keep visible
-      }]);
-      setCurrentStage(prev => prev + 1);
+      // Error state - FINAL STATE, stop progressing
+      setThinkingStages(prev => {
+        // Prevent duplicate error stages
+        if (prev.some(s => s.stage === 'error')) {
+          return prev;
+        }
+        
+        return [...prev, {
+          stage: 'error',
+          title: 'Issue Encountered',
+          description: status.message,
+          details: status.errors || [
+            'The AI encountered an unexpected issue',
+            'Please try again or rephrase your request'
+          ],
+          icon: <AlertCircle className="h-5 w-5" />,
+          color: 'text-destructive bg-destructive/10',
+          progress: 0,
+          persistent: true // Keep visible - no more animation
+        }];
+      });
+      
+      // Move to error stage and STOP incrementing
+      setCurrentStage(prev => {
+        const stages = thinkingStages;
+        const errorIndex = stages.findIndex(s => s.stage === 'error');
+        return errorIndex >= 0 ? errorIndex : prev + 1;
+      });
     } else if ((statusType === 'idle' || statusType === 'complete') && (status.message.includes('done') || status.message.includes('complete') || status.message.includes('finished'))) {
-      // Success completion
-      setThinkingStages(prev => [...prev, {
-        stage: 'complete',
-        title: 'Complete!',
-        description: status.message,
-        details: [
-          status.filesGenerated ? `Generated ${status.filesGenerated} files` : 'All files generated',
-          status.duration ? `Completed in ${Math.round(status.duration / 1000)}s` : 'Ready to use'
-        ],
-        icon: <CheckCircle2 className="h-5 w-5" />,
-        color: 'text-green-500 bg-green-500/10',
-        progress: 100,
-        persistent: true // Keep visible
-      }]);
-      setCurrentStage(prev => prev + 1);
+      // Success completion - FINAL STATE, stop progressing
+      setThinkingStages(prev => {
+        // Prevent duplicate completion stages
+        if (prev.some(s => s.stage === 'complete')) {
+          return prev;
+        }
+        
+        return [...prev, {
+          stage: 'complete',
+          title: 'Complete!',
+          description: status.message,
+          details: [
+            status.filesGenerated ? `Generated ${status.filesGenerated} files` : 'All files generated',
+            status.duration ? `Completed in ${Math.round(status.duration / 1000)}s` : 'Ready to use'
+          ],
+          icon: <CheckCircle2 className="h-5 w-5" />,
+          color: 'text-green-500 bg-green-500/10',
+          progress: 100,
+          persistent: true // Keep visible - no more animation
+        }];
+      });
+      
+      // Move to completion stage and STOP
+      setCurrentStage(prev => {
+        const stages = thinkingStages;
+        const completeIndex = stages.findIndex(s => s.stage === 'complete');
+        return completeIndex >= 0 ? completeIndex : prev + 1;
+      });
     }
   }, [status]);
 
@@ -188,17 +214,19 @@ export function AIThinkingPanel({
             <div
               key={index}
                className={cn(
-                 "relative rounded-lg border p-4 transition-all duration-300",
-                 stage.stage === 'error'
-                   ? "border-destructive/50 bg-destructive/5 shadow-sm scale-[1.02]"
-                   : stage.stage === 'complete'
-                   ? "border-green-500/50 bg-green-500/5 shadow-sm scale-[1.02]"
-                   : index === currentStage 
-                   ? "border-primary/50 bg-primary/5 shadow-sm scale-[1.02]" 
-                   : index < currentStage 
-                     ? "border-border/30 bg-muted/20 opacity-70"
-                     : "border-border/20 bg-card/50 opacity-50"
-               )}
+                  "relative rounded-lg border p-4 transition-all duration-300",
+                  // Final states (error/complete) - static, no animation
+                  stage.stage === 'error'
+                    ? "border-destructive/50 bg-destructive/5 shadow-sm"
+                    : stage.stage === 'complete'
+                    ? "border-green-500/50 bg-green-500/5 shadow-sm"
+                    // Active stage - only animate if not a final persistent state
+                    : index === currentStage && !stage.persistent
+                    ? "border-primary/50 bg-primary/5 shadow-sm scale-[1.02]" 
+                    : index < currentStage 
+                      ? "border-border/30 bg-muted/20 opacity-70"
+                      : "border-border/20 bg-card/50 opacity-50"
+                )}
             >
               {/* Connector Line */}
               {index < thinkingStages.length - 1 && (
@@ -215,7 +243,8 @@ export function AIThinkingPanel({
                 <div className={cn(
                   "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all",
                   stage.color,
-                  index === currentStage && "animate-pulse"
+                  // Only animate if active AND not a final state (error/complete)
+                  index === currentStage && !stage.persistent && "animate-pulse"
                 )}>
                   {stage.icon}
                 </div>
@@ -225,7 +254,8 @@ export function AIThinkingPanel({
                   <div>
                     <h5 className="text-sm font-semibold text-foreground flex items-center gap-2">
                       {stage.title}
-                      {index === currentStage && (
+                      {/* Only show pinging indicator for active non-final stages */}
+                      {index === currentStage && !stage.persistent && (
                         <span className="flex h-2 w-2">
                           <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-primary opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
