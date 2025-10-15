@@ -234,9 +234,18 @@ export class AdaptiveExecutor {
       };
       
     } catch (error) {
+      const errorMsg = await this.communicator.generateErrorResponse(
+        error as Error,
+        {
+          phase: 'error',
+          taskDescription: 'Generating discussion response',
+        },
+        analysis
+      );
+      
       return {
         success: false,
-        message: "I encountered an issue generating a response. Could you rephrase your question?",
+        message: errorMsg.content,
         duration: Date.now() - startTime,
         error: error as Error
       };
@@ -269,9 +278,18 @@ export class AdaptiveExecutor {
       };
       
     } catch (error) {
+      const errorMsg = await this.communicator.generateErrorResponse(
+        error as Error,
+        {
+          phase: 'error',
+          taskDescription: analysis.userIntent.primaryGoal,
+        },
+        analysis
+      );
+      
       return {
         success: false,
-        message: "I encountered an issue with the hybrid execution.",
+        message: errorMsg.content,
         duration: Date.now() - startTime,
         error: error as Error
       };
