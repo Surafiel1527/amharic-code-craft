@@ -3,7 +3,22 @@
  * Constructs the Master System Prompt with project context
  */
 
-import { RichProjectContext } from "./contextBuilder.ts";
+export interface RichProjectContext {
+  currentFiles: Record<string, string>;
+  discoveredFunctions: any[];
+  discoveredComponents: any[];
+  projectMetadata: {
+    framework: string;
+    dependencies: string[];
+    fileCount: number;
+    totalLines: number;
+  };
+  recentChanges: any[];
+  conversationHistory: any[];
+  learnedPatterns: any[];
+  validationResults?: any;
+  projectContext?: any; // From intelligent context manager
+}
 
 export class MasterPromptBuilder {
   
