@@ -264,12 +264,21 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   }, [persistMessages]);
   
   // ✅ ENTERPRISE FIX: Properly manage conversation changes and prevent race conditions
+  const previousConversationIdRef = useRef<string | null>(null);
+  const isLoadingConversationRef = useRef(false);
+  
   useEffect(() => {
-    if (externalConversationId && externalConversationId !== conversationId) {
+    // Only process if conversation ID actually changed and we're not already loading
+    const hasChanged = externalConversationId !== previousConversationIdRef.current;
+    
+    if (externalConversationId && hasChanged && !isLoadingConversationRef.current) {
       logger.info('🔄 Conversation changed', { 
-        from: conversationId, 
+        from: previousConversationIdRef.current, 
         to: externalConversationId 
       });
+      
+      isLoadingConversationRef.current = true;
+      previousConversationIdRef.current = externalConversationId;
       
       // Update conversation ID first
       setConversationId(externalConversationId);
@@ -279,12 +288,19 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       setProgress(0);
       setCurrentPhase('');
       
-      // Clear messages immediately to prevent showing old conversation
-      setMessages([]);
+      // ✅ FIX: Only clear messages if it's truly a different conversation
+      // Don't clear if just refreshing the same conversation
+      if (conversationId && conversationId !== externalConversationId) {
+        setMessages([]);
+      }
       
       // Load new conversation if persistence is enabled
       if (persistMessages) {
-        loadConversation(externalConversationId);
+        loadConversation(externalConversationId).finally(() => {
+          isLoadingConversationRef.current = false;
+        });
+      } else {
+        isLoadingConversationRef.current = false;
       }
     }
   }, [externalConversationId, conversationId, persistMessages, loadConversation]);
@@ -1022,6 +1038,19 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         // ✅ ENTERPRISE FIX: Replace placeholder with error message, preserving user message
         if (placeholderMessageId) {
           setMessages(prev => {
+            // ✅ CRITICAL: Ensure user message exists in state
+            const hasUserMessage = prev.some(m => m.role === 'user' && m.content === message);
+            
+            if (!hasUserMessage) {
+              // User message was cleared (race condition), re-add it
+              logger.warn('⚠️ User message missing from state, recovering it');
+              return [
+                ...prev.filter(m => m.id !== placeholderMessageId),
+                userMessage,
+                assistantMessage!
+              ];
+            }
+            
             const updatedMessages = prev.map(m => 
               m.id === placeholderMessageId ? assistantMessage! : m
             );

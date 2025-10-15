@@ -103,17 +103,24 @@ serve(async (req) => {
       ? [typeof result.error === 'string' ? result.error : (result.error.message || 'Unknown error')]
       : undefined;
     
+    // ✅ FIX: Safely handle filesGenerated which may be undefined on errors
+    const safeFilesGenerated = result.filesGenerated?.length || 0;
+    
     await broadcastStatus(
       supabase,
       channelId,
       result.message || (result.success ? "All done! Your request has been processed. ✅" : "Something went wrong"),
       finalStatus,
       {
-        filesGenerated: result.filesGenerated,
+        filesGenerated: safeFilesGenerated,
         duration: result.duration,
         errors: errorArray
       }
     );
+    
+    // ✅ FIX: Add delay before returning to ensure broadcast is sent
+    // This prevents race condition where function shuts down before client receives message
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Return unified response
     return new Response(

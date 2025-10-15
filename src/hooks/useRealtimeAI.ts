@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 type AIStatus = 'idle' | 'thinking' | 'reading' | 'editing' | 'fixing' | 'analyzing' | 'generating' | 'error' | 'complete';
@@ -36,18 +36,34 @@ export function useRealtimeAI({ projectId, conversationId }: UseRealtimeAIProps)
   const [hasStarted, setHasStarted] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
-  // ✅ ENTERPRISE FIX: Reset state when conversation/project changes
+  // ✅ ENTERPRISE FIX: Reset state ONLY when conversation actually changes (not on every render)
+  const previousConversationRef = useRef<string | undefined>();
+  const previousProjectRef = useRef<string | undefined>();
+  
   useEffect(() => {
-    console.log('🔄 Conversation/Project changed, resetting realtime AI state');
-    setStatus({
-      status: 'idle',
-      message: 'Ready',
-      timestamp: new Date().toISOString()
-    });
-    setCodeUpdates([]);
-    setErrors([]);
-    setHasStarted(false);
-    setIsComplete(false);
+    const conversationChanged = conversationId !== previousConversationRef.current;
+    const projectChanged = projectId !== previousProjectRef.current;
+    
+    if (conversationChanged || projectChanged) {
+      console.log('🔄 Conversation/Project actually changed, resetting realtime AI state', {
+        from: { conv: previousConversationRef.current, proj: previousProjectRef.current },
+        to: { conv: conversationId, proj: projectId }
+      });
+      
+      setStatus({
+        status: 'idle',
+        message: 'Ready',
+        timestamp: new Date().toISOString()
+      });
+      setCodeUpdates([]);
+      setErrors([]);
+      setHasStarted(false);
+      setIsComplete(false);
+      
+      // Update refs
+      previousConversationRef.current = conversationId;
+      previousProjectRef.current = projectId;
+    }
   }, [projectId, conversationId]);
 
   useEffect(() => {
