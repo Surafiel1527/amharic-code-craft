@@ -211,19 +211,12 @@ export function UniversalChatInterface({
           return;
         }
         
-        // ✅ NEW: Handle idle status (completion) - Reload messages to show AI response
+        // ✅ FIXED: Handle idle status (completion) - Just clear generation UI, don't reload
         if (payload.status === 'idle') {
-          console.log('✅ Generation completed, reloading messages to show AI response');
-          
-          // Reload conversation to get the AI's completion message
-          setTimeout(async () => {
-            if (conversationId && loadConversation) {
-              console.log('📨 Reloading conversation to fetch AI completion message');
-              await loadConversation(conversationId);
-            }
-            
+          console.log('✅ Generation completed');
+          setTimeout(() => {
             setGenerationStatus({ isGenerating: false, message: '', progress: 0 });
-          }, 1000); // Small delay to ensure DB write completes
+          }, 500);
           return;
         }
         
