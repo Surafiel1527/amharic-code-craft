@@ -26,79 +26,57 @@ interface RoutingDecision {
 }
 
 /**
- * Fast pattern-based intent classification (no AI needed)
+ * AI-powered intent classification (replaces regex patterns)
  */
-function classifyIntent(request: string, context: any): RoutingDecision {
-  const lowerRequest = request.toLowerCase().trim();
+async function classifyIntent(request: string, context: any): Promise<RoutingDecision> {
+  const { analyzeUserIntent } = await import('../_shared/aiIntentAnalyzer.ts');
   
-  // Pattern 1: DIRECT_EDIT - Simple, specific changes
-  const directEditPatterns = [
-    // Color changes (with optional polite words)
-    /(?:please\s+)?(?:can\s+you\s+)?(update|change|make|set)\s+(?:the\s+)?(background|color|text|font|border|padding|margin)/i,
-    // Size changes
-    /(?:please\s+)?(?:can\s+you\s+)?(increase|decrease|resize|adjust)\s+(?:the\s+)?(size|width|height|spacing)/i,
-    // Style tweaks
-    /(?:please\s+)?(?:can\s+you\s+)?(add|remove)\s+(?:a\s+)?(border|shadow|rounded|hover|effect)/i,
-    // Text changes
-    /(?:please\s+)?(?:can\s+you\s+)?(update|change|replace)\s+(?:the\s+)?(title|heading|text|label|button\s+text)/i,
-    // Simple single-property edits
-    /(?:please\s+)?(?:can\s+you\s+)?(make\s+it|turn\s+it)\s+(bigger|smaller|red|blue|green|gray|grey|white|black|bold|italic)/i
-  ];
+  // Let AI analyze the true intent
+  const analysis = await analyzeUserIntent(
+    request,
+    context.conversationHistory || [],
+    {
+      hasFiles: context.projectFiles?.length > 0,
+      fileCount: context.projectFiles?.length || 0,
+      lastChange: context.lastChange,
+      recentErrors: context.recentErrors || []
+    }
+  );
   
-  if (directEditPatterns.some(p => p.test(request)) && request.length < 150) {
-    return {
-      route: 'DIRECT_EDIT',
-      confidence: 0.9,
-      reasoning: 'Simple, specific styling or content change',
-      estimatedTime: '<2s',
-      estimatedCost: '$0.02'
-    };
-  }
-  
-  // Pattern 2: META_CHAT - Questions about platform/project
-  const metaPatterns = [
-    /^(what|how|why|can you explain|tell me about|describe|show me)\s/i,
-    /what (can|does|is|are)/i,
-    /how (do|does|can|to)/i,
-    /^(hi|hello|hey|greetings|good\s+(morning|afternoon|evening))/i,
-    /\?$/
-  ];
-  
-  if (metaPatterns.some(p => p.test(request))) {
-    return {
-      route: 'META_CHAT',
-      confidence: 0.95,
-      reasoning: 'Question/information request detected',
-      estimatedTime: '3-5s',
-      estimatedCost: '$0.05'
-    };
-  }
-  
-  // Pattern 3: REFACTOR - Optimization requests
-  const refactorPatterns = [
-    /^(refactor|optimize|improve|restructure|reorganize)/i,
-    /(clean up|tidy|better structure|more efficient)/i,
-    /make.*better/i
-  ];
-  
-  if (refactorPatterns.some(p => p.test(request))) {
-    return {
-      route: 'REFACTOR',
-      confidence: 0.85,
-      reasoning: 'Code optimization request detected',
-      estimatedTime: '30-60s',
-      estimatedCost: '$0.20'
-    };
-  }
-  
-  // Pattern 4: FEATURE_BUILD - Everything else (complex generation)
-  return {
-    route: 'FEATURE_BUILD',
-    confidence: 0.80,
-    reasoning: 'Complex feature implementation required',
-    estimatedTime: '10-30s',
-    estimatedCost: '$0.10'
+  // Map AI strategy to routing decision
+  const routeMap: Record<string, RoutingDecision['route']> = {
+    'instant_edit': 'DIRECT_EDIT',
+    'surgical_change': 'DIRECT_EDIT',
+    'feature_build': 'FEATURE_BUILD',
+    'conversation': 'META_CHAT',
+    'deep_analysis': 'REFACTOR'
   };
+  
+  const timeMap: Record<string, string> = {
+    'instant_edit': '<2s',
+    'surgical_change': '<5s',
+    'feature_build': '10-30s',
+    'conversation': '3-5s',
+    'deep_analysis': '30-60s'
+  };
+  
+  const costMap: Record<string, string> = {
+    'instant_edit': '$0.02',
+    'surgical_change': '$0.05',
+    'feature_build': '$0.10',
+    'conversation': '$0.05',
+    'deep_analysis': '$0.20'
+  };
+  
+  return {
+    route: routeMap[analysis.executionStrategy] || 'FEATURE_BUILD',
+    confidence: analysis.confidence,
+    reasoning: analysis.reasoning,
+    estimatedTime: timeMap[analysis.executionStrategy] || '10-30s',
+    estimatedCost: costMap[analysis.executionStrategy] || '$0.10'
+  };
+  
+  // OLD REGEX PATTERNS REMOVED - AI handles everything now
 }
 
 /**
@@ -115,14 +93,22 @@ async function routeRequest(
   const startTime = Date.now();
   const broadcast = context.broadcast; // Extract broadcast function
   
+  // Generate AI status updates dynamically
+  const { generateStatusUpdate } = await import('../_shared/aiIntentAnalyzer.ts');
+  
   try {
     switch (decision.route) {
       case 'DIRECT_EDIT':
-        // Fast path: Direct surgical edit
+        // Fast path: Direct surgical edit with AI-generated status
         if (broadcast) {
+          const statusMsg = await generateStatusUpdate({
+            action: 'making surgical edit',
+            progress: 30,
+            userRequest: request
+          });
           await broadcast('route:direct_edit', {
             status: 'editing',
-            message: '✏️ Making quick surgical edit...',
+            message: statusMsg,
             progress: 30
           });
         }
@@ -153,11 +139,16 @@ async function routeRequest(
         };
         
       case 'META_CHAT':
-        // Conversational AI for questions
+        // Conversational AI with AI-generated status
         if (broadcast) {
+          const statusMsg = await generateStatusUpdate({
+            action: 'analyzing question',
+            progress: 30,
+            userRequest: request
+          });
           await broadcast('route:meta_chat', {
             status: 'thinking',
-            message: '💭 Analyzing your question...',
+            message: statusMsg,
             progress: 30
           });
         }
@@ -368,17 +359,31 @@ serve(async (req) => {
       }
     };
 
-    // Broadcast: Starting routing
+    // Broadcast: Starting routing with AI-generated message
+    const { generateStatusUpdate } = await import('../_shared/aiIntentAnalyzer.ts');
+    
+    const startMsg = await generateStatusUpdate({
+      action: 'understanding request',
+      progress: 2,
+      userRequest: request
+    });
+    
     await broadcast('routing:start', {
       status: 'analyzing',
-      message: '🔍 Understanding your request...',
+      message: startMsg,
       progress: 2
     });
 
-    // 🚀 PHASE 2: Check cache first (autonomous decision gate #1)
+    // 🚀 Check cache first
+    const cacheMsg = await generateStatusUpdate({
+      action: 'checking cache',
+      progress: 5,
+      userRequest: request
+    });
+    
     await broadcast('cache:checking', {
       status: 'checking',
-      message: '💾 Checking if I\'ve seen this before...',
+      message: cacheMsg,
       progress: 5
     });
     
@@ -393,9 +398,15 @@ serve(async (req) => {
     if (cacheData?.cached) {
       console.log('⚡ [CACHE HIT] Returning instant cached result');
       
+      const hitMsg = await generateStatusUpdate({
+        action: 'found cached result',
+        progress: 100,
+        userRequest: request
+      });
+      
       await broadcast('cache:hit', {
         status: 'complete',
-        message: '⚡ Found it! Using cached result (instant)',
+        message: hitMsg,
         progress: 100
       });
       
@@ -415,14 +426,20 @@ serve(async (req) => {
 
     console.log('❌ [CACHE MISS] No cached result found, proceeding with classification');
     
+    const classifyMsg = await generateStatusUpdate({
+      action: 'analyzing intent',
+      progress: 10,
+      userRequest: request
+    });
+    
     await broadcast('routing:classifying', {
       status: 'analyzing',
-      message: '🎯 Determining best approach...',
+      message: classifyMsg,
       progress: 10
     });
 
-    // 🚀 STEP 1: Fast intent classification (autonomous decision gate #2)
-    let decision = classifyIntent(request, context);
+    // 🚀 AI-powered intent classification
+    let decision = await classifyIntent(request, context);
     
     console.log(`🤖 [CLASSIFICATION] Initial decision:`, {
       route: decision.route,
@@ -430,10 +447,16 @@ serve(async (req) => {
       reasoning: decision.reasoning
     });
     
-    // Broadcast classification decision
+    // Broadcast classification decision with AI-generated message
+    const classifiedMsg = await generateStatusUpdate({
+      action: `classified as ${decision.route}`,
+      progress: 15,
+      userRequest: request
+    });
+    
     await broadcast('routing:classified', {
       status: 'classified',
-      message: `✅ Classified as: ${decision.route}`,
+      message: classifiedMsg,
       progress: 15,
       decision: {
         route: decision.route,
@@ -443,11 +466,17 @@ serve(async (req) => {
       }
     });
     
-    // 🚀 PHASE 2: Adjust routing with learned preferences (autonomous decision gate #3)
+    // 🚀 Adjust routing with learned preferences
     if (userId) {
+      const learningMsg = await generateStatusUpdate({
+        action: 'applying learned preferences',
+        progress: 18,
+        userRequest: request
+      });
+      
       await broadcast('routing:learning', {
         status: 'optimizing',
-        message: '🧠 Applying learned preferences...',
+        message: learningMsg,
         progress: 18
       });
       
