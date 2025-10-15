@@ -31,11 +31,36 @@ interface RoutingDecision {
 function classifyIntent(request: string, context: any): RoutingDecision {
   const lowerRequest = request.toLowerCase().trim();
   
-  // Pattern 1: META_CHAT - Questions about platform/project
+  // Pattern 1: DIRECT_EDIT - Simple, specific changes
+  const directEditPatterns = [
+    // Color changes (with optional polite words)
+    /(?:please\s+)?(?:can\s+you\s+)?(update|change|make|set)\s+(?:the\s+)?(background|color|text|font|border|padding|margin)/i,
+    // Size changes
+    /(?:please\s+)?(?:can\s+you\s+)?(increase|decrease|resize|adjust)\s+(?:the\s+)?(size|width|height|spacing)/i,
+    // Style tweaks
+    /(?:please\s+)?(?:can\s+you\s+)?(add|remove)\s+(?:a\s+)?(border|shadow|rounded|hover|effect)/i,
+    // Text changes
+    /(?:please\s+)?(?:can\s+you\s+)?(update|change|replace)\s+(?:the\s+)?(title|heading|text|label|button\s+text)/i,
+    // Simple single-property edits
+    /(?:please\s+)?(?:can\s+you\s+)?(make\s+it|turn\s+it)\s+(bigger|smaller|red|blue|green|gray|grey|white|black|bold|italic)/i
+  ];
+  
+  if (directEditPatterns.some(p => p.test(request)) && request.length < 150) {
+    return {
+      route: 'DIRECT_EDIT',
+      confidence: 0.9,
+      reasoning: 'Simple, specific styling or content change',
+      estimatedTime: '<2s',
+      estimatedCost: '$0.02'
+    };
+  }
+  
+  // Pattern 2: META_CHAT - Questions about platform/project
   const metaPatterns = [
     /^(what|how|why|can you explain|tell me about|describe|show me)\s/i,
     /what (can|does|is|are)/i,
     /how (do|does|can|to)/i,
+    /^(hi|hello|hey|greetings|good\s+(morning|afternoon|evening))/i,
     /\?$/
   ];
   
@@ -46,36 +71,6 @@ function classifyIntent(request: string, context: any): RoutingDecision {
       reasoning: 'Question/information request detected',
       estimatedTime: '3-5s',
       estimatedCost: '$0.05'
-    };
-  }
-  
-  // Pattern 2: DIRECT_EDIT - Simple, focused changes
-  const directEditPatterns = [
-    // Color/style changes
-    /^(change|update|make|set)\s+(the\s+)?(background|color|text|font|size|padding|margin)/i,
-    /^(change|update)\s+\w+\s+(color|to|from)/i,
-    
-    // Simple text changes
-    /^(change|update|replace)\s+(text|title|heading|label|button\s+text)/i,
-    
-    // Simple visibility/state changes
-    /^(show|hide|remove|add)\s+(the\s+)?\w+$/i,
-    
-    // Single-line changes (detected by brevity + action words)
-    /^(fix|update|change|remove|add)\s+[\w\s]{1,30}$/i
-  ];
-  
-  const wordCount = request.split(/\s+/).length;
-  const hasSimpleAction = /^(change|update|fix|add|remove)\s/i.test(request);
-  const isShort = wordCount <= 10;
-  
-  if (directEditPatterns.some(p => p.test(request)) || (hasSimpleAction && isShort)) {
-    return {
-      route: 'DIRECT_EDIT',
-      confidence: 0.90,
-      reasoning: 'Simple, focused change detected',
-      estimatedTime: '< 2s',
-      estimatedCost: '$0.02'
     };
   }
   
