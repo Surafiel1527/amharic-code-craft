@@ -180,15 +180,16 @@ export class NaturalCommunicator {
 Your role is to generate friendly, helpful, and contextually appropriate messages for users.
 
 COMMUNICATION STYLE GUIDELINES:
-- Tone: ${analysis.communicationStyle.tone}
-- Verbosity: ${analysis.communicationStyle.verbosity}
-- Should explain: ${analysis.communicationStyle.shouldExplain}
-- Should summarize: ${analysis.communicationStyle.shouldSummarize}
+- Tone: ${analysis.communication.tone}
+- Technical Level: ${analysis.communication.technicalLevel || 'balanced'}
+- Should Stream Thinking: ${analysis.communication.shouldStreamThinking}
+- Should Provide Context: ${analysis.communication.shouldProvideContext}
 
 TASK CONTEXT:
-- User's primary goal: ${analysis.userIntent.primaryGoal}
-- Complexity level: ${analysis.complexity.level}
-- Execution mode: ${analysis.executionStrategy.mode}
+- User's primary goal: ${analysis.understanding.userGoal}
+- Complexity level: ${analysis.actionPlan.complexity}
+- Requires Code: ${analysis.actionPlan.requiresCodeGeneration}
+- Requires Explanation: ${analysis.actionPlan.requiresExplanation}
 
 MESSAGING RULES:
 1. Be natural and conversational - you're a helpful assistant, not a robot

@@ -10,7 +10,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { MegaMindOrchestrator } from "../_shared/megaMindOrchestrator.ts";
+import { UniversalMegaMind } from "../_shared/intelligence/index.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,8 +71,19 @@ serve(async (req) => {
 
     const channelId = projectId || conversationId;
 
-    // Initialize Universal Mega Mind
-    const megaMind = new MegaMindOrchestrator(supabase, lovableApiKey);
+    // Initialize Universal Mega Mind with broadcast callback
+    const megaMind = new UniversalMegaMind(supabase, lovableApiKey);
+    
+    // Wire up status broadcasting
+    const broadcastCallback = async (status: any) => {
+      await broadcastStatus(
+        supabase,
+        channelId,
+        status.message || status.status,
+        status.status || 'thinking',
+        status.metadata
+      );
+    };
 
     console.log('🧠 Universal Mega Mind: Processing request', {
       userId,
@@ -90,12 +101,14 @@ serve(async (req) => {
     );
 
     // Single unified processing - AI handles everything
-    const { analysis, result } = await megaMind.processRequest({
+    const result = await megaMind.processRequest({
       userRequest,
       userId,
       conversationId,
       projectId
     });
+    
+    const analysis = result.analysis;
 
     // ✅ ENTERPRISE: Save conversation to database for permanent persistence
     console.log('💾 Persisting conversation to database...');
@@ -137,9 +150,9 @@ serve(async (req) => {
             success: result.success,
             filesGenerated: result.filesGenerated?.length || 0,
             duration: result.duration,
-            intent: analysis.userIntent.primaryGoal,
-            complexity: analysis.complexity.level,
-            strategy: analysis.executionStrategy.primaryApproach,
+            intent: analysis.understanding.userGoal,
+            complexity: analysis.actionPlan.complexity,
+            confidence: analysis.meta.confidence,
             error: result.error ? {
               message: typeof result.error === 'string' ? result.error : result.error.message,
               type: 'generation_error'
@@ -192,10 +205,9 @@ serve(async (req) => {
       JSON.stringify({
         success: result.success,
         analysis: {
-          intent: analysis.userIntent.primaryGoal,
-          complexity: analysis.complexity.level,
-          strategy: analysis.executionStrategy.primaryApproach,
-          confidence: analysis.confidence
+          intent: analysis.understanding.userGoal,
+          complexity: analysis.actionPlan.complexity,
+          confidence: analysis.meta.confidence
         },
         result: {
           message: result.message,
