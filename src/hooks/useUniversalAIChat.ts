@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { logger } from '@/utils/logger';
 import { retryWithBackoff, formatErrorMessage, logMetrics } from '@/utils/orchestrationHelpers';
+import { awashContext } from '@/services/awashPlatformContext';
+import { awashPrompt } from '@/services/awashSystemPrompt';
 
 export interface Message {
   id: string;
@@ -542,8 +544,13 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
   /**
    * Routes through Universal Router for optimal performance
+   * WITH AWASH PLATFORM AWARENESS
    */
-  const routeThroughUniversalRouter = useCallback(async (message: string, context: any): Promise<any> => {
+  const routeThroughUniversalRouter = useCallback(async (
+    message: string, 
+    context: any, 
+    platformContext?: any
+  ): Promise<any> => {
     const startTime = Date.now();
     try {
       console.log('🔍 [ROUTER DEBUG] Starting universal-router call');
@@ -565,7 +572,8 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         messageLength: message.length,
         projectId,
         conversationId: convId,
-        userId: currentUser.id
+        userId: currentUser.id,
+        hasAwashContext: !!platformContext
       });
 
       const { data, error } = await supabase.functions.invoke('universal-router', {
@@ -578,7 +586,8 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
             framework: 'react',
             projectId,
             ...context
-          }
+          },
+          awashContext: platformContext // 🚀 INJECT AWASH PLATFORM AWARENESS
         }
       });
 
@@ -974,6 +983,19 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
         throw new Error('Please sign in to use the AI chat');
       }
 
+      // 🚀 AWASH PLATFORM AWARENESS: Build complete workspace context
+      logger.info('🏗️ Building Awash platform context...');
+      const platformContext = await awashContext.buildContext(
+        activeConvId || undefined,
+        projectId
+      );
+      
+      logger.info('✅ Awash context built', {
+        totalFiles: platformContext.workspace.totalFiles,
+        hasBackend: platformContext.workspace.hasBackend,
+        currentRoute: platformContext.workspace.currentRoute
+      });
+
       const context = buildContext();
       const intentType = detectIntentType(message);
 
@@ -998,9 +1020,10 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
 
       // ⚡ NEW PHASE 1: Route through Universal Router for optimal performance
       // Universal Router handles all intent classification and routing internally
+      // NOW WITH AWASH PLATFORM AWARENESS
       if (!response) {
-        logger.info('Routing to Universal Router');
-        response = await routeThroughUniversalRouter(message, context);
+        logger.info('Routing to Universal Router with Awash context');
+        response = await routeThroughUniversalRouter(message, context, platformContext);
         routedTo = 'orchestrator';
       }
 
