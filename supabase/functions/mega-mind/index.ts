@@ -80,10 +80,10 @@ serve(async (req) => {
       hasAuth: awashContext?.workspace?.hasAuth || false
     });
 
-    // Initialize Universal Mega Mind with broadcast callback
+    // Initialize Universal Mega Mind
     const megaMind = new UniversalMegaMind(supabase, lovableApiKey);
     
-    // Wire up status broadcasting
+    // ✨ CRITICAL FIX: Wire up real-time status broadcasting
     const broadcastCallback = async (status: any) => {
       await broadcastStatus(
         supabase,
@@ -93,6 +93,9 @@ serve(async (req) => {
         status.metadata
       );
     };
+    
+    // Connect broadcast callback to executor for intermediate updates
+    megaMind.setBroadcastCallback(broadcastCallback);
 
     console.log('🧠 Universal Mega Mind: Processing request', {
       userId,

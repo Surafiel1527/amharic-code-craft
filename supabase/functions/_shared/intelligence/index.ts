@@ -47,6 +47,13 @@ export class UniversalMegaMind {
   }
   
   /**
+   * Wire up broadcast callback for real-time status updates
+   */
+  setBroadcastCallback(callback: (status: any) => Promise<void>): void {
+    this.executor.setBroadcastCallback(callback);
+  }
+  
+  /**
    * Process user request with full AI autonomy
    * 
    * This is the main entry point that:
