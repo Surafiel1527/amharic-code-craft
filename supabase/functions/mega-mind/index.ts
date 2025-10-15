@@ -60,12 +60,13 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    const body = await req.json();
     const {
-      userRequest,
+      request: userRequest,  // Frontend sends 'request', alias to 'userRequest'
       userId,
       conversationId,
       projectId
-    } = await req.json();
+    } = body;
 
     const channelId = projectId || conversationId;
 
