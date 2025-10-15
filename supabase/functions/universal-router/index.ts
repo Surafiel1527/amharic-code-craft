@@ -135,7 +135,8 @@ async function routeRequest(
         const { data: editData, error: editError } = await supabase.functions.invoke('direct-code-editor', {
           body: {
             request,
-            ...context
+            ...context,
+            projectContext // 🧠 Pass intelligent project context
           }
         });
         
@@ -206,6 +207,7 @@ async function routeRequest(
           body: {
             request,
             ...context,
+            projectContext, // 🧠 Pass intelligent project context
             parallelExecution: decision.confidence >= 0.85
           }
         });
@@ -226,7 +228,8 @@ async function routeRequest(
               request,
               requestType: 'generation',
               operationMode: context.projectId ? 'modify' : 'generate',
-              ...context
+              ...context,
+              projectContext // 🧠 Pass intelligent project context
             }
           });
           
@@ -273,7 +276,8 @@ async function routeRequest(
             request,
             requestType: 'refactor',
             operationMode: context.projectId ? 'modify' : 'generate',
-            ...context
+            ...context,
+            projectContext // 🧠 Pass intelligent project context
           }
         });
         
@@ -486,6 +490,40 @@ serve(async (req) => {
       estimatedTime: decision.estimatedTime,
       estimatedCost: decision.estimatedCost
     });
+
+    // 🚀 PHASE 3.5: Load project context if projectId exists
+    let projectContext = null;
+    if (projectId && decision.route !== 'META_CHAT') {
+      await broadcast('context:loading', {
+        status: 'loading',
+        message: '📂 Loading project workspace...',
+        progress: 22
+      });
+
+      const { data: contextData } = await supabase.functions.invoke('project-context-manager', {
+        body: {
+          projectId,
+          route: decision.route,
+          request,
+          userId
+        }
+      });
+
+      if (contextData?.success) {
+        projectContext = contextData.context;
+        
+        console.log(`📦 [CONTEXT] Loaded ${projectContext.metadata.filteredFiles} files (${projectContext.cached ? 'cached' : 'fresh'})`);
+        
+        await broadcast('context:loaded', {
+          status: 'ready',
+          message: `✅ Workspace loaded: ${projectContext.metadata.filteredFiles} relevant files`,
+          progress: 25,
+          metadata: projectContext.metadata
+        });
+      } else {
+        console.warn('⚠️ [CONTEXT] Failed to load project context, continuing without');
+      }
+    }
 
     // Log routing decision
     await supabase.from('routing_decisions').insert({
