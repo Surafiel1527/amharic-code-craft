@@ -76,12 +76,24 @@ Generate a brief, friendly request for clarification.`;
   }
 
   try {
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY not configured');
+    }
+
     const response = await callAIWithFallback(
-      `${systemPrompt}\n\nUser context: ${userPrompt}`,
-      'google/gemini-2.5-flash'
+      LOVABLE_API_KEY,
+      [
+        { role: 'system' as const, content: systemPrompt },
+        { role: 'user' as const, content: userPrompt }
+      ],
+      {
+        preferredModel: 'google/gemini-2.5-flash',
+        temperature: 0.7
+      }
     );
 
-    return response;
+    return response.data.choices[0].message.content;
   } catch (error) {
     console.error('AI response generation failed:', error);
     

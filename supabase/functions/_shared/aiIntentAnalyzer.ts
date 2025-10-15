@@ -110,13 +110,26 @@ Project context:
 Analyze this request and return your analysis as JSON.`;
 
   try {
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY not configured');
+    }
+
     const response = await callAIWithFallback(
-      `${systemPrompt}\n\n${userPrompt}`,
-      'google/gemini-2.5-flash' // Fast analysis
+      LOVABLE_API_KEY,
+      [
+        { role: 'system' as const, content: systemPrompt },
+        { role: 'user' as const, content: userPrompt }
+      ],
+      {
+        preferredModel: 'google/gemini-2.5-flash',
+        temperature: 0.7
+      }
     );
 
     // Parse AI response
-    const parsed = JSON.parse(response);
+    const aiContent = response.data.choices[0].message.content;
+    const parsed = JSON.parse(aiContent);
     
     return {
       trueIntent: parsed.trueIntent || 'Unknown intent',
@@ -183,12 +196,24 @@ ${context.currentPhase ? `Phase: ${context.currentPhase}` : ''}
 Generate a natural status update message.`;
 
   try {
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY not configured');
+    }
+
     const response = await callAIWithFallback(
-      `${systemPrompt}\n\n${userPrompt}`,
-      'google/gemini-2.5-flash-lite' // Ultra fast for status
+      LOVABLE_API_KEY,
+      [
+        { role: 'system' as const, content: systemPrompt },
+        { role: 'user' as const, content: userPrompt }
+      ],
+      {
+        preferredModel: 'google/gemini-2.5-flash',
+        temperature: 0.7
+      }
     );
 
-    return response.trim();
+    return response.data.choices[0].message.content.trim();
   } catch (error) {
     // Fallback with context
     return `${context.action}... (${context.progress}%)`;
