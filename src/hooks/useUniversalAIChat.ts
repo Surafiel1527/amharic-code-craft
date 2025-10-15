@@ -602,7 +602,8 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
   }, [conversationId, projectId, createConversation]);
 
   /**
-   * Routes the message to Unified Mega Mind Orchestrator (fallback path)
+   * Routes the message to Unified Mega Mind Orchestrator (legacy fallback)
+   * ⚠️ DEPRECATED: Universal Router is now primary
    */
   const routeToOrchestrator = useCallback(async (message: string, context: any): Promise<any> => {
     const startTime = Date.now();
@@ -811,42 +812,51 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
             ).join('\n\n');
         }
       } else if (routedTo === 'orchestrator' && data) {
-        // Handle orchestrator response - check for generatedCode, html, or finalCode
-        const code = data.generatedCode || data.html || data.finalCode;
-        const explanation = data.message || data.explanation || data.summary;
-        
-        if (code && typeof code === 'string') {
-          const filePath = selectedFiles.length === 1 ? selectedFiles[0] : 'main-project';
-          const applied = await applyCodeFix(code, filePath, metadata);
-
-          // Create a descriptive message about what was done
-          let changeDescription = explanation || 'Your changes have been applied.';
-          if (!explanation && data.requestType) {
-            changeDescription = `Applied ${data.requestType} update`;
-          }
-
-          content = `✨ **Code Updated!**\n\n${changeDescription}\n\n` +
-                   `${applied ? '✅' : '📝'} Applied to: \`${filePath}\`\n\n` +
-                   `**What I did:**\n${explanation || 'Updated your code based on your request.'}`;
-
-          codeBlock = undefined;
-        } else if (data.result?.generatedCode) {
-          // Handle nested result structure
-          const code = data.result.generatedCode;
-          const filePath = selectedFiles.length === 1 ? selectedFiles[0] : 'main-project';
-          const applied = await applyCodeFix(code, filePath, metadata);
-
-          content = `✨ **Code Updated!**\n\n${data.result.explanation || data.message || 'Your changes have been applied.'}\n\n` +
-                   `${applied ? '✅' : '📝'} Applied to: \`${filePath}\``;
-
-          codeBlock = undefined;
-        } else if (explanation && explanation !== 'Generation started') {
-          // Show meaningful explanations
-          content = `💡 ${explanation}`;
+        // ✅ NEW: Handle conversational AI responses (answer field)
+        if (data.answer && typeof data.answer === 'string') {
+          // Direct conversational response from META_CHAT route
+          content = data.answer;
+        } else if (data.result?.answer && typeof data.result.answer === 'string') {
+          // Nested conversational response structure
+          content = data.result.answer;
         } else {
-          // ✅ ENTERPRISE FIX: Always provide a fallback message
-          // Even if orchestrator doesn't return explicit content, acknowledge the request
-          content = `✅ **Request processed successfully**\n\nYour request has been completed. Check the preview for updates.`;
+          // Handle orchestrator response - check for generatedCode, html, or finalCode
+          const code = data.generatedCode || data.html || data.finalCode;
+          const explanation = data.message || data.explanation || data.summary;
+          
+          if (code && typeof code === 'string') {
+            const filePath = selectedFiles.length === 1 ? selectedFiles[0] : 'main-project';
+            const applied = await applyCodeFix(code, filePath, metadata);
+
+            // Create a descriptive message about what was done
+            let changeDescription = explanation || 'Your changes have been applied.';
+            if (!explanation && data.requestType) {
+              changeDescription = `Applied ${data.requestType} update`;
+            }
+
+            content = `✨ **Code Updated!**\n\n${changeDescription}\n\n` +
+                     `${applied ? '✅' : '📝'} Applied to: \`${filePath}\`\n\n` +
+                     `**What I did:**\n${explanation || 'Updated your code based on your request.'}`;
+
+            codeBlock = undefined;
+          } else if (data.result?.generatedCode) {
+            // Handle nested result structure
+            const code = data.result.generatedCode;
+            const filePath = selectedFiles.length === 1 ? selectedFiles[0] : 'main-project';
+            const applied = await applyCodeFix(code, filePath, metadata);
+
+            content = `✨ **Code Updated!**\n\n${data.result.explanation || data.message || 'Your changes have been applied.'}\n\n` +
+                     `${applied ? '✅' : '📝'} Applied to: \`${filePath}\``;
+
+            codeBlock = undefined;
+          } else if (explanation && explanation !== 'Generation started') {
+            // Show meaningful explanations
+            content = `💡 ${explanation}`;
+          } else {
+            // ✅ ENTERPRISE FIX: Always provide a fallback message
+            // Even if orchestrator doesn't return explicit content, acknowledge the request
+            content = `✅ **Request processed successfully**\n\nYour request has been completed. Check the preview for updates.`;
+          }
         }
       }
 
@@ -987,7 +997,32 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
       // Process and display response
       let assistantMessage: Message | null = null;
       
-      if (isOrchestratorRequest && placeholderMessageId) {
+      // ✅ CRITICAL FIX: Check for AI-generated messages from Universal Mega Mind FIRST
+      if (response?.result?.answer) {
+        // Natural Communicator generated conversational response
+        assistantMessage = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: response.result.answer,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            routedTo: response.decision?.route === 'META_CHAT' ? 'direct' : 'orchestrator',
+            isSummary: false
+          }
+        };
+      } else if (response?.result?.message && typeof response.result.message === 'string') {
+        // Natural Communicator generated execution message
+        assistantMessage = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: response.result.message,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            routedTo: 'orchestrator',
+            isSummary: true
+          }
+        };
+      } else if (isOrchestratorRequest && placeholderMessageId) {
         // For ALL orchestrator requests (generation + modifications), create a comprehensive summary
         const generatedFilesCount = response?.generatedCode?.files?.length || 
                                     response?.result?.files?.length || 0;
@@ -1091,8 +1126,9 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
           errorCount: validationErrors?.length || 0
         });
         
-      } else {
-        // For non-orchestrator requests (error healing, questions), process response normally
+      } else if (!assistantMessage) {
+        // Only process response if we don't have an assistant message yet
+        // For non-orchestrator requests (error healing, questions)
         try {
           assistantMessage = await processResponse(response, routedTo);
         } catch (error) {
@@ -1106,12 +1142,12 @@ export function useUniversalAIChat(options: UniversalAIChatOptions = {}): Univer
             metadata: { routedTo, error: true }
           };
         }
-        
-        // Add new message
-        if (assistantMessage) {
-          setMessages(prev => [...prev, assistantMessage!]);
-          logger.info('✅ Assistant message added to chat', { messageId: assistantMessage.id });
-        }
+      }
+      
+      // ✅ CRITICAL FIX: Always add assistantMessage if not already added by placeholder replacement
+      if (assistantMessage && assistantMessage.id !== placeholderMessageId) {
+        setMessages(prev => [...prev, assistantMessage!]);
+        logger.info('✅ Assistant message added to chat', { messageId: assistantMessage.id });
       }
       
       // 🚀 ENTERPRISE FIX: Save final message to database
