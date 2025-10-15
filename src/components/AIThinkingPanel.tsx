@@ -188,20 +188,20 @@ export function AIThinkingPanel({
   }
 
   return (
-    <Card className={cn("p-6 space-y-6 border-primary/20 shadow-lg", className)}>
-      {/* Workspace Context Header */}
-      <div className="flex items-center gap-3 pb-4 border-b border-border/50">
-        <div className="flex-shrink-0 p-2 rounded-lg bg-primary/10">
-          <FolderOpen className="h-5 w-5 text-primary" />
+    <Card className={cn("p-3 sm:p-6 space-y-4 sm:space-y-6 border-primary/20 shadow-lg w-full", className)}>
+      {/* Workspace Context Header - Mobile Optimized */}
+      <div className="flex items-center gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-border/50">
+        <div className="flex-shrink-0 p-1.5 sm:p-2 rounded-lg bg-primary/10">
+          <FolderOpen className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            {workspaceName}
+          <h3 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1.5 sm:gap-2 flex-wrap">
+            <span className="truncate">{workspaceName}</span>
             {isActive && (
               <Badge 
                 variant="outline" 
                 className={cn(
-                  "text-xs",
+                  "text-[10px] sm:text-xs whitespace-nowrap",
                   status.status === 'error' 
                     ? "bg-destructive/10 border-destructive/30 text-destructive" 
                     : status.status === 'complete'
@@ -209,33 +209,33 @@ export function AIThinkingPanel({
                     : "bg-primary/10 border-primary/30 text-primary"
                 )}
               >
-                <Sparkles className="h-3 w-3 mr-1" />
-                {status.status === 'error' ? 'Issue Detected' : 
-                 status.status === 'complete' ? 'Complete' : 
-                 'AI Active'}
+                <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" />
+                {status.status === 'error' ? 'Issue' : 
+                 status.status === 'complete' ? 'Done' : 
+                 'Active'}
               </Badge>
             )}
           </h3>
-          <p className="text-xs text-muted-foreground">
-            Workspace ID: {projectId?.slice(0, 8)}...{projectId?.slice(-4)}
+          <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
+            ID: {projectId?.slice(0, 6)}...{projectId?.slice(-3)}
           </p>
         </div>
       </div>
 
-      {/* AI Thinking Process */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Brain className="h-4 w-4 text-primary" />
-          <h4 className="text-sm font-semibold text-foreground">AI's Autonomous Process</h4>
+      {/* AI Thinking Process - Mobile Optimized */}
+      <div className="space-y-3 sm:space-y-4">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+          <h4 className="text-xs sm:text-sm font-semibold text-foreground">AI Process</h4>
         </div>
 
-        {/* Thinking Stages */}
-        <div className="space-y-3">
+        {/* Thinking Stages - Mobile Optimized */}
+        <div className="space-y-2 sm:space-y-3">
           {thinkingStages.map((stage, index) => (
             <div
               key={index}
                className={cn(
-                  "relative rounded-lg border p-4 transition-all duration-300",
+                  "relative rounded-lg border p-2.5 sm:p-4 transition-all duration-300",
                   // Final states (error/complete) - static, no animation
                   stage.stage === 'error'
                     ? "border-destructive/50 bg-destructive/5 shadow-sm"
@@ -249,66 +249,68 @@ export function AIThinkingPanel({
                       : "border-border/20 bg-card/50 opacity-50"
                 )}
             >
-              {/* Connector Line */}
+              {/* Connector Line - Hidden on mobile for cleaner look */}
               {index < thinkingStages.length - 1 && (
                 <div 
                   className={cn(
-                    "absolute left-8 top-full h-3 w-0.5 -translate-x-1/2 transition-colors",
+                    "absolute left-6 sm:left-8 top-full h-2 sm:h-3 w-0.5 -translate-x-1/2 transition-colors hidden sm:block",
                     index < currentStage ? "bg-primary" : "bg-border/30"
                   )}
                 />
               )}
 
-              <div className="flex gap-3">
-                {/* Icon */}
+              <div className="flex gap-2 sm:gap-3">
+                {/* Icon - Mobile Optimized */}
                 <div className={cn(
-                  "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all",
+                  "flex-shrink-0 w-7 h-7 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center transition-all",
                   stage.color,
                   // Only animate if active AND not a final state (error/complete)
                   index === currentStage && !stage.persistent && "animate-pulse"
                 )}>
-                  {stage.icon}
+                  <div className="scale-75 sm:scale-100">
+                    {stage.icon}
+                  </div>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 space-y-2">
+                {/* Content - Mobile Optimized */}
+                <div className="flex-1 space-y-1.5 sm:space-y-2 min-w-0">
                   <div>
-                    <h5 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      {stage.title}
+                    <h5 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <span className="truncate">{stage.title}</span>
                       {/* Only show pinging indicator for active non-final stages */}
                       {index === currentStage && !stage.persistent && (
-                        <span className="flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-primary opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                        <span className="flex h-1.5 w-1.5 sm:h-2 sm:w-2 flex-shrink-0">
+                          <span className="animate-ping absolute inline-flex h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-primary opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-primary"></span>
                         </span>
                       )}
                     </h5>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 line-clamp-2">
                       {stage.description}
                     </p>
                   </div>
 
-                  {/* Details */}
+                  {/* Details - Hidden on mobile to save space */}
                   {stage.details && index <= currentStage && (
-                    <ul className="space-y-1 text-xs text-muted-foreground">
+                    <ul className="space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
                       {stage.details.map((detail, i) => (
                         <li key={i} className="flex items-center gap-1.5">
                           <span className={cn(
-                            "w-1 h-1 rounded-full",
+                            "w-1 h-1 rounded-full flex-shrink-0",
                             index < currentStage ? "bg-primary" : "bg-muted-foreground/50"
                           )} />
-                          {detail}
+                          <span className="truncate">{detail}</span>
                         </li>
                       ))}
                     </ul>
                   )}
 
-                  {/* Progress */}
+                  {/* Progress - Mobile Optimized */}
                   {stage.progress !== undefined && index === currentStage && (
-                    <div className="space-y-1 pt-1">
-                      <Progress value={stage.progress} className="h-1.5" />
-                      <p className="text-xs text-muted-foreground">
-                        {stage.progress}% complete
+                    <div className="space-y-0.5 sm:space-y-1 pt-0.5 sm:pt-1">
+                      <Progress value={stage.progress} className="h-1 sm:h-1.5" />
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">
+                        {stage.progress}%
                       </p>
                     </div>
                   )}
@@ -318,22 +320,24 @@ export function AIThinkingPanel({
           ))}
         </div>
 
-        {/* Status Message */}
-        {isActive && (
-          <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/30">
-            <p className="text-sm text-foreground">
+        {/* Status Message - Mobile Optimized */}
+        {isActive && status.message && (
+          <div className="mt-2 sm:mt-4 p-2 sm:p-3 rounded-lg bg-muted/30 border border-border/30">
+            <p className="text-[10px] sm:text-sm text-foreground line-clamp-3">
               {status.message}
             </p>
           </div>
         )}
       </div>
 
-      {/* Footer Info */}
-      <div className="pt-4 border-t border-border/50 text-xs text-muted-foreground flex items-center gap-2">
-        <div className="flex-1">
-          AI autonomously decides:
-          <span className="font-mono text-primary ml-1">
-            what to build • how to structure • which files to create
+      {/* Footer Info - Simplified on mobile */}
+      <div className="pt-3 sm:pt-4 border-t border-border/50 text-[10px] sm:text-xs text-muted-foreground">
+        <div className="flex items-start gap-1.5 sm:gap-2">
+          <span className="hidden sm:inline">AI autonomously decides:</span>
+          <span className="sm:hidden">AI decides:</span>
+          <span className="font-mono text-primary flex-1">
+            <span className="hidden sm:inline">what to build • how to structure • which files to create</span>
+            <span className="sm:hidden">structure • files • approach</span>
           </span>
         </div>
       </div>

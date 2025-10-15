@@ -441,13 +441,16 @@ npm run build
     <div className="grid lg:grid-cols-2 gap-4 p-4 h-full overflow-hidden">
       {/* Chat Interface - Full height */}
       <div className="flex flex-col h-full min-h-0 gap-4">
-        {/* AI Thinking Panel - Shows when AI is active */}
+        {/* AI Thinking Panel - Mobile Optimized, Shows when AI is active */}
         {isActive && (
-          <AIThinkingPanel 
-            projectId={projectId}
-            conversationId={conversationId || undefined}
-            workspaceName={projectTitle}
-          />
+          <div className="overflow-x-hidden">
+            <AIThinkingPanel 
+              projectId={projectId}
+              conversationId={conversationId || undefined}
+              workspaceName={projectTitle}
+              className="max-w-full"
+            />
+          </div>
         )}
         
         {conversationId ? (
