@@ -68,7 +68,6 @@ const AGIInsights = () => {
           </Card>
         )}
 
-
         {/* Confidence Dialog - Shows when confidence is low */}
         <ConfidenceDialog
           isOpen={showConfidenceDialog}
