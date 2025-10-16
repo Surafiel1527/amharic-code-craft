@@ -124,6 +124,21 @@ export class AutonomousExecutor {
       context.generatedFiles = [];
     }
     
+    // ✅ CRITICAL FIX: Ensure at least one step has code_generator
+    const hasCodeGeneratorStep = understanding.actionPlan.executionSteps.some(
+      step => step.toolsNeeded.includes('code_generator')
+    );
+    
+    if (!hasCodeGeneratorStep) {
+      console.warn('⚠️ No code_generator in execution steps! Adding fallback step.');
+      understanding.actionPlan.executionSteps.push({
+        step: understanding.actionPlan.executionSteps.length + 1,
+        action: 'Generate code files',
+        reason: 'Fallback - AI did not include code_generator tool',
+        toolsNeeded: ['code_generator']
+      });
+    }
+    
     // Execute each step in the autonomous plan
     for (const step of understanding.actionPlan.executionSteps) {
       console.log(`⚙️ Step ${step.step}: ${step.action}`);
