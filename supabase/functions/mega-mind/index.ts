@@ -168,6 +168,27 @@ serve(async (req) => {
       hasAuth: awashContext?.workspace?.hasAuth || false
     });
 
+    // ============================================
+    // 🧠 INTELLIGENT FILE OPERATIONS: Load existing files for AI context
+    // ============================================
+    let existingFiles: Record<string, string> = {};
+    let fileOperations: any;
+    
+    if (projectId) {
+      const { IntelligentFileOperations } = await import("../_shared/intelligentFileOperations.ts");
+      fileOperations = new IntelligentFileOperations(supabase, projectId, userId);
+      
+      console.log('📂 Loading existing project files for AI context...');
+      const projectContext = await fileOperations.loadProjectContext();
+      existingFiles = projectContext.files;
+      
+      console.log('✅ Project context loaded:', {
+        fileCount: projectContext.fileCount,
+        totalLines: projectContext.totalLines,
+        files: Object.keys(existingFiles)
+      });
+    }
+
     // Initialize Universal Mega Mind
     const megaMind = new UniversalMegaMind(supabase, lovableApiKey);
     
@@ -189,53 +210,71 @@ serve(async (req) => {
       userId,
       conversationId,
       projectId,
-      requestLength: userRequest?.length
+      requestLength: userRequest?.length,
+      hasExistingFiles: Object.keys(existingFiles).length > 0
     });
 
     // Broadcast initial thinking message
     await broadcastStatus(
       supabase,
       channelId,
-      "I'm analyzing your request to understand what you need... 🤔",
+      "I'm analyzing your request and understanding your project... 🤔",
       'analyzing'
     );
 
-    // Single unified processing - AI handles everything
-    // Now with FULL Awash workspace awareness
+    // Single unified processing - AI handles everything with full context
     const result = await megaMind.processRequest({
       userRequest,
       userId,
       conversationId,
       projectId,
+      existingFiles,  // 🎯 AI now knows what already exists
+      framework: awashContext?.workspace?.framework,
       context: awashContext  // ✨ Pass complete platform state
     });
     
     const analysis = result.analysis;
     
-    // ✅ CRITICAL FIX: Save generated files to database
-    if (result.success && result.output?.files && projectId) {
-      console.log('💾 Saving generated files to database...', {
+    // ============================================
+    // 🎯 INTELLIGENT FILE OPERATIONS: AI-driven granular file management
+    // ============================================
+    if (result.success && result.output?.files && projectId && fileOperations) {
+      console.log('🤖 AI analyzing file operations...', {
         filesCount: result.output.files.length,
         projectId
       });
       
       try {
-        const { error: updateError } = await supabase
-          .from('projects')
-          .update({
-            html_code: JSON.stringify(result.output.files),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', projectId)
-          .eq('user_id', userId);
-          
-        if (updateError) {
-          console.error('❌ Failed to save files to database:', updateError);
+        // AI decides what operations to perform (create/edit/delete) and granularity (line/function/file)
+        const operations = await fileOperations.analyzeOperations(
+          userRequest,
+          result.output,
+          existingFiles
+        );
+        
+        console.log('🎯 AI determined operations:', operations.map(op => ({
+          type: op.type,
+          path: op.path,
+          granularity: op.granularity,
+          reasoning: op.reasoning
+        })));
+        
+        // Apply operations with version tracking for undo
+        const applyResult = await fileOperations.applyOperations(
+          operations,
+          userRequest,
+          conversationId
+        );
+        
+        if (applyResult.success) {
+          console.log('✅ Files intelligently applied with version tracking', {
+            version: applyResult.version
+          });
         } else {
-          console.log('✅ Files saved successfully to database');
+          console.error('❌ Failed to apply file operations:', applyResult.error);
         }
-      } catch (saveError) {
-        console.error('❌ Error saving files:', saveError);
+      } catch (fileError) {
+        console.error('❌ Error in intelligent file operations:', fileError);
       }
     }
 
