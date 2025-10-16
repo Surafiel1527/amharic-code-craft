@@ -3791,6 +3791,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ensemble_decisions: {
+        Row: {
+          confidence: number
+          created_at: string
+          error_id: string | null
+          id: string
+          reasoning: string | null
+          selected_strategy: string
+          strategies_count: number
+          strategies_data: Json | null
+          success: boolean | null
+          updated_at: string
+          voting_method: string
+        }
+        Insert: {
+          confidence: number
+          created_at?: string
+          error_id?: string | null
+          id?: string
+          reasoning?: string | null
+          selected_strategy: string
+          strategies_count: number
+          strategies_data?: Json | null
+          success?: boolean | null
+          updated_at?: string
+          voting_method: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          error_id?: string | null
+          id?: string
+          reasoning?: string | null
+          selected_strategy?: string
+          strategies_count?: number
+          strategies_data?: Json | null
+          success?: boolean | null
+          updated_at?: string
+          voting_method?: string
+        }
+        Relationships: []
+      }
       error_fix_feedback: {
         Row: {
           applied_solution: Json | null
@@ -5807,6 +5849,42 @@ export type Database = {
         }
         Relationships: []
       }
+      performance_metrics_log: {
+        Row: {
+          created_at: string
+          duration_ms: number
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          method: string | null
+          operation_name: string
+          operation_type: string
+          success: boolean
+        }
+        Insert: {
+          created_at?: string
+          duration_ms: number
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          method?: string | null
+          operation_name: string
+          operation_type: string
+          success?: boolean
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          method?: string | null
+          operation_name?: string
+          operation_type?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
       pipeline_optimizations: {
         Row: {
           after_performance: Json
@@ -7507,6 +7585,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      statistical_validations: {
+        Row: {
+          confidence_level: number
+          created_at: string
+          failures: number | null
+          id: string
+          is_significant: boolean | null
+          lower_bound: number | null
+          p_value: number | null
+          pattern_id: string | null
+          sample_size: number
+          successes: number | null
+          test_result: Json | null
+          test_type: string
+          upper_bound: number | null
+        }
+        Insert: {
+          confidence_level: number
+          created_at?: string
+          failures?: number | null
+          id?: string
+          is_significant?: boolean | null
+          lower_bound?: number | null
+          p_value?: number | null
+          pattern_id?: string | null
+          sample_size: number
+          successes?: number | null
+          test_result?: Json | null
+          test_type: string
+          upper_bound?: number | null
+        }
+        Update: {
+          confidence_level?: number
+          created_at?: string
+          failures?: number | null
+          id?: string
+          is_significant?: boolean | null
+          lower_bound?: number | null
+          p_value?: number | null
+          pattern_id?: string | null
+          sample_size?: number
+          successes?: number | null
+          test_result?: Json | null
+          test_type?: string
+          upper_bound?: number | null
+        }
+        Relationships: []
       }
       system_alerts: {
         Row: {
@@ -9307,6 +9433,10 @@ export type Database = {
         Returns: undefined
       }
       cleanup_old_metrics: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cleanup_old_performance_metrics: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
