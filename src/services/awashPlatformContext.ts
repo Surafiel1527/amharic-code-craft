@@ -97,15 +97,20 @@ export class AwashPlatformContextBuilder {
       fileTree,
       projectMeta,
       recentErrors,
-      packages,
-      capabilities
+      packages
     ] = await Promise.all([
       this.discoverFiles(projectId),
       this.getProjectMetadata(projectId),
       this.getRecentErrors(projectId),
-      this.getInstalledPackages(),
-      this.detectCapabilities()
+      this.getInstalledPackages()
     ]);
+    
+    // Get capabilities separately to avoid circular type issues
+    const capabilities = {
+      hasBackend: true,
+      hasAuth: true,
+      hasDatabase: true
+    };
     
     return {
       fileTree,
@@ -121,12 +126,43 @@ export class AwashPlatformContextBuilder {
   }
   
   /**
-   * Discover files in the workspace
+   * Discover files in the workspace - REAL implementation
    */
   private async discoverFiles(projectId?: string): Promise<AwashFile[]> {
-    // For now, use inference until we have a files table
-    // In production, this would query the actual file system or a dedicated table
-    return this.inferFileStructure();
+    if (!projectId) return this.inferFileStructure();
+    
+    try {
+      // Fetch actual project from database
+      const { data: project } = await supabase
+        .from('projects')
+        .select('html_code')
+        .eq('id', projectId)
+        .single();
+      
+      if (!project?.html_code) return this.inferFileStructure();
+      
+      // Parse html_code - it can be a JSON array of files or monolithic
+      let files: AwashFile[] = [];
+      
+      try {
+        const parsed = JSON.parse(project.html_code);
+        
+        // Array format: [{path, content, language}...]
+        if (Array.isArray(parsed)) {
+          files = parsed.map((file: any) => this.parseFile(file.path, file.content));
+        }
+      } catch {
+        // Monolithic HTML - create virtual file
+        files = [
+          { path: 'index.html', type: 'config', language: 'other', size: project.html_code.length }
+        ];
+      }
+      
+      return files.length > 0 ? files : this.inferFileStructure();
+    } catch (error) {
+      console.error('Failed to discover files:', error);
+      return this.inferFileStructure();
+    }
   }
   
   /**
@@ -224,42 +260,42 @@ export class AwashPlatformContextBuilder {
   }
   
   /**
-   * Get recent errors from conversations
+   * Get recent errors - simplified to avoid type recursion
    */
   private async getRecentErrors(projectId?: string) {
-    // For now, return empty array
-    // In production, this would analyze console logs or error tracking
-    return [];
+    // Return empty for now - can be enhanced later without type issues
+    return [] as Array<{ message: string; timestamp: Date }>;
   }
   
   /**
-   * Get installed packages
+   * Get installed packages from actual package.json
    */
   private async getInstalledPackages(): Promise<string[]> {
-    // In a real implementation, this would parse package.json
-    // For now, return common Awash packages
-    return [
-      'react',
-      'react-dom',
-      'react-router-dom',
-      '@supabase/supabase-js',
-      '@tanstack/react-query',
-      'zustand',
-      'tailwindcss',
-      'lucide-react'
-    ];
+    try {
+      // Fetch package.json from a known location
+      const response = await fetch('/package.json');
+      if (!response.ok) throw new Error('No package.json');
+      
+      const pkg = await response.json();
+      const deps = Object.keys(pkg.dependencies || {});
+      const devDeps = Object.keys(pkg.devDependencies || {});
+      
+      return [...deps, ...devDeps];
+    } catch {
+      // Fallback to common packages
+      return [
+        'react',
+        'react-dom',
+        'react-router-dom',
+        '@supabase/supabase-js',
+        '@tanstack/react-query',
+        'zustand',
+        'tailwindcss',
+        'lucide-react'
+      ];
+    }
   }
   
-  /**
-   * Detect platform capabilities
-   */
-  private async detectCapabilities() {
-    return {
-      hasBackend: true, // Awash has Lovable Cloud
-      hasAuth: true,
-      hasDatabase: true
-    };
-  }
   
   /**
    * Check if preview is available

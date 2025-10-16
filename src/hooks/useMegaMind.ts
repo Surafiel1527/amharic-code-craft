@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { awashContext } from '@/services/awashPlatformContext';
 
 interface MegaMindDecision {
   understood: boolean;
@@ -40,7 +41,11 @@ export function useMegaMind() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Call unified Universal Mega Mind endpoint
+      // Build full workspace context
+      const platformContext = await awashContext.buildContext(conversationId, projectId);
+      console.log('🌍 Full workspace context built:', platformContext);
+
+      // Call unified Universal Mega Mind endpoint with FULL CONTEXT
       const { data: result, error } = await supabase.functions.invoke(
         'mega-mind',
         {
@@ -48,7 +53,8 @@ export function useMegaMind() {
             userRequest,
             userId: user.id,
             conversationId,
-            projectId
+            projectId,
+            awashContext: platformContext // ← FULL WORKSPACE ACCESS
           }
         }
       );
@@ -90,7 +96,11 @@ export function useMegaMind() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Universal Mega Mind handles everything in one call
+      // Build full workspace context
+      const platformContext = await awashContext.buildContext(conversationId, projectId);
+      console.log('🌍 Full workspace context for execution:', platformContext);
+
+      // Universal Mega Mind handles everything in one call with FULL CONTEXT
       const { data: result, error } = await supabase.functions.invoke(
         'mega-mind',
         {
@@ -98,7 +108,8 @@ export function useMegaMind() {
             userRequest,
             userId: user.id,
             conversationId,
-            projectId
+            projectId,
+            awashContext: platformContext // ← FULL WORKSPACE ACCESS
           }
         }
       );
