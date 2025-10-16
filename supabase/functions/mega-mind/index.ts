@@ -178,7 +178,7 @@ serve(async (req) => {
     
     if (projectId) {
       const { IntelligentFileOperations } = await import("../_shared/intelligentFileOperations.ts");
-      fileOperations = new IntelligentFileOperations(supabase, projectId, userId);
+      fileOperations = new IntelligentFileOperations(supabase, projectId, userId, lovableApiKey);
       
       console.log('📂 Loading existing project files for AI context...');
       const projectContext = await fileOperations.loadProjectContext();
@@ -281,7 +281,7 @@ serve(async (req) => {
           
           // Initialize file operations for the new project
           const { IntelligentFileOperations } = await import("../_shared/intelligentFileOperations.ts");
-          fileOperations = new IntelligentFileOperations(supabase, projectId, userId);
+          fileOperations = new IntelligentFileOperations(supabase, projectId, userId, lovableApiKey);
           
           // Update conversation with project binding
           await supabase

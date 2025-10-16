@@ -7137,6 +7137,45 @@ export type Database = {
         }
         Relationships: []
       }
+      schema_error_patterns: {
+        Row: {
+          confidence_score: number | null
+          correction_template: Json
+          created_at: string | null
+          error_signature: string
+          failure_count: number | null
+          id: string
+          last_used_at: string | null
+          success_count: number | null
+          table_name: string
+          times_used: number | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          correction_template?: Json
+          created_at?: string | null
+          error_signature: string
+          failure_count?: number | null
+          id?: string
+          last_used_at?: string | null
+          success_count?: number | null
+          table_name: string
+          times_used?: number | null
+        }
+        Update: {
+          confidence_score?: number | null
+          correction_template?: Json
+          created_at?: string | null
+          error_signature?: string
+          failure_count?: number | null
+          id?: string
+          last_used_at?: string | null
+          success_count?: number | null
+          table_name?: string
+          times_used?: number | null
+        }
+        Relationships: []
+      }
       security_audit_log: {
         Row: {
           attempted_action: string
@@ -9209,6 +9248,16 @@ export type Database = {
           route: string
           success_rate: number
           total_executions: number
+        }[]
+      }
+      get_table_columns: {
+        Args: { p_table_name: string }
+        Returns: {
+          column_default: string
+          column_name: string
+          data_type: string
+          is_nullable: string
+          is_primary_key: boolean
         }[]
       }
       get_user_route_preferences: {

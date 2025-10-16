@@ -1,9 +1,11 @@
 /**
  * Virtual File System (VFS)
  * Manages project file access and modifications
+ * NOW WITH SELF-HEALING VALIDATION
  */
 
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SelfHealingLoop } from './selfHealingLoop.ts';
 
 export interface ProjectFile {
   path: string;
@@ -21,11 +23,19 @@ export interface FileChange {
 }
 
 export class VirtualFileSystem {
+  private selfHealing: SelfHealingLoop | null = null;
+
   constructor(
     private supabase: SupabaseClient,
     private projectId: string,
-    private userId: string
-  ) {}
+    private userId: string,
+    private lovableApiKey?: string
+  ) {
+    // Initialize self-healing if API key is provided
+    if (lovableApiKey) {
+      this.selfHealing = new SelfHealingLoop(supabase, lovableApiKey);
+    }
+  }
 
   /**
    * Capture complete project state from database
@@ -91,6 +101,7 @@ export class VirtualFileSystem {
 
   /**
    * Apply changes to project files
+   * NOW WITH SELF-HEALING VALIDATION
    */
   async applyChanges(
     changes: FileChange[],
@@ -102,16 +113,49 @@ export class VirtualFileSystem {
     for (const change of changes) {
       console.log('📝 Upserting file:', change.path);
       
+      // Prepare data for upsert
+      let dataToInsert = {
+        project_id: this.projectId,
+        created_by: this.userId,
+        file_path: change.path,
+        file_content: change.newContent,
+        updated_at: new Date().toISOString()
+      };
+
+      // 🏥 SELF-HEALING: Validate and auto-correct before saving
+      if (this.selfHealing) {
+        console.log('🏥 Running self-healing validation...');
+        try {
+          const healingResult = await this.selfHealing.validateAndHeal(
+            'upsert',
+            'project_files',
+            dataToInsert
+          );
+
+          if (healingResult.success) {
+            if (healingResult.healed) {
+              console.log('✅ Self-healing corrected data', {
+                attempts: healingResult.totalAttempts,
+                learned: healingResult.learnedPattern
+              });
+              dataToInsert = healingResult.healedData;
+            } else {
+              console.log('✅ Data validated without corrections');
+            }
+          } else {
+            console.warn('⚠️ Self-healing could not fix validation errors:', healingResult.errors);
+            // Continue anyway - let DB handle it
+          }
+        } catch (healError) {
+          console.error('❌ Self-healing error (continuing anyway):', healError);
+          // Don't block - continue with original data
+        }
+      }
+      
       // Update or create in project_files table
       const { data, error } = await this.supabase
         .from('project_files')
-        .upsert({
-          project_id: this.projectId,
-          created_by: this.userId,
-          file_path: change.path,
-          file_content: change.newContent,
-          updated_at: new Date().toISOString()
-        }, {
+        .upsert(dataToInsert, {
           onConflict: 'project_id,file_path'
         })
         .select();

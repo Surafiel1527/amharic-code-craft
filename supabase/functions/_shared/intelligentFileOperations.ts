@@ -30,9 +30,10 @@ export class IntelligentFileOperations {
   constructor(
     private supabase: SupabaseClient,
     private projectId: string,
-    private userId: string
+    private userId: string,
+    private lovableApiKey?: string
   ) {
-    this.vfs = new VirtualFileSystem(supabase, projectId, userId);
+    this.vfs = new VirtualFileSystem(supabase, projectId, userId, lovableApiKey);
   }
 
   /**
