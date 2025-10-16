@@ -141,13 +141,16 @@ export class NaturalCommunicator {
     duration: number,
     analysis: QueryAnalysis
   ): Promise<GeneratedMessage> {
+    const complexityValue = analysis.actionPlan.codeActions?.estimatedComplexity || 
+                           (analysis.actionPlan.requiresExplanation ? 'explanation' : 'clarification');
+    
     const context: CommunicationContext = {
       phase: 'completing',
       taskDescription,
       filesAffected: filesChanged,
       metadata: {
         duration,
-        complexity: analysis.complexity.level
+        complexity: complexityValue
       }
     };
     
