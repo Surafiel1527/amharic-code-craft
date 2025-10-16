@@ -36,7 +36,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.autonomous-healing-engine]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [cron.autonomous_healing]
 # Run autonomous healing every 5 minutes
@@ -47,7 +47,7 @@ function_name = "autonomous-healing-engine"
 verify_jwt = false
 
 [functions.security-intelligence]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.confirmation-engine]
 verify_jwt = true
@@ -131,7 +131,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.unified-security]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.unified-snapshot-manager]
 verify_jwt = true
@@ -169,7 +169,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.trigger-deployment]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.prompt-evolution-engine]
 verify_jwt = false

@@ -9416,6 +9416,10 @@ export type Database = {
         Args: { p_credential_id: string; p_hours?: number }
         Returns: number
       }
+      check_rls_enabled: {
+        Args: { table_name: string }
+        Returns: boolean
+      }
       check_rollback_safety: {
         Args: { p_improvement_id: string }
         Returns: Json

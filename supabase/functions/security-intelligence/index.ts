@@ -118,13 +118,21 @@ serve(async (req) => {
 });
 
 // Helper: Check if table has RLS enabled
+// SECURITY FIX: Use parameterized RPC to prevent SQL injection
 async function hasRLS(supabase: any, tableName: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase.rpc('execute_sql', {
-      sql: `SELECT relrowsecurity FROM pg_class WHERE relname = '${tableName}'`
+    const { data, error } = await supabase.rpc('check_rls_enabled', {
+      table_name: tableName // Parameter binding prevents injection
     });
-    return data?.[0]?.relrowsecurity === true;
-  } catch {
+    
+    if (error) {
+      console.error('Error checking RLS:', error);
+      return false;
+    }
+    
+    return data === true;
+  } catch (err) {
+    console.error('Exception checking RLS:', err);
     return false;
   }
 }
