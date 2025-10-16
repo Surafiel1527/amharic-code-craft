@@ -7137,6 +7137,51 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit_log: {
+        Row: {
+          attempted_action: string
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          resource_id: string | null
+          resource_type: string
+          success: boolean
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempted_action: string
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type: string
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempted_action?: string
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type?: string
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       security_events: {
         Row: {
           created_at: string
@@ -9211,6 +9256,19 @@ export type Database = {
           p_resource_type: string
           p_severity?: string
           p_user_agent?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      log_security_event: {
+        Args: {
+          p_attempted_action: string
+          p_error_message?: string
+          p_event_type: string
+          p_metadata?: Json
+          p_resource_id: string
+          p_resource_type: string
+          p_success: boolean
           p_user_id: string
         }
         Returns: string

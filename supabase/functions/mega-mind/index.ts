@@ -70,6 +70,94 @@ serve(async (req) => {
       awashContext  // ✨ FULL PLATFORM AWARENESS
     } = body;
 
+    // ============================================
+    // 🔒 ENTERPRISE SECURITY: PROJECT OWNERSHIP VALIDATION
+    // ============================================
+    if (projectId) {
+      console.log('🔐 Validating project ownership:', { userId, projectId });
+      
+      // Validate user owns this project
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .select('id, user_id, name')
+        .eq('id', projectId)
+        .single();
+
+      if (projectError || !project) {
+        console.error('❌ Project not found:', projectError);
+        
+        // Log security event
+        await supabase.rpc('log_security_event', {
+          p_user_id: userId,
+          p_event_type: 'unauthorized_project_access',
+          p_resource_type: 'project',
+          p_resource_id: projectId,
+          p_attempted_action: 'access',
+          p_success: false,
+          p_error_message: 'Project not found or access denied',
+          p_metadata: { conversationId, endpoint: 'mega-mind' }
+        });
+
+        return new Response(
+          JSON.stringify({ 
+            error: 'Unauthorized: Project not found or access denied',
+            code: 'PROJECT_ACCESS_DENIED'
+          }),
+          { 
+            status: 403, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      if (project.user_id !== userId) {
+        console.error('❌ Project ownership validation failed:', {
+          projectUserId: project.user_id,
+          requestUserId: userId
+        });
+
+        // Log security event
+        await supabase.rpc('log_security_event', {
+          p_user_id: userId,
+          p_event_type: 'unauthorized_project_access',
+          p_resource_type: 'project',
+          p_resource_id: projectId,
+          p_attempted_action: 'access',
+          p_success: false,
+          p_error_message: 'User does not own this project',
+          p_metadata: { 
+            conversationId, 
+            projectOwnerId: project.user_id,
+            endpoint: 'mega-mind' 
+          }
+        });
+
+        return new Response(
+          JSON.stringify({ 
+            error: 'Unauthorized: You do not have access to this project',
+            code: 'PROJECT_OWNERSHIP_DENIED'
+          }),
+          { 
+            status: 403, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      console.log('✅ Project ownership validated:', project.name);
+      
+      // Log successful access
+      await supabase.rpc('log_security_event', {
+        p_user_id: userId,
+        p_event_type: 'project_access',
+        p_resource_type: 'project',
+        p_resource_id: projectId,
+        p_attempted_action: 'access',
+        p_success: true,
+        p_metadata: { conversationId, projectName: project.name }
+      });
+    }
+
     const channelId = projectId || conversationId;
     
     console.log('📊 Awash Context Received:', {
