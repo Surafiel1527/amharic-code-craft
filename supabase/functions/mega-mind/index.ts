@@ -123,6 +123,33 @@ serve(async (req) => {
     });
     
     const analysis = result.analysis;
+    
+    // ✅ CRITICAL FIX: Save generated files to database
+    if (result.success && result.output?.files && projectId) {
+      console.log('💾 Saving generated files to database...', {
+        filesCount: result.output.files.length,
+        projectId
+      });
+      
+      try {
+        const { error: updateError } = await supabase
+          .from('projects')
+          .update({
+            html_code: JSON.stringify(result.output.files),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', projectId)
+          .eq('user_id', userId);
+          
+        if (updateError) {
+          console.error('❌ Failed to save files to database:', updateError);
+        } else {
+          console.log('✅ Files saved successfully to database');
+        }
+      } catch (saveError) {
+        console.error('❌ Error saving files:', saveError);
+      }
+    }
 
     // ✅ ENTERPRISE: Save conversation to database for permanent persistence
     console.log('💾 Persisting conversation to database...');

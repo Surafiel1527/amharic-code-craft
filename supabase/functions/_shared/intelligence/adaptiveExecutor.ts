@@ -19,6 +19,11 @@ export interface ExecutionContext {
   existingFiles?: Record<string, string>;
   framework?: string;
   awashContext?: any;  // Full Awash platform context
+  generatedFiles?: Array<{
+    path: string;
+    content: string;
+    language: string;
+  }>;
 }
 
 export interface ExecutionResult {
@@ -157,6 +162,9 @@ export class AutonomousExecutor {
     
     return {
       success: true,
+      output: {
+        files: context.generatedFiles || []
+      },
       message: completionMsg.content,
       filesGenerated,
       duration: Date.now() - startTime
@@ -270,7 +278,16 @@ export class AutonomousExecutor {
       awashContext: context.awashContext  // Pass full platform context
     });
     
-    return result.files?.map((f: any) => f.path) || [];
+    // Return both files array and store in context for saving
+    const filePaths = result.files?.map((f: any) => f.path) || [];
+    
+    // Store generated files for later database save
+    if (!context.generatedFiles) {
+      context.generatedFiles = [];
+    }
+    context.generatedFiles.push(...result.files);
+    
+    return filePaths;
   }
   
   /**

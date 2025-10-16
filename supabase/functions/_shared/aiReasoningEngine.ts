@@ -183,11 +183,16 @@ export async function generateCodeWithReasoning(
   requirements: {
     functionality: string;
     framework: string;
-    constraints: string[];
-    context: any;
+    requirements?: string;
+    existingCode?: Record<string, string>;
+    awashContext?: any;
   }
 ): Promise<{
-  code: string;
+  files: Array<{
+    path: string;
+    content: string;
+    language: string;
+  }>;
   explanation: string;
   reasoning: string[];
 }> {
@@ -213,29 +218,41 @@ export async function generateCodeWithReasoning(
     constraintCount: requirements.constraints.length 
   });
   
+  const existingFilesInfo = requirements.existingCode 
+    ? `\n\nEXISTING FILES:\n${Object.keys(requirements.existingCode).join('\n')}`
+    : '';
+    
+  const workspaceInfo = requirements.awashContext?.workspace 
+    ? `\n\nWORKSPACE CONTEXT:\n${JSON.stringify(requirements.awashContext.workspace, null, 2)}`
+    : '';
+
   const prompt = `Generate production-ready code for this requirement:
 
 FUNCTIONALITY: ${requirements.functionality}
 FRAMEWORK: ${requirements.framework}
-
-CONSTRAINTS:
-${requirements.constraints.map((c, i) => `${i + 1}. ${c}`).join('\n')}
-
-PROJECT CONTEXT:
-${JSON.stringify(requirements.context, null, 2)}
+REQUIREMENTS: ${requirements.requirements || 'None specified'}${existingFilesInfo}${workspaceInfo}
 
 Generate:
-1. Complete, working code
+1. Complete, working code files
 2. Inline comments explaining key decisions
 3. Error handling
 4. TypeScript types where applicable
+5. Proper file structure for ${requirements.framework}
 
-Return JSON:
+Return JSON with this EXACT structure:
 {
-  "code": "complete code here",
+  "files": [
+    {
+      "path": "src/components/Example.tsx",
+      "content": "file content here",
+      "language": "typescript"
+    }
+  ],
   "explanation": "what this code does and why",
-  "reasoning": ["design decision 1", "design decision 2", "..."]
-}`;
+  "reasoning": ["design decision 1", "design decision 2"]
+}
+
+IMPORTANT: Generate ALL necessary files for a complete, working application.`;
 
   try {
     const response = await retryWithBackoff(
@@ -263,24 +280,47 @@ Return JSON:
     
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
+      
+      // Validate that we have files array
+      if (!parsed.files || !Array.isArray(parsed.files)) {
+        logger.warn('No files array in response, creating fallback');
+        return {
+          files: [{
+            path: 'src/App.tsx',
+            content: parsed.code || content,
+            language: 'typescript'
+          }],
+          explanation: parsed.explanation || 'Generated code',
+          reasoning: parsed.reasoning || []
+        };
+      }
+      
       const result = {
-        code: parsed.code || '',
+        files: parsed.files.map((f: any) => ({
+          path: f.path || 'src/App.tsx',
+          content: f.content || '',
+          language: f.language || 'typescript'
+        })),
         explanation: parsed.explanation || '',
         reasoning: parsed.reasoning || []
       };
       
       logger.info('Code generation completed', { 
-        codeLength: result.code.length,
+        filesCount: result.files.length,
         hasExplanation: !!result.explanation 
       });
       
       return result;
     }
 
-    // Fallback: treat entire response as code
-    logger.warn('Could not parse structured response, using raw content');
+    // Fallback: treat entire response as a single file
+    logger.warn('Could not parse structured response, using raw content as single file');
     return {
-      code: content,
+      files: [{
+        path: 'src/App.tsx',
+        content: content,
+        language: 'typescript'
+      }],
       explanation: 'Generated code',
       reasoning: []
     };
