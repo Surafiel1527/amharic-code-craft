@@ -138,7 +138,7 @@ const Index = () => {
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Don't auto-show, let user trigger install when ready
+      setShowInstallPrompt(true); // Show custom prompt when browser wants to show install banner
     };
 
     window.addEventListener('beforeinstallprompt', handler);
