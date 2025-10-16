@@ -58,8 +58,9 @@ export class IntelligentFileOperations {
   }
 
   /**
-   * AI analyzes user request and decides what operations to perform
-   * Returns intelligent operations with reasoning
+   * AI understands user request and intelligently determines operations
+   * Handles natural language: "add a button", "fix the navbar", "remove old code", etc.
+   * Returns intelligent operations with AI reasoning
    */
   async analyzeOperations(
     userRequest: string,
@@ -67,6 +68,14 @@ export class IntelligentFileOperations {
     existingFiles: Record<string, string>
   ): Promise<FileOperation[]> {
     const operations: FileOperation[] = [];
+    
+    // ============================================
+    // INTELLIGENT OPERATION DETECTION
+    // AI interprets what the user wants to achieve
+    // ============================================
+    
+    const intent = this.interpretUserIntent(userRequest, existingFiles);
+    console.log('🤖 AI Intent Analysis:', intent);
     
     // AI has generated new code - intelligently determine what changed
     if (aiResponse.files && Array.isArray(aiResponse.files)) {
@@ -85,52 +94,173 @@ export class IntelligentFileOperations {
             path: filePath,
             content: newContent,
             granularity: 'file',
-            reasoning: `Creating new file: ${filePath}`
+            reasoning: `Creating new file based on request: "${userRequest.slice(0, 80)}"`
           });
         } else {
-          // Existing file - determine granularity
+          // Existing file - AI determines scope and granularity
           const granularity = this.determineEditGranularity(
             existingContent,
             newContent,
             userRequest
           );
           
+          const operationType = this.determineOperationType(
+            userRequest,
+            existingContent,
+            newContent
+          );
+          
           operations.push({
-            type: 'edit',
+            type: operationType,
             path: filePath,
             content: newContent,
             granularity,
             lineRange: granularity === 'line' 
               ? this.findChangedLines(existingContent, newContent)
               : undefined,
-            reasoning: `Modifying ${granularity} in ${filePath} based on: \"${userRequest.slice(0, 100)}\"`
+            reasoning: this.generateOperationReasoning(
+              operationType,
+              granularity,
+              filePath,
+              userRequest,
+              intent
+            )
           });
         }
       }
     }
     
-    // Detect deletions (files in existing but not in new)
+    // Detect deletions - AI understands deletion intent
     const newFilePaths = new Set(
       (aiResponse.files || []).map((f: any) => f.path || f.filePath)
     );
     
     for (const existingPath of Object.keys(existingFiles)) {
-      if (!newFilePaths.has(existingPath)) {
-        // Check if user explicitly requested deletion
-        if (this.isDeleteIntended(userRequest, existingPath)) {
-          operations.push({
-            type: 'delete',
-            path: existingPath,
-            granularity: 'file',
-            reasoning: `Deleting ${existingPath} as requested`
-          });
-        }
+      if (!newFilePaths.has(existingPath) && this.isDeleteIntended(userRequest, existingPath)) {
+        operations.push({
+          type: 'delete',
+          path: existingPath,
+          granularity: 'file',
+          reasoning: `Removing ${existingPath} based on user intent: "${userRequest.slice(0, 80)}"`
+        });
       }
     }
     
     return operations;
   }
 
+  /**
+   * Interpret user's natural language intent
+   */
+  private interpretUserIntent(
+    userRequest: string,
+    existingFiles: Record<string, string>
+  ): {
+    action: 'create' | 'modify' | 'delete' | 'refactor' | 'fix' | 'enhance';
+    scope: 'component' | 'feature' | 'styling' | 'logic' | 'structure';
+    urgency: 'critical' | 'normal' | 'enhancement';
+  } {
+    const requestLower = userRequest.toLowerCase();
+    
+    // Determine primary action
+    let action: 'create' | 'modify' | 'delete' | 'refactor' | 'fix' | 'enhance' = 'modify';
+    
+    if (requestLower.match(/create|add|new|build|generate|make/)) {
+      action = 'create';
+    } else if (requestLower.match(/delete|remove|drop|eliminate|get rid of/)) {
+      action = 'delete';
+    } else if (requestLower.match(/fix|repair|resolve|debug|correct/)) {
+      action = 'fix';
+    } else if (requestLower.match(/refactor|reorganize|restructure|clean up/)) {
+      action = 'refactor';
+    } else if (requestLower.match(/enhance|improve|optimize|upgrade/)) {
+      action = 'enhance';
+    }
+    
+    // Determine scope
+    let scope: 'component' | 'feature' | 'styling' | 'logic' | 'structure' = 'feature';
+    
+    if (requestLower.match(/component|button|input|form|card|modal/)) {
+      scope = 'component';
+    } else if (requestLower.match(/style|css|color|design|theme|layout/)) {
+      scope = 'styling';
+    } else if (requestLower.match(/logic|function|algorithm|calculation|process/)) {
+      scope = 'logic';
+    } else if (requestLower.match(/structure|architecture|organization|folder/)) {
+      scope = 'structure';
+    }
+    
+    // Determine urgency
+    const urgency = requestLower.match(/urgent|critical|asap|important|bug|error|broken/) 
+      ? 'critical' 
+      : requestLower.match(/enhance|nice to have|improve|polish/)
+        ? 'enhancement'
+        : 'normal';
+    
+    return { action, scope, urgency };
+  }
+
+  /**
+   * Determine specific operation type based on changes
+   */
+  private determineOperationType(
+    userRequest: string,
+    oldContent: string,
+    newContent: string
+  ): 'edit' | 'modify' {
+    // Both map to similar operations, but 'modify' implies broader changes
+    const changePercent = this.calculateChangePercentage(oldContent, newContent);
+    return changePercent > 30 ? 'modify' : 'edit';
+  }
+
+  /**
+   * Generate human-readable reasoning for operations
+   */
+  private generateOperationReasoning(
+    type: 'edit' | 'modify',
+    granularity: 'line' | 'function' | 'file',
+    filePath: string,
+    userRequest: string,
+    intent: any
+  ): string {
+    const fileName = filePath.split('/').pop();
+    const requestSnippet = userRequest.slice(0, 60);
+    
+    const actionDescriptions: Record<string, string> = {
+      'create': 'Creating',
+      'modify': 'Modifying',
+      'delete': 'Removing',
+      'refactor': 'Refactoring',
+      'fix': 'Fixing',
+      'enhance': 'Enhancing'
+    };
+    
+    const scopeDescriptions: Record<string, string> = {
+      'component': 'component structure',
+      'feature': 'feature implementation',
+      'styling': 'visual styling',
+      'logic': 'business logic',
+      'structure': 'code organization'
+    };
+    
+    return `${actionDescriptions[intent.action] || 'Updating'} ${granularity === 'file' ? 'entire' : granularity} in ${fileName} - ${scopeDescriptions[intent.scope] || 'general changes'} (User: "${requestSnippet}...")`;
+  }
+
+  /**
+   * Calculate percentage of content that changed
+   */
+  private calculateChangePercentage(oldContent: string, newContent: string): number {
+    const oldLines = oldContent.split('\n');
+    const newLines = newContent.split('\n');
+    const maxLines = Math.max(oldLines.length, newLines.length);
+    
+    let changedLines = 0;
+    for (let i = 0; i < maxLines; i++) {
+      if (oldLines[i] !== newLines[i]) changedLines++;
+    }
+    
+    return (changedLines / maxLines) * 100;
+  }
   /**
    * AI decides granularity based on change scope
    */
