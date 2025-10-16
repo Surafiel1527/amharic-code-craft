@@ -12,6 +12,10 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { UniversalMegaMind } from "../_shared/intelligence/index.ts";
 import { createResilientDb } from "../_shared/resilientDbWrapper.ts";
+import { protectedAICall } from "../_shared/circuitBreakerIntegration.ts";
+import { createSchemaVersionManager } from "../_shared/schemaVersioning.ts";
+import { createPerformanceMonitor } from "../_shared/performanceMonitor.ts";
+import { createSelfOptimizer } from "../_shared/selfOptimizer.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,8 +66,32 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
+    // ============================================
+    // 🏗️ PHASE 4: ENTERPRISE INFRASTRUCTURE INITIALIZATION
+    // ============================================
+    
     // Initialize resilient database wrapper for self-healing operations
     const resilientDb = createResilientDb(supabase, lovableApiKey);
+    
+    // Initialize performance monitoring
+    const performanceMonitor = createPerformanceMonitor(supabase);
+    
+    // Initialize self-optimization engine
+    const selfOptimizer = createSelfOptimizer(supabase, performanceMonitor);
+    
+    // Initialize schema version monitoring
+    const schemaVersionManager = createSchemaVersionManager(supabase);
+    await schemaVersionManager.initialize();
+    
+    // React to critical schema changes
+    schemaVersionManager.onSchemaChange(async (changes) => {
+      const criticalChanges = changes.filter(c => c.severity === 'critical' || c.severity === 'high');
+      if (criticalChanges.length > 0) {
+        console.warn(`⚠️ [SchemaMonitor] ${criticalChanges.length} critical schema changes detected`);
+        // Clear caches and reload patterns on critical changes
+        performanceMonitor.recordOperation('schema_change', 0, true, 'direct');
+      }
+    });
 
     const body = await req.json();
     const {
