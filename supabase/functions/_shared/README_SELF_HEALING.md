@@ -355,10 +355,18 @@ const result = await protectedAICall(async () => {
 
 ## 📚 Additional Documentation
 
-- **PHASE_4_5_6_FINAL_AUDIT.md** - Complete implementation audit and certification
-- **WORLD_CLASS_IMPLEMENTATION_COMPLETE.md** - Feature overview and architecture
-- **universalIntegrationHelper.ts** - Integration helper source code
-- **deterministicFixPatterns.ts** - All 15+ fix patterns with examples
+### Core Documentation
+- **PLATFORM_COMPREHENSIVE_AUDIT_2025.md** - 🆕 Complete platform analysis, file inventory, duplication check
+- **PHASE_4_5_6_FINAL_AUDIT.md** - Line-by-line implementation audit and certification
+- **WORLD_CLASS_IMPLEMENTATION_COMPLETE.md** - Feature overview and architecture diagrams
+
+### Technical References
+- **universalIntegrationHelper.ts** - One-line integration helper source code
+- **deterministicFixPatterns.ts** - All 15+ deterministic fix patterns with examples
+- **ensembleLearning.ts** - Ensemble learning system implementation
+- **statisticalValidation.ts** - Statistical validation and confidence intervals
+- **fallbackLogger.ts** - Zero-loss file-based logging implementation
+- **transactionManager.ts** - ACID-like transaction rollback system
 
 ---
 
