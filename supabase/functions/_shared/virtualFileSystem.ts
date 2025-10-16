@@ -50,7 +50,7 @@ export class VirtualFileSystem {
     if (Object.keys(files).length === 0) {
       const { data: project } = await this.supabase
         .from('projects')
-        .select('html_code, title')  // ✅ Fixed: was 'name', should be 'title'
+        .select('html_code, title')
         .eq('id', this.projectId)
         .single();
 
@@ -61,22 +61,7 @@ export class VirtualFileSystem {
       }
     }
 
-    // 3. Get generated code from recent generations
-    const { data: generatedCode } = await this.supabase
-      .from('generated_code')
-      .select('file_path, code')
-      .eq('project_id', this.projectId)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (generatedCode) {
-      generatedCode.forEach(gen => {
-        if (gen.file_path && gen.code && !files[gen.file_path]) {
-          files[gen.file_path] = gen.code;
-        }
-      });
-    }
-
+    console.log('📦 VFS captured state:', Object.keys(files).length, 'files');
     return files;
   }
 
