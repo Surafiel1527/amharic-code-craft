@@ -36,13 +36,13 @@ export class VirtualFileSystem {
     // 1. Get files from project_files table
     const { data: projectFiles } = await this.supabase
       .from('project_files')
-      .select('file_path, content')
+      .select('file_path, file_content')  // ✅ Fixed: was 'content', should be 'file_content'
       .eq('project_id', this.projectId)
       .order('file_path');
 
     if (projectFiles) {
       projectFiles.forEach(file => {
-        files[file.file_path] = file.content;
+        files[file.file_path] = file.file_content;  // ✅ Fixed: was 'content', should be 'file_content'
       });
     }
 
@@ -118,11 +118,9 @@ export class VirtualFileSystem {
         .from('project_files')
         .upsert({
           project_id: this.projectId,
-          user_id: this.userId,
+          created_by: this.userId,
           file_path: change.path,
-          content: change.newContent,
-          language: this.detectLanguage(change.path),
-          file_size: new Blob([change.newContent]).size,
+          file_content: change.newContent,  // ✅ Fixed: was 'content', should be 'file_content'
           last_modified_at: new Date().toISOString()
         }, {
           onConflict: 'project_id,file_path'
@@ -198,12 +196,12 @@ export class VirtualFileSystem {
   async getFile(filePath: string): Promise<string | null> {
     const { data } = await this.supabase
       .from('project_files')
-      .select('content')
+      .select('file_content')  // ✅ Fixed: was 'content', should be 'file_content'
       .eq('project_id', this.projectId)
       .eq('file_path', filePath)
       .maybeSingle();
 
-    return data?.content || null;
+    return data?.file_content || null;  // ✅ Fixed
   }
 
   /**
