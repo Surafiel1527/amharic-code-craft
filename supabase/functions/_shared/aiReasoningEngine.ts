@@ -374,23 +374,41 @@ RULES:
       const parsed = JSON.parse(jsonStr);
       
       // Validate that we have files array
-      if (!parsed.files || !Array.isArray(parsed.files)) {
-        logger.warn('No files array in response, creating fallback');
-        return {
-          files: [{
-            path: 'src/App.tsx',
-            content: parsed.code || content,
-            language: 'typescript'
-          }],
-          explanation: parsed.explanation || 'Generated code',
-          reasoning: parsed.reasoning || []
-        };
+      if (!parsed.files || !Array.isArray(parsed.files) || parsed.files.length === 0) {
+        logger.error('❌ AI returned invalid response - no files array!', { parsed });
+        throw new Error('AI code generation failed: Response missing files array. AI must return {files: [...], explanation: "...", reasoning: [...]}');
+      }
+      
+      // Validate each file has required fields
+      const validFiles = parsed.files.filter((f: any) => {
+        if (!f.path || !f.content) {
+          logger.warn('Skipping invalid file in AI response', { 
+            path: f.path,
+            hasContent: !!f.content 
+          });
+          return false;
+        }
+        
+        // CRITICAL: Detect if content is accidentally JSON stringified
+        if (typeof f.content === 'string' && f.content.trim().startsWith('{') && f.content.includes('"files"')) {
+          logger.error('❌ DETECTED NESTED JSON IN FILE CONTENT!', {
+            path: f.path,
+            contentPreview: f.content.substring(0, 200)
+          });
+          throw new Error(`File ${f.path} contains nested JSON instead of actual code. This indicates AI prompt failure.`);
+        }
+        
+        return true;
+      });
+      
+      if (validFiles.length === 0) {
+        throw new Error('AI generated no valid files - all files missing path or content');
       }
       
       const result = {
-        files: parsed.files.map((f: any) => ({
-          path: f.path || 'src/App.tsx',
-          content: f.content || '',
+        files: validFiles.map((f: any) => ({
+          path: f.path,
+          content: f.content,
           language: f.language || 'typescript'
         })),
         explanation: parsed.explanation || '',
@@ -404,20 +422,12 @@ RULES:
       
       return result;
     } catch (parseError) {
-      // Fallback: treat entire response as a single file
-      logger.warn('Could not parse structured response, using raw content as single file', { 
+      // NO FALLBACK - AI MUST return valid JSON
+      logger.error('❌ AI returned unparseable JSON!', { 
         error: parseError instanceof Error ? parseError.message : String(parseError),
-        contentPreview: jsonStr.substring(0, 500)
+        rawResponse: content.substring(0, 1000)
       });
-      return {
-        files: [{
-          path: 'src/App.tsx',
-          content: content,
-          language: 'typescript'
-        }],
-        explanation: 'Generated code',
-        reasoning: []
-      };
+      throw new Error(`AI code generation failed: Invalid JSON response. Error: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
     }
 
   } catch (error) {
