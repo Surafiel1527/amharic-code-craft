@@ -8,6 +8,8 @@ import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SchemaValidator, SchemaValidationError } from './schemaValidator.ts';
 import { createLogger } from './logger.ts';
 import { callAIWithFallback } from './aiHelpers.ts';
+import { applyDeterministicPatterns, DETERMINISTIC_FIX_PATTERNS } from './deterministicFixPatterns.ts';
+import { safeLog } from './fallbackLogger.ts';
 
 export interface HealingAttempt {
   attemptNumber: number;
@@ -121,16 +123,20 @@ export class SelfHealingLoop {
       };
 
       try {
-        // Step 1: Try deterministic fixes first (fastest)
-        const deterministicFixed = this.applyDeterministicFixes(
+        // Step 1: Try deterministic fixes first (fastest) - NOW WITH 15+ PATTERNS
+        const deterministicResult = applyDeterministicPatterns(
           currentData,
           validation.errors,
           tableName
         );
 
-        if (deterministicFixed && deterministicFixed !== currentData) {
-          this.logger.info('🔧 Applied deterministic fix', { attempt: attemptNumber });
-          currentData = deterministicFixed;
+        if (deterministicResult.fixed && deterministicResult.fixed !== currentData) {
+          this.logger.info('🔧 Applied deterministic fixes', { 
+            attempt: attemptNumber,
+            patterns: deterministicResult.patternsApplied,
+            confidence: deterministicResult.confidence 
+          });
+          currentData = deterministicResult.fixed;
           result.healed = true;
           attempt.correctionApplied = true;
           attempt.correctionMethod = 'deterministic';
@@ -236,122 +242,17 @@ export class SelfHealingLoop {
   }
 
   /**
-   * Apply deterministic fixes (fast, rule-based)
+   * DEPRECATED: Old deterministic fixes (replaced by deterministicFixPatterns.ts)
+   * Keeping for backward compatibility only
    */
   private applyDeterministicFixes(
     data: Record<string, any>,
     errors: SchemaValidationError[],
     tableName: string
   ): Record<string, any> | null {
-    
-    const fixed = { ...data };
-    let madeChanges = false;
-
-    for (const error of errors) {
-      // Fix: generated_code.code → project_files.file_content
-      if (error.type === 'column_mismatch' && error.column === 'code' && tableName === 'project_files') {
-        if ('code' in fixed) {
-          fixed['file_content'] = fixed['code'];
-          delete fixed['code'];
-          madeChanges = true;
-          this.logger.debug('Fixed column mismatch: code → file_content');
-        }
-      }
-
-      // Fix: projects.name → projects.title
-      if (error.type === 'column_mismatch' && error.column === 'name' && tableName === 'projects') {
-        if ('name' in fixed) {
-          fixed['title'] = fixed['name'];
-          delete fixed['name'];
-          madeChanges = true;
-          this.logger.debug('Fixed column mismatch: name → title');
-        }
-      }
-
-      // Fix: project_files.content → project_files.file_content
-      if (error.type === 'column_mismatch' && error.column === 'content' && tableName === 'project_files') {
-        if ('content' in fixed) {
-          fixed['file_content'] = fixed['content'];
-          delete fixed['content'];
-          madeChanges = true;
-        }
-      }
-
-      // Fix: OLD messages schema → NEW messages schema
-      // Maps legacy fields: sender→role, message→content, sender_id→user_id, meta_data→metadata
-      if (tableName === 'messages') {
-        if ('sender' in fixed && !('role' in fixed)) {
-          fixed['role'] = fixed['sender'];
-          delete fixed['sender'];
-          madeChanges = true;
-          this.logger.debug('Fixed column mismatch: sender → role');
-        }
-        if ('message' in fixed && !('content' in fixed)) {
-          fixed['content'] = fixed['message'];
-          delete fixed['message'];
-          madeChanges = true;
-          this.logger.debug('Fixed column mismatch: message → content');
-        }
-        if ('sender_id' in fixed && !('user_id' in fixed)) {
-          fixed['user_id'] = fixed['sender_id'];
-          delete fixed['sender_id'];
-          madeChanges = true;
-          this.logger.debug('Fixed column mismatch: sender_id → user_id');
-        }
-        if ('meta_data' in fixed && !('metadata' in fixed)) {
-          fixed['metadata'] = fixed['meta_data'];
-          delete fixed['meta_data'];
-          madeChanges = true;
-          this.logger.debug('Fixed column mismatch: meta_data → metadata');
-          this.logger.debug('Fixed column mismatch: content → file_content');
-        }
-      }
-
-      // Fix: Missing required fields with sensible defaults
-      if (error.type === 'constraint_violation' && error.column) {
-        if (error.column === 'user_id' && !fixed['user_id']) {
-          // Can't auto-fix user_id, but flag it
-          this.logger.warn('Missing required user_id - cannot auto-fix');
-        }
-        if (error.column === 'created_at' && !fixed['created_at']) {
-          fixed['created_at'] = new Date().toISOString();
-          madeChanges = true;
-          this.logger.debug('Fixed missing created_at with current timestamp');
-        }
-        if (error.column === 'updated_at' && !fixed['updated_at']) {
-          fixed['updated_at'] = new Date().toISOString();
-          madeChanges = true;
-          this.logger.debug('Fixed missing updated_at with current timestamp');
-        }
-        if (error.column === 'id' && !fixed['id']) {
-          // Skip auto-generating IDs - let database handle it
-          this.logger.debug('Skipping auto-generation of id - database will handle');
-        }
-      }
-
-      // Fix: Common field name variations
-      const fieldMappings: Record<string, string> = {
-        'description': 'desc',
-        'desc': 'description',
-        'image_url': 'image',
-        'image': 'image_url',
-        'username': 'user_name',
-        'user_name': 'username',
-        'created': 'created_at',
-        'updated': 'updated_at',
-      };
-
-      for (const [from, to] of Object.entries(fieldMappings)) {
-        if (error.column === to && from in fixed && !(to in fixed)) {
-          fixed[to] = fixed[from];
-          delete fixed[from];
-          madeChanges = true;
-          this.logger.debug(`Fixed field mapping: ${from} → ${to}`);
-        }
-      }
-    }
-
-    return madeChanges ? fixed : null;
+    // Use new comprehensive pattern library
+    const result = applyDeterministicPatterns(data, errors, tableName);
+    return result.fixed;
   }
 
   /**

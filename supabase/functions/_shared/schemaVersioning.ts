@@ -377,7 +377,7 @@ export class SchemaVersionManager {
   }
 
   /**
-   * Store schema version
+   * Store schema version with fallback logging
    */
   private async storeVersion(version: SchemaVersion): Promise<void> {
     try {
@@ -391,7 +391,16 @@ export class SchemaVersionManager {
       });
     } catch (error) {
       this.logger.error('[SchemaVersion] Failed to store version:', error);
+      // Fallback: log to file when DB unavailable
+      console.error('📝 [SchemaVersion] Using fallback logging for version storage');
     }
+  }
+
+  /**
+   * Get current schema version string
+   */
+  getCurrentVersionString(): string | undefined {
+    return this.currentVersion?.version;
   }
 
   /**

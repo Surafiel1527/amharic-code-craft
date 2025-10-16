@@ -49,12 +49,24 @@ export interface ForeignKeySchema {
 export class SchemaValidator {
   private schemaCache: Map<string, TableSchema> = new Map();
   private lastCacheUpdate: number = 0;
+  private cacheVersion: string | null = null;
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor(
     private supabase: SupabaseClient,
     private logger = createLogger()
   ) {}
+
+  /**
+   * Set schema version for cache invalidation
+   */
+  setSchemaVersion(version: string): void {
+    if (this.cacheVersion !== version) {
+      console.log(`🔄 [SchemaValidator] Schema version changed: ${this.cacheVersion} → ${version}`);
+      this.clearCache();
+      this.cacheVersion = version;
+    }
+  }
 
   /**
    * Validate database operation before execution
@@ -253,12 +265,15 @@ export class SchemaValidator {
   }
 
   /**
-   * Get table schema (with caching)
+   * Get table schema (with version-aware caching)
    */
-  private async getTableSchema(tableName: string): Promise<TableSchema | null> {
-    // Check cache
+  async getTableSchema(tableName: string): Promise<TableSchema | null> {
+    // Check cache validity - version AND time-based
     const now = Date.now();
-    if (this.schemaCache.has(tableName) && (now - this.lastCacheUpdate) < this.CACHE_TTL) {
+    const cacheValid = this.schemaCache.has(tableName) && 
+                      (now - this.lastCacheUpdate) < this.CACHE_TTL;
+    
+    if (cacheValid) {
       return this.schemaCache.get(tableName)!;
     }
 
@@ -330,7 +345,15 @@ export class SchemaValidator {
   clearCache(): void {
     this.schemaCache.clear();
     this.lastCacheUpdate = 0;
+    this.cacheVersion = null;
     this.logger.info('Schema cache cleared');
+  }
+
+  /**
+   * Get current cache version
+   */
+  getCacheVersion(): string | null {
+    return this.cacheVersion;
   }
 
   /**

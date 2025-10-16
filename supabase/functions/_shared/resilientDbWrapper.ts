@@ -1,6 +1,8 @@
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { SchemaValidator, SchemaValidationError } from './schemaValidator.ts';
 import { SelfHealingLoop } from './selfHealingLoop.ts';
+import { TransactionManager } from './transactionManager.ts';
+import { safeLog } from './fallbackLogger.ts';
 
 /**
  * Universal Database Wrapper with Self-Healing Capabilities
@@ -37,6 +39,7 @@ export class ResilientDbWrapper {
   private validator: SchemaValidator;
   private healingLoop: SelfHealingLoop;
   private supabase: SupabaseClient;
+  private transactionManager: TransactionManager;
   private logger: any;
   
   constructor(supabase: SupabaseClient, lovableApiKey: string) {
@@ -44,6 +47,7 @@ export class ResilientDbWrapper {
     this.logger = { info: console.log, warn: console.warn, error: console.error, debug: console.debug };
     this.validator = new SchemaValidator(supabase, this.logger);
     this.healingLoop = new SelfHealingLoop(supabase, lovableApiKey);
+    this.transactionManager = new TransactionManager(supabase);
   }
 
   /**
@@ -154,38 +158,47 @@ export class ResilientDbWrapper {
       healedRecords.push(healingResult.healedData);
     }
 
-    // If we have any records to insert, proceed
+    // If we have any records to insert, proceed with transaction support
     if (healedRecords.length > 0) {
+      // Use transaction for batch operations to enable rollback on failure
+      const transactionId = await this.transactionManager.begin();
+      
       try {
-        const { data: insertedData, error: insertError } = await this.supabase
-          .from(tableName)
-          .insert(healedRecords)
-          .select();
+        const txResult = await this.transactionManager.execute(
+          transactionId,
+          tableName,
+          'insert',
+          healedRecords
+        );
 
-        if (insertError) {
-          await this.logFailedOperation('insert', tableName, healedRecords, insertError);
-          
-          // Partial success scenario
-          if (failedRecords.length > 0) {
-            return {
-              data: insertedData as T,
-              error: new Error(`Partial insert: ${healedRecords.length} succeeded, ${failedRecords.length} failed`),
-              healed: anyHealed,
-              attempts: totalAttempts,
-              originalOperation: `INSERT INTO ${tableName}`,
-              partialSuccess: true,
-              failedRecords: failedRecords.map(f => f.record)
-            };
-          }
+        if (!txResult.success) {
+          await this.transactionManager.rollback(transactionId);
+          await this.logFailedOperation('insert', tableName, healedRecords, new Error(txResult.error || 'Transaction failed'));
           
           return {
             data: null,
-            error: insertError,
+            error: new Error(txResult.error || 'Insert transaction failed'),
             healed: anyHealed,
             attempts: totalAttempts,
             originalOperation: `INSERT INTO ${tableName}`
           };
         }
+
+        // Commit transaction
+        const commitResult = await this.transactionManager.commit(transactionId);
+        if (!commitResult.success) {
+          await this.transactionManager.rollback(transactionId);
+          return {
+            data: null,
+            error: new Error(commitResult.error || 'Transaction commit failed'),
+            healed: anyHealed,
+            attempts: totalAttempts,
+            originalOperation: `INSERT INTO ${tableName}`
+          };
+        }
+
+        const insertedData = txResult.data;
+
 
         const duration = Date.now() - startTime;
         const successMessage = failedRecords.length > 0
@@ -498,7 +511,7 @@ export class ResilientDbWrapper {
   }
 
   /**
-   * Log failed operations for pattern learning
+   * Log failed operations for pattern learning with fallback
    */
   private async logFailedOperation(
     operation: string,
@@ -521,7 +534,13 @@ export class ResilientDbWrapper {
         auto_fixed: false
       });
     } catch (logError) {
-      console.error('[ResilientDB] Failed to log error:', logError);
+      // Database unavailable - use fallback file logging
+      console.error('[ResilientDB] Database logging failed, using fallback:', logError);
+      await safeLog('error', `Database operation failed: ${operation} on ${tableName}`, {
+        operation,
+        tableName,
+        errorMessage: error.message
+      }, error);
     }
   }
 

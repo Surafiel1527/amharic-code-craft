@@ -191,5 +191,7 @@ export async function getRelevantPatterns(supabase: SupabaseClient, request: str
 }
 
 export async function storeGenerationPattern(supabase: SupabaseClient, data: any): Promise<void> {
+  // FUTURE: Replace with resilientDb when available in context
+  // For now, direct insert is acceptable for pattern storage
   await supabase.from('generation_patterns').insert(data);
 }

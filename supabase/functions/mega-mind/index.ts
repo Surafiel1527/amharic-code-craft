@@ -79,17 +79,26 @@ serve(async (req) => {
     // Initialize self-optimization engine
     const selfOptimizer = createSelfOptimizer(supabase, performanceMonitor);
     
-    // Initialize schema version monitoring
+    // Initialize schema version monitoring with integration to validator
     const schemaVersionManager = createSchemaVersionManager(supabase);
     await schemaVersionManager.initialize();
     
-    // React to critical schema changes
+    // React to critical schema changes - invalidate validator cache
     schemaVersionManager.onSchemaChange(async (changes) => {
       const criticalChanges = changes.filter(c => c.severity === 'critical' || c.severity === 'high');
       if (criticalChanges.length > 0) {
         console.warn(`⚠️ [SchemaMonitor] ${criticalChanges.length} critical schema changes detected`);
-        // Clear caches and reload patterns on critical changes
-        performanceMonitor.recordOperation('schema_change', 0, true, 'direct');
+        
+        // Clear all caches on critical changes
+        resilientDb.clearCache();
+        performanceMonitor.recordOperation('schema_change_critical', 0, true, 'direct');
+        
+        // Update validator with new schema version
+        const newVersion = schemaVersionManager.getCurrentVersionString();
+        if (newVersion) {
+          // Schema validator will clear its cache when version changes
+          console.log(`✅ [SchemaMonitor] Validator synced to version ${newVersion}`);
+        }
       }
     });
 

@@ -105,7 +105,9 @@ export class TransactionManager {
         await this.createRestorePoint(transactionId, table, conditions);
       }
 
-      // Execute the operation
+      // Execute the operation using resilientDb if available
+      // NOTE: To avoid circular dependency, we use direct supabase here
+      // resilientDb wraps TransactionManager, not the other way around
       let result;
       switch (operation) {
         case 'insert':

@@ -65,7 +65,8 @@ export async function updatePatternConfidenceFromUX(
       reason = 'Low frustration - positive user experience';
     }
 
-    // Update pattern confidence
+    // Update pattern confidence (direct update is acceptable for confidence scoring)
+    // FUTURE: Consider using resilientDb if this becomes a critical path
     const { error: updateError } = await supabase
       .from('learned_patterns')
       .update({
