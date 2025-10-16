@@ -79,7 +79,7 @@ serve(async (req) => {
       // Validate user owns this project
       const { data: project, error: projectError } = await supabase
         .from('projects')
-        .select('id, user_id, name')
+        .select('id, user_id, title')  // ✅ Fixed: was 'name', should be 'title'
         .eq('id', projectId)
         .single();
 
@@ -144,7 +144,7 @@ serve(async (req) => {
         );
       }
 
-      console.log('✅ Project ownership validated:', project.name);
+      console.log('✅ Project ownership validated:', project.title);  // ✅ Fixed: was name, should be title
       
       // Log successful access
       await supabase.rpc('log_security_event', {
@@ -154,7 +154,7 @@ serve(async (req) => {
         p_resource_id: projectId,
         p_attempted_action: 'access',
         p_success: true,
-        p_metadata: { conversationId, projectName: project.name }
+        p_metadata: { conversationId, projectName: project.title }  // ✅ Fixed: was name, should be title
       });
     }
 
