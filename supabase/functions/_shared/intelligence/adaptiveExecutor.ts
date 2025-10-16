@@ -119,6 +119,11 @@ export class AutonomousExecutor {
     const codeActions = understanding.actionPlan.codeActions!;
     const filesGenerated: string[] = [];
     
+    // Initialize generatedFiles array in context if not exists
+    if (!context.generatedFiles) {
+      context.generatedFiles = [];
+    }
+    
     // Execute each step in the autonomous plan
     for (const step of understanding.actionPlan.executionSteps) {
       console.log(`⚙️ Step ${step.step}: ${step.action}`);
@@ -152,6 +157,13 @@ export class AutonomousExecutor {
       }
     }
     
+    // Log what we're returning
+    console.log('📦 Code generation complete:', {
+      filesGeneratedCount: context.generatedFiles.length,
+      filePaths: filesGenerated,
+      filesStructure: context.generatedFiles.map(f => ({ path: f.path, hasContent: !!f.content }))
+    });
+    
     // Generate completion message
     const completionMsg = await this.communicator.generateCompletionSummary(
       understanding.understanding.userGoal,
@@ -160,10 +172,11 @@ export class AutonomousExecutor {
       understanding as any
     );
     
+    // Return files in output for intelligentFileOperations
     return {
       success: true,
       output: {
-        files: context.generatedFiles || []
+        files: context.generatedFiles  // Don't use || [] fallback to see if it's actually undefined
       },
       message: completionMsg.content,
       filesGenerated,
@@ -266,7 +279,7 @@ export class AutonomousExecutor {
     understanding: DeepUnderstanding,
     step: DeepUnderstanding['actionPlan']['executionSteps'][0]
   ): Promise<string[]> {
-    console.log('🔧 Tool: code_generator');
+    console.log('🔧 Tool: code_generator - Starting...');
     
     const { generateCodeWithReasoning } = await import('../aiReasoningEngine.ts');
     
@@ -278,15 +291,30 @@ export class AutonomousExecutor {
       awashContext: context.awashContext  // Pass full platform context
     });
     
-    // Return both files array and store in context for saving
-    const filePaths = result.files?.map((f: any) => f.path) || [];
+    console.log('🔧 Tool: code_generator - AI returned:', {
+      filesCount: result.files?.length || 0,
+      hasFiles: !!result.files,
+      filesSample: result.files?.slice(0, 2).map(f => ({ path: f.path, contentLength: f.content?.length }))
+    });
+    
+    // Validate that we got files
+    if (!result.files || !Array.isArray(result.files) || result.files.length === 0) {
+      console.error('❌ AI generated NO files! This should never happen.');
+      throw new Error('AI code generation failed: No files returned');
+    }
     
     // Store generated files for later database save
     if (!context.generatedFiles) {
       context.generatedFiles = [];
     }
-    context.generatedFiles.push(...result.files);
     
+    // Push files and log it
+    const beforeCount = context.generatedFiles.length;
+    context.generatedFiles.push(...result.files);
+    console.log(`📁 Stored ${result.files.length} files in context (${beforeCount} -> ${context.generatedFiles.length})`);
+    
+    // Return file paths for tracking
+    const filePaths = result.files.map((f: any) => f.path);
     return filePaths;
   }
   

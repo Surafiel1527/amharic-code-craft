@@ -238,10 +238,23 @@ serve(async (req) => {
     // ============================================
     // 🎯 INTELLIGENT FILE OPERATIONS: AI-driven granular file management
     // ============================================
+    console.log('🔍 Checking file operations conditions:', {
+      success: result.success,
+      hasOutput: !!result.output,
+      hasFiles: !!result.output?.files,
+      filesType: result.output?.files ? typeof result.output.files : 'undefined',
+      filesIsArray: Array.isArray(result.output?.files),
+      filesLength: result.output?.files?.length,
+      projectId: !!projectId,
+      hasFileOperations: !!fileOperations,
+      filesSample: result.output?.files?.slice(0, 2)
+    });
+    
     if (result.success && result.output?.files && projectId && fileOperations) {
       console.log('🤖 AI analyzing file operations...', {
         filesCount: result.output.files.length,
-        projectId
+        projectId,
+        filePaths: result.output.files.map((f: any) => f.path || 'NO_PATH')
       });
       
       try {
@@ -276,6 +289,8 @@ serve(async (req) => {
       } catch (fileError) {
         console.error('❌ Error in intelligent file operations:', fileError);
       }
+    } else {
+      console.error('⚠️ Skipping file operations - conditions not met');
     }
 
     // ✅ ENTERPRISE: Save conversation to database for permanent persistence
