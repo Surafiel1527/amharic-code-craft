@@ -19,6 +19,7 @@ export interface ExecutionContext {
   existingFiles?: Record<string, string>;
   framework?: string;
   awashContext?: any;  // Full Awash platform context
+  supervisorFeedback?: string;  // Feedback from supervisor for refinement
   generatedFiles?: Array<{
     path: string;
     content: string;
@@ -65,6 +66,10 @@ export class AutonomousExecutor {
     
     console.log('🤖 Autonomous Executor: Starting execution...');
     console.log(`📋 Plan: ${understanding.actionPlan.executionSteps.length} steps`);
+    
+    if (context.supervisorFeedback) {
+      console.log('📝 Supervisor Feedback:', context.supervisorFeedback.substring(0, 200));
+    }
     
     try {
       // Broadcast initial status

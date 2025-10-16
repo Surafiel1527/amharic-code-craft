@@ -8,6 +8,7 @@
 export { MetaCognitiveAnalyzer, DeepUnderstandingAnalyzer, type QueryAnalysis, type DeepUnderstanding } from './metaCognitiveAnalyzer.ts';
 export { NaturalCommunicator, type CommunicationContext, type GeneratedMessage } from './naturalCommunicator.ts';
 export { AdaptiveExecutor, AutonomousExecutor, type ExecutionContext, type ExecutionResult } from './adaptiveExecutor.ts';
+export { SupervisorAgent, type SupervisionResult } from './supervisorAgent.ts';
 
 /**
  * Universal Mega Mind - Main Intelligence Controller
@@ -20,6 +21,7 @@ import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { MetaCognitiveAnalyzer, QueryAnalysis, DeepUnderstanding } from './metaCognitiveAnalyzer.ts';
 import { NaturalCommunicator } from './naturalCommunicator.ts';
 import { AdaptiveExecutor, ExecutionContext, ExecutionResult } from './adaptiveExecutor.ts';
+import { SupervisorAgent, SupervisionResult } from './supervisorAgent.ts';
 
 export interface UniversalMindRequest {
   userRequest: string;
@@ -35,7 +37,9 @@ export class UniversalMegaMind {
   private analyzer: MetaCognitiveAnalyzer;
   private communicator: NaturalCommunicator;
   private executor: AdaptiveExecutor;
+  private supervisor: SupervisorAgent;
   private currentAnalysis?: QueryAnalysis;
+  private readonly MAX_ITERATIONS = 3;
   
   constructor(
     private supabase: SupabaseClient,
@@ -44,6 +48,7 @@ export class UniversalMegaMind {
     this.analyzer = new MetaCognitiveAnalyzer(lovableApiKey);
     this.communicator = new NaturalCommunicator(lovableApiKey);
     this.executor = new AdaptiveExecutor(supabase, this.communicator, lovableApiKey);
+    this.supervisor = new SupervisorAgent(lovableApiKey);
   }
   
   /**
@@ -54,23 +59,30 @@ export class UniversalMegaMind {
   }
   
   /**
-   * Process user request with full AI autonomy
+   * Process user request with full AI autonomy + Supervisor Quality Assurance
    * 
-   * This is the main entry point that:
+   * This implements the Hybrid Evolution approach:
    * 1. Analyzes the query to understand intent and complexity
-   * 2. Determines the optimal execution strategy
-   * 3. Executes with natural AI-generated communication
-   * 4. Returns results with generated summary
+   * 2. Executes with natural AI-generated communication
+   * 3. Verifies quality with supervisor agent
+   * 4. Iterates if needed (max 3 attempts)
+   * 5. Returns results with supervision details
    */
-  async processRequest(request: UniversalMindRequest): Promise<ExecutionResult & { analysis: DeepUnderstanding }> {
-    console.log('🧠 Universal Mega Mind: Activating...');
+  async processRequest(request: UniversalMindRequest): Promise<ExecutionResult & { analysis: DeepUnderstanding; supervision?: SupervisionResult }> {
+    console.log('🧠 Universal Mega Mind with Supervisor: Activating...');
     console.log(`📝 Request: "${request.userRequest.slice(0, 100)}..."`);
+    
+    const iterationHistory: Array<{
+      attempt: number;
+      executionResult: ExecutionResult;
+      supervision: SupervisionResult;
+    }> = [];
     
     try {
       // Reset communicator for new conversation thread
       this.communicator.resetContext();
       
-      // PHASE 1: Deep Understanding Analysis
+      // PHASE 1: Deep Understanding Analysis (Once)
       console.log('🔍 Phase 1: Deep Understanding...');
       
       this.currentAnalysis = await this.analyzer.analyzeRequest(
@@ -91,33 +103,99 @@ export class UniversalMegaMind {
         confidence: this.currentAnalysis.meta.confidence
       });
       
-      // PHASE 2: Autonomous Execution
-      console.log('🎯 Phase 2: Autonomous Execution...');
-      console.log(`📋 Steps: ${this.currentAnalysis.actionPlan.executionSteps.length}`);
+      // PHASE 2-4: Iterative Execution + Supervision
+      let attemptNumber = 0;
+      let executionResult: ExecutionResult;
+      let supervision: SupervisionResult;
+      const previousFeedback: string[] = [];
       
-      const executionContext: ExecutionContext = {
-        userRequest: request.userRequest,
-        userId: request.userId,
-        conversationId: request.conversationId,
-        projectId: request.projectId,
-        existingFiles: request.existingFiles,
-        framework: request.framework,
-        awashContext: request.context  // Pass full Awash context
+      do {
+        attemptNumber++;
+        console.log(`🎯 Execution Attempt #${attemptNumber}/${this.MAX_ITERATIONS}`);
+        
+        const executionContext: ExecutionContext = {
+          userRequest: request.userRequest,
+          userId: request.userId,
+          conversationId: request.conversationId,
+          projectId: request.projectId,
+          existingFiles: request.existingFiles,
+          framework: request.framework,
+          awashContext: request.context,
+          supervisorFeedback: previousFeedback.length > 0 ? previousFeedback[previousFeedback.length - 1] : undefined
+        };
+        
+        // Execute based on autonomous understanding
+        executionResult = await this.executor.execute(executionContext, this.currentAnalysis);
+        
+        console.log(`✅ Execution #${attemptNumber} Complete:`, {
+          success: executionResult.success,
+          filesGenerated: executionResult.filesGenerated?.length || 0
+        });
+        
+        // PHASE 3: Verify Quality with Supervisor
+        console.log(`🔍 Supervisor: Verifying quality (attempt #${attemptNumber})...`);
+        
+        supervision = await this.supervisor.verify({
+          userRequest: request.userRequest,
+          understanding: this.currentAnalysis,
+          executionResult,
+          attemptNumber,
+          previousFeedback
+        });
+        
+        console.log(`📊 Supervision Result:`, {
+          approved: supervision.approved,
+          confidence: supervision.confidence,
+          requiresIteration: supervision.requiresIteration,
+          issues: supervision.issues?.length || 0
+        });
+        
+        // Record iteration
+        iterationHistory.push({
+          attempt: attemptNumber,
+          executionResult: { ...executionResult },
+          supervision: { ...supervision }
+        });
+        
+        // Add feedback for next iteration if needed
+        if (supervision.feedback && !supervision.approved) {
+          previousFeedback.push(supervision.feedback);
+        }
+        
+        // Check if we should continue iterating
+        const shouldContinue = this.supervisor.shouldRetry(supervision, attemptNumber, this.MAX_ITERATIONS);
+        
+        if (!shouldContinue) {
+          console.log(`🛑 Stopping iteration: ${
+            supervision.approved 
+              ? '✅ Quality approved' 
+              : attemptNumber >= this.MAX_ITERATIONS 
+                ? '⚠️ Max attempts reached' 
+                : '⚠️ Low confidence in fix'
+          }`);
+          break;
+        }
+        
+        console.log(`🔄 Preparing retry with supervisor feedback...`);
+        
+      } while (attemptNumber < this.MAX_ITERATIONS);
+      
+      // Final result with supervision details
+      const finalResult = {
+        ...executionResult,
+        analysis: this.currentAnalysis,
+        supervision,
+        iterationHistory: iterationHistory.length > 1 ? iterationHistory : undefined
       };
       
-      // Execute based on autonomous understanding
-      const result = await this.executor.execute(executionContext, this.currentAnalysis);
-      
-      console.log('✅ Execution Complete:', {
-        success: result.success,
-        duration: result.duration,
-        filesGenerated: result.filesGenerated?.length || 0
+      console.log('🎉 Universal Mega Mind Complete:', {
+        success: executionResult.success,
+        approved: supervision.approved,
+        attempts: attemptNumber,
+        duration: executionResult.duration
       });
       
-      return {
-        ...result,
-        analysis: this.currentAnalysis
-      };
+      return finalResult;
       
     } catch (error) {
       console.error('❌ Universal Mega Mind Error:', error);
