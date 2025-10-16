@@ -544,7 +544,7 @@ CORRECTED DATA (JSON only):`;
     template: Record<string, any>
   ): Promise<boolean> {
     try {
-      const schema = await this.validator.getTableSchema(tableName);
+      const schema = await this.schemaValidator.getTableSchema(tableName);
       if (!schema) {
         this.logger.warn({ tableName }, '❌ Schema not found for validation');
         return false;
