@@ -1,159 +1,140 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+/**
+ * Enterprise Circuit Breaker Pattern
+ */
+
+type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
 interface CircuitBreakerConfig {
   failureThreshold: number;
+  successThreshold: number;
   timeout: number;
-  resetTimeout: number;
+  monitoringWindow: number;
+  volumeThreshold: number;
 }
 
-const DEFAULT_CONFIG: CircuitBreakerConfig = {
-  failureThreshold: 5, // Open after 5 failures
-  timeout: 3000, // 3 seconds
-  resetTimeout: 30000 // Try again after 30 seconds
-};
+interface CircuitStats {
+  state: CircuitState;
+  failures: number;
+  successes: number;
+  totalRequests: number;
+  lastFailureTime?: number;
+  lastSuccessTime?: number;
+  stateChangedAt: number;
+  consecutiveFailures: number;
+  consecutiveSuccesses: number;
+}
+
+interface RequestRecord {
+  timestamp: number;
+  success: boolean;
+}
 
 export class CircuitBreaker {
   private serviceName: string;
+  private state: CircuitState = 'CLOSED';
   private config: CircuitBreakerConfig;
-  private supabaseClient: any;
+  private stats: CircuitStats;
+  private requestHistory: RequestRecord[] = [];
+  private logger: any;
 
-  constructor(
-    serviceName: string,
-    supabaseUrl: string,
-    supabaseKey: string,
-    config?: Partial<CircuitBreakerConfig>
-  ) {
+  constructor(serviceName: string, config: Partial<CircuitBreakerConfig> = {}) {
     this.serviceName = serviceName;
-    this.config = { ...DEFAULT_CONFIG, ...config };
-    this.supabaseClient = createClient(supabaseUrl, supabaseKey);
+    this.config = {
+      failureThreshold: config.failureThreshold ?? 5,
+      successThreshold: config.successThreshold ?? 2,
+      timeout: config.timeout ?? 60000,
+      monitoringWindow: config.monitoringWindow ?? 120000,
+      volumeThreshold: config.volumeThreshold ?? 10
+    };
+    
+    this.stats = {
+      state: 'CLOSED',
+      failures: 0,
+      successes: 0,
+      totalRequests: 0,
+      consecutiveFailures: 0,
+      consecutiveSuccesses: 0,
+      stateChangedAt: Date.now()
+    };
+
+    this.logger = { info: console.log, warn: console.warn, error: console.error };
   }
 
-  async execute<T>(operation: () => Promise<T>): Promise<T> {
-    // Check current state
-    const state = await this.getState();
-
-    if (state === 'open') {
-      // Check if we should try half-open
-      const { data } = await this.supabaseClient
-        .from('circuit_breaker_state')
-        .select('next_retry_at')
-        .eq('service_name', this.serviceName)
-        .single();
-
-      if (data && new Date(data.next_retry_at) > new Date()) {
-        throw new Error(`Circuit breaker is OPEN for ${this.serviceName}. Service unavailable.`);
+  async execute<T>(fn: () => Promise<T>, fallback?: () => T): Promise<T> {
+    if (this.state === 'OPEN') {
+      if (this.shouldAttemptReset()) {
+        this.transitionTo('HALF_OPEN');
+      } else {
+        if (fallback) return fallback();
+        throw new Error(`Circuit breaker OPEN for ${this.serviceName}`);
       }
-
-      // Move to half-open state
-      await this.updateState('half_open');
     }
 
-    try {
-      // Execute operation with timeout
-      const result = await Promise.race([
-        operation(),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Operation timeout')), this.config.timeout)
-        )
-      ]);
+    this.stats.totalRequests++;
 
-      // Success - update circuit breaker
-      await this.recordSuccess();
+    try {
+      const result = await fn();
+      this.onSuccess();
       return result;
     } catch (error) {
-      // Failure - update circuit breaker
-      await this.recordFailure(error instanceof Error ? error.message : 'Unknown error');
+      this.onFailure();
+      if (fallback && this.state === 'OPEN') return fallback();
       throw error;
     }
   }
 
-  private async getState(): Promise<'closed' | 'open' | 'half_open'> {
-    try {
-      const { data } = await this.supabaseClient
-        .from('circuit_breaker_state')
-        .select('state')
-        .eq('service_name', this.serviceName)
-        .maybeSingle();
-
-      return data?.state || 'closed';
-    } catch (error) {
-      console.error('Failed to get circuit breaker state:', error);
-      return 'closed'; // Default to closed on error
+  private onSuccess(): void {
+    this.stats.successes++;
+    this.stats.consecutiveSuccesses++;
+    this.stats.consecutiveFailures = 0;
+    
+    if (this.state === 'HALF_OPEN' && this.stats.consecutiveSuccesses >= this.config.successThreshold) {
+      this.transitionTo('CLOSED');
     }
   }
 
-  private async updateState(newState: 'closed' | 'open' | 'half_open') {
-    try {
-      await this.supabaseClient
-        .from('circuit_breaker_state')
-        .upsert({
-          service_name: this.serviceName,
-          state: newState,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'service_name'
-        });
-    } catch (error) {
-      console.error('Failed to update circuit breaker state:', error);
+  private onFailure(): void {
+    this.stats.failures++;
+    this.stats.consecutiveFailures++;
+    this.stats.consecutiveSuccesses = 0;
+
+    if (this.state === 'HALF_OPEN') {
+      this.transitionTo('OPEN');
+    } else if (this.state === 'CLOSED' && this.stats.consecutiveFailures >= this.config.failureThreshold) {
+      this.transitionTo('OPEN');
     }
   }
 
-  private async recordSuccess() {
-    try {
-      // Call database function to handle state update
-      await this.supabaseClient.rpc('update_circuit_breaker', {
-        p_service_name: this.serviceName,
-        p_success: true
-      });
-    } catch (error) {
-      console.error('Failed to record success:', error);
-    }
+  private transitionTo(newState: CircuitState): void {
+    if (this.state === newState) return;
+    this.logger.warn(`[Circuit ${this.serviceName}] ${this.state} → ${newState}`);
+    this.state = newState;
+    this.stats.state = newState;
+    this.stats.stateChangedAt = Date.now();
   }
 
-  private async recordFailure(errorMessage: string) {
-    try {
-      // Call database function to handle state update
-      const { data } = await this.supabaseClient.rpc('update_circuit_breaker', {
-        p_service_name: this.serviceName,
-        p_success: false,
-        p_error_message: errorMessage
-      });
-
-      // If circuit opened, send alert
-      if (data === 'open') {
-        await this.sendAlert();
-      }
-    } catch (error) {
-      console.error('Failed to record failure:', error);
-    }
+  private shouldAttemptReset(): boolean {
+    return Date.now() - this.stats.stateChangedAt >= this.config.timeout;
   }
 
-  private async sendAlert() {
-    try {
-      await this.supabaseClient.rpc('send_alert', {
-        p_alert_type: 'circuit_breaker_open',
-        p_severity: 'critical',
-        p_title: `Circuit Breaker Opened: ${this.serviceName}`,
-        p_message: `Circuit breaker for ${this.serviceName} has opened due to repeated failures. Service is temporarily unavailable.`,
-        p_metadata: {
-          service_name: this.serviceName,
-          timestamp: new Date().toISOString()
-        }
-      });
-    } catch (error) {
-      console.error('Failed to send alert:', error);
-    }
+  getState(): CircuitState {
+    return this.state;
   }
 
-  // Static method to wrap any function with circuit breaker
-  static async wrap<T>(
-    serviceName: string,
-    supabaseUrl: string,
-    supabaseKey: string,
-    operation: () => Promise<T>,
-    config?: Partial<CircuitBreakerConfig>
-  ): Promise<T> {
-    const breaker = new CircuitBreaker(serviceName, supabaseUrl, supabaseKey, config);
-    return breaker.execute(operation);
+  getStats(): CircuitStats {
+    return { ...this.stats };
   }
 }
+
+export class CircuitBreakerRegistry {
+  private breakers: Map<string, CircuitBreaker> = new Map();
+
+  getBreaker(serviceName: string, config?: Partial<CircuitBreakerConfig>): CircuitBreaker {
+    if (!this.breakers.has(serviceName)) {
+      this.breakers.set(serviceName, new CircuitBreaker(serviceName, config));
+    }
+    return this.breakers.get(serviceName)!;
+  }
+}
+
+export const circuitBreakerRegistry = new CircuitBreakerRegistry();
