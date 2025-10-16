@@ -62,10 +62,10 @@ async function loadConversationContext(
     .eq('user_id', userId)
     .maybeSingle();
 
-  const { data: generatedCode } = await supabase
-    .from('generated_code')
-    .select('component_name, file_path, created_at')
-    .eq('conversation_id', conversationId)
+  const { data: projectFiles } = await supabase
+    .from('project_files')
+    .select('file_path, created_at')
+    .eq('project_id', projectId)
     .order('created_at', { ascending: false })
     .limit(50);
 

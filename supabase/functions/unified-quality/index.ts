@@ -538,7 +538,7 @@ Return as markdown.
     .insert({
       user_id: userId,
       project_id: projectId,
-      file_path: 'generated_code',
+      file_path: 'auto_generated_docs',
       original_code: code,
       documented_code: code,
       readme_content: documentation,

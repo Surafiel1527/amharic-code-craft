@@ -90,23 +90,24 @@ serve(async (req) => {
       newFeature,
       existingFeature,
       conversationId,
-      userId
+      userId,
+      projectId
     } = await req.json();
 
     console.log('🔗 Progressive Enhancer linking:', { newFeature, existingFeature });
 
-    // **Get existing feature code**
-    const { data: existingCode } = await supabase
-      .from('generated_code')
+    // **Get existing feature files from project_files**
+    const { data: existingFiles } = await supabase
+      .from('project_files')
       .select('*')
-      .eq('conversation_id', conversationId)
-      .ilike('component_name', `%${existingFeature}%`)
+      .eq('project_id', projectId)
+      .ilike('file_path', `%${existingFeature}%`)
       .order('created_at', { ascending: false })
       .limit(10);
 
-    if (!existingCode || existingCode.length === 0) {
+    if (!existingFiles || existingFiles.length === 0) {
       return new Response(JSON.stringify({
-        error: `No existing code found for feature: ${existingFeature}`,
+        error: `No existing files found for feature: ${existingFeature}`,
         suggestion: 'Generate the base feature first, then add enhancements'
       }), {
         status: 404,
@@ -115,14 +116,14 @@ serve(async (req) => {
     }
 
     // **Analyze integration points**
-    const integrationPlan = analyzeIntegrationPoints(newFeature, existingCode);
+    const integrationPlan = analyzeIntegrationPoints(newFeature, existingFiles);
 
     // **Generate enhancement code**
     const enhancementCode = await generateEnhancement(
       supabase,
       newFeature,
       existingFeature,
-      existingCode,
+      existingFiles,
       integrationPlan
     );
 

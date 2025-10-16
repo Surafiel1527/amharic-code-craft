@@ -53,39 +53,38 @@ export async function loadConversationContext(
     .eq('user_id', userId)
     .maybeSingle();
 
-  // Get generated components/features
-  const { data: generatedCode } = await supabase
-    .from('generated_code')
-    .select('component_name, file_path, created_at')
-    .eq('conversation_id', conversationId)
+  // Get generated files from project_files (correct table)
+  const { data: projectFiles } = await supabase
+    .from('project_files')
+    .select('file_path, created_at')
+    .eq('project_id', projectId)
     .order('created_at', { ascending: false })
     .limit(50);
 
   return {
     previousMessages: messages || [],
     projectState: projectContext || DEFAULT_PROJECT_STATE,
-    generatedComponents: generatedCode || [],
-    generatedFeatures: extractFeaturesFromComponents(generatedCode || [])
+    generatedComponents: projectFiles || [],
+    generatedFeatures: extractFeaturesFromFiles(projectFiles || [])
   };
 }
 
 /**
- * Extract feature names from generated components
+ * Extract feature names from generated files
  */
-export function extractFeaturesFromComponents(components: any[]): string[] {
+export function extractFeaturesFromFiles(files: any[]): string[] {
   const features = new Set<string>();
   
-  components.forEach(comp => {
-    const name = comp.component_name?.toLowerCase() || '';
-    const path = comp.file_path?.toLowerCase() || '';
+  files.forEach(file => {
+    const path = file.file_path?.toLowerCase() || '';
     
-    if (name.includes('todo') || path.includes('todo')) features.add('todos');
-    if (name.includes('auth') || path.includes('auth')) features.add('auth');
-    if (name.includes('profile') || path.includes('profile')) features.add('profiles');
-    if (name.includes('note') || path.includes('note')) features.add('notes');
-    if (name.includes('post') || path.includes('post')) features.add('posts');
-    if (name.includes('comment') || path.includes('comment')) features.add('comments');
-    if (name.includes('settings') || path.includes('settings')) features.add('settings');
+    if (path.includes('todo')) features.add('todos');
+    if (path.includes('auth')) features.add('auth');
+    if (path.includes('profile')) features.add('profiles');
+    if (path.includes('note')) features.add('notes');
+    if (path.includes('post')) features.add('posts');
+    if (path.includes('comment')) features.add('comments');
+    if (path.includes('settings')) features.add('settings');
   });
   
   return Array.from(features);

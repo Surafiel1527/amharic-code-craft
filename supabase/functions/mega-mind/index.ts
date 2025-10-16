@@ -428,9 +428,9 @@ serve(async (req) => {
               message: typeof result.error === 'string' ? result.error : result.error.message,
               type: 'generation_error'
             } : undefined,
-            timestamp: new Date().toISOString()
-          },
-          generated_code: result.output ? JSON.stringify(result.output) : null
+            timestamp: new Date().toISOString(),
+            output: result.output ? JSON.stringify(result.output) : null
+          }
         });
       
       if (aiMsgError) {
