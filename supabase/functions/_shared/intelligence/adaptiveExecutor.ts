@@ -67,24 +67,50 @@ export class AutonomousExecutor {
     console.log('🤖 Autonomous Executor: Starting execution...');
     console.log(`📋 Plan: ${understanding.actionPlan.executionSteps.length} steps`);
     
+    // CRITICAL: If supervisor provided feedback, re-analyze with that feedback to adjust plan
+    let workingUnderstanding = understanding;
     if (context.supervisorFeedback) {
-      console.log('📝 Supervisor Feedback:', context.supervisorFeedback.substring(0, 200));
+      console.log('🔄 Supervisor Feedback Detected - Re-analyzing to incorporate feedback...');
+      console.log(`📋 Feedback: ${context.supervisorFeedback.substring(0, 300)}...`);
+      
+      const { MetaCognitiveAnalyzer } = await import('./metaCognitiveAnalyzer.ts');
+      const analyzer = new MetaCognitiveAnalyzer(this.lovableApiKey);
+      
+      // Re-analyze with supervisor feedback integrated
+      workingUnderstanding = await analyzer.analyzeRequest(
+        context.userRequest,
+        {
+          conversationHistory: context.awashContext?.conversationHistory,
+          projectContext: context.awashContext,
+          existingFiles: context.existingFiles,
+          framework: context.framework,
+          currentRoute: context.awashContext?.currentRoute,
+          recentErrors: context.awashContext?.recentErrors,
+          supervisorFeedback: context.supervisorFeedback
+        }
+      );
+      
+      console.log('✅ Re-analysis complete:', {
+        newStepsCount: workingUnderstanding.actionPlan.executionSteps.length,
+        confidence: workingUnderstanding.meta.confidence,
+        adjustedPlan: workingUnderstanding.understanding.userGoal
+      });
     }
     
     try {
-      // Broadcast initial status
-      await this.broadcastStatus('starting', understanding);
+      // Broadcast initial status with working understanding
+      await this.broadcastStatus('starting', workingUnderstanding);
       
-      // Execute based on what AI decided is needed
-      if (understanding.actionPlan.requiresCodeGeneration) {
-        return await this.executeCodeGeneration(context, understanding, startTime);
-      } else if (understanding.actionPlan.requiresExplanation) {
-        return await this.executeExplanation(context, understanding, startTime);
-      } else if (understanding.actionPlan.requiresClarification) {
-        return await this.executeClarification(context, understanding, startTime);
+      // Execute based on what AI decided is needed (using potentially adjusted plan)
+      if (workingUnderstanding.actionPlan.requiresCodeGeneration) {
+        return await this.executeCodeGeneration(context, workingUnderstanding, startTime);
+      } else if (workingUnderstanding.actionPlan.requiresExplanation) {
+        return await this.executeExplanation(context, workingUnderstanding, startTime);
+      } else if (workingUnderstanding.actionPlan.requiresClarification) {
+        return await this.executeClarification(context, workingUnderstanding, startTime);
       } else {
         // Fallback - execute the steps as planned
-        return await this.executeAutonomousPlan(context, understanding, startTime);
+        return await this.executeAutonomousPlan(context, workingUnderstanding, startTime);
       }
       
     } catch (error) {
@@ -94,9 +120,9 @@ export class AutonomousExecutor {
         error as Error,
         {
           phase: 'error',
-          taskDescription: understanding.understanding.userGoal
+          taskDescription: workingUnderstanding.understanding.userGoal
         },
-        understanding as any // Type compatibility
+        workingUnderstanding as any // Type compatibility
       );
       
       return {

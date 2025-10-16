@@ -12,6 +12,16 @@
 
 import { buildAwashSystemPrompt } from '../../universal-ai/awashIntegration.ts';
 
+export interface AnalysisContext {
+  conversationHistory?: Array<{ role: string; content: string }>;
+  projectContext?: any;
+  existingFiles?: Record<string, string>;
+  framework?: string;
+  currentRoute?: string;
+  recentErrors?: string[];
+  supervisorFeedback?: string; // Critical: Feedback from supervisor about previous attempt
+}
+
 export interface DeepUnderstanding {
   // Core Understanding - What user TRULY needs
   understanding: {
@@ -84,14 +94,7 @@ export class DeepUnderstandingAnalyzer {
    */
   async analyzeRequest(
     userQuery: string,
-    context: {
-      conversationHistory?: any[];
-      projectContext?: any;          // Full Awash context
-      existingFiles?: Record<string, string>;
-      framework?: string;
-      currentRoute?: string;
-      recentErrors?: any[];
-    }
+    context: AnalysisContext
   ): Promise<DeepUnderstanding> {
     console.log('🧠 Deep Understanding Analyzer: Starting autonomous analysis...');
     
@@ -321,12 +324,33 @@ export class DeepUnderstandingAnalyzer {
   
   /**
    * Build deep understanding prompt that encourages autonomous reasoning
-   * Now with FULL Awash platform awareness
+   * Now with FULL Awash platform awareness + Supervisor Feedback Integration
    */
-  private buildDeepUnderstandingPrompt(context: any): string {
+  private buildDeepUnderstandingPrompt(context: AnalysisContext): string {
     // Get comprehensive workspace awareness if available
     const awashSystemPrompt = context.projectContext 
       ? buildAwashSystemPrompt(context.projectContext, 'generation')
+      : '';
+    
+    // CRITICAL: Supervisor feedback integration
+    const supervisorFeedbackSection = context.supervisorFeedback
+      ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ SUPERVISOR FEEDBACK - PREVIOUS ATTEMPT FAILED:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${context.supervisorFeedback}
+
+🔴 CRITICAL INSTRUCTION:
+This is a RETRY iteration. The previous attempt did not meet quality standards.
+You MUST adjust your action plan to address the issues identified above.
+- Re-think the approach based on supervisor feedback
+- Identify what went wrong and why
+- Create a DIFFERENT plan that fixes the identified issues
+- DO NOT repeat the same actions that failed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`
       : '';
     
     // Build complete context picture
@@ -358,6 +382,8 @@ Working with minimal information:
 
 Your role is NOT to classify requests into predefined categories.
 Your role is to DEEPLY UNDERSTAND what the user needs and AUTONOMOUSLY DECIDE how to help.
+
+${supervisorFeedbackSection}
 
 ${workspaceInfo}
 
