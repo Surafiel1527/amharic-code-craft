@@ -112,9 +112,13 @@ export class VirtualFileSystem {
     reason: string,
     conversationId?: string
   ): Promise<void> {
+    console.log('💾 VFS.applyChanges called with', changes.length, 'changes');
+    
     for (const change of changes) {
+      console.log('📝 Upserting file:', change.path);
+      
       // Update or create in project_files table
-      const { error } = await this.supabase
+      const { data, error } = await this.supabase
         .from('project_files')
         .upsert({
           project_id: this.projectId,
@@ -124,12 +128,15 @@ export class VirtualFileSystem {
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'project_id,file_path'
-        });
+        })
+        .select();
 
       if (error) {
-        console.error('Error applying change:', error);
+        console.error('❌ Error applying change to', change.path, ':', error);
         throw error;
       }
+      
+      console.log('✅ File saved:', change.path, { hasData: !!data });
 
       // Log the change
       await this.supabase
@@ -145,6 +152,8 @@ export class VirtualFileSystem {
           change_reason: reason
         });
     }
+    
+    console.log('✅ All files saved, updating master context...');
 
     // Update master context
     await this.updateMasterContext();

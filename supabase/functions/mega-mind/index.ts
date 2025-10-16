@@ -316,12 +316,16 @@ serve(async (req) => {
           reasoning: op.reasoning
         })));
         
+        console.log('📝 About to apply operations, count:', operations.length);
+        
         // Apply operations with version tracking for undo
         const applyResult = await fileOperations.applyOperations(
           operations,
           userRequest,
           conversationId
         );
+        
+        console.log('📊 Apply result:', applyResult);
         
         if (applyResult.success) {
           console.log('✅ Files intelligently applied with version tracking', {
@@ -332,9 +336,16 @@ serve(async (req) => {
         }
       } catch (fileError) {
         console.error('❌ Error in intelligent file operations:', fileError);
+        console.error('❌ Full error:', fileError);
       }
     } else {
-      console.error('⚠️ Skipping file operations - conditions not met');
+      console.error('⚠️ Skipping file operations - conditions not met:', {
+        hasSuccess: !!result.success,
+        hasFiles: !!result.output?.files,
+        filesCount: result.output?.files?.length || 0,
+        hasProjectId: !!projectId,
+        hasFileOperations: !!fileOperations
+      });
     }
 
     // ============================================

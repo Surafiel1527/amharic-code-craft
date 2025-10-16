@@ -358,8 +358,11 @@ export class IntelligentFileOperations {
     conversationId: string
   ): Promise<{ success: boolean; version: number; error?: string }> {
     try {
+      console.log('🔧 applyOperations START', { operationCount: operations.length });
+      
       // Capture current state for version history
       const currentFiles = await this.vfs.captureProjectState();
+      console.log('📂 Current files captured:', Object.keys(currentFiles).length);
       
       // Create version snapshot BEFORE changes
       const version = await this.createVersionSnapshot(
@@ -367,11 +370,14 @@ export class IntelligentFileOperations {
         userRequest,
         operations.map(op => op.reasoning).join('\n')
       );
+      console.log('📸 Version snapshot created:', version);
       
       // Convert operations to FileChanges
       const changes: FileChange[] = [];
       
       for (const op of operations) {
+        console.log('🔄 Processing operation:', { type: op.type, path: op.path });
+        
         switch (op.type) {
           case 'create':
             changes.push({
@@ -422,6 +428,8 @@ export class IntelligentFileOperations {
         }
       }
       
+      console.log('💾 Applying changes to VFS...', { changeCount: changes.length });
+      
       // Apply all changes via VirtualFileSystem
       await this.vfs.applyChanges(
         changes,
@@ -439,6 +447,7 @@ export class IntelligentFileOperations {
       
     } catch (error) {
       console.error('❌ Failed to apply file operations:', error);
+      console.error('❌ Error stack:', error.stack);
       return { 
         success: false, 
         version: 0,
