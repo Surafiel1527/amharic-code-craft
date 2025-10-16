@@ -9,31 +9,31 @@ project_id = "xuncvfnvatgqshlivuep"
 verify_jwt = true
 
 [functions.mega-mind-self-healer]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.backend-self-monitor]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.unified-autonomous-coordinator]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.advanced-reasoning-engine]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.proactive-monitor]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.proactive-intelligence]
 verify_jwt = true
 
 [functions.self-learning-engine]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.pattern-recognizer]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.predictive-alert-engine]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.autonomous-healing-engine]
 verify_jwt = true  # SECURITY: Requires authentication
@@ -44,7 +44,7 @@ schedule = "*/5 * * * *"
 function_name = "autonomous-healing-engine"
 
 [functions.meta-self-improvement]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.security-intelligence]
 verify_jwt = true  # SECURITY: Requires authentication
@@ -86,7 +86,7 @@ verify_jwt = true
 # ============================================
 
 [functions.unified-ai-workers]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.unified-code-operations]
 verify_jwt = true
@@ -98,7 +98,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.unified-monitoring]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.unified-learning]
 verify_jwt = true
@@ -119,7 +119,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.unified-notifications]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.unified-cache-manager]
 verify_jwt = true
@@ -128,7 +128,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.unified-analytics]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.unified-security]
 verify_jwt = true  # SECURITY: Requires authentication
@@ -143,7 +143,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.unified-rate-limiter]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication for rate limiter management
 
 # ============================================
 # VERCEL INTEGRATION
@@ -157,10 +157,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.analytics-aggregator]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.report-error]
-verify_jwt = false
+verify_jwt = false  # Public endpoint for error reporting with rate limiting
 
 [functions.conversational-ai]
 verify_jwt = true
@@ -172,7 +172,7 @@ verify_jwt = true
 verify_jwt = true  # SECURITY: Requires authentication
 
 [functions.prompt-evolution-engine]
-verify_jwt = false
+verify_jwt = true  # SECURITY: Requires authentication
 
 # ============================================
 # MEGA MIND AGI SYSTEM
