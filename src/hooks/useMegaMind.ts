@@ -116,6 +116,13 @@ export function useMegaMind() {
 
       if (error) throw error;
 
+      // 🆕 Store the project ID if one was created (for future requests)
+      if (result.projectId && !projectId) {
+        console.log('✅ New project created:', result.projectId);
+        // Future requests in this conversation will now have the projectId
+        // The conversation is already linked in the backend
+      }
+
       // AI-generated completion message
       toast({
         title: "✅ Complete",

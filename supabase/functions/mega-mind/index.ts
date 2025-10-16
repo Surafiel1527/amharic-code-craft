@@ -429,6 +429,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: result.success,
+        projectId: projectId, // ← Return project ID so frontend knows about it
         analysis: {
           intent: analysis.understanding.userGoal,
           complexity: analysis.actionPlan.codeActions?.estimatedComplexity || 
