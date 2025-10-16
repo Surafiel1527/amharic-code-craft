@@ -351,16 +351,27 @@ RULES:
       }
     );
 
-    const content = response.data.choices[0].message.content;
+    let content = response.data.choices[0].message.content;
     logger.info('Raw AI response received', { 
       contentLength: content.length,
       startsWithBrace: content.trim().startsWith('{'),
       preview: content.substring(0, 200)
     });
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
     
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
+    // ✅ FIX: Strip markdown code fences if present
+    content = content.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+    
+    // ✅ FIX: Try to find JSON object more carefully
+    let jsonStr = content;
+    const firstBrace = content.indexOf('{');
+    const lastBrace = content.lastIndexOf('}');
+    
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      jsonStr = content.substring(firstBrace, lastBrace + 1);
+    }
+    
+    try {
+      const parsed = JSON.parse(jsonStr);
       
       // Validate that we have files array
       if (!parsed.files || !Array.isArray(parsed.files)) {
@@ -392,19 +403,22 @@ RULES:
       });
       
       return result;
+    } catch (parseError) {
+      // Fallback: treat entire response as a single file
+      logger.warn('Could not parse structured response, using raw content as single file', { 
+        error: parseError instanceof Error ? parseError.message : String(parseError),
+        contentPreview: jsonStr.substring(0, 500)
+      });
+      return {
+        files: [{
+          path: 'src/App.tsx',
+          content: content,
+          language: 'typescript'
+        }],
+        explanation: 'Generated code',
+        reasoning: []
+      };
     }
-
-    // Fallback: treat entire response as a single file
-    logger.warn('Could not parse structured response, using raw content as single file');
-    return {
-      files: [{
-        path: 'src/App.tsx',
-        content: content,
-        language: 'typescript'
-      }],
-      explanation: 'Generated code',
-      reasoning: []
-    };
 
   } catch (error) {
     logger.error('Code generation failed', error);
