@@ -258,6 +258,35 @@ export class SelfHealingLoop {
           fixed['file_content'] = fixed['content'];
           delete fixed['content'];
           madeChanges = true;
+        }
+      }
+
+      // Fix: OLD messages schema → NEW messages schema
+      // Maps legacy fields: sender→role, message→content, sender_id→user_id, meta_data→metadata
+      if (tableName === 'messages') {
+        if ('sender' in fixed && !('role' in fixed)) {
+          fixed['role'] = fixed['sender'];
+          delete fixed['sender'];
+          madeChanges = true;
+          this.logger.debug('Fixed column mismatch: sender → role');
+        }
+        if ('message' in fixed && !('content' in fixed)) {
+          fixed['content'] = fixed['message'];
+          delete fixed['message'];
+          madeChanges = true;
+          this.logger.debug('Fixed column mismatch: message → content');
+        }
+        if ('sender_id' in fixed && !('user_id' in fixed)) {
+          fixed['user_id'] = fixed['sender_id'];
+          delete fixed['sender_id'];
+          madeChanges = true;
+          this.logger.debug('Fixed column mismatch: sender_id → user_id');
+        }
+        if ('meta_data' in fixed && !('metadata' in fixed)) {
+          fixed['metadata'] = fixed['meta_data'];
+          delete fixed['meta_data'];
+          madeChanges = true;
+          this.logger.debug('Fixed column mismatch: meta_data → metadata');
           this.logger.debug('Fixed column mismatch: content → file_content');
         }
       }
@@ -374,33 +403,53 @@ INSTRUCTIONS:
 
 CORRECTED DATA (JSON only):`;
 
-    try {
-      const result = await callAIWithFallback(
-        [{ role: 'user', content: prompt }],
-        {
-          systemPrompt: 'You are a database schema expert. Return only valid JSON.',
-          preferredModel: 'google/gemini-2.5-flash',
-          maxTokens: 2000
+    // Retry up to 2 times with increasing wait
+    const maxRetries = 2;
+    for (let retry = 0; retry < maxRetries; retry++) {
+      try {
+        const result = await callAIWithFallback(
+          [{ role: 'user', content: prompt }],
+          {
+            systemPrompt: 'You are a database schema expert. Return ONLY valid JSON, no markdown.',
+            preferredModel: 'google/gemini-2.5-flash',
+            maxTokens: 2000
+          }
+        );
+
+        let correctedData = result.data.choices[0].message.content.trim();
+
+        // Clean markdown code blocks if present
+        if (correctedData.startsWith('```json')) {
+          correctedData = correctedData.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+        } else if (correctedData.startsWith('```')) {
+          correctedData = correctedData.replace(/```\n?/g, '');
         }
-      );
 
-      let correctedData = result.data.choices[0].message.content;
+        // Parse with validation
+        const parsed = JSON.parse(correctedData);
+        
+        // Verify it's a valid object
+        if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+          throw new Error('AI returned non-object data');
+        }
 
-      // Extract JSON from markdown if present
-      const jsonMatch = correctedData.match(/```(?:json)?\n?([\s\S]*?)```/);
-      if (jsonMatch) {
-        correctedData = jsonMatch[1].trim();
+        this.logger.info('✅ AI correction successful', { tableName, retry });
+        return parsed;
+
+      } catch (error) {
+        this.logger.warn({ error, tableName, retry }, `⚠️  AI correction attempt ${retry + 1} failed`);
+        
+        if (retry === maxRetries - 1) {
+          this.logger.error('AI correction failed after all retries', {}, error as Error);
+          return null;
+        }
+        
+        // Wait before retry (1s, then 2s)
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retry + 1)));
       }
-
-      const parsed = JSON.parse(correctedData);
-
-      this.logger.info('✅ AI correction successful', { tableName });
-      return parsed;
-
-    } catch (error) {
-      this.logger.error('AI correction failed', {}, error as Error);
-      return null;
     }
+    
+    return null;
   }
 
   /**
@@ -428,7 +477,14 @@ CORRECTED DATA (JSON only):`;
         }
       }
 
-      // Upsert pattern
+      // Validate template before saving
+      const isValid = await this.validateCorrectionTemplate(tableName, correctedData);
+      if (!isValid) {
+        this.logger.warn({ tableName, errorSignature }, '⚠️  Skipping invalid correction template');
+        return;
+      }
+
+      // Upsert pattern with LOW initial confidence - will increase with proven success
       await this.supabase
         .from('schema_error_patterns')
         .upsert({
@@ -436,8 +492,8 @@ CORRECTED DATA (JSON only):`;
           error_signature: errorSignature,
           correction_template: template,
           times_used: 1,
-          success_count: 1,
-          confidence_score: 0.8,
+          success_count: 0, // Not proven yet - needs validation
+          confidence_score: 0.5, // Start low, increase with success
           last_used_at: new Date().toISOString()
         }, {
           onConflict: 'table_name,error_signature'
@@ -478,5 +534,39 @@ CORRECTED DATA (JSON only):`;
     }
 
     return results;
+  }
+
+  /**
+   * Validate correction template against actual table schema
+   */
+  private async validateCorrectionTemplate(
+    tableName: string,
+    template: Record<string, any>
+  ): Promise<boolean> {
+    try {
+      const schema = await this.validator.getTableSchema(tableName);
+      if (!schema) {
+        this.logger.warn({ tableName }, '❌ Schema not found for validation');
+        return false;
+      }
+
+      // Check that all required columns exist in template
+      const requiredColumns = schema.columns
+        .filter(col => !col.isNullable && !col.hasDefault)
+        .map(col => col.name);
+
+      const templateKeys = Object.keys(template);
+      const missingRequired = requiredColumns.filter(col => !templateKeys.includes(col));
+
+      if (missingRequired.length > 0) {
+        this.logger.warn({ tableName, missingRequired }, '❌ Template missing required columns');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      this.logger.error({ error, tableName }, '❌ Failed to validate correction template');
+      return false;
+    }
   }
 }
