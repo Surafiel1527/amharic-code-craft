@@ -66,9 +66,11 @@ serve(async (req) => {
       request: userRequest,  // Frontend sends 'request', alias to 'userRequest'
       userId,
       conversationId,
-      projectId,
+      projectId: initialProjectId,  // ✅ FIX: Rename to avoid const reassignment
       awashContext  // ✨ FULL PLATFORM AWARENESS
     } = body;
+    
+    let projectId = initialProjectId;  // ✅ FIX: Use let so we can reassign when creating new project
 
     // ============================================
     // 🔒 ENTERPRISE SECURITY: PROJECT OWNERSHIP VALIDATION
