@@ -264,7 +264,7 @@ serve(async (req) => {
     // Load all project files using VirtualFileSystem approach
     const { data: projectFiles } = await supabase
       .from('project_files')
-      .select('path, content')
+      .select('file_path, file_content')  // ✅ Fixed: was 'path, content'
       .eq('project_id', projectId);
 
     if (!projectFiles || projectFiles.length === 0) {
@@ -291,7 +291,7 @@ serve(async (req) => {
     // Convert to Record<path, content>
     const allFiles: Record<string, string> = {};
     for (const file of projectFiles) {
-      allFiles[file.path] = file.content;
+      allFiles[file.file_path] = file.file_content;  // ✅ Fixed: was file.path and file.content
     }
 
     console.log(`📊 [LOADED] ${Object.keys(allFiles).length} total files`);
