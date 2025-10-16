@@ -1510,6 +1510,48 @@ export type Database = {
         }
         Relationships: []
       }
+      circuit_breaker_state: {
+        Row: {
+          consecutive_failures: number
+          consecutive_successes: number
+          failures: number
+          id: string
+          last_failure_at: string | null
+          last_success_at: string | null
+          service_name: string
+          state: string
+          state_changed_at: string
+          successes: number
+          updated_at: string
+        }
+        Insert: {
+          consecutive_failures?: number
+          consecutive_successes?: number
+          failures?: number
+          id?: string
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          service_name: string
+          state: string
+          state_changed_at?: string
+          successes?: number
+          updated_at?: string
+        }
+        Update: {
+          consecutive_failures?: number
+          consecutive_successes?: number
+          failures?: number
+          id?: string
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          service_name?: string
+          state?: string
+          state_changed_at?: string
+          successes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       code_analysis: {
         Row: {
           analysis_type: string
@@ -7137,6 +7179,39 @@ export type Database = {
         }
         Relationships: []
       }
+      schema_change_logs: {
+        Row: {
+          changes: Json
+          created_at: string
+          from_version: string | null
+          id: string
+          requires_cache_invalidation: boolean
+          requires_pattern_update: boolean
+          severity: string
+          to_version: string
+        }
+        Insert: {
+          changes?: Json
+          created_at?: string
+          from_version?: string | null
+          id?: string
+          requires_cache_invalidation?: boolean
+          requires_pattern_update?: boolean
+          severity: string
+          to_version: string
+        }
+        Update: {
+          changes?: Json
+          created_at?: string
+          from_version?: string | null
+          id?: string
+          requires_cache_invalidation?: boolean
+          requires_pattern_update?: boolean
+          severity?: string
+          to_version?: string
+        }
+        Relationships: []
+      }
       schema_error_patterns: {
         Row: {
           confidence_score: number | null
@@ -7173,6 +7248,33 @@ export type Database = {
           success_count?: number | null
           table_name?: string
           times_used?: number | null
+        }
+        Relationships: []
+      }
+      schema_versions: {
+        Row: {
+          captured_at: string
+          created_at: string
+          id: string
+          schema_hash: string
+          schema_snapshot: Json
+          version: string
+        }
+        Insert: {
+          captured_at: string
+          created_at?: string
+          id?: string
+          schema_hash: string
+          schema_snapshot: Json
+          version: string
+        }
+        Update: {
+          captured_at?: string
+          created_at?: string
+          id?: string
+          schema_hash?: string
+          schema_snapshot?: Json
+          version?: string
         }
         Relationships: []
       }
@@ -8445,6 +8547,45 @@ export type Database = {
           },
         ]
       }
+      transaction_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          operations: Json
+          restored_tables: string[] | null
+          started_at: string
+          status: string
+          transaction_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          operations?: Json
+          restored_tables?: string[] | null
+          started_at: string
+          status: string
+          transaction_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          operations?: Json
+          restored_tables?: string[] | null
+          started_at?: string
+          status?: string
+          transaction_id?: string
+        }
+        Relationships: []
+      }
       universal_error_patterns: {
         Row: {
           affected_technologies: Json | null
@@ -9259,6 +9400,10 @@ export type Database = {
           is_nullable: string
           is_primary_key: boolean
         }[]
+      }
+      get_table_names: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
       }
       get_user_route_preferences: {
         Args: { p_user_id: string }
