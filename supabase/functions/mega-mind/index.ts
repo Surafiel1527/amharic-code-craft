@@ -250,6 +250,47 @@ serve(async (req) => {
       filesSample: result.output?.files?.slice(0, 2)
     });
     
+    // ============================================
+    // 🆕 CREATE PROJECT IF NEEDED (New Generation Without Project)
+    // ============================================
+    if (result.success && result.output?.files && result.output.files.length > 0 && !projectId) {
+      console.log('🆕 Creating new project for generated code...');
+      
+      try {
+        // Create a new project for this generation
+        const { data: newProject, error: projectError } = await supabase
+          .from('projects')
+          .insert({
+            user_id: userId,
+            name: analysis.understanding.userGoal.slice(0, 100) || 'New Project',
+            description: userRequest.slice(0, 500),
+            html_code: JSON.stringify(result.output.files),
+            framework: 'react'
+          })
+          .select()
+          .single();
+        
+        if (projectError || !newProject) {
+          console.error('❌ Failed to create project:', projectError);
+        } else {
+          projectId = newProject.id;
+          console.log('✅ New project created:', { projectId, name: newProject.name });
+          
+          // Initialize file operations for the new project
+          const { IntelligentFileOperations } = await import("../_shared/intelligentFileOperations.ts");
+          fileOperations = new IntelligentFileOperations(supabase, projectId, userId);
+          
+          // Update conversation with project binding
+          await supabase
+            .from('conversations')
+            .update({ project_id: projectId })
+            .eq('id', conversationId);
+        }
+      } catch (createError) {
+        console.error('❌ Error creating project:', createError);
+      }
+    }
+    
     if (result.success && result.output?.files && projectId && fileOperations) {
       console.log('🤖 AI analyzing file operations...', {
         filesCount: result.output.files.length,
