@@ -256,9 +256,13 @@ serve(async (req) => {
               logger
             );
 
-            // Save healed files to database
+            // Save healed files to database using resilient wrapper
+            const { createResilientDb } = await import('../_shared/resilientDbWrapper.ts');
+            const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+            const resilientDb = createResilientDb(supabase, lovableApiKey);
+            
             for (const file of missingFiles) {
-              await supabase.from('project_files').insert({
+              await resilientDb.insert('project_files', {
                 project_id: project.id,
                 file_path: file.path,
                 file_content: file.content,

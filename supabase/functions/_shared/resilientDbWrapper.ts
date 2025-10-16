@@ -35,10 +35,12 @@ export class ResilientDbWrapper {
   private validator: SchemaValidator;
   private healingLoop: SelfHealingLoop;
   private supabase: SupabaseClient;
+  private logger: any;
   
   constructor(supabase: SupabaseClient, lovableApiKey: string) {
     this.supabase = supabase;
-    this.validator = new SchemaValidator(supabase);
+    this.logger = { info: console.log, warn: console.warn, error: console.error, debug: console.debug };
+    this.validator = new SchemaValidator(supabase, this.logger);
     this.healingLoop = new SelfHealingLoop(supabase, lovableApiKey);
   }
 

@@ -197,11 +197,16 @@ serve(async (req) => {
       }
     });
 
-    // Store edit in conversation history with AI-generated response
-    await supabase.from('messages').insert({
+    // Store edit in conversation history with AI-generated response using resilient wrapper
+    const { createResilientDb } = await import('../_shared/resilientDbWrapper.ts');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    const resilientDb = createResilientDb(supabase, lovableApiKey);
+    
+    await resilientDb.insert('messages', {
       conversation_id: conversationId,
       role: 'assistant',
       content: aiResponse,
+      user_id: userId,
       metadata: {
         editType: 'surgical',
         edits: editResult.edits,

@@ -87,24 +87,29 @@ serve(async (req) => {
     const data = await response.json();
     const answer = data.choices[0].message.content;
 
-    // Save the Q&A to conversation history
-    await platformSupabase.from('messages').insert([
-      {
-        conversation_id: conversationId,
-        role: 'user',
-        content: request,
-        metadata: { type: 'question', intentDetected: true }
-      },
-      {
-        conversation_id: conversationId,
-        role: 'assistant',
-        content: answer,
-        metadata: { 
-          type: 'conversational_response',
-          resourcesDetected: requiredResources.map(r => r.id)
-        }
+    // Save the Q&A to conversation history using resilient wrapper
+    const { createResilientDb } = await import('../_shared/resilientDbWrapper.ts');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    const resilientDb = createResilientDb(platformSupabase, lovableApiKey);
+    
+    await resilientDb.insert('messages', {
+      conversation_id: conversationId,
+      role: 'user',
+      content: request,
+      user_id: userId,
+      metadata: { type: 'question', intentDetected: true }
+    });
+    
+    await resilientDb.insert('messages', {
+      conversation_id: conversationId,
+      role: 'assistant',
+      user_id: userId,
+      content: answer,
+      metadata: { 
+        type: 'conversational_response',
+        resourcesDetected: requiredResources.map(r => r.id)
       }
-    ]);
+    });
 
     return new Response(JSON.stringify({ 
       answer,
