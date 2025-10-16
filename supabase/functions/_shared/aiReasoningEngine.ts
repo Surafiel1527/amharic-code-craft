@@ -215,7 +215,7 @@ export async function generateCodeWithReasoning(
 
   logger.info('Starting code generation with reasoning', { 
     framework: requirements.framework,
-    constraintCount: requirements.constraints.length 
+    hasWorkspaceContext: !!requirements.awashContext
   });
   
   const existingFilesInfo = requirements.existingCode 
