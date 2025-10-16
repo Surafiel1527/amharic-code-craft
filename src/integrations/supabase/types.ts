@@ -2482,6 +2482,13 @@ export type Database = {
             referencedRelation: "database_credentials"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "database_alert_config_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "database_credentials_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       database_audit_log: {
@@ -2524,6 +2531,13 @@ export type Database = {
             columns: ["credential_id"]
             isOneToOne: false
             referencedRelation: "database_credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "database_audit_log_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "database_credentials_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -2579,6 +2593,13 @@ export type Database = {
             referencedRelation: "database_credentials"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "database_connection_errors_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "database_credentials_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       database_connection_health: {
@@ -2618,6 +2639,13 @@ export type Database = {
             columns: ["credential_id"]
             isOneToOne: false
             referencedRelation: "database_credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "database_connection_health_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "database_credentials_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -2694,6 +2722,13 @@ export type Database = {
             referencedRelation: "database_credentials"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "database_connection_retries_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "database_credentials_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       database_credentials: {
@@ -2701,6 +2736,7 @@ export type Database = {
           connection_name: string
           created_at: string | null
           credentials: Json
+          encrypted_credentials: string | null
           id: string
           is_active: boolean | null
           last_tested_at: string | null
@@ -2713,6 +2749,7 @@ export type Database = {
           connection_name: string
           created_at?: string | null
           credentials: Json
+          encrypted_credentials?: string | null
           id?: string
           is_active?: boolean | null
           last_tested_at?: string | null
@@ -2725,6 +2762,7 @@ export type Database = {
           connection_name?: string
           created_at?: string | null
           credentials?: Json
+          encrypted_credentials?: string | null
           id?: string
           is_active?: boolean | null
           last_tested_at?: string | null
@@ -2843,6 +2881,13 @@ export type Database = {
             columns: ["credential_id"]
             isOneToOne: false
             referencedRelation: "database_credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "database_performance_metrics_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "database_credentials_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -9395,6 +9440,45 @@ export type Database = {
         }
         Relationships: []
       }
+      database_credentials_safe: {
+        Row: {
+          connection_name: string | null
+          created_at: string | null
+          credentials_status: string | null
+          id: string | null
+          is_active: boolean | null
+          last_tested_at: string | null
+          provider: string | null
+          test_status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          connection_name?: string | null
+          created_at?: string | null
+          credentials_status?: never
+          id?: string | null
+          is_active?: boolean | null
+          last_tested_at?: string | null
+          provider?: string | null
+          test_status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          connection_name?: string | null
+          created_at?: string | null
+          credentials_status?: never
+          id?: string | null
+          is_active?: boolean | null
+          last_tested_at?: string | null
+          provider?: string | null
+          test_status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       quality_analytics: {
         Row: {
           avg_healing_improvement: number | null
@@ -9657,6 +9741,10 @@ export type Database = {
           p_recommendation: string
         }
         Returns: string
+      }
+      verify_admin_access: {
+        Args: { check_user_id: string }
+        Returns: boolean
       }
       verify_user_privacy: {
         Args: { check_user_id: string }

@@ -23,25 +23,41 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization')!;
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user } } = await supabaseClient.auth.getUser(token);
-
-    if (!user) {
-      throw new Error('Unauthorized');
+    // SECURITY: Get user ID from JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ 
+        error: 'Authentication required' 
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Check if user is admin
-    const { data: roleData, error: roleError } = await supabaseClient
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('role', 'admin')
-      .single();
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ 
+        error: 'Authentication failed' 
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    if (roleError || !roleData) {
-      throw new Error('Admin access required');
+    // SECURITY: Verify admin access server-side using secure function
+    const { data: isAdmin, error: adminCheckError } = await supabaseClient
+      .rpc('verify_admin_access', { check_user_id: user.id });
+
+    if (adminCheckError || !isAdmin) {
+      console.error('Admin verification failed:', adminCheckError);
+      return new Response(JSON.stringify({ 
+        error: 'Access denied' 
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const { action, itemId, notes, reason, improvementId } = await req.json();
@@ -167,10 +183,11 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error('Error in admin-approval-handler:', error);
+    // SECURITY: Generic error message to prevent information disclosure
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'An error occurred processing your request' }),
       { 
-        status: 400,
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );

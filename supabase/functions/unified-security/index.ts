@@ -64,10 +64,11 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error(`[${requestId}] Error:`, error);
+    // SECURITY: Generic error message to prevent schema/internal information disclosure
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: 'Security operation failed' 
       }),
       { 
         status: 500,
@@ -112,6 +113,16 @@ async function handleScanCode(params: any, supabase: any, requestId: string) {
     });
   });
 
+  // SECURITY: Sanitize code snippets to prevent XSS before storage
+  const sanitizedIssues = issues.map(issue => ({
+    ...issue,
+    code: issue.code ? 
+      issue.code.replace(/<script[^>]*>.*?<\/script>/gi, '[SCRIPT_REMOVED]')
+                .replace(/javascript:/gi, '[JS_REMOVED]')
+                .replace(/on\w+\s*=/gi, '[EVENT_REMOVED]') : 
+      issue.code
+  }));
+
   // Store scan results
   const { data: scan, error } = await supabase
     .from('security_scans')
@@ -120,13 +131,13 @@ async function handleScanCode(params: any, supabase: any, requestId: string) {
       project_id: projectId || null,
       scan_type: 'code',
       language,
-      issues_found: issues.length,
-      issues_details: issues,
+      issues_found: sanitizedIssues.length,
+      issues_details: sanitizedIssues,
       severity_breakdown: {
-        critical: issues.filter(i => i.severity === 'critical').length,
-        high: issues.filter(i => i.severity === 'high').length,
-        medium: issues.filter(i => i.severity === 'medium').length,
-        low: issues.filter(i => i.severity === 'low').length,
+        critical: sanitizedIssues.filter(i => i.severity === 'critical').length,
+        high: sanitizedIssues.filter(i => i.severity === 'high').length,
+        medium: sanitizedIssues.filter(i => i.severity === 'medium').length,
+        low: sanitizedIssues.filter(i => i.severity === 'low').length,
       },
     })
     .select()
