@@ -11,6 +11,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { UniversalMegaMind } from "../_shared/intelligence/index.ts";
+import { createResilientDb } from "../_shared/resilientDbWrapper.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,6 +61,9 @@ serve(async (req) => {
     }
     
     const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Initialize resilient database wrapper for self-healing operations
+    const resilientDb = createResilientDb(supabase, lovableApiKey);
 
     const body = await req.json();
     const {
@@ -384,57 +388,59 @@ serve(async (req) => {
     console.log('💾 Persisting conversation to database...');
     
     try {
-      // 1. Save user message
-      const { error: userMsgError } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: conversationId,
-          role: 'user',
-          content: userRequest,
-          user_id: userId,
-          metadata: {
-            projectId,
-            timestamp: new Date().toISOString()
-          }
-        });
+      // 1. Save user message with resilient insert
+      const userMsgResult = await resilientDb.insert('messages', {
+        conversation_id: conversationId,
+        role: 'user',
+        content: userRequest,
+        user_id: userId,
+        metadata: {
+          projectId,
+          timestamp: new Date().toISOString()
+        }
+      });
       
-      if (userMsgError) {
-        console.error('❌ Failed to save user message:', userMsgError);
+      if (userMsgResult.error) {
+        console.error('❌ Failed to save user message:', userMsgResult.error);
+        if (userMsgResult.healed) {
+          console.log(`✨ User message insert was healed after ${userMsgResult.attempts} attempts`);
+        }
       } else {
         console.log('✅ User message saved to database');
       }
 
-      // 2. Save AI response (MUST be AI-generated, no templates)
+      // 2. Save AI response (MUST be AI-generated, no templates) with resilient insert
       if (!result.message) {
         console.error('❌ No AI message generated! This should never happen.');
       }
       
-      const { error: aiMsgError } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: conversationId,
-          role: 'assistant',
-          content: result.message,
-          user_id: userId,
-          metadata: {
-            success: result.success,
-            filesGenerated: result.filesGenerated?.length || 0,
-            duration: result.duration,
-            intent: analysis.understanding.userGoal,
-            complexity: analysis.actionPlan.codeActions?.estimatedComplexity || 
-                       (analysis.actionPlan.requiresExplanation ? 'explanation' : 'clarification'),
-            confidence: analysis.meta.confidence,
-            error: result.error ? {
-              message: typeof result.error === 'string' ? result.error : result.error.message,
-              type: 'generation_error'
-            } : undefined,
-            timestamp: new Date().toISOString(),
-            output: result.output ? JSON.stringify(result.output) : null
-          }
-        });
+      const aiMsgResult = await resilientDb.insert('messages', {
+        conversation_id: conversationId,
+        role: 'assistant',
+        content: result.message,
+        user_id: userId,
+        metadata: {
+          success: result.success,
+          filesGenerated: result.filesGenerated?.length || 0,
+          duration: result.duration,
+          intent: analysis.understanding.userGoal,
+          complexity: analysis.actionPlan.codeActions?.estimatedComplexity || 
+                     (analysis.actionPlan.requiresExplanation ? 'explanation' : 'clarification'),
+          confidence: analysis.meta.confidence,
+          error: result.error ? {
+            message: typeof result.error === 'string' ? result.error : result.error.message,
+            type: 'generation_error'
+          } : undefined,
+          timestamp: new Date().toISOString(),
+          output: result.output ? JSON.stringify(result.output) : null
+        }
+      });
       
-      if (aiMsgError) {
-        console.error('❌ Failed to save AI message:', aiMsgError);
+      if (aiMsgResult.error) {
+        console.error('❌ Failed to save AI message:', aiMsgResult.error);
+        if (aiMsgResult.healed) {
+          console.log(`✨ AI message insert was healed after ${aiMsgResult.attempts} attempts`);
+        }
       } else {
         console.log('✅ AI response saved to database');
       }
