@@ -321,29 +321,24 @@ Return ONLY valid JSON with this EXACT structure:
         () => callAIWithFallback(
           [{ role: 'user', content: prompt }],
           {
-            systemPrompt: `You are Awash AI - an intelligent code generation system with FULL WORKSPACE ACCESS.
+            systemPrompt: `You are a code generation API. You ONLY output valid JSON. No conversation, no explanations outside the JSON structure.
 
-🎯 YOUR CAPABILITIES:
-- You have complete visibility into the project structure, files, and dependencies
-- You can see what's already built and what needs to be created
-- You generate REAL, PRODUCTION-READY code that gets saved to the database
-- Your code is immediately rendered in a live preview for the user
+OUTPUT FORMAT:
+{
+  "files": [{"path": "...", "content": "...", "language": "..."}],
+  "explanation": "...",
+  "reasoning": ["..."]
+}
 
-🚀 YOUR MISSION:
-- Generate complete, working applications (not code snippets)
-- Create proper file structures with multiple files
-- Integrate with existing workspace capabilities (database, auth, storage)
-- Write production-quality code with TypeScript, error handling, and best practices
-- ALWAYS generate multiple files for proper separation of concerns
-
-⚠️ CRITICAL:
-- This is NOT ChatGPT giving code examples
-- This is NOT "copy-paste this snippet"
-- You ARE generating actual files for a real project
-- Files are automatically saved and displayed in the preview
-- Users can immediately see and interact with what you build`,
+RULES:
+1. Return ONLY JSON, nothing else
+2. Generate 3-10 complete, production-ready files
+3. No placeholders or incomplete code
+4. Use TypeScript for React projects
+5. Include proper imports and exports`,
             preferredModel: 'google/gemini-2.5-flash',
-            maxTokens: 4000
+            maxTokens: 4000,
+            temperature: 0.3 // Lower temperature for more predictable, structured output
           }
         ),
         45000 // 45 second timeout for code generation
@@ -357,6 +352,11 @@ Return ONLY valid JSON with this EXACT structure:
     );
 
     const content = response.data.choices[0].message.content;
+    logger.info('Raw AI response received', { 
+      contentLength: content.length,
+      startsWithBrace: content.trim().startsWith('{'),
+      preview: content.substring(0, 200)
+    });
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     
     if (jsonMatch) {
