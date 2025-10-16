@@ -6381,34 +6381,34 @@ export type Database = {
       }
       project_files: {
         Row: {
-          created_at: string | null
-          created_by: string | null
+          created_at: string
+          created_by: string
           file_content: string
           file_path: string
-          file_type: string
           id: string
+          language: string | null
           project_id: string
-          updated_at: string | null
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
-          created_by?: string | null
+          created_at?: string
+          created_by: string
           file_content: string
           file_path: string
-          file_type: string
           id?: string
+          language?: string | null
           project_id: string
-          updated_at?: string | null
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
-          created_by?: string | null
+          created_at?: string
+          created_by?: string
           file_content?: string
           file_path?: string
-          file_type?: string
           id?: string
+          language?: string | null
           project_id?: string
-          updated_at?: string | null
+          updated_at?: string
         }
         Relationships: [
           {

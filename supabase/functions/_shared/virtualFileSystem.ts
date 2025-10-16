@@ -120,8 +120,8 @@ export class VirtualFileSystem {
           project_id: this.projectId,
           created_by: this.userId,
           file_path: change.path,
-          file_content: change.newContent,  // ✅ Fixed: was 'content', should be 'file_content'
-          last_modified_at: new Date().toISOString()
+          file_content: change.newContent,
+          updated_at: new Date().toISOString()
         }, {
           onConflict: 'project_id,file_path'
         });

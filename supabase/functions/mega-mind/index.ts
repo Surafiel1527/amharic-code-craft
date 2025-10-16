@@ -345,7 +345,7 @@ serve(async (req) => {
       try {
         const { data: projectFiles, error: verifyError } = await supabase
           .from('project_files')
-          .select('file_path, content')
+          .select('file_path, file_content')
           .eq('project_id', projectId);
         
         if (verifyError) {
