@@ -262,7 +262,7 @@ serve(async (req) => {
           .from('projects')
           .insert({
             user_id: userId,
-            name: analysis.understanding.userGoal.slice(0, 100) || 'New Project',
+            title: analysis.understanding.userGoal.slice(0, 100) || 'New Project',  // ✅ Fixed: was 'name', should be 'title'
             description: userRequest.slice(0, 500),
             html_code: JSON.stringify(result.output.files),
             framework: 'react'
@@ -274,7 +274,7 @@ serve(async (req) => {
           console.error('❌ Failed to create project:', projectError);
         } else {
           projectId = newProject.id;
-          console.log('✅ New project created:', { projectId, name: newProject.name });
+          console.log('✅ New project created:', { projectId, title: newProject.title });  // ✅ Fixed: was 'name', should be 'title'
           
           // Initialize file operations for the new project
           const { IntelligentFileOperations } = await import("../_shared/intelligentFileOperations.ts");

@@ -50,7 +50,7 @@ export class VirtualFileSystem {
     if (Object.keys(files).length === 0) {
       const { data: project } = await this.supabase
         .from('projects')
-        .select('html_code, name')
+        .select('html_code, title')  // ✅ Fixed: was 'name', should be 'title'
         .eq('id', this.projectId)
         .single();
 
