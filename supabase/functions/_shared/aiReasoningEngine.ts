@@ -226,33 +226,94 @@ export async function generateCodeWithReasoning(
     ? `\n\nWORKSPACE CONTEXT:\n${JSON.stringify(requirements.awashContext.workspace, null, 2)}`
     : '';
 
-  const prompt = `Generate production-ready code for this requirement:
+  const workspaceContext = requirements.awashContext?.workspace 
+    ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏗️ YOUR WORKSPACE ACCESS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You have FULL ACCESS to this project workspace:
+
+📁 PROJECT STRUCTURE:
+${requirements.awashContext.workspace.fileSystem?.totalFiles || 0} files, ${requirements.awashContext.workspace.fileSystem?.totalSize || 0} bytes
+Files: ${requirements.awashContext.workspace.fileSystem?.files?.slice(0, 10).map((f: any) => f.path).join(', ') || 'None yet'}
+
+🔧 TECH STACK:
+- Framework: ${requirements.awashContext.workspace.metadata?.framework || requirements.framework}
+- Backend: ${requirements.awashContext.workspace.capabilities?.hasDatabase ? '✓ Database enabled' : '✗ No database'}
+- Auth: ${requirements.awashContext.workspace.capabilities?.hasAuth ? '✓ Authentication enabled' : '✗ No auth'}
+- Storage: ${requirements.awashContext.workspace.capabilities?.hasStorage ? '✓ File storage enabled' : '✗ No storage'}
+
+📦 INSTALLED PACKAGES:
+${requirements.awashContext.workspace.dependencies?.slice(0, 15).join(', ') || 'None'}
+
+⚠️ RECENT ERRORS:
+${requirements.awashContext.workspace.recentErrors?.length || 0} recent errors in workspace
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 YOUR ROLE:
+You are generating files for a REAL PROJECT that will be:
+1. Saved to the project database
+2. Rendered in a live preview
+3. Editable by the user
+4. Part of a complete application
+
+This is NOT a code snippet - this is ACTUAL PRODUCTION CODE.
+`
+    : '';
+
+  const prompt = `${workspaceContext}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 GENERATION REQUEST:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 FUNCTIONALITY: ${requirements.functionality}
 FRAMEWORK: ${requirements.framework}
-REQUIREMENTS: ${requirements.requirements || 'None specified'}${existingFilesInfo}${workspaceInfo}
+REQUIREMENTS: ${requirements.requirements || 'None specified'}${existingFilesInfo}
 
-Generate:
-1. Complete, working code files
-2. Inline comments explaining key decisions
-3. Error handling
-4. TypeScript types where applicable
-5. Proper file structure for ${requirements.framework}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 WHAT TO GENERATE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Return JSON with this EXACT structure:
+Generate COMPLETE, PRODUCTION-READY code:
+1. ✓ All necessary files with proper paths (src/components/, src/hooks/, etc.)
+2. ✓ Full file content - NOT placeholders or "// ... rest of code"
+3. ✓ TypeScript types and interfaces
+4. ✓ Error handling and validation
+5. ✓ Responsive design using Tailwind CSS
+6. ✓ Comments explaining key decisions
+7. ✓ Integration with existing workspace capabilities (database, auth, etc.)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 OUTPUT FORMAT (CRITICAL):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Return ONLY valid JSON with this EXACT structure:
 {
   "files": [
     {
-      "path": "src/components/Example.tsx",
-      "content": "file content here",
+      "path": "src/App.tsx",
+      "content": "import React from 'react';\n\nexport default function App() {\n  return <div>Hello</div>;\n}",
+      "language": "typescript"
+    },
+    {
+      "path": "src/components/Button.tsx",
+      "content": "export function Button() { return <button>Click</button>; }",
       "language": "typescript"
     }
   ],
-  "explanation": "what this code does and why",
-  "reasoning": ["design decision 1", "design decision 2"]
+  "explanation": "Generated a React app with a custom Button component",
+  "reasoning": ["Used TypeScript for type safety", "Separated Button into its own component for reusability"]
 }
 
-IMPORTANT: Generate ALL necessary files for a complete, working application.`;
+⚠️ CRITICAL RULES:
+- Generate 3-10 files minimum for a proper application structure
+- Each file must have complete, working code (no placeholders!)
+- Use proper file paths (src/components/, src/hooks/, src/lib/, etc.)
+- Files will be saved to database and rendered immediately
+- This is a REAL project, not a code example`;
 
   try {
     const response = await retryWithBackoff(
@@ -260,7 +321,27 @@ IMPORTANT: Generate ALL necessary files for a complete, working application.`;
         () => callAIWithFallback(
           [{ role: 'user', content: prompt }],
           {
-            systemPrompt: 'You are an expert developer. Write clean, production-ready code with clear reasoning.',
+            systemPrompt: `You are Awash AI - an intelligent code generation system with FULL WORKSPACE ACCESS.
+
+🎯 YOUR CAPABILITIES:
+- You have complete visibility into the project structure, files, and dependencies
+- You can see what's already built and what needs to be created
+- You generate REAL, PRODUCTION-READY code that gets saved to the database
+- Your code is immediately rendered in a live preview for the user
+
+🚀 YOUR MISSION:
+- Generate complete, working applications (not code snippets)
+- Create proper file structures with multiple files
+- Integrate with existing workspace capabilities (database, auth, storage)
+- Write production-quality code with TypeScript, error handling, and best practices
+- ALWAYS generate multiple files for proper separation of concerns
+
+⚠️ CRITICAL:
+- This is NOT ChatGPT giving code examples
+- This is NOT "copy-paste this snippet"
+- You ARE generating actual files for a real project
+- Files are automatically saved and displayed in the preview
+- Users can immediately see and interact with what you build`,
             preferredModel: 'google/gemini-2.5-flash',
             maxTokens: 4000
           }
