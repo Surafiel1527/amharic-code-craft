@@ -164,14 +164,30 @@ export class SelfHealingLoop {
               attempt.correctionApplied = true;
               attempt.correctionMethod = 'ai';
 
-              // Learn from this fix
-              await this.learnFromCorrection(
+              // RE-VALIDATE: Verify AI fix actually works before saving as pattern
+              const revalidation = await this.schemaValidator.validateOperation(
+                operation,
                 tableName,
-                validation.errors,
-                data,
                 aiFixed
               );
-              result.learnedPattern = true;
+
+              if (revalidation.valid) {
+                this.logger.info('✅ AI correction re-validated successfully');
+                // Learn from this VERIFIED fix
+                await this.learnFromCorrection(
+                  tableName,
+                  validation.errors,
+                  data,
+                  aiFixed
+                );
+                result.learnedPattern = true;
+              } else {
+                this.logger.warn('⚠️  AI correction failed re-validation', {
+                  errors: revalidation.errors.map(e => e.message)
+                });
+                // Don't save this pattern - it doesn't work
+                result.learnedPattern = false;
+              }
             }
           }
         }
@@ -300,6 +316,37 @@ export class SelfHealingLoop {
         if (error.column === 'created_at' && !fixed['created_at']) {
           fixed['created_at'] = new Date().toISOString();
           madeChanges = true;
+          this.logger.debug('Fixed missing created_at with current timestamp');
+        }
+        if (error.column === 'updated_at' && !fixed['updated_at']) {
+          fixed['updated_at'] = new Date().toISOString();
+          madeChanges = true;
+          this.logger.debug('Fixed missing updated_at with current timestamp');
+        }
+        if (error.column === 'id' && !fixed['id']) {
+          // Skip auto-generating IDs - let database handle it
+          this.logger.debug('Skipping auto-generation of id - database will handle');
+        }
+      }
+
+      // Fix: Common field name variations
+      const fieldMappings: Record<string, string> = {
+        'description': 'desc',
+        'desc': 'description',
+        'image_url': 'image',
+        'image': 'image_url',
+        'username': 'user_name',
+        'user_name': 'username',
+        'created': 'created_at',
+        'updated': 'updated_at',
+      };
+
+      for (const [from, to] of Object.entries(fieldMappings)) {
+        if (error.column === to && from in fixed && !(to in fixed)) {
+          fixed[to] = fixed[from];
+          delete fixed[from];
+          madeChanges = true;
+          this.logger.debug(`Fixed field mapping: ${from} → ${to}`);
         }
       }
     }

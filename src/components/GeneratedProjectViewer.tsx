@@ -64,10 +64,10 @@ export function GeneratedProjectViewer({ files: propFiles, projectTitle, project
       console.log('📁 Loaded files from database:', data?.length || 0);
 
       if (data && data.length > 0) {
-        const loadedFiles: GeneratedFile[] = data.map(file => ({
-          path: file.file_path,
-          content: file.file_content,
-          description: `${file.file_type} file`
+        const loadedFiles: GeneratedFile[] = (data as any[]).map((file: any) => ({
+          path: file.file_path || file.path || 'untitled',
+          content: file.file_content || file.content || '',
+          description: `${file.file_type || 'unknown'} file`
         }));
         setFiles(loadedFiles);
         setSelectedFile(loadedFiles[0]);

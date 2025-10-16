@@ -29,6 +29,8 @@ interface QueryResult<T = any> {
   healed: boolean;
   attempts: number;
   originalOperation?: string;
+  partialSuccess?: boolean;
+  failedRecords?: any[];
 }
 
 export class ResilientDbWrapper {
@@ -98,62 +100,117 @@ export class ResilientDbWrapper {
   }
 
   /**
-   * Resilient INSERT with self-healing
+   * Resilient INSERT with self-healing and smart batch processing
    */
   async insert<T = any>(
     tableName: string,
     data: Record<string, any> | Record<string, any>[],
     options: QueryOptions = {}
   ): Promise<QueryResult<T>> {
+    const startTime = Date.now();
     const dataArray = Array.isArray(data) ? data : [data];
-    const maxAttempts = options.maxAttempts || 3;
+    const healedRecords: any[] = [];
+    const failedRecords: Array<{ record: any; errors: string[] }> = [];
+    let totalAttempts = 0;
+    let anyHealed = false;
     
-    for (const record of dataArray) {
-      // Validate and heal each record
+    // Heal each record individually - CONTINUE on failures for batch operations
+    for (let i = 0; i < dataArray.length; i++) {
+      const record = dataArray[i];
       const healingResult = await this.healingLoop.validateAndHeal(
         'insert',
         tableName,
         record,
-        maxAttempts
+        options.maxAttempts || 3
       );
 
+      totalAttempts += healingResult.totalAttempts;
+
       if (!healingResult.success) {
-        return {
-          data: null,
-          error: new Error(healingResult.finalError || 'Insert failed after healing attempts'),
-          healed: healingResult.healed,
-          attempts: healingResult.attempts.length,
-          originalOperation: `INSERT INTO ${tableName}`
-        };
+        this.logger.warn(`Record ${i + 1}/${dataArray.length} failed healing`, {
+          tableName,
+          errors: healingResult.errors
+        });
+        
+        failedRecords.push({ record, errors: healingResult.errors });
+        
+        // For single record, fail immediately. For batch, continue processing
+        if (dataArray.length === 1) {
+          return {
+            data: null,
+            error: new Error(`Failed to insert into ${tableName}: ${healingResult.errors.join(', ')}`),
+            healed: anyHealed,
+            attempts: totalAttempts,
+            originalOperation: `INSERT INTO ${tableName}`
+          };
+        }
+        continue; // Skip this record, continue with others
       }
 
-      // Use healed data if available
-      const finalData = healingResult.correctedData || record;
+      if (healingResult.healed) {
+        anyHealed = true;
+      }
 
+      healedRecords.push(healingResult.healedData);
+    }
+
+    // If we have any records to insert, proceed
+    if (healedRecords.length > 0) {
       try {
-        const { data: insertedData, error } = await this.supabase
+        const { data: insertedData, error: insertError } = await this.supabase
           .from(tableName)
-          .insert(finalData)
-          .select()
-          .single();
+          .insert(healedRecords)
+          .select();
 
-        if (error) {
-          // If insert still fails, log for pattern learning
-          await this.logFailedOperation('insert', tableName, finalData, error);
+        if (insertError) {
+          await this.logFailedOperation('insert', tableName, healedRecords, insertError);
+          
+          // Partial success scenario
+          if (failedRecords.length > 0) {
+            return {
+              data: insertedData as T,
+              error: new Error(`Partial insert: ${healedRecords.length} succeeded, ${failedRecords.length} failed`),
+              healed: anyHealed,
+              attempts: totalAttempts,
+              originalOperation: `INSERT INTO ${tableName}`,
+              partialSuccess: true,
+              failedRecords: failedRecords.map(f => f.record)
+            };
+          }
           
           return {
             data: null,
-            error,
-            healed: healingResult.healed,
-            attempts: healingResult.attempts.length
+            error: insertError,
+            healed: anyHealed,
+            attempts: totalAttempts,
+            originalOperation: `INSERT INTO ${tableName}`
           };
         }
 
+        const duration = Date.now() - startTime;
+        const successMessage = failedRecords.length > 0
+          ? `⚠️  Partial INSERT: ${healedRecords.length} succeeded, ${failedRecords.length} failed`
+          : '✅ Resilient INSERT completed';
+        
+        this.logger.info(successMessage, {
+          tableName,
+          succeeded: healedRecords.length,
+          failed: failedRecords.length,
+          healed: anyHealed,
+          attempts: totalAttempts,
+          duration
+        });
+
         return {
           data: insertedData as T,
-          error: null,
-          healed: healingResult.healed,
-          attempts: healingResult.attempts.length
+          error: failedRecords.length > 0 
+            ? new Error(`Partial success: ${failedRecords.length} records failed`)
+            : null,
+          healed: anyHealed,
+          attempts: totalAttempts,
+          originalOperation: `INSERT INTO ${tableName}`,
+          partialSuccess: failedRecords.length > 0,
+          failedRecords: failedRecords.map(f => f.record)
         };
       } catch (error) {
         if (options.logErrors) {
@@ -163,11 +220,21 @@ export class ResilientDbWrapper {
         return {
           data: null,
           error: error as Error,
-          healed: healingResult.healed,
-          attempts: healingResult.attempts.length
+          healed: anyHealed,
+          attempts: totalAttempts
         };
       }
     }
+
+    // All records failed
+    return {
+      data: null,
+      error: new Error(`All ${dataArray.length} records failed healing`),
+      healed: false,
+      attempts: totalAttempts,
+      originalOperation: `INSERT INTO ${tableName}`,
+      failedRecords: failedRecords.map(f => f.record)
+    };
 
     // Should never reach here, but TypeScript needs it
     return {
