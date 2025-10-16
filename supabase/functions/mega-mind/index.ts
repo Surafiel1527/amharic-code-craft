@@ -262,7 +262,8 @@ serve(async (req) => {
           .from('projects')
           .insert({
             user_id: userId,
-            title: analysis.understanding.userGoal.slice(0, 100) || 'New Project',  // ✅ Fixed: was 'name', should be 'title'
+            title: analysis.understanding.userGoal.slice(0, 100) || 'New Project',
+            prompt: userRequest,  // ✅ FIX: Add required prompt field
             description: userRequest.slice(0, 500),
             html_code: JSON.stringify(result.output.files),
             framework: 'react'
@@ -332,6 +333,38 @@ serve(async (req) => {
       }
     } else {
       console.error('⚠️ Skipping file operations - conditions not met');
+    }
+
+    // ============================================
+    // 🔒 POST-GENERATION VERIFICATION
+    // ============================================
+    if (result.success && result.output?.files && projectId) {
+      console.log('🔍 Verifying files persisted to database...');
+      try {
+        const { data: projectFiles, error: verifyError } = await supabase
+          .from('project_files')
+          .select('file_path, content')
+          .eq('project_id', projectId);
+        
+        if (verifyError) {
+          console.error('❌ Verification query failed:', verifyError);
+        } else if (!projectFiles || projectFiles.length === 0) {
+          console.error('⚠️ WARNING: Files generated but NOT found in database!', {
+            expectedFiles: result.output.files.length,
+            foundFiles: 0,
+            projectId
+          });
+          // Don't fail the request, but log for investigation
+        } else {
+          console.log('✅ Verification passed:', {
+            filesInDB: projectFiles.length,
+            filesGenerated: result.output.files.length,
+            filesList: projectFiles.map(f => f.file_path)
+          });
+        }
+      } catch (verifyErr) {
+        console.error('❌ Verification error:', verifyErr);
+      }
     }
 
     // ✅ ENTERPRISE: Save conversation to database for permanent persistence
