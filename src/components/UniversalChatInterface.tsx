@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -154,6 +155,17 @@ export function UniversalChatInterface({
   const { steps: thinkingSteps } = useThinkingSteps(conversationId);
   const [messageSteps, setMessageSteps] = useState<Map<string, typeof thinkingSteps>>(new Map());
   
+  // ✅ ENTERPRISE: Persistent AI Status tracking
+  const [persistentAIStatus, setPersistentAIStatus] = useState<{
+    isVisible: boolean;
+    status: 'analyzing' | 'generating' | 'complete' | 'error';
+    message: string;
+    progress: number;
+    summary?: string;
+    filesGenerated?: number;
+    duration?: number;
+  } | null>(null);
+  
   // ✅ NEW: Track project-level generation status for inline display
   const [generationStatus, setGenerationStatus] = useState<{
     isGenerating: boolean;
@@ -188,21 +200,30 @@ export function UniversalChatInterface({
     mode: operationMode // Pass operation mode to the hook
   });
 
-  // ✅ ENTERPRISE FIX: Subscribe to generation events for inline progress display
-  // ✅ CRITICAL FIX: Use correct channel name that matches orchestrator broadcasts
+  // ✅ ENTERPRISE: Subscribe to generation status with permanent AI status display
   useEffect(() => {
     if (!conversationId) return;
     
     console.log('🔌 Chat subscribing to generation status:', `ai-status-${conversationId}`);
     
-    // ✅ FIXED: Subscribe to the SAME channel orchestrator broadcasts to
     const statusChannel = supabase
       .channel(`ai-status-${conversationId}`)
       .on('broadcast', { event: 'status-update' }, async ({ payload }) => {
         console.log('📥 Chat received status-update:', payload);
         
+        // ============================================
+        // ENTERPRISE FIX: Keep AI status permanently visible
+        // ============================================
+        
         // Handle error status
         if (payload.status === 'error') {
+          setPersistentAIStatus({
+            isVisible: true,
+            status: 'error',
+            message: payload.message || 'Generation failed',
+            progress: 0,
+            summary: payload.errors?.join('\n') || 'An error occurred during generation'
+          });
           setGenerationStatus({
             isGenerating: false,
             message: '',
@@ -211,17 +232,47 @@ export function UniversalChatInterface({
           return;
         }
         
-        // ✅ FIXED: Handle idle status (completion) - Just clear generation UI, don't reload
+        // Handle idle status (completion) - Add completion summary
         if (payload.status === 'idle') {
-          console.log('✅ Generation completed');
+          console.log('✅ Generation completed - showing summary');
+          
+          const filesGenerated = payload.metadata?.filesGenerated || 0;
+          const duration = payload.metadata?.duration || 0;
+          
+          const summary = `Generation complete! ${filesGenerated > 0 ? `${filesGenerated} file${filesGenerated > 1 ? 's' : ''} generated` : 'Task completed'}${duration > 0 ? ` in ${Math.round(duration / 1000)}s` : ''}`;
+          
+          setPersistentAIStatus({
+            isVisible: true,
+            status: 'complete',
+            message: payload.message || 'Project generated successfully',
+            progress: 100,
+            summary,
+            filesGenerated,
+            duration
+          });
+          
           setTimeout(() => {
             setGenerationStatus({ isGenerating: false, message: '', progress: 0 });
+            // Keep status visible for 5 seconds after completion
+            setTimeout(() => {
+              setPersistentAIStatus(null);
+            }, 5000);
           }, 500);
           return;
         }
         
-        // Update generation status for active generation
+        // Update persistent status with current progress
         const isGenerating = payload.status !== 'idle' && payload.status !== 'error';
+        
+        if (isGenerating) {
+          setPersistentAIStatus({
+            isVisible: true,
+            status: payload.status as 'analyzing' | 'generating',
+            message: payload.message || 'Processing...',
+            progress: payload.progress || 0
+          });
+        }
+        
         setGenerationStatus({
           isGenerating,
           message: payload.message || 'Generating...',
@@ -230,6 +281,14 @@ export function UniversalChatInterface({
       })
       .on('broadcast', { event: 'generation:coding' }, ({ payload }) => {
         console.log('📥 Chat received generation:coding:', payload);
+        
+        setPersistentAIStatus({
+          isVisible: true,
+          status: 'generating',
+          message: payload.message || 'Generating code...',
+          progress: payload.progress || 50
+        });
+        
         setGenerationStatus({
           isGenerating: true,
           message: payload.message || 'Generating code...',
@@ -242,7 +301,7 @@ export function UniversalChatInterface({
       console.log('🔌 Chat unsubscribing from generation status');
       supabase.removeChannel(statusChannel);
     };
-  }, [conversationId, loadConversation]);
+  }, [conversationId]);
 
   // ✅ FIX: Populate messageSteps from loaded messages with thinkingSteps
   // This ensures historical thinking steps appear when conversation loads
@@ -641,37 +700,109 @@ export function UniversalChatInterface({
               );
             })}
 
-          {/* ✅ NEW: Inline generation status indicator */}
-          {generationStatus.isGenerating && (
+          {/* ✅ ENTERPRISE: Persistent AI Status Display */}
+          {persistentAIStatus?.isVisible && (
             <div className="flex justify-start">
-              <Card className="max-w-[85%] p-3 bg-muted border-primary/50">
-                <div className="flex items-center gap-3">
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="text-[10px]">AI</Badge>
-                      <Badge variant="secondary" className="text-[10px]">
-                        <Sparkles className="w-2 h-2 mr-1" />
-                        Generating
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {generationStatus.message}
-                    </p>
-                    {generationStatus.progress > 0 && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="flex-1 bg-background/50 rounded-full h-1.5 overflow-hidden">
-                          <div 
-                            className="h-full bg-primary transition-all duration-300"
-                            style={{ width: `${generationStatus.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] text-muted-foreground font-medium">
-                          {generationStatus.progress}%
-                        </span>
-                      </div>
+              <Card className={`max-w-[85%] p-4 border-2 ${
+                persistentAIStatus.status === 'complete' 
+                  ? 'bg-success/5 border-success/50' 
+                  : persistentAIStatus.status === 'error'
+                    ? 'bg-destructive/5 border-destructive/50'
+                    : 'bg-primary/5 border-primary/50'
+              }`}>
+                <div className="space-y-3">
+                  {/* Header */}
+                  <div className="flex items-center gap-3">
+                    {persistentAIStatus.status === 'complete' ? (
+                      <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
+                    ) : persistentAIStatus.status === 'error' ? (
+                      <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+                    ) : (
+                      <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
                     )}
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="outline" className="text-[10px]">AI</Badge>
+                        <Badge 
+                          variant={
+                            persistentAIStatus.status === 'complete' 
+                              ? 'default' 
+                              : persistentAIStatus.status === 'error'
+                                ? 'destructive'
+                                : 'secondary'
+                          } 
+                          className="text-[10px]"
+                        >
+                          <Sparkles className="w-2 h-2 mr-1" />
+                          {persistentAIStatus.status === 'complete' 
+                            ? 'Complete' 
+                            : persistentAIStatus.status === 'error'
+                              ? 'Error'
+                              : persistentAIStatus.status === 'analyzing'
+                                ? 'Analyzing'
+                                : 'Generating'}
+                        </Badge>
+                      </div>
+                      
+                      {/* Status Message */}
+                      <p className="text-sm font-medium">
+                        {persistentAIStatus.message}
+                      </p>
+                    </div>
                   </div>
+                  
+                  {/* Progress Bar - Only show during active generation */}
+                  {persistentAIStatus.status !== 'complete' && 
+                   persistentAIStatus.status !== 'error' && 
+                   persistentAIStatus.progress > 0 && (
+                    <div className="space-y-1">
+                      <Progress 
+                        value={persistentAIStatus.progress} 
+                        className="h-2"
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{persistentAIStatus.progress}% complete</span>
+                        <span className="font-medium">In progress...</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Completion Summary */}
+                  {persistentAIStatus.status === 'complete' && persistentAIStatus.summary && (
+                    <div className="pt-2 border-t border-border/50">
+                      <p className="text-sm text-muted-foreground">
+                        {persistentAIStatus.summary}
+                      </p>
+                      
+                      {/* Details */}
+                      {(persistentAIStatus.filesGenerated || persistentAIStatus.duration) && (
+                        <div className="flex gap-4 mt-2 text-xs">
+                          {persistentAIStatus.filesGenerated && (
+                            <div className="flex items-center gap-1">
+                              <FileCode className="w-3 h-3" />
+                              <span>{persistentAIStatus.filesGenerated} files</span>
+                            </div>
+                          )}
+                          {persistentAIStatus.duration && (
+                            <div className="flex items-center gap-1">
+                              <span>⏱</span>
+                              <span>{Math.round(persistentAIStatus.duration / 1000)}s</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Error Details */}
+                  {persistentAIStatus.status === 'error' && persistentAIStatus.summary && (
+                    <div className="pt-2 border-t border-destructive/20">
+                      <p className="text-sm text-destructive/90">
+                        {persistentAIStatus.summary}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </Card>
             </div>
