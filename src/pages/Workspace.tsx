@@ -221,97 +221,142 @@ export default function Workspace() {
     };
 
     const loadProject = async () => {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .eq('user_id', user.id)
-        .single();
-
-      if (error) {
-        toast.error("Failed to load project");
-        navigate("/");
-        return;
-      }
-
-      // Cast to proper Project type with framework
-      const typedProject: Project = {
-        ...data,
-        framework: (data.framework as 'react' | 'html' | 'vue') || 'react'
-      };
-      setProject(typedProject);
-      
-      // Create or load conversation
-      let convId: string | undefined;
-      
-      // Try to get the most recent conversation for this project
-      const { data: existingConvs } = await (supabase
-        .from('conversations')
-        .select('id') as any)
-        .eq('project_id', projectId)
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
-        .limit(1);
-      
-      if (existingConvs && existingConvs.length > 0) {
-        convId = existingConvs[0].id;
-        
-        // Check if conversation already has messages
-        const { data: existingMsgs, count } = await supabase
-          .from('messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('conversation_id', convId);
-        
-        // If no messages exist, add the original prompt only (no hardcoded response)
-        if (count === 0 && data.prompt) {
-          console.log('💬 Adding original prompt to existing conversation');
-          await supabase.from('messages').insert([
-            {
-              conversation_id: convId,
-              role: 'user',
-              content: data.prompt,
-              metadata: { isOriginalPrompt: true }
-            }
-          ]);
-        }
-      }
-
-      if (!convId) {
-        const { data: newConv } = await supabase
-          .from('conversations')
-          .insert({ 
-            title: `Workspace: ${data.title}`,
-            user_id: user.id,
-            project_id: projectId
-          })
-          .select('id')
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('id', projectId)
+          .eq('user_id', user.id)
           .single();
-        
-        convId = newConv?.id;
-        
-        // Insert the original prompt as the first message only (no hardcoded response)
-        if (convId && data.prompt) {
-          console.log('💬 Adding original prompt to new conversation');
-          await supabase.from('messages').insert([
-            {
-              conversation_id: convId,
-              role: 'user',
-              content: data.prompt,
-              metadata: { isOriginalPrompt: true }
-            }
-          ]);
-        }
-      }
 
-      if (convId) {
-        setConversationId(convId);
+        if (error) {
+          console.error('Project load error:', error);
+          toast.error("Failed to load project");
+          navigate("/");
+          return;
+        }
+
+        // Cast to proper Project type with framework
+        const typedProject: Project = {
+          ...data,
+          framework: (data.framework as 'react' | 'html' | 'vue') || 'react'
+        };
+        setProject(typedProject);
         
-        // 🆕 AUTO-DIAGNOSIS: Check if there's a failed job that needs diagnosis
-        await checkAndRunDiagnosis(convId);
+        // Create or load conversation
+        let convId: string | undefined;
+        
+        try {
+          // Try to get the most recent conversation for this project
+          const { data: existingConvs, error: convError } = await supabase
+            .from('conversations')
+            .select('id')
+            .eq('project_id', projectId)
+            .eq('user_id', user.id)
+            .order('updated_at', { ascending: false })
+            .limit(1);
+          
+          if (convError) {
+            console.warn('Conversation query error:', convError);
+          }
+          
+          if (existingConvs && existingConvs.length > 0) {
+            convId = existingConvs[0].id;
+            
+            try {
+              // Check if conversation already has messages
+              const { count, error: msgError } = await supabase
+                .from('messages')
+                .select('*', { count: 'exact', head: true })
+                .eq('conversation_id', convId);
+              
+              if (msgError) {
+                console.warn('Messages query error:', msgError);
+              }
+              
+              // If no messages exist, add the original prompt only (no hardcoded response)
+              if (count === 0 && data.prompt) {
+                console.log('💬 Adding original prompt to existing conversation');
+                const { error: insertError } = await supabase.from('messages').insert([
+                  {
+                    conversation_id: convId,
+                    user_id: user.id,
+                    role: 'user',
+                    content: data.prompt,
+                    metadata: { isOriginalPrompt: true }
+                  }
+                ]);
+                
+                if (insertError) {
+                  console.warn('Failed to insert original prompt:', insertError);
+                }
+              }
+            } catch (msgCheckError) {
+              console.warn('Error checking messages:', msgCheckError);
+            }
+          }
+
+          if (!convId) {
+            const { data: newConv, error: newConvError } = await supabase
+              .from('conversations')
+              .insert({ 
+                title: `Workspace: ${data.title}`,
+                user_id: user.id,
+                project_id: projectId
+              })
+              .select('id')
+              .single();
+            
+            if (newConvError) {
+              console.error('Failed to create conversation:', newConvError);
+            } else {
+              convId = newConv?.id;
+              
+              // Insert the original prompt as the first message only (no hardcoded response)
+              if (convId && data.prompt) {
+                console.log('💬 Adding original prompt to new conversation');
+                const { error: insertError } = await supabase.from('messages').insert([
+                  {
+                    conversation_id: convId,
+                    user_id: user.id,
+                    role: 'user',
+                    content: data.prompt,
+                    metadata: { isOriginalPrompt: true }
+                  }
+                ]);
+                
+                if (insertError) {
+                  console.warn('Failed to insert original prompt:', insertError);
+                }
+              }
+            }
+          }
+        } catch (convSetupError) {
+          console.error('Error setting up conversation:', convSetupError);
+        }
+
+        if (convId) {
+          setConversationId(convId);
+          
+          // 🆕 AUTO-DIAGNOSIS: Check if there's a failed job that needs diagnosis
+          try {
+            await checkAndRunDiagnosis(convId);
+          } catch (diagError) {
+            console.warn('Auto-diagnosis error:', diagError);
+          }
+        }
+        
+        // Load all conversations for this project
+        try {
+          await loadConversations();
+        } catch (loadConvError) {
+          console.warn('Failed to load conversations:', loadConvError);
+        }
+      } catch (outerError) {
+        console.error('Fatal error loading project:', outerError);
+        toast.error("An unexpected error occurred");
+        navigate("/");
       }
-      
-      // Load all conversations for this project
-      loadConversations();
     };
 
     loadProject();
