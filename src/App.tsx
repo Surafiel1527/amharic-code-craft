@@ -35,6 +35,7 @@ const UXPatternFeedbackPage = lazy(() => import("./pages/UXPatternFeedbackPage")
 const UnifiedAIDashboardPage = lazy(() => import("./pages/UnifiedAIDashboardPage"));
 const AutonomousAIArchitecture = lazy(() => import("./pages/AutonomousAIArchitecture"));
 const AgentStatus = lazy(() => import("./pages/AgentStatus"));
+const AgentTestPage = lazy(() => import("./pages/AgentTestPage"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -78,6 +79,7 @@ const App = () => {
           <Route path="/agi-insights" element={<AGIInsights />} />
           <Route path="/ux-intelligence" element={<UXIntelligenceDashboard />} />
           <Route path="/agent-status" element={<AgentStatus />} />
+          <Route path="/agent-test" element={<AgentTestPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
