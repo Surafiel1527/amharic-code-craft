@@ -599,7 +599,39 @@ function AdminContent() {
             </Tabs>
           </TabsContent>
 
-          <TabsContent value="autonomous">
+          <TabsContent value="autonomous" className="space-y-6">
+            {/* Quick Access to Agent Testing */}
+            <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-background">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-primary" />
+                  Autonomous Agent System
+                </CardTitle>
+                <CardDescription>
+                  Test and monitor the self-healing, decision-making, and learning capabilities
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col sm:flex-row gap-4">
+                <Button 
+                  onClick={() => navigate("/agent-test")}
+                  size="lg"
+                  className="flex-1 gap-2"
+                >
+                  <Activity className="h-5 w-5" />
+                  Run Agent Tests
+                </Button>
+                <Button 
+                  onClick={() => navigate("/agent-status")}
+                  variant="outline"
+                  size="lg"
+                  className="flex-1 gap-2"
+                >
+                  <Eye className="h-5 w-5" />
+                  View Health Dashboard
+                </Button>
+              </CardContent>
+            </Card>
+            
             <AutonomousDashboard />
           </TabsContent>
 
