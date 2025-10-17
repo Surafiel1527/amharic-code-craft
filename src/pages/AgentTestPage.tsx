@@ -21,7 +21,8 @@ import {
   Play,
   ArrowRight,
   ArrowLeft,
-  Shield
+  Shield,
+  Bot
 } from 'lucide-react';
 import { runAllAgentTests } from '@/test-error-detection';
 import { useNavigate } from 'react-router-dom';
@@ -377,6 +378,16 @@ export default function AgentTestPage() {
             View Agent Dashboard
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
+          
+          <Button 
+            size="lg"
+            variant="secondary"
+            onClick={() => navigate('/ai-assistant')}
+          >
+            <Bot className="w-5 h-5 mr-2" />
+            Chat with AI Assistant
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </Button>
         </div>
 
         {/* Instructions */}
@@ -385,6 +396,7 @@ export default function AgentTestPage() {
           <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
             <li>Run "Error Detection" test to create intentional errors</li>
             <li>Check console logs to see errors being captured in real-time</li>
+            <li>Click "Chat with AI Assistant" to ask the AI about detected errors</li>
             <li>Wait 5 minutes for cron job OR click "Trigger Healing" on agent dashboard</li>
             <li>Run "Decision Engine" test to see autonomous decision-making</li>
             <li>Run "Health Monitor" to see overall system status</li>

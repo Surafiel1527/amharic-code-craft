@@ -52,6 +52,7 @@ const intelligenceItems = [
   { title: "Architecture", url: "/architecture", icon: Layers },
   { title: "Agent Status", url: "/agent-status", icon: Activity },
   { title: "Agent Testing", url: "/agent-test", icon: FlaskConical },
+  { title: "AI Assistant", url: "/ai-assistant", icon: Zap },
 ];
 
 const adminItems = [
