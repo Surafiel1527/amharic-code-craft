@@ -180,26 +180,49 @@ export function SelfHealingMonitor() {
 
       if (error) throw error;
 
-      if (data) {
-        // Generate mock predictions based on current error patterns
-        const mockPredictions: Prediction[] = [
-          {
-            type: 'performance_degradation',
+      if (data?.health) {
+        // Use real health data from agent
+        const health = data.health;
+        const predictions: Prediction[] = [];
+        
+        // Generate predictions based on actual system health
+        if (health.errorDetection.criticalErrors > 5) {
+          predictions.push({
+            type: 'error_spike',
+            probability: 0.8,
+            timeframe: 'next 6 hours',
+            affectedSystems: ['error_handling']
+          });
+        }
+        
+        if (health.autoHealing.successRate < 70) {
+          predictions.push({
+            type: 'healing_degradation',
+            probability: 0.7,
+            timeframe: 'next 12 hours',
+            affectedSystems: ['auto_healing']
+          });
+        }
+        
+        if (health.decisionMaking.avgConfidence < 60) {
+          predictions.push({
+            type: 'decision_confidence_drop',
             probability: 0.65,
             timeframe: 'next 24 hours',
-            affectedSystems: ['database', 'api']
-          }
-        ];
-        setPredictions(mockPredictions);
+            affectedSystems: ['decision_engine']
+          });
+        }
+        
+        setPredictions(predictions);
         setSystemHealth({
-          overall: 85,
-          trend: 'stable',
-          riskLevel: 'low'
+          overall: health.overallScore,
+          trend: health.overallScore >= 80 ? 'improving' : health.overallScore >= 50 ? 'stable' : 'declining',
+          riskLevel: health.status === 'healthy' ? 'low' : health.status === 'degraded' ? 'medium' : 'high'
         });
         
         toast({
           title: "🔮 Predictive Analysis Complete",
-          description: `System Health: 85% - ${mockPredictions.length} predictions made`,
+          description: `System Health: ${health.overallScore}% - ${predictions.length} predictions made`,
         });
       }
     } catch (error) {

@@ -37,31 +37,48 @@ export function PredictiveOptimizationPanel() {
 
       if (error) throw error;
 
-      if (data) {
-        const mockPredictions: Prediction[] = [
-          {
-            type: 'performance_degradation',
-            probability: 0.65,
+      if (data?.health) {
+        const health = data.health;
+        const predictions: Prediction[] = [];
+        
+        // Generate real predictions based on health metrics
+        if (health.errorDetection.criticalErrors > 3) {
+          predictions.push({
+            type: 'error_spike',
+            probability: Math.min(0.9, 0.5 + (health.errorDetection.criticalErrors * 0.1)),
+            timeframe: 'next 6 hours',
+            affectedSystems: ['error_detection', 'runtime']
+          });
+        }
+        
+        if (health.autoHealing.successRate < 75) {
+          predictions.push({
+            type: 'healing_degradation',
+            probability: 1 - (health.autoHealing.successRate / 100),
+            timeframe: 'next 12 hours',
+            affectedSystems: ['auto_healing']
+          });
+        }
+        
+        if (health.learning.learnedPatterns < 10) {
+          predictions.push({
+            type: 'insufficient_learning',
+            probability: 0.6,
             timeframe: 'next 24 hours',
-            affectedSystems: ['database', 'api']
-          },
-          {
-            type: 'memory_leak',
-            probability: 0.45,
-            timeframe: 'next 48 hours',
-            affectedSystems: ['frontend']
-          }
-        ];
-        setPredictions(mockPredictions);
+            affectedSystems: ['pattern_learning']
+          });
+        }
+        
+        setPredictions(predictions);
         setSystemHealth({
-          overall: 85,
-          trend: 'stable',
-          riskLevel: 'low'
+          overall: health.overallScore,
+          trend: health.overallScore >= 80 ? 'improving' : health.overallScore >= 50 ? 'stable' : 'declining',
+          riskLevel: health.status === 'healthy' ? 'low' : health.status === 'degraded' ? 'medium' : 'high'
         });
         
         toast({
           title: "🔮 Predictive Analysis Complete",
-          description: `System Health: 85% - ${mockPredictions.length} predictions made`,
+          description: `System Health: ${health.overallScore}% - ${predictions.length} predictions made`,
         });
       }
     } catch (error) {

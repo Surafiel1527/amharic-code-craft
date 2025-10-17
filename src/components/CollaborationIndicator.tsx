@@ -18,26 +18,43 @@ export const CollaborationIndicator = () => {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
 
   useEffect(() => {
-    const getCurrentUser = async () => {
+    const fetchActiveCollaborators = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUser(user?.id || null);
+      
+      if (!user) return;
+
+      // Query active sessions from database
+      const { data: sessions } = await supabase
+        .from('active_sessions')
+        .select('user_id, last_active, current_file')
+        .gte('last_active', new Date(Date.now() - 5 * 60 * 1000).toISOString()); // Active in last 5 minutes
+
+      if (sessions) {
+        const presenceData: CollaboratorPresence[] = await Promise.all(
+          sessions.map(async (session) => {
+            const isActive = new Date(session.last_active).getTime() > Date.now() - 2 * 60 * 1000;
+            const isIdle = new Date(session.last_active).getTime() > Date.now() - 5 * 60 * 1000;
+            
+            return {
+              user_id: session.user_id,
+              user_email: session.user_id === user.id ? 'You' : session.user_id.substring(0, 8),
+              status: isActive ? 'active' : isIdle ? 'idle' : 'offline',
+              last_seen: session.last_active,
+              current_file: session.current_file || undefined
+            };
+          })
+        );
+        setCollaborators(presenceData.filter(p => p.status !== 'offline'));
+      }
     };
     
-    getCurrentUser();
-
-    // In a real implementation, this would connect to a realtime presence system
-    // For now, we'll simulate with the current user
-    if (currentUser) {
-      const mockPresence: CollaboratorPresence = {
-        user_id: currentUser,
-        user_email: 'You',
-        status: 'active',
-        last_seen: new Date().toISOString(),
-        current_file: 'main.tsx'
-      };
-      setCollaborators([mockPresence]);
-    }
-  }, [currentUser]);
+    fetchActiveCollaborators();
+    
+    // Refresh every 10 seconds
+    const interval = setInterval(fetchActiveCollaborators, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
