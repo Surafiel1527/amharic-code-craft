@@ -160,10 +160,9 @@ export class UniversalMegaMind {
       // Transform to ExecutionResult format
       return {
         success: true,
-        message: aiDecision.messageToUser,
+        message: executionOutput.message,
         output: {
-          files: executionOutput.files,
-          metadata: executionOutput.metadata
+          files: executionOutput.files
         },
         filesGenerated: executionOutput.files,
         duration,
@@ -176,7 +175,8 @@ export class UniversalMegaMind {
           actionPlan: {
             codeActions: {
               estimatedComplexity: aiDecision.confidence > 0.9 ? 'low' : aiDecision.confidence > 0.7 ? 'medium' : 'high'
-            }
+            },
+            requiresExplanation: false
           },
           meta: {
             confidence: aiDecision.confidence
@@ -315,8 +315,8 @@ export class UniversalMegaMind {
     }
     
     return {
-      files,
-      output: aiDecision.messageToUser,
+      files,  // Array of {path, content}
+      message: aiDecision.messageToUser,  // String message
       metadata: {
         aiReasoning: aiDecision.thought,
         capabilities: aiDecision.actions.map(a => a.capability),
