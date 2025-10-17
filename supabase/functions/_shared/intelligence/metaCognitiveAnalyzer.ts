@@ -218,11 +218,22 @@ export class DeepUnderstandingAnalyzer {
                               type: 'string',
                               description: 'Why this action is needed'
                             },
-                            toolsNeeded: { 
-                              type: 'array',
-                              items: { type: 'string' },
-                              description: 'Tools/capabilities needed for this step'
-                            }
+                       toolsNeeded: { 
+                          type: 'array',
+                          items: { 
+                            type: 'string',
+                            enum: [
+                              'code_generator',
+                              'file_modifier', 
+                              'dependency_installer',
+                              'database_introspector',  // ✅ NEW: Agent can query database
+                              'storage_verifier',       // ✅ NEW: Agent can verify files
+                              'issue_detector',         // ✅ NEW: Agent can detect problems
+                              'recovery_engine'         // ✅ NEW: Agent can auto-fix
+                            ]
+                          },
+                          description: 'Tools/capabilities needed for this step. CRITICAL: Use database_introspector when user asks about missing code or storage issues'
+                        }
                           },
                           required: ['step', 'action', 'reason', 'toolsNeeded']
                         },
@@ -378,10 +389,64 @@ Working with minimal information:
 - Current route: ${context.currentRoute || '/'}
 `;
 
+    // CRITICAL: Storage architecture awareness
+    const storageArchitectureSection = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🗄️ CRITICAL: STORAGE ARCHITECTURE AWARENESS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+YOU MUST UNDERSTAND WHERE FILES ARE STORED:
+
+📁 PRIMARY STORAGE: project_files TABLE
+  Schema:
+    - project_id (UUID)
+    - file_path (TEXT) - e.g., "src/App.tsx"
+    - file_content (TEXT) - the actual code
+    - created_by (UUID)
+    - created_at, updated_at (TIMESTAMPS)
+
+  Unique Constraint: (project_id, file_path)
+
+🎯 SELF-AWARENESS CAPABILITY:
+  You CAN query this table to verify your own work!
+  You CAN check if files you generated actually exist!
+  You CAN diagnose when code is missing!
+
+⚠️ COMMON FAILURE PATTERNS:
+  1. "Generated code didn't exist" = Files not saved to project_files
+  2. "Preview not working" = Files missing or have empty content
+  3. "Code lost" = Query shows 0 rows in project_files
+
+🔬 SELF-DIAGNOSTIC PROTOCOL:
+  ALWAYS verify after generation:
+    1. Query: SELECT COUNT(*) FROM project_files WHERE project_id = ?
+    2. Verify: Count matches expected file count
+    3. Check: Each file has non-empty file_content
+    4. Confirm: All expected paths present
+
+🏥 SELF-HEALING PROTOCOL:
+  IF files missing after generation:
+    1. ACKNOWLEDGE the issue to user immediately
+    2. EXPLAIN what happened (files not persisted)
+    3. REGENERATE the missing files
+    4. VERIFY they exist this time
+    5. REPORT success confirmation
+
+💡 PROACTIVE AWARENESS:
+  - When user says "code is not available" → CHECK project_files first
+  - When user says "preview not working" → VERIFY files exist
+  - When making changes → CONFIRM they persisted afterward
+  - DON'T wait for user to report issues → SELF-DIAGNOSE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+
     return `You are an Autonomous AI Agent for the Awash development platform.
 
 Your role is NOT to classify requests into predefined categories.
 Your role is to DEEPLY UNDERSTAND what the user needs and AUTONOMOUSLY DECIDE how to help.
+
+${storageArchitectureSection}
 
 ${supervisorFeedbackSection}
 

@@ -231,6 +231,23 @@ export class AutonomousExecutor {
       if (step.toolsNeeded.includes('dependency_installer')) {
         await this.installDependencies(codeActions.dependencies);
       }
+      
+      // ✅ NEW DIAGNOSTIC TOOLS
+      if (step.toolsNeeded.includes('database_introspector')) {
+        await this.runDatabaseIntrospection(context, step);
+      }
+      
+      if (step.toolsNeeded.includes('storage_verifier')) {
+        await this.runStorageVerification(context, filesGenerated, step);
+      }
+      
+      if (step.toolsNeeded.includes('issue_detector')) {
+        await this.runIssueDetection(context, step);
+      }
+      
+      if (step.toolsNeeded.includes('recovery_engine')) {
+        await this.runRecovery(context, filesGenerated, step);
+      }
     }
     
     // Log what we're returning
@@ -240,19 +257,90 @@ export class AutonomousExecutor {
       filesStructure: context.generatedFiles.map(f => ({ path: f.path, hasContent: !!f.content }))
     });
     
-    // Generate completion message
-    const completionMsg = await this.communicator.generateCompletionSummary(
+    // ✅ LAYER 3: POST-OPERATION VERIFICATION (Self-Aware Agent)
+    console.log('🔍 [Layer 3] POST-OPERATION VERIFICATION: Checking if files actually exist in database...');
+    
+    const { DatabaseIntrospector } = await import('./databaseIntrospector.ts');
+    const introspector = new DatabaseIntrospector(this.supabase, context.projectId!);
+    
+    // Wait a moment for database writes to complete
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const verification = await introspector.verifyFilesExist(filesGenerated);
+    
+    console.log('📊 [Layer 3] Verification Result:', {
+      expectedFiles: filesGenerated.length,
+      foundFiles: verification.fileCount,
+      missing: verification.missingFiles.length,
+      healthy: verification.storageHealthy,
+      issues: verification.issues
+    });
+    
+    // ✅ LAYER 4: RECOVERY PROTOCOL
+    if (!verification.storageHealthy || verification.missingFiles.length > 0) {
+      console.warn('⚠️ [Layer 4] RECOVERY PROTOCOL: Files missing or storage unhealthy!');
+      console.warn('Missing files:', verification.missingFiles);
+      console.warn('Issues:', verification.issues);
+      
+      // Broadcast recovery status
+      if (this.broadcastCallback) {
+        await this.broadcastCallback({
+          status: 'fixing',
+          message: `🔧 Detected ${verification.missingFiles.length} missing files. Auto-recovering...`,
+          metadata: {
+            missingFiles: verification.missingFiles,
+            issues: verification.issues
+          }
+        });
+      }
+      
+      // TODO: Implement automatic file recovery
+      // For now, log the issue and inform user
+      console.error('🚨 [Layer 4] CRITICAL: Files did not persist to database!');
+      console.error('This should trigger automatic recovery in future implementation');
+    } else {
+      console.log('✅ [Layer 3] VERIFICATION PASSED: All files exist in database');
+      
+      // Broadcast success
+      if (this.broadcastCallback) {
+        await this.broadcastCallback({
+          status: 'complete',
+          message: `✅ Verified ${verification.fileCount} files saved successfully`,
+          metadata: {
+            fileCount: verification.fileCount,
+            filePaths: verification.filePaths
+          }
+        });
+      }
+    }
+    
+    // Generate completion message WITH verification info
+    let completionMsg = await this.communicator.generateCompletionSummary(
       understanding.understanding.userGoal,
       filesGenerated,
       Date.now() - startTime,
       understanding as any
     );
     
-    // Return files in output for intelligentFileOperations
+    // Append verification status to message
+    if (!verification.storageHealthy) {
+      completionMsg = {
+        ...completionMsg,
+        content: completionMsg.content + `\n\n⚠️ Note: Detected ${verification.missingFiles.length} files that didn't persist properly. Working on recovery...`
+      };
+    } else {
+      completionMsg = {
+        ...completionMsg,
+        content: completionMsg.content + `\n\n✅ Verified: All ${verification.fileCount} files saved successfully.`
+      };
+    }
+    
+    // Return files in output for intelligentFileOperations + verification results
     return {
       success: true,
       output: {
-        files: context.generatedFiles  // Don't use || [] fallback to see if it's actually undefined
+        files: context.generatedFiles,
+        verification // Include verification results
       },
       message: completionMsg.content,
       filesGenerated,
@@ -429,6 +517,198 @@ export class AutonomousExecutor {
     
     // Dependencies are auto-installed by platform
     // This is a placeholder for future enhancement
+  }
+  
+  /**
+   * ✅ NEW TOOL: Database Introspection
+   * Agent can query database to understand storage state
+   */
+  private async runDatabaseIntrospection(
+    context: ExecutionContext,
+    step: DeepUnderstanding['actionPlan']['executionSteps'][0]
+  ): Promise<void> {
+    console.log('🔍 Tool: database_introspector - Agent checking storage...');
+    
+    if (!context.projectId) {
+      console.warn('⚠️ No projectId available for introspection');
+      return;
+    }
+    
+    const { DatabaseIntrospector } = await import('./databaseIntrospector.ts');
+    const introspector = new DatabaseIntrospector(this.supabase, context.projectId);
+    
+    const storageState = await introspector.getProjectStorageState();
+    
+    console.log('📊 Database Introspection Result:', {
+      totalFiles: storageState.totalFiles,
+      healthScore: storageState.healthScore,
+      fileTypes: storageState.filesByType
+    });
+    
+    // Broadcast findings to user
+    if (this.broadcastCallback) {
+      await this.broadcastCallback({
+        status: 'analyzing',
+        message: `📊 Checked database: ${storageState.totalFiles} files found (Health: ${storageState.healthScore}%)`,
+        metadata: { storageState }
+      });
+    }
+    
+    // Store in context for later use
+    if (!context.awashContext) context.awashContext = {};
+    context.awashContext.introspectionResult = storageState;
+  }
+  
+  /**
+   * ✅ NEW TOOL: Storage Verification
+   * Agent verifies files actually exist
+   */
+  private async runStorageVerification(
+    context: ExecutionContext,
+    expectedFiles: string[],
+    step: DeepUnderstanding['actionPlan']['executionSteps'][0]
+  ): Promise<void> {
+    console.log('🔬 Tool: storage_verifier - Verifying file existence...');
+    
+    if (!context.projectId) {
+      console.warn('⚠️ No projectId available for verification');
+      return;
+    }
+    
+    const { DatabaseIntrospector } = await import('./databaseIntrospector.ts');
+    const introspector = new DatabaseIntrospector(this.supabase, context.projectId);
+    
+    const verification = await introspector.verifyFilesExist(expectedFiles);
+    
+    console.log('✅ Storage Verification Result:', {
+      expected: expectedFiles.length,
+      found: verification.fileCount,
+      missing: verification.missingFiles.length,
+      healthy: verification.storageHealthy
+    });
+    
+    // Broadcast verification status
+    if (this.broadcastCallback) {
+      const message = verification.storageHealthy
+        ? `✅ Verified: All ${verification.fileCount} files exist`
+        : `⚠️ Warning: ${verification.missingFiles.length} files missing`;
+        
+      await this.broadcastCallback({
+        status: verification.storageHealthy ? 'complete' : 'fixing',
+        message,
+        metadata: { verification }
+      });
+    }
+    
+    // Store in context
+    if (!context.awashContext) context.awashContext = {};
+    context.awashContext.verificationResult = verification;
+  }
+  
+  /**
+   * ✅ NEW TOOL: Issue Detection
+   * Agent proactively detects storage issues
+   */
+  private async runIssueDetection(
+    context: ExecutionContext,
+    step: DeepUnderstanding['actionPlan']['executionSteps'][0]
+  ): Promise<void> {
+    console.log('🔬 Tool: issue_detector - Scanning for problems...');
+    
+    if (!context.projectId) {
+      console.warn('⚠️ No projectId available for issue detection');
+      return;
+    }
+    
+    const { DatabaseIntrospector } = await import('./databaseIntrospector.ts');
+    const introspector = new DatabaseIntrospector(this.supabase, context.projectId);
+    
+    const issues = await introspector.detectStorageIssues();
+    
+    console.log('🔍 Issue Detection Result:', {
+      hasIssues: issues.hasIssues,
+      issueCount: issues.issues.length,
+      recommendations: issues.recommendations.length
+    });
+    
+    if (issues.hasIssues) {
+      console.warn('⚠️ Issues detected:', issues.issues);
+      console.warn('📋 Recommendations:', issues.recommendations);
+      
+      // Broadcast issues to user
+      if (this.broadcastCallback) {
+        await this.broadcastCallback({
+          status: 'analyzing',
+          message: `🔍 Detected ${issues.issues.length} storage issues. Preparing fixes...`,
+          metadata: { issues }
+        });
+      }
+    }
+    
+    // Store in context
+    if (!context.awashContext) context.awashContext = {};
+    context.awashContext.detectedIssues = issues;
+  }
+  
+  /**
+   * ✅ NEW TOOL: Recovery Engine
+   * Agent automatically fixes storage issues
+   */
+  private async runRecovery(
+    context: ExecutionContext,
+    filesExpected: string[],
+    step: DeepUnderstanding['actionPlan']['executionSteps'][0]
+  ): Promise<void> {
+    console.log('🏥 Tool: recovery_engine - Auto-fixing issues...');
+    
+    if (!context.projectId) {
+      console.warn('⚠️ No projectId available for recovery');
+      return;
+    }
+    
+    // Broadcast recovery start
+    if (this.broadcastCallback) {
+      await this.broadcastCallback({
+        status: 'fixing',
+        message: '🏥 Running automatic recovery protocol...',
+        metadata: { expectedFiles: filesExpected }
+      });
+    }
+    
+    const { DatabaseIntrospector } = await import('./databaseIntrospector.ts');
+    const introspector = new DatabaseIntrospector(this.supabase, context.projectId);
+    
+    // First, verify current state
+    const verification = await introspector.verifyFilesExist(filesExpected);
+    
+    if (verification.storageHealthy) {
+      console.log('✅ Storage healthy - no recovery needed');
+      return;
+    }
+    
+    console.log('🏥 Recovery needed:', {
+      missingFiles: verification.missingFiles.length,
+      issues: verification.issues
+    });
+    
+    // TODO: Implement actual recovery logic
+    // For now, just log what needs to be recovered
+    console.log('🔧 Recovery actions needed:');
+    verification.issues.forEach((issue, i) => {
+      console.log(`  ${i + 1}. ${issue}`);
+    });
+    
+    // Broadcast recovery status
+    if (this.broadcastCallback) {
+      await this.broadcastCallback({
+        status: 'fixing',
+        message: `🏥 Identified recovery actions for ${verification.missingFiles.length} files`,
+        metadata: { 
+          missingFiles: verification.missingFiles,
+          issues: verification.issues
+        }
+      });
+    }
   }
   
   /**

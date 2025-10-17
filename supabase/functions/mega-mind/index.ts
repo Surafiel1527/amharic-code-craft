@@ -216,6 +216,7 @@ serve(async (req) => {
     // ============================================
     let existingFiles: Record<string, string> = {};
     let fileOperations: any;
+    let storageState: any = null; // ✅ LAYER 5: Storage awareness
     
     if (projectId) {
       const { IntelligentFileOperations } = await import("../_shared/intelligentFileOperations.ts");
@@ -230,6 +231,35 @@ serve(async (req) => {
         totalLines: projectContext.totalLines,
         files: Object.keys(existingFiles)
       });
+      
+      // ✅ LAYER 5: STORAGE STATE AWARENESS
+      console.log('🔍 [Layer 5] Loading storage state for agent awareness...');
+      const { DatabaseIntrospector } = await import("../_shared/intelligence/databaseIntrospector.ts");
+      const introspector = new DatabaseIntrospector(supabase, projectId);
+      
+      storageState = await introspector.getProjectStorageState();
+      console.log('📊 [Layer 5] Storage State:', {
+        totalFiles: storageState.totalFiles,
+        healthScore: storageState.healthScore,
+        fileTypes: Object.keys(storageState.filesByType)
+      });
+      
+      // ✅ LAYER 6: PROACTIVE PROBLEM DETECTION
+      console.log('🔬 [Layer 6] Running proactive issue detection...');
+      const issueDetection = await introspector.detectStorageIssues();
+      
+      if (issueDetection.hasIssues) {
+        console.warn('⚠️ [Layer 6] PROACTIVE DETECTION: Issues found before request processing!');
+        console.warn('Issues:', issueDetection.issues);
+        console.warn('Recommendations:', issueDetection.recommendations);
+        
+        // Inject issues into awashContext so AI is aware
+        if (awashContext) {
+          awashContext.storageIssues = issueDetection;
+        }
+      } else {
+        console.log('✅ [Layer 6] No proactive issues detected - storage healthy');
+      }
     }
 
     // Initialize Universal Mega Mind
@@ -266,6 +296,18 @@ serve(async (req) => {
     );
 
     // Single unified processing - AI handles everything with full context
+    // ✅ LAYER 5: Inject storage state awareness into context
+    const enrichedContext = {
+      ...awashContext,
+      storageState, // Agent now knows exact file counts, health, etc.
+      storageArchitecture: storageState ? {
+        totalFiles: storageState.totalFiles,
+        healthScore: storageState.healthScore,
+        fileTypes: storageState.filesByType,
+        lastModified: storageState.lastModified
+      } : null
+    };
+    
     const result = await megaMind.processRequest({
       userRequest,
       userId,
@@ -273,7 +315,7 @@ serve(async (req) => {
       projectId,
       existingFiles,  // 🎯 AI now knows what already exists
       framework: awashContext?.workspace?.framework,
-      context: awashContext  // ✨ Pass complete platform state
+      context: enrichedContext  // ✨ Pass complete platform state + storage awareness
     });
     
     const analysis = result.analysis;
