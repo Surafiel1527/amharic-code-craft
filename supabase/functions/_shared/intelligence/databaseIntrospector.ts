@@ -361,4 +361,272 @@ SELF-HEALING:
   - If duplicates: Keep most recent, delete others
     `;
   }
+
+  /**
+   * TOOL 6: Get generation failure context
+   * Query past failures to understand what went wrong
+   */
+  async getGenerationFailureContext(limit: number = 10): Promise<{
+    recentFailures: any[];
+    commonErrors: { type: string; count: number; examples: string[] }[];
+    hasJsonErrors: boolean;
+    totalFailures: number;
+    explanation: string;
+  }> {
+    console.log('🔍 [DatabaseIntrospector] Querying generation failures...');
+
+    try {
+      // Query recent failures from detected_errors table (which tracks all errors including generation failures)
+      const { data: failures, error } = await this.supabase
+        .from('detected_errors')
+        .select('*')
+        .eq('project_id', this.projectId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('❌ Failed to query failures:', error);
+        throw error;
+      }
+
+      const recentFailures = failures || [];
+      const totalFailures = recentFailures.length;
+
+      // Analyze error patterns
+      const errorTypeMap = new Map<string, { count: number; examples: string[] }>();
+      let hasJsonErrors = false;
+
+      for (const failure of recentFailures) {
+        const errorType = failure.error_type || 'unknown';
+        
+        if (errorType.toLowerCase().includes('json') || 
+            errorType.toLowerCase().includes('parse') ||
+            failure.error_message?.toLowerCase().includes('json')) {
+          hasJsonErrors = true;
+        }
+
+        if (!errorTypeMap.has(errorType)) {
+          errorTypeMap.set(errorType, { count: 0, examples: [] });
+        }
+
+        const entry = errorTypeMap.get(errorType)!;
+        entry.count++;
+        if (entry.examples.length < 3 && failure.error_message) {
+          entry.examples.push(failure.error_message.substring(0, 150));
+        }
+      }
+
+      // Convert to array and sort by frequency
+      const commonErrors = Array.from(errorTypeMap.entries())
+        .map(([type, data]) => ({ type, ...data }))
+        .sort((a, b) => b.count - a.count);
+
+      // Generate explanation
+      let explanation = '🔍 FAILURE ANALYSIS:\n\n';
+      
+      if (totalFailures === 0) {
+        explanation += '✅ No recent failures detected. Storage is healthy.';
+      } else {
+        explanation += `⚠️ Found ${totalFailures} recent failures:\n\n`;
+        
+        if (hasJsonErrors) {
+          explanation += '🚨 JSON ERRORS DETECTED:\n';
+          explanation += 'Recent generations failed due to JSON parsing issues.\n';
+          explanation += 'This usually means:\n';
+          explanation += '  - AI returned malformed JSON\n';
+          explanation += '  - Code was accidentally nested in JSON structure\n';
+          explanation += '  - Response had formatting issues\n\n';
+        }
+
+        explanation += 'TOP ERROR TYPES:\n';
+        commonErrors.slice(0, 3).forEach((error, i) => {
+          explanation += `${i + 1}. ${error.type}: ${error.count} occurrences\n`;
+          if (error.examples.length > 0) {
+            explanation += `   Example: ${error.examples[0]}\n`;
+          }
+        });
+      }
+
+      console.log('✅ [DatabaseIntrospector] Failure analysis complete:', {
+        totalFailures,
+        uniqueErrorTypes: commonErrors.length,
+        hasJsonErrors
+      });
+
+      return {
+        recentFailures,
+        commonErrors,
+        hasJsonErrors,
+        totalFailures,
+        explanation
+      };
+
+    } catch (error) {
+      console.error('❌ [DatabaseIntrospector] Failure analysis error:', error);
+      return {
+        recentFailures: [],
+        commonErrors: [],
+        hasJsonErrors: false,
+        totalFailures: 0,
+        explanation: `❌ Failed to analyze failures: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * TOOL 7: Detect JSON-specific errors
+   * Specialized detection for JSON parsing failures
+   */
+  async detectJsonErrors(): Promise<{
+    hasJsonErrors: boolean;
+    errorCount: number;
+    examples: string[];
+    recommendation: string;
+  }> {
+    console.log('🔬 [DatabaseIntrospector] Scanning for JSON errors...');
+
+    try {
+      const { data: jsonErrors, error } = await this.supabase
+        .from('detected_errors')
+        .select('error_message, created_at, context')
+        .eq('project_id', this.projectId)
+        .or('error_type.ilike.%json%,error_type.ilike.%parse%,error_message.ilike.%json%')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+
+      const hasJsonErrors = (jsonErrors?.length || 0) > 0;
+      const examples = jsonErrors?.map(e => e.error_message?.substring(0, 200) || '') || [];
+
+      let recommendation = '';
+      if (hasJsonErrors) {
+        recommendation = `🔧 JSON ERROR RECOVERY STRATEGY:
+1. Regenerate with explicit JSON structure validation
+2. Use stricter prompting for JSON output
+3. Add JSON schema validation before parsing
+4. Consider using tool calling instead of raw JSON
+5. Implement retry with adjusted prompts`;
+      } else {
+        recommendation = '✅ No JSON errors detected';
+      }
+
+      console.log('✅ [DatabaseIntrospector] JSON scan complete:', {
+        hasJsonErrors,
+        errorCount: jsonErrors?.length || 0
+      });
+
+      return {
+        hasJsonErrors,
+        errorCount: jsonErrors?.length || 0,
+        examples,
+        recommendation
+      };
+
+    } catch (error) {
+      console.error('❌ [DatabaseIntrospector] JSON scan error:', error);
+      return {
+        hasJsonErrors: false,
+        errorCount: 0,
+        examples: [],
+        recommendation: `❌ Scan failed: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * TOOL 8: Get recovery suggestions based on failure patterns
+   * AI-driven recommendations for how to fix detected issues
+   */
+  async getRecoverySuggestions(missingFiles: string[], issues: string[]): Promise<{
+    suggestions: Array<{
+      action: string;
+      priority: 'critical' | 'high' | 'medium' | 'low';
+      reasoning: string;
+      steps: string[];
+    }>;
+    estimatedRecoveryTime: string;
+  }> {
+    console.log('💡 [DatabaseIntrospector] Generating recovery suggestions...');
+
+    const suggestions = [];
+
+    // Suggestion 1: Regenerate missing files
+    if (missingFiles.length > 0) {
+      suggestions.push({
+        action: 'Regenerate missing files',
+        priority: 'critical' as const,
+        reasoning: `${missingFiles.length} files were generated but not persisted to database`,
+        steps: [
+          `Identify why files didn't save: ${missingFiles.join(', ')}`,
+          'Re-run code generation with same parameters',
+          'Verify database permissions and constraints',
+          'Ensure project_id is correct',
+          'Check for unique constraint violations'
+        ]
+      });
+    }
+
+    // Suggestion 2: Fix empty content
+    const emptyFileIssue = issues.find(i => i.includes('empty content'));
+    if (emptyFileIssue) {
+      suggestions.push({
+        action: 'Regenerate files with empty content',
+        priority: 'high' as const,
+        reasoning: 'Files exist but have no content - indicates generation failure',
+        steps: [
+          'Query files with empty content',
+          'Regenerate content using AI',
+          'Validate content before saving',
+          'Update file_content field'
+        ]
+      });
+    }
+
+    // Suggestion 3: Handle duplicates
+    const duplicateIssue = issues.find(i => i.includes('Duplicate'));
+    if (duplicateIssue) {
+      suggestions.push({
+        action: 'Remove duplicate files',
+        priority: 'medium' as const,
+        reasoning: 'Duplicate file_path entries violate unique constraint',
+        steps: [
+          'Identify duplicates by file_path',
+          'Keep most recent version (highest updated_at)',
+          'Delete older versions',
+          'Verify unique constraint satisfied'
+        ]
+      });
+    }
+
+    // Suggestion 4: Check JSON errors
+    const jsonCheck = await this.detectJsonErrors();
+    if (jsonCheck.hasJsonErrors) {
+      suggestions.push({
+        action: 'Fix JSON parsing errors',
+        priority: 'critical' as const,
+        reasoning: 'JSON errors preventing code generation',
+        steps: [
+          'Review AI response format',
+          'Add JSON validation before parsing',
+          'Use tool calling for structured output',
+          'Adjust AI prompts for valid JSON',
+          'Implement fallback JSON extraction'
+        ]
+      });
+    }
+
+    const estimatedRecoveryTime = suggestions.length === 0 
+      ? 'No recovery needed'
+      : suggestions.some(s => s.priority === 'critical')
+        ? '2-5 minutes'
+        : '1-2 minutes';
+
+    console.log('✅ [DatabaseIntrospector] Generated', suggestions.length, 'recovery suggestions');
+
+    return {
+      suggestions,
+      estimatedRecoveryTime
+    };
+  }
 }

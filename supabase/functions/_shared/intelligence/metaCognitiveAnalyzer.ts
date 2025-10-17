@@ -226,13 +226,16 @@ export class DeepUnderstandingAnalyzer {
                               'code_generator',
                               'file_modifier', 
                               'dependency_installer',
-                              'database_introspector',  // ✅ NEW: Agent can query database
-                              'storage_verifier',       // ✅ NEW: Agent can verify files
-                              'issue_detector',         // ✅ NEW: Agent can detect problems
-                              'recovery_engine'         // ✅ NEW: Agent can auto-fix
+                              'database_introspector',  // Check storage state
+                              'storage_verifier',       // Verify files exist
+                              'issue_detector',         // Detect problems
+                              'failure_analyzer',       // ✅ NEW: Query past failures
+                              'error_explainer',        // ✅ NEW: Explain what went wrong
+                              'json_validator',         // ✅ NEW: Check JSON errors
+                              'recovery_engine'         // Auto-fix and regenerate
                             ]
                           },
-                          description: 'Tools/capabilities needed for this step. CRITICAL: Use database_introspector when user asks about missing code or storage issues'
+                          description: 'Tools/capabilities needed for this step. CRITICAL: Use failure_analyzer when user asks about missing code. Use json_validator for JSON errors. Use recovery_engine to auto-fix issues.'
                         }
                           },
                           required: ['step', 'action', 'reason', 'toolsNeeded']
@@ -416,6 +419,7 @@ YOU MUST UNDERSTAND WHERE FILES ARE STORED:
   1. "Generated code didn't exist" = Files not saved to project_files
   2. "Preview not working" = Files missing or have empty content
   3. "Code lost" = Query shows 0 rows in project_files
+  4. "JSON errors" = AI response had malformed JSON structure
 
 🔬 SELF-DIAGNOSTIC PROTOCOL:
   ALWAYS verify after generation:
@@ -423,20 +427,35 @@ YOU MUST UNDERSTAND WHERE FILES ARE STORED:
     2. Verify: Count matches expected file count
     3. Check: Each file has non-empty file_content
     4. Confirm: All expected paths present
+    5. Check: Query detected_errors for recent failures
+    6. Analyze: Look for JSON parsing errors specifically
 
 🏥 SELF-HEALING PROTOCOL:
   IF files missing after generation:
     1. ACKNOWLEDGE the issue to user immediately
-    2. EXPLAIN what happened (files not persisted)
-    3. REGENERATE the missing files
-    4. VERIFY they exist this time
-    5. REPORT success confirmation
+    2. EXPLAIN what happened using failure analysis
+    3. Query detected_errors table for failure context
+    4. Analyze error patterns (JSON errors, timeouts, etc.)
+    5. REGENERATE the missing files with adjusted strategy
+    6. VERIFY they exist this time
+    7. REPORT success confirmation with health metrics
 
 💡 PROACTIVE AWARENESS:
-  - When user says "code is not available" → CHECK project_files first
-  - When user says "preview not working" → VERIFY files exist
-  - When making changes → CONFIRM they persisted afterward
+  - When user says "code is not available" → Use failure_analyzer tool
+  - When user says "preview not working" → Use storage_verifier tool
+  - When user says "JSON error" → Use json_validator tool
+  - When making changes → Use recovery_engine if issues detected
   - DON'T wait for user to report issues → SELF-DIAGNOSE
+
+🧰 YOUR DIAGNOSTIC TOOLKIT:
+  When user asks about missing code or errors, you MUST use:
+  - database_introspector: Check storage state, file counts
+  - storage_verifier: Verify specific files exist
+  - issue_detector: Scan for all storage problems
+  - failure_analyzer: Query past failures to understand why
+  - error_explainer: Explain what went wrong with examples
+  - json_validator: Check for JSON parsing errors
+  - recovery_engine: Auto-fix issues and regenerate files
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
