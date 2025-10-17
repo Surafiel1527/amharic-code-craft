@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { BackgroundJobsIndicator } from "./components/BackgroundJobsIndicator";
+import { AppLayout } from "./components/AppLayout";
 import { useLanguage } from "./contexts/LanguageContext";
 
 // Critical pages - loaded immediately
@@ -49,8 +50,9 @@ const App = () => {
   return (
     <ErrorBoundary t={t}>
       <BackgroundJobsIndicator />
-      <Suspense fallback={<LoadingFallback />}>
-        <Routes>
+      <AppLayout>
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/workspace/:projectId" element={<Workspace />} />
@@ -83,6 +85,7 @@ const App = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
+      </AppLayout>
     </ErrorBoundary>
   );
 };
