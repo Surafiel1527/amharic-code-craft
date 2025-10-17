@@ -2952,6 +2952,47 @@ export type Database = {
         }
         Relationships: []
       }
+      decision_feedback: {
+        Row: {
+          chosen_option: string
+          created_at: string
+          decision_id: string
+          feedback_notes: string | null
+          id: string
+          time_to_decide_seconds: number | null
+          user_confidence: number | null
+          was_correct: boolean
+        }
+        Insert: {
+          chosen_option: string
+          created_at?: string
+          decision_id: string
+          feedback_notes?: string | null
+          id?: string
+          time_to_decide_seconds?: number | null
+          user_confidence?: number | null
+          was_correct: boolean
+        }
+        Update: {
+          chosen_option?: string
+          created_at?: string
+          decision_id?: string
+          feedback_notes?: string | null
+          id?: string
+          time_to_decide_seconds?: number | null
+          user_confidence?: number | null
+          was_correct?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_feedback_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "decision_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_logs: {
         Row: {
           classified_as: string
@@ -8841,6 +8882,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_behavior_analytics: {
+        Row: {
+          actions: Json
+          business_context: Json
+          captured_at: string
+          created_at: string
+          id: string
+          preferences: Json
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          actions?: Json
+          business_context?: Json
+          captured_at?: string
+          created_at?: string
+          id?: string
+          preferences?: Json
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          actions?: Json
+          business_context?: Json
+          captured_at?: string
+          created_at?: string
+          id?: string
+          preferences?: Json
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_coding_preferences: {
         Row: {
           avoid_patterns: Json | null
@@ -9517,6 +9591,10 @@ export type Database = {
         Returns: undefined
       }
       cleanup_expired_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cleanup_old_behavior_analytics: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }

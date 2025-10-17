@@ -286,14 +286,20 @@ class UserContextCapture {
     this.actionBuffer = [];
 
     try {
-      await supabase.from('user_behavior_analytics').insert({
-        user_id: this.userId,
+      const insertData: any = {
         session_id: this.sessionId,
         actions: actionsToFlush,
         preferences: this.behavior.preferences,
         business_context: this.behavior.businessContext,
         captured_at: new Date().toISOString()
-      });
+      };
+      
+      // Only add user_id if it exists
+      if (this.userId) {
+        insertData.user_id = this.userId;
+      }
+      
+      await supabase.from('user_behavior_analytics').insert(insertData);
 
       console.info(`[UserContext] Flushed ${actionsToFlush.length} actions`);
     } catch (error) {
@@ -315,12 +321,12 @@ class UserContextCapture {
       .eq('user_id', this.userId)
       .order('captured_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (data?.preferences) {
+    if (data?.preferences && typeof data.preferences === 'object') {
       this.behavior.preferences = {
         ...this.behavior.preferences,
-        ...data.preferences
+        ...(data.preferences as any)
       };
     }
   }

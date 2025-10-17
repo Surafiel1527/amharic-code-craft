@@ -219,3 +219,22 @@ verify_jwt = true
 
 [functions.project-context-manager]
 verify_jwt = true
+
+# ============================================
+# AUTONOMOUS AGENT SYSTEM (NEW)
+# Self-healing, decision-making, and monitoring
+# ============================================
+
+[functions.autonomous-healing]
+verify_jwt = false  # Allows cron and system calls
+
+[cron.autonomous_healing_cycle]
+# Run autonomous healing every 5 minutes
+schedule = "*/5 * * * *"
+function_name = "autonomous-healing"
+
+[functions.intelligent-decision]
+verify_jwt = true  # Protected endpoint
+
+[functions.agent-health]
+verify_jwt = false  # Public health check endpoint

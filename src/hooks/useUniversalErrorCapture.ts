@@ -169,13 +169,19 @@ class UniversalErrorCapture {
 
         // Log slow requests
         if (duration > 5000) {
+          const requestUrl = typeof args[0] === 'string' 
+            ? args[0] 
+            : args[0] instanceof Request 
+              ? args[0].url 
+              : String(args[0]);
+              
           this.captureError({
             error_type: 'slow_query',
             error_message: `Slow network request: ${duration}ms`,
             severity: 'medium',
             context: {
               ...this.getContext(),
-              url: typeof args[0] === 'string' ? args[0] : args[0]?.url,
+              url: requestUrl,
               duration_ms: duration,
             },
           });
@@ -199,6 +205,12 @@ class UniversalErrorCapture {
         return response;
       } catch (error) {
         const duration = Date.now() - startTime;
+        const requestUrl = typeof args[0] === 'string' 
+          ? args[0] 
+          : args[0] instanceof Request 
+            ? args[0].url 
+            : String(args[0]);
+            
         this.captureError({
           error_type: 'network_error',
           error_message: `Network request failed: ${error instanceof Error ? error.message : 'Unknown'}`,
@@ -206,7 +218,7 @@ class UniversalErrorCapture {
           stack_trace: error instanceof Error ? error.stack : undefined,
           context: {
             ...this.getContext(),
-            url: typeof args[0] === 'string' ? args[0] : args[0]?.url,
+            url: requestUrl,
             duration_ms: duration,
           },
         });
