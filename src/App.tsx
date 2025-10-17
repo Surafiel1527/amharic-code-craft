@@ -38,6 +38,7 @@ const AutonomousAIArchitecture = lazy(() => import("./pages/AutonomousAIArchitec
 const AgentStatus = lazy(() => import("./pages/AgentStatus"));
 const AgentTestPage = lazy(() => import("./pages/AgentTestPage"));
 const AIAssistant = lazy(() => import("./pages/AIAssistant"));
+const TestWorkspace = lazy(() => import("./pages/TestWorkspace"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -84,6 +85,7 @@ const App = () => {
           <Route path="/agent-status" element={<AgentStatus />} />
           <Route path="/agent-test" element={<AgentTestPage />} />
           <Route path="/ai-assistant" element={<AIAssistant />} />
+          <Route path="/test-workspace" element={<TestWorkspace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
