@@ -3842,6 +3842,7 @@ export type Database = {
           source: string
           stack_trace: string | null
           status: string
+          user_id: string | null
         }
         Insert: {
           auto_fix_enabled?: boolean | null
@@ -3861,6 +3862,7 @@ export type Database = {
           source: string
           stack_trace?: string | null
           status?: string
+          user_id?: string | null
         }
         Update: {
           auto_fix_enabled?: boolean | null
@@ -3880,6 +3882,7 @@ export type Database = {
           source?: string
           stack_trace?: string | null
           status?: string
+          user_id?: string | null
         }
         Relationships: [
           {
