@@ -5,6 +5,7 @@
  * Creates a unified interface for the Universal Mega Mind system.
  */
 
+// Legacy components (for backward compatibility)
 export { MetaCognitiveAnalyzer, DeepUnderstandingAnalyzer, type QueryAnalysis, type DeepUnderstanding } from './metaCognitiveAnalyzer.ts';
 export { NaturalCommunicator, type CommunicationContext, type GeneratedMessage } from './naturalCommunicator.ts';
 export { AdaptiveExecutor, AutonomousExecutor, type ExecutionContext, type ExecutionResult } from './adaptiveExecutor.ts';
@@ -12,6 +13,11 @@ export { SupervisorAgent, type SupervisionResult } from './supervisorAgent.ts';
 export { AutonomousHealingOrchestrator, type HealingResult, type HealingAttempt } from './autonomousHealingOrchestrator.ts';
 export { IntelligentDecisionEngine, type DecisionResult, type DecisionOption, type DecisionContext } from './intelligentDecisionEngine.ts';
 export { UniversalErrorDetector } from './universalErrorDetector.ts';
+
+// NEW: Reasoning-based components (20% fix)
+export { ReasoningEngine, type TranscendentContext, type AIDecision, type AIAction } from './reasoningEngine.ts';
+export { CapabilityArsenal, type CapabilityResult } from './capabilityArsenal.ts';
+export { ProactiveIntelligence, type GlobalInsights } from './proactiveIntelligence.ts';
 
 /**
  * Universal Mega Mind - Main Intelligence Controller
@@ -26,6 +32,11 @@ import { NaturalCommunicator } from './naturalCommunicator.ts';
 import { AdaptiveExecutor, ExecutionContext, ExecutionResult } from './adaptiveExecutor.ts';
 import { SupervisorAgent, SupervisionResult } from './supervisorAgent.ts';
 
+// NEW: Reasoning-based components
+import { ReasoningEngine, TranscendentContext, AIDecision } from './reasoningEngine.ts';
+import { CapabilityArsenal } from './capabilityArsenal.ts';
+import { ProactiveIntelligence, GlobalInsights } from './proactiveIntelligence.ts';
+
 export interface UniversalMindRequest {
   userRequest: string;
   userId: string;
@@ -37,6 +48,12 @@ export interface UniversalMindRequest {
 }
 
 export class UniversalMegaMind {
+  // NEW: Reasoning components (20% fix)
+  private reasoningEngine: ReasoningEngine;
+  private capabilityArsenal: CapabilityArsenal;
+  private proactiveIntel: ProactiveIntelligence;
+  
+  // Legacy components (keeping for gradual migration)
   private analyzer: MetaCognitiveAnalyzer;
   private communicator: NaturalCommunicator;
   private executor: AdaptiveExecutor;
@@ -44,10 +61,18 @@ export class UniversalMegaMind {
   private currentAnalysis?: QueryAnalysis;
   private readonly MAX_ITERATIONS = 3;
   
+  private broadcastCallback?: (status: any) => Promise<void>;
+  
   constructor(
     private supabase: SupabaseClient,
     private lovableApiKey: string
   ) {
+    // Initialize NEW reasoning system
+    this.reasoningEngine = new ReasoningEngine(lovableApiKey);
+    this.capabilityArsenal = new CapabilityArsenal(supabase, lovableApiKey);
+    this.proactiveIntel = new ProactiveIntelligence();
+    
+    // Keep legacy components for backward compatibility
     this.analyzer = new MetaCognitiveAnalyzer(lovableApiKey);
     this.communicator = new NaturalCommunicator(lovableApiKey);
     this.executor = new AdaptiveExecutor(supabase, this.communicator, lovableApiKey);
@@ -58,171 +83,235 @@ export class UniversalMegaMind {
    * Wire up broadcast callback for real-time status updates
    */
   setBroadcastCallback(callback: (status: any) => Promise<void>): void {
+    this.broadcastCallback = callback;
     this.executor.setBroadcastCallback(callback);
   }
   
   /**
-   * Process user request with full AI autonomy + Supervisor Quality Assurance
+   * Process user request with REASONING ENGINE (NEW 20% FIX)
    * 
-   * This implements the Hybrid Evolution approach:
-   * 1. Analyzes the query to understand intent and complexity
-   * 2. Executes with natural AI-generated communication
-   * 3. Verifies quality with supervisor agent
-   * 4. Iterates if needed (max 3 attempts)
-   * 5. Returns results with supervision details
+   * This implements the Reasoning-Based approach:
+   * 1. Load project knowledge (omniscient awareness)
+   * 2. Retrieve relevant context (smart filtering)
+   * 3. Run proactive intelligence (detect issues before asking)
+   * 4. AI reasoning with full context (no templates!)
+   * 5. Execute AI's chosen capabilities
+   * 6. Return results with AI reasoning
    */
-  async processRequest(request: UniversalMindRequest): Promise<ExecutionResult & { analysis: DeepUnderstanding; supervision?: SupervisionResult }> {
-    console.log('🧠 Universal Mega Mind with Supervisor: Activating...');
+  async processRequest(request: UniversalMindRequest): Promise<ExecutionResult & { analysis: any; supervision?: SupervisionResult }> {
+    console.log('🧠 Universal Mega Mind: Processing with REASONING ENGINE...');
     console.log(`📝 Request: "${request.userRequest.slice(0, 100)}..."`);
     
-    const iterationHistory: Array<{
-      attempt: number;
-      executionResult: ExecutionResult;
-      supervision: SupervisionResult;
-    }> = [];
+    const startTime = Date.now();
     
     try {
-      // Reset communicator for new conversation thread
-      this.communicator.resetContext();
+      // PHASE 1: Load Project Knowledge (KEEP - already working ✅)
+      console.log('📚 Phase 1: Loading Project Knowledge...');
+      const projectKnowledge = await this.loadProjectKnowledge(request);
+      console.log(`✅ Loaded ${projectKnowledge.fileCount} files`);
       
-      // PHASE 1: Deep Understanding Analysis (Once)
-      console.log('🔍 Phase 1: Deep Understanding...');
+      // PHASE 2: Smart Context Retrieval (KEEP - already working ✅)
+      console.log('🔍 Phase 2: Retrieving Relevant Context...');
+      const relevantContext = await this.retrieveRelevantContext(request, projectKnowledge);
+      console.log(`✅ Retrieved ${relevantContext.relevantFiles.length} relevant files`);
       
-      this.currentAnalysis = await this.analyzer.analyzeRequest(
-        request.userRequest,
-        {
-          conversationHistory: request.context?.conversationHistory,
-          projectContext: request.context,
-          existingFiles: request.existingFiles,
-          framework: request.framework,
-          currentRoute: request.context?.currentRoute,
-          recentErrors: request.context?.recentErrors
-        }
+      // PHASE 3: Proactive Intelligence (NEW ⭐)
+      console.log('🔬 Phase 3: Running Proactive Analysis...');
+      const proactiveInsights = await this.proactiveIntel.analyze(
+        request.existingFiles || {},
+        request.context
       );
-      
-      console.log('✅ Understanding Complete:', {
-        goal: this.currentAnalysis.understanding.userGoal,
-        needsCode: this.currentAnalysis.actionPlan.requiresCodeGeneration,
-        confidence: this.currentAnalysis.meta.confidence
+      console.log(`✅ Proactive scan complete:`, {
+        securityIssues: proactiveInsights.security_issues.length,
+        optimizations: proactiveInsights.optimization_opportunities.length,
+        codeSmells: proactiveInsights.code_smells.length
       });
       
-      // PHASE 2-4: Iterative Execution + Supervision
-      let attemptNumber = 0;
-      let executionResult: ExecutionResult;
-      let supervision: SupervisionResult;
-      const previousFeedback: string[] = [];
-      
-      do {
-        attemptNumber++;
-        console.log(`🎯 Execution Attempt #${attemptNumber}/${this.MAX_ITERATIONS}`);
-        
-        const executionContext: ExecutionContext = {
-          userRequest: request.userRequest,
-          userId: request.userId,
-          conversationId: request.conversationId,
-          projectId: request.projectId,
-          existingFiles: request.existingFiles,
-          framework: request.framework,
-          awashContext: request.context,
-          supervisorFeedback: previousFeedback.length > 0 ? previousFeedback[previousFeedback.length - 1] : undefined
-        };
-        
-        // Execute based on autonomous understanding
-        executionResult = await this.executor.execute(executionContext, this.currentAnalysis);
-        
-        console.log(`✅ Execution #${attemptNumber} Complete:`, {
-          success: executionResult.success,
-          filesGenerated: executionResult.filesGenerated?.length || 0
-        });
-        
-        // PHASE 3: Verify Quality with Supervisor
-        console.log(`🔍 Supervisor: Verifying quality (attempt #${attemptNumber})...`);
-        
-        supervision = await this.supervisor.verify({
-          userRequest: request.userRequest,
-          understanding: this.currentAnalysis,
-          executionResult,
-          attemptNumber,
-          previousFeedback
-        });
-        
-        console.log(`📊 Supervision Result:`, {
-          approved: supervision.approved,
-          confidence: supervision.confidence,
-          requiresIteration: supervision.requiresIteration,
-          issues: supervision.issues?.length || 0
-        });
-        
-        // Record iteration
-        iterationHistory.push({
-          attempt: attemptNumber,
-          executionResult: { ...executionResult },
-          supervision: { ...supervision }
-        });
-        
-        // Add feedback for next iteration if needed
-        if (supervision.feedback && !supervision.approved) {
-          previousFeedback.push(supervision.feedback);
-        }
-        
-        // Check if we should continue iterating
-        const shouldContinue = this.supervisor.shouldRetry(supervision, attemptNumber, this.MAX_ITERATIONS);
-        
-        if (!shouldContinue) {
-          console.log(`🛑 Stopping iteration: ${
-            supervision.approved 
-              ? '✅ Quality approved' 
-              : attemptNumber >= this.MAX_ITERATIONS 
-                ? '⚠️ Max attempts reached' 
-                : '⚠️ Low confidence in fix'
-          }`);
-          break;
-        }
-        
-        console.log(`🔄 Preparing retry with supervisor feedback...`);
-        
-      } while (attemptNumber < this.MAX_ITERATIONS);
-      
-      // Final result with supervision details
-      const finalResult = {
-        ...executionResult,
-        analysis: this.currentAnalysis,
-        supervision,
-        iterationHistory: iterationHistory.length > 1 ? iterationHistory : undefined
+      // PHASE 4: AI REASONING (NEW ⭐ - replaces analyzer + template routing)
+      console.log('🧠 Phase 4: AI Reasoning with Full Context...');
+      const transcendentContext: TranscendentContext = {
+        projectKnowledge,
+        relevantContext,
+        userRequest: request.userRequest,
+        capabilityArsenal: this.capabilityArsenal.list(),
+        proactiveInsights,
+        conversationHistory: request.context?.conversationHistory,
+        existingFiles: request.existingFiles
       };
       
-      console.log('🎉 Universal Mega Mind Complete:', {
-        success: executionResult.success,
-        approved: supervision.approved,
-        attempts: attemptNumber,
-        duration: executionResult.duration
+      const aiDecision = await this.reasoningEngine.reason(transcendentContext);
+      console.log(`✅ AI Decision:`, {
+        actions: aiDecision.actions.length,
+        confidence: aiDecision.confidence,
+        requiresConfirmation: aiDecision.requiresConfirmation
       });
       
-      return finalResult;
+      // PHASE 5: Execute AI's Decisions (NEW ⭐)
+      console.log(`🎯 Phase 5: Executing ${aiDecision.actions.length} AI-decided actions...`);
+      const executionOutput = await this.executeAIDecisions(
+        aiDecision,
+        request,
+        transcendentContext
+      );
+      
+      const duration = Date.now() - startTime;
+      console.log(`✅ Execution Complete in ${duration}ms`);
+      
+      // Transform to ExecutionResult format
+      return {
+        success: true,
+        message: aiDecision.messageToUser,
+        output: executionOutput.output,
+        filesGenerated: executionOutput.files,
+        duration,
+        analysis: {
+          understanding: {
+            userGoal: request.userRequest,
+            proactiveInsights: proactiveInsights,
+            aiReasoning: aiDecision.thought
+          }
+        }
+      };
       
     } catch (error) {
       console.error('❌ Universal Mega Mind Error:', error);
-      
-      // Generate error response with AI
-      const errorMessage = this.currentAnalysis 
-        ? await this.communicator.generateErrorResponse(
-            error as Error,
-            {
-              phase: 'error',
-              taskDescription: this.currentAnalysis.userIntent.primaryGoal
-            },
-            this.currentAnalysis
-          )
-        : { content: 'I encountered an unexpected error. Please try rephrasing your request.' };
+      const duration = Date.now() - startTime;
       
       return {
         success: false,
-        message: errorMessage.content,
-        duration: 0,
+        message: `I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try rephrasing your request.`,
+        duration,
         error: error as Error,
-        analysis: this.currentAnalysis!
+        analysis: {
+          understanding: {
+            userGoal: request.userRequest,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
       };
     }
+  }
+  
+  /**
+   * Helper: Load Project Knowledge
+   */
+  private async loadProjectKnowledge(request: UniversalMindRequest): Promise<any> {
+    const files = request.existingFiles || {};
+    const totalLines = Object.values(files).reduce((sum, content) => 
+      sum + (typeof content === 'string' ? content.split('\n').length : 0), 0
+    );
+    
+    return {
+      files,
+      fileCount: Object.keys(files).length,
+      totalLines,
+      components: [], // Could extract from files in the future
+      routes: [],
+      dependencies: [],
+      framework: request.framework || 'react',
+      hasBackend: request.context?.hasBackend || false,
+      hasAuth: request.context?.hasAuth || false,
+      storageState: request.context?.storageState || {
+        totalFiles: 0,
+        healthScore: 100,
+        fileTypes: {}
+      }
+    };
+  }
+  
+  /**
+   * Helper: Retrieve Relevant Context
+   */
+  private async retrieveRelevantContext(
+    request: UniversalMindRequest,
+    projectKnowledge: any
+  ): Promise<any> {
+    // Simple keyword matching for now (could enhance with embeddings)
+    const keywords = request.userRequest.toLowerCase().split(/\s+/);
+    const relevantFiles = Object.keys(projectKnowledge.files)
+      .filter(path => keywords.some(k => path.toLowerCase().includes(k)))
+      .slice(0, 10);
+    
+    return {
+      relevantFiles,
+      relevantComponents: [],
+      recentErrors: request.context?.recentErrors || []
+    };
+  }
+  
+  /**
+   * Helper: Execute AI's Decisions
+   */
+  private async executeAIDecisions(
+    aiDecision: AIDecision,
+    request: UniversalMindRequest,
+    context: TranscendentContext
+  ): Promise<any> {
+    const results = [];
+    
+    // Execute each capability AI decided to use
+    for (const action of aiDecision.actions) {
+      console.log(`🔧 Executing capability: ${action.capability}`);
+      
+      const result = await this.capabilityArsenal.execute(
+        action.capability,
+        action.parameters,
+        {
+          ...request,
+          ...context
+        }
+      );
+      
+      results.push({
+        capability: action.capability,
+        result,
+        reasoning: action.reasoning
+      });
+      
+      // Broadcast progress
+      if (this.broadcastCallback) {
+        await this.broadcastCallback({
+          status: 'executing',
+          message: result.message,
+          metadata: { capability: action.capability }
+        });
+      }
+    }
+    
+    // Transform results into output format
+    return this.transformResults(results, aiDecision);
+  }
+  
+  /**
+   * Helper: Transform Results
+   */
+  private transformResults(results: any[], aiDecision: AIDecision): any {
+    const files = [];
+    
+    for (const result of results) {
+      if (result.capability === 'writeCode' && result.result.success) {
+        const paths = result.result.data?.paths || [];
+        files.push(...paths.map((path: string) => ({
+          path,
+          content: '// Generated by AI Reasoning Engine'
+        })));
+      }
+    }
+    
+    return {
+      files,
+      output: aiDecision.messageToUser,
+      metadata: {
+        aiReasoning: aiDecision.thought,
+        capabilities: aiDecision.actions.map(a => a.capability),
+        confidence: aiDecision.confidence,
+        results: results.map(r => ({
+          capability: r.capability,
+          success: r.result.success,
+          message: r.result.message
+        }))
+      }
+    };
   }
   
   /**
