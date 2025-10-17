@@ -324,7 +324,7 @@ npm run build
   if (isMobile) {
     if (mobileTab === 'chat') {
       return (
-        <div className="h-full flex flex-col gap-4 p-4">
+        <div className="h-full flex flex-col gap-4 p-4" key="mobile-chat-container">
           {/* AI Thinking Panel - Shows when AI is active */}
           {isActive && (
             <AIThinkingPanel 
@@ -335,10 +335,11 @@ npm run build
             />
           )}
           
-          {conversationId ? (
-            <div className="flex-1 min-h-0">
+          {/* Stable container that doesn't switch structure */}
+          <div className="flex-1 min-h-0">
+            {conversationId ? (
               <UniversalChatInterface
-                key={`chat-${conversationId}-${projectId}`}
+                key={`mobile-chat-${conversationId}`}
                 conversationId={conversationId}
                 projectId={projectId}
                 mode="panel"
@@ -356,15 +357,15 @@ npm run build
                   framework
                 }}
               />
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center text-muted-foreground">
-                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                <p>Loading chat...</p>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center text-muted-foreground">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                  <p>Loading chat...</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       );
     }
@@ -454,9 +455,9 @@ npm run build
   
   // Desktop: render side-by-side with better spacing and height
   return (
-    <div className="grid lg:grid-cols-2 gap-4 p-4 h-full overflow-hidden">
+    <div className="grid lg:grid-cols-2 gap-4 p-4 h-full overflow-hidden" key="desktop-workspace">
       {/* Chat Interface - Full height */}
-      <div className="flex flex-col h-full min-h-0 gap-4">
+      <div className="flex flex-col h-full min-h-0 gap-4" key="chat-column">
         {/* AI Thinking Panel - Mobile Optimized, Shows when AI is active */}
         {isActive && (
           <div className="overflow-x-hidden">
@@ -469,10 +470,11 @@ npm run build
           </div>
         )}
         
-        {conversationId ? (
-          <div className="flex-1 min-h-0">
+        {/* Stable container that doesn't switch structure */}
+        <div className="flex-1 min-h-0">
+          {conversationId ? (
             <UniversalChatInterface
-              key={`chat-${conversationId}-${projectId}`}
+              key={`desktop-chat-${conversationId}`}
               conversationId={conversationId}
               projectId={projectId}
               mode="inline"
@@ -492,15 +494,15 @@ npm run build
               }}
               className="h-full"
             />
-          </div>
-        ) : (
-          <Card className="flex items-center justify-center h-full">
-            <div className="text-center text-muted-foreground">
-              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-              <p>Loading chat...</p>
-            </div>
-          </Card>
-        )}
+          ) : (
+            <Card className="flex items-center justify-center h-full">
+              <div className="text-center text-muted-foreground">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                <p>Loading chat...</p>
+              </div>
+            </Card>
+          )}
+        </div>
       </div>
 
       {/* Live Preview - Full height */}
