@@ -21,7 +21,7 @@ serve(async (req) => {
 
     const { data: recentErrors } = await supabase
       .from('detected_errors')
-      .select('id, resolved')
+      .select('id, status')
       .gte('created_at', oneHourAgo.toISOString());
 
     const { data: recentFixes } = await supabase
@@ -30,7 +30,7 @@ serve(async (req) => {
       .gte('created_at', oneHourAgo.toISOString());
 
     const errorDetectionHealth = recentErrors?.length > 0 ?
-      (recentErrors.filter(e => e.resolved).length / recentErrors.length) * 100 : 100;
+      (recentErrors.filter(e => e.status === 'resolved' || e.status === 'fixed').length / recentErrors.length) * 100 : 100;
 
     const autoFixHealth = recentFixes?.length > 0 ?
       (recentFixes.filter(f => f.status === 'applied').length / recentFixes.length) * 100 : 100;
