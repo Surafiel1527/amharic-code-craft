@@ -9,6 +9,9 @@ export { MetaCognitiveAnalyzer, DeepUnderstandingAnalyzer, type QueryAnalysis, t
 export { NaturalCommunicator, type CommunicationContext, type GeneratedMessage } from './naturalCommunicator.ts';
 export { AdaptiveExecutor, AutonomousExecutor, type ExecutionContext, type ExecutionResult } from './adaptiveExecutor.ts';
 export { SupervisorAgent, type SupervisionResult } from './supervisorAgent.ts';
+export { AutonomousHealingOrchestrator, type HealingResult, type HealingAttempt } from './autonomousHealingOrchestrator.ts';
+export { IntelligentDecisionEngine, type DecisionResult, type DecisionOption, type DecisionContext } from './intelligentDecisionEngine.ts';
+export { UniversalErrorDetector } from './universalErrorDetector.ts';
 
 /**
  * Universal Mega Mind - Main Intelligence Controller
