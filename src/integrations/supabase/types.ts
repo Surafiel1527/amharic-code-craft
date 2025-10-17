@@ -3836,6 +3836,7 @@ export type Database = {
           function_name: string | null
           id: string
           line_number: number | null
+          project_id: string | null
           resolved_at: string | null
           severity: string
           source: string
@@ -3854,6 +3855,7 @@ export type Database = {
           function_name?: string | null
           id?: string
           line_number?: number | null
+          project_id?: string | null
           resolved_at?: string | null
           severity?: string
           source: string
@@ -3872,13 +3874,22 @@ export type Database = {
           function_name?: string | null
           id?: string
           line_number?: number | null
+          project_id?: string | null
           resolved_at?: string | null
           severity?: string
           source?: string
           stack_trace?: string | null
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "detected_errors_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ensemble_decisions: {
         Row: {
