@@ -35,16 +35,17 @@ export class ErrorBoundary extends Component<Props, State> {
     try {
       await supabase.functions.invoke('unified-monitoring', {
         body: {
+          operation: 'track_error',
           errorType: error.name,
           errorMessage: error.message,
-          stackTrace: error.stack,
-          source: 'frontend',
           severity: 'critical',
           context: {
+            stackTrace: error.stack,
             componentStack: errorInfo.componentStack,
             userAgent: navigator.userAgent,
             url: window.location.href,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            source: 'frontend'
           }
         }
       });
