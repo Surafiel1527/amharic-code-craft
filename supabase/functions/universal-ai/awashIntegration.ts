@@ -61,7 +61,7 @@ Generate complete, production-ready code that:
 - Access to Lovable Cloud backend (Supabase)
 - Real-time error detection and correction`;
 
-  if (!context) {
+  if (!context || !context.workspace) {
     return basePrompt;
   }
 
