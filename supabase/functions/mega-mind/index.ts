@@ -11,7 +11,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { UniversalMegaMind } from "../_shared/intelligence/index.ts";
-import { createResilientDb } from "../_shared/resilientDbWrapper.ts";
 import { protectedAICall } from "../_shared/circuitBreakerIntegration.ts";
 import { createSchemaVersionManager } from "../_shared/schemaVersioning.ts";
 import { createPerformanceMonitor } from "../_shared/performanceMonitor.ts";
@@ -70,9 +69,6 @@ serve(async (req) => {
     // 🏗️ PHASE 4: ENTERPRISE INFRASTRUCTURE INITIALIZATION
     // ============================================
     
-    // Initialize resilient database wrapper for self-healing operations
-    const resilientDb = createResilientDb(supabase, lovableApiKey);
-    
     // Initialize performance monitoring
     const performanceMonitor = createPerformanceMonitor(supabase);
     
@@ -89,8 +85,6 @@ serve(async (req) => {
       if (criticalChanges.length > 0) {
         console.warn(`⚠️ [SchemaMonitor] ${criticalChanges.length} critical schema changes detected`);
         
-        // Clear all caches on critical changes
-        resilientDb.clearCache();
         performanceMonitor.recordOperation('schema_change_critical', 0, true, 'direct');
         
         // Update validator with new schema version
