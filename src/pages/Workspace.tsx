@@ -651,25 +651,34 @@ export default function Workspace() {
 
   // handleSendMessage removed - now handled by UniversalChatInterface
 
-  // Check if project is still generating (not just by title, but by actual job status)
-  const [isGenerating, setIsGenerating] = useState(true); // Start as true, then validate
+  // LAYER 1: Smart Initialization - Initialize based on URL params (enterprise approach)
+  // If conversationId exists in URL, this is an existing project -> start as false
+  // If no conversationId, might be new generation -> validate with effect
+  const [isGenerating, setIsGenerating] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasConversationId = urlParams.has('conversationId');
+    // Default to false for existing projects, true for new ones pending validation
+    return !hasConversationId;
+  });
+  const [hasValidatedGeneration, setHasValidatedGeneration] = useState(false);
   
   useEffect(() => {
     if (!project) return;
     
     if (!conversationId) {
       // Always allow workspace access when there's no conversation
-      // The workspace can handle empty states and users can start chatting
       setIsGenerating(false);
+      setHasValidatedGeneration(true);
       return;
     }
     
-    // Check if there's actually an active job AND if conversation doesn't have messages yet
+    // LAYER 2: Validation Gate - Verify actual job status before allowing generation UI
     const checkJobStatus = async () => {
       try {
         // PRIORITY 1: If we have project files, show workspace immediately
         if (projectFiles && projectFiles.length > 0) {
           setIsGenerating(false);
+          setHasValidatedGeneration(true);
           return;
         }
         
@@ -682,15 +691,17 @@ export default function Workspace() {
         if (msgError) {
           console.error('Error checking messages:', msgError);
           setIsGenerating(false);
+          setHasValidatedGeneration(true);
           return;
         }
         
         if (count && count > 0) {
           setIsGenerating(false);
+          setHasValidatedGeneration(true);
           return;
         }
         
-        // PRIORITY 3: Only check job status if no files and no messages
+        // PRIORITY 3: Validate actual job status exists and is active
         const { data: jobs, error: jobError } = await supabase
           .from('ai_generation_jobs')
           .select('status')
@@ -701,6 +712,7 @@ export default function Workspace() {
         if (jobError) {
           console.error('Error checking jobs:', jobError);
           setIsGenerating(false);
+          setHasValidatedGeneration(true);
           return;
         }
         
@@ -709,9 +721,12 @@ export default function Workspace() {
         const isActuallyGenerating = latestJob && activeStatuses.includes(latestJob.status);
         
         setIsGenerating(isActuallyGenerating || false);
+        setHasValidatedGeneration(true);
       } catch (error) {
         console.error('Error in job status check:', error);
+        // LAYER 3: Graceful Degradation - Always allow workspace access on error
         setIsGenerating(false);
+        setHasValidatedGeneration(true);
       }
     };
     
@@ -726,19 +741,18 @@ export default function Workspace() {
     );
   }
 
-  // 🆕 ONLY show generating progress if actively generating, not if failed
-  // This allows users to access workspace for failed projects to see diagnosis and fix
-  if (isGenerating) {
+  // LAYER 2 & 3: Validation Gate + Graceful Degradation
+  // Only show generation UI if validated AND actually generating
+  // Otherwise, always show workspace (user-first design)
+  if (isGenerating && hasValidatedGeneration) {
     return (
       <div className="min-h-screen bg-background">
         <LiveGenerationProgress 
           projectId={project.id}
           onComplete={() => {
-            // Reload project data when generation completes
             window.location.reload();
           }}
           onCancel={() => {
-            // Navigate back to home on cancel
             navigate('/');
           }}
         />
