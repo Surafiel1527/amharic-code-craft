@@ -3826,6 +3826,7 @@ export type Database = {
       detected_errors: {
         Row: {
           auto_fix_enabled: boolean | null
+          context: Json | null
           created_at: string
           error_context: Json | null
           error_message: string
@@ -3843,6 +3844,7 @@ export type Database = {
         }
         Insert: {
           auto_fix_enabled?: boolean | null
+          context?: Json | null
           created_at?: string
           error_context?: Json | null
           error_message: string
@@ -3860,6 +3862,7 @@ export type Database = {
         }
         Update: {
           auto_fix_enabled?: boolean | null
+          context?: Json | null
           created_at?: string
           error_context?: Json | null
           error_message?: string
