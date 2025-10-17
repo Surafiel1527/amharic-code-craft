@@ -8,7 +8,7 @@ import { Download, FileCode, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import JSZip from "jszip";
 import { toast } from "sonner";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AIThinkingPanel } from "@/components/AIThinkingPanel";
 import { useRealtimeAI } from "@/hooks/useRealtimeAI";
 
@@ -41,28 +41,46 @@ export function PreviewSection({
   // Monitor AI activity
   const { status, isActive } = useRealtimeAI({ projectId, conversationId: conversationId || undefined });
   
-  // Generate all file contents - use real project files if available
+  // ENTERPRISE LAYER 1: State Validation & Observability
+  useEffect(() => {
+    if (projectFiles && projectFiles.length > 0) {
+      console.log('📊 PreviewSection received project files:', {
+        count: projectFiles.length,
+        paths: projectFiles.map(f => f.file_path),
+        hasContent: projectFiles.filter(f => f.file_content && f.file_content.length > 0).length
+      });
+    }
+  }, [projectFiles]);
+  
+  // ENTERPRISE LAYER 2: Robust File Contents Generation
   const fileContents = useMemo(() => {
     const files: Record<string, string> = {};
     
-    // Use real project files from database if available
+    // PRIORITY 1: Use real project files from database if available
     if (projectFiles && projectFiles.length > 0) {
+      let validFilesCount = 0;
       projectFiles.forEach(file => {
         if (file && file.file_path && file.file_content !== undefined) {
           files[file.file_path] = file.file_content || '';
+          validFilesCount++;
         }
       });
-      // Only return if we got valid files
-      if (Object.keys(files).length > 0) {
+      
+      // Enterprise validation: Ensure we actually got files
+      if (validFilesCount > 0) {
+        console.log('✅ Using real project files:', validFilesCount, 'files processed');
         return files;
+      } else {
+        console.warn('⚠️ projectFiles exist but no valid content found, using fallback');
       }
     }
     
-    // Fallback: Generate dummy files from htmlCode for legacy single-file projects
+    // PRIORITY 2: Fallback - Generate structure from htmlCode for legacy projects
     if (framework === 'react') {
+      console.log('📝 Using fallback React structure');
       
       // Use html_code as App.tsx if it exists and looks like React code
-      const appContent = htmlCode && htmlCode.trim().length > 0 
+      const appContent = htmlCode && htmlCode.trim().length > 0
         ? htmlCode 
         : `export default function App() {
   return (
@@ -179,6 +197,29 @@ npm run build
     
     return files;
   }, [htmlCode, framework, projectTitle, projectFiles]);
+  
+  // ENTERPRISE LAYER 3: Auto-sync selectedFile to available files
+  useEffect(() => {
+    const availableFiles = Object.keys(fileContents);
+    if (availableFiles.length > 0 && !fileContents[selectedFile]) {
+      // Current selectedFile doesn't exist, auto-select first available file
+      const firstFile = availableFiles[0];
+      console.log(`🔄 Auto-selecting file: ${firstFile} (${selectedFile} not found)`);
+      setSelectedFile(firstFile);
+    }
+  }, [fileContents, selectedFile]);
+  
+  // ENTERPRISE LAYER 4: Comprehensive State Logging
+  useEffect(() => {
+    console.log('📈 PreviewSection State:', {
+      framework,
+      selectedFile,
+      availableFiles: Object.keys(fileContents),
+      selectedFileExists: !!fileContents[selectedFile],
+      selectedFileSize: fileContents[selectedFile]?.length || 0,
+      totalFiles: Object.keys(fileContents).length
+    });
+  }, [fileContents, selectedFile, framework]);
   
   const handleDownloadZip = async () => {
     try {
@@ -372,11 +413,20 @@ npm run build
       return (
         <div className="h-full">
           <Card className="p-4 h-full border-0 rounded-none">
-            <DevicePreview 
-              generatedCode={fileContents['index.html'] || htmlCode}
-              projectFiles={framework === 'react' ? fileContents : undefined}
-              framework={framework}
-            />
+            {Object.keys(fileContents).length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading project files...</p>
+                </div>
+              </div>
+            ) : (
+              <DevicePreview 
+                generatedCode={fileContents['index.html'] || htmlCode}
+                projectFiles={framework === 'react' ? fileContents : undefined}
+                framework={framework}
+              />
+            )}
           </Card>
         </div>
       );
@@ -507,11 +557,20 @@ npm run build
       <Card className="p-4 h-full min-h-0 flex flex-col">
         <h2 className="text-lg font-semibold mb-4">Live Preview</h2>
         <div className="flex-1 min-h-0">
-          <DevicePreview 
-            generatedCode={fileContents['index.html'] || htmlCode}
-            projectFiles={framework === 'react' ? fileContents : undefined}
-            framework={framework}
-          />
+          {Object.keys(fileContents).length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
+                <p className="text-sm text-muted-foreground">Loading project files...</p>
+              </div>
+            </div>
+          ) : (
+            <DevicePreview 
+              generatedCode={fileContents['index.html'] || htmlCode}
+              projectFiles={framework === 'react' ? fileContents : undefined}
+              framework={framework}
+            />
+          )}
         </div>
       </Card>
     </div>
