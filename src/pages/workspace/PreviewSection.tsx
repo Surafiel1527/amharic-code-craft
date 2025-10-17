@@ -45,9 +45,8 @@ export function PreviewSection({
   const fileContents = useMemo(() => {
     const files: Record<string, string> = {};
     
-    // 🆕 Use real project files from database if available
+    // Use real project files from database if available
     if (projectFiles && projectFiles.length > 0) {
-      console.log('📁 Using real project files from database:', projectFiles.length);
       projectFiles.forEach(file => {
         if (file && file.file_path && file.file_content !== undefined) {
           files[file.file_path] = file.file_content || '';
@@ -61,7 +60,6 @@ export function PreviewSection({
     
     // Fallback: Generate dummy files from htmlCode for legacy single-file projects
     if (framework === 'react') {
-      console.log('⚠️ No valid project files, using fallback structure');
       
       // Use html_code as App.tsx if it exists and looks like React code
       const appContent = htmlCode && htmlCode.trim().length > 0 

@@ -424,8 +424,6 @@ export default function Workspace() {
     if (!projectId) return;
     
     const loadProjectFiles = async () => {
-      console.log('🔍 Loading project files for projectId:', projectId);
-      
       const { data, error } = await supabase
         .from('project_files')
         .select('*')
@@ -433,24 +431,20 @@ export default function Workspace() {
         .order('file_path');
 
       if (error) {
-        console.error('❌ Error loading project files:', error);
-        setProjectFiles([]); // Set empty array on error
+        console.error('Error loading project files:', error);
+        setProjectFiles([]);
       } else if (data) {
-        console.log(`✅ Loaded ${data.length} project files:`, data.map(f => f.file_path));
         setProjectFiles(data);
-        
-        // Show toast if files were found
         if (data.length > 0) {
           toast.success(`Loaded ${data.length} project files`);
         }
       } else {
-        console.log('⚠️ No project files found in database');
         setProjectFiles([]);
       }
     };
 
     loadProjectFiles();
-  }, [projectId, project?.html_code]); // Reload when project code changes (e.g., after restore)
+  }, [projectId, project?.html_code]);
 
   const handleCreateFile = async (path: string, type: 'file' | 'folder') => {
     if (!projectId || !user) return;
@@ -661,16 +655,11 @@ export default function Workspace() {
   const [isGenerating, setIsGenerating] = useState(true); // Start as true, then validate
   
   useEffect(() => {
-    if (!project) {
-      console.log('⏳ No project yet, keeping isGenerating true');
-      return;
-    }
+    if (!project) return;
     
     if (!conversationId) {
-      console.log('⏳ No conversationId yet, checking for files...');
       // If we have projectFiles, we can show workspace even without conversation
       if (projectFiles && projectFiles.length > 0) {
-        console.log('✅ Have files, no conversation needed - ready to show workspace');
         setIsGenerating(false);
       }
       return;
@@ -679,15 +668,8 @@ export default function Workspace() {
     // Check if there's actually an active job AND if conversation doesn't have messages yet
     const checkJobStatus = async () => {
       try {
-        console.log('🔍 Checking generation status...', { 
-          projectId: project.id, 
-          conversationId,
-          filesCount: projectFiles?.length 
-        });
-        
         // PRIORITY 1: If we have project files, show workspace immediately
         if (projectFiles && projectFiles.length > 0) {
-          console.log('✅ Have files - workspace ready!');
           setIsGenerating(false);
           return;
         }
@@ -699,13 +681,12 @@ export default function Workspace() {
           .eq('conversation_id', conversationId);
         
         if (msgError) {
-          console.warn('Error checking messages:', msgError);
+          console.error('Error checking messages:', msgError);
           setIsGenerating(false);
           return;
         }
         
         if (count && count > 0) {
-          console.log('✅ Has messages - workspace ready!');
           setIsGenerating(false);
           return;
         }
@@ -719,7 +700,7 @@ export default function Workspace() {
           .limit(1);
         
         if (jobError) {
-          console.warn('Error checking jobs:', jobError);
+          console.error('Error checking jobs:', jobError);
           setIsGenerating(false);
           return;
         }
@@ -727,13 +708,6 @@ export default function Workspace() {
         const latestJob = jobs?.[0];
         const activeStatuses = ['queued', 'generating'];
         const isActuallyGenerating = latestJob && activeStatuses.includes(latestJob.status);
-        
-        console.log('📊 Final status:', { 
-          hasMessages: count > 0, 
-          hasFiles: projectFiles?.length || 0, 
-          jobStatus: latestJob?.status,
-          willShowWorkspace: !isActuallyGenerating
-        });
         
         setIsGenerating(isActuallyGenerating || false);
       } catch (error) {
