@@ -161,10 +161,8 @@ export class UniversalMegaMind {
       return {
         success: true,
         message: executionOutput.message,
-        output: {
-          files: executionOutput.files
-        },
-        filesGenerated: executionOutput.files,
+        output: executionOutput,
+        filesGenerated: executionOutput.files || [],
         duration,
         analysis: {
           understanding: {
