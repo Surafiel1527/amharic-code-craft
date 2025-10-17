@@ -658,10 +658,9 @@ export default function Workspace() {
     if (!project) return;
     
     if (!conversationId) {
-      // If we have projectFiles, we can show workspace even without conversation
-      if (projectFiles && projectFiles.length > 0) {
-        setIsGenerating(false);
-      }
+      // Always allow workspace access when there's no conversation
+      // The workspace can handle empty states and users can start chatting
+      setIsGenerating(false);
       return;
     }
     
