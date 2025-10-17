@@ -434,9 +434,14 @@ export default function Workspace() {
 
       if (error) {
         console.error('❌ Error loading project files:', error);
+        setProjectFiles([]); // Set empty array on error
       } else if (data) {
         console.log(`✅ Loaded ${data.length} project files:`, data.map(f => f.file_path));
         setProjectFiles(data);
+        
+        // IMPORTANT: After setting files, explicitly mark as not generating
+        console.log('📦 Files loaded, setting isGenerating to false');
+        setIsGenerating(false);
         
         // Show toast if files were found
         if (data.length > 0) {
@@ -444,6 +449,7 @@ export default function Workspace() {
         }
       } else {
         console.log('⚠️ No project files found in database');
+        setProjectFiles([]);
       }
     };
 
@@ -656,18 +662,41 @@ export default function Workspace() {
   // handleSendMessage removed - now handled by UniversalChatInterface
 
   // Check if project is still generating (not just by title, but by actual job status)
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(true); // Start as true, then validate
   
   useEffect(() => {
-    if (!project || !conversationId) {
-      setIsGenerating(false);
+    if (!project) {
+      console.log('⏳ No project yet, keeping isGenerating true');
+      return;
+    }
+    
+    if (!conversationId) {
+      console.log('⏳ No conversationId yet, checking for files...');
+      // If we have projectFiles, we can show workspace even without conversation
+      if (projectFiles && projectFiles.length > 0) {
+        console.log('✅ Have files, no conversation needed - ready to show workspace');
+        setIsGenerating(false);
+      }
       return;
     }
     
     // Check if there's actually an active job AND if conversation doesn't have messages yet
     const checkJobStatus = async () => {
       try {
-        // First check if conversation has messages - if yes, don't show banner
+        console.log('🔍 Checking generation status...', { 
+          projectId: project.id, 
+          conversationId,
+          filesCount: projectFiles?.length 
+        });
+        
+        // PRIORITY 1: If we have project files, show workspace immediately
+        if (projectFiles && projectFiles.length > 0) {
+          console.log('✅ Have files - workspace ready!');
+          setIsGenerating(false);
+          return;
+        }
+        
+        // PRIORITY 2: Check if conversation has messages
         const { data: messages, count, error: msgError } = await supabase
           .from('messages')
           .select('*', { count: 'exact', head: true })
@@ -675,19 +704,17 @@ export default function Workspace() {
         
         if (msgError) {
           console.warn('Error checking messages:', msgError);
-          // Don't block workspace if we can't check messages
           setIsGenerating(false);
           return;
         }
         
-        // If conversation has messages OR has project files, never show generating banner
-        if ((count && count > 0) || (projectFiles && projectFiles.length > 0)) {
-          console.log('✅ Workspace ready - has messages or files');
+        if (count && count > 0) {
+          console.log('✅ Has messages - workspace ready!');
           setIsGenerating(false);
           return;
         }
         
-        // Only show if no messages AND no files AND active job exists
+        // PRIORITY 3: Only check job status if no files and no messages
         const { data: jobs, error: jobError } = await supabase
           .from('ai_generation_jobs')
           .select('status')
@@ -705,7 +732,13 @@ export default function Workspace() {
         const activeStatuses = ['queued', 'generating'];
         const isActuallyGenerating = latestJob && activeStatuses.includes(latestJob.status);
         
-        console.log('Generation check:', { hasMessages: count > 0, hasFiles: projectFiles?.length, latestJobStatus: latestJob?.status, isActuallyGenerating });
+        console.log('📊 Final status:', { 
+          hasMessages: count > 0, 
+          hasFiles: projectFiles?.length || 0, 
+          jobStatus: latestJob?.status,
+          willShowWorkspace: !isActuallyGenerating
+        });
+        
         setIsGenerating(isActuallyGenerating || false);
       } catch (error) {
         console.error('Error in job status check:', error);
