@@ -32,7 +32,72 @@ export interface SurgicalResponse {
 export class ResponseParser {
   
   /**
-   * Parse AI response (supports both full file and surgical editing formats)
+   * Sanitize JSON response to prevent parsing errors from unescaped strings
+   */
+  private sanitizeJSONResponse(response: string): string {
+    // Extract and tokenize code blocks to prevent quote conflicts
+    const codeBlocks: string[] = [];
+    let sanitized = response.replace(/```[\s\S]*?```/g, (match) => {
+      const token = `__CODE_BLOCK_${codeBlocks.length}__`;
+      codeBlocks.push(match);
+      return token;
+    });
+    
+    // Try to parse and re-stringify to normalize
+    try {
+      const parsed = JSON.parse(sanitized);
+      sanitized = JSON.stringify(parsed);
+    } catch (e) {
+      // If it fails, attempt to fix common issues
+      sanitized = sanitized
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t');
+    }
+    
+    // Restore code blocks with proper escaping
+    codeBlocks.forEach((block, i) => {
+      const token = `__CODE_BLOCK_${i}__`;
+      const escaped = block
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t');
+      sanitized = sanitized.replace(token, escaped);
+    });
+    
+    return sanitized;
+  }
+
+  /**
+   * Validate JSON structure before parsing
+   */
+  private validateJSONStructure(obj: any): boolean {
+    // Schema validation for expected response structure
+    if (!obj || typeof obj !== 'object') return false;
+    
+    // Check for required fields
+    const hasThought = 'thought' in obj && typeof obj.thought === 'string';
+    const hasMessage = 'messageToUser' in obj && typeof obj.messageToUser === 'string';
+    
+    if (!hasThought || !hasMessage) return false;
+    
+    // Validate tool calls if present
+    if ('tool' in obj) {
+      if (obj.tool !== 'code_generator') {
+        throw new Error('Invalid tool specified. Must use code_generator for file generation.');
+      }
+      if (!obj.arguments || typeof obj.arguments !== 'object') {
+        throw new Error('Tool arguments must be an object');
+      }
+    }
+    
+    return true;
+  }
+
+  /**
+   * Parse AI response with progressive recovery
    */
   parse(aiResponse: string, mode: 'full' | 'surgical' = 'full'): ParsedAIResponse | SurgicalResponse {
     if (mode === 'surgical') {
@@ -42,7 +107,7 @@ export class ResponseParser {
   }
 
   /**
-   * Parse full file response (legacy mode)
+   * Parse full file response with enhanced error recovery
    */
   private parseFullFileResponse(aiResponse: string): ParsedAIResponse {
     // Extract JSON from response (handle markdown code blocks)
@@ -50,20 +115,47 @@ export class ResponseParser {
                      aiResponse.match(/```\n([\s\S]*?)\n```/) ||
                      [null, aiResponse];
     
-    const jsonContent = jsonMatch[1] || aiResponse;
+    let jsonContent = jsonMatch[1] || aiResponse;
     
     let parsed: any;
     try {
+      // First attempt: direct parse
       parsed = JSON.parse(jsonContent.trim());
-    } catch (error) {
-      throw new Error(`Failed to parse AI response as JSON: ${error.message}`);
+    } catch (primaryError) {
+      try {
+        // Second attempt: sanitize then parse
+        const sanitized = this.sanitizeJSONResponse(jsonContent);
+        parsed = JSON.parse(sanitized);
+        console.log('✅ JSON recovered via sanitization');
+      } catch (sanitizationError) {
+        // Third attempt: incremental parse (extract what we can)
+        const partial = this.extractPartialResponse(jsonContent);
+        if (partial) {
+          console.warn('⚠️ Using partial recovery. Some data may be missing.');
+          parsed = partial;
+        } else {
+          throw new Error(
+            `Failed to parse AI response after multiple attempts.\n` +
+            `Primary error: ${primaryError.message}\n` +
+            `Sanitization error: ${sanitizationError.message}\n` +
+            `Response length: ${jsonContent.length} chars`
+          );
+        }
+      }
+    }
+
+    // Validate JSON structure
+    if (!this.validateJSONStructure(parsed)) {
+      throw new Error('Response structure validation failed');
     }
 
     // Validate required fields
     this.validateResponse(parsed);
 
     // Check for placeholders in code
-    this.checkForPlaceholders(parsed.files);
+    if (parsed.files) {
+      this.checkForPlaceholders(parsed.files);
+    }
 
     return {
       thought: parsed.thought,
@@ -72,6 +164,43 @@ export class ResponseParser {
       messageToUser: parsed.messageToUser,
       requiresConfirmation: parsed.requiresConfirmation || false
     };
+  }
+
+  /**
+   * Extract partial response from malformed JSON
+   */
+  private extractPartialResponse(jsonStr: string): any | null {
+    try {
+      // Try to find complete thought and messageToUser fields
+      const thoughtMatch = jsonStr.match(/"thought"\s*:\s*"([^"\\]*(\\.[^"\\]*)*)"/);
+      const messageMatch = jsonStr.match(/"messageToUser"\s*:\s*"([^"\\]*(\\.[^"\\]*)*)"/);
+      
+      if (!thoughtMatch || !messageMatch) return null;
+      
+      // Extract files using regex (risky but better than nothing)
+      const filesMatch = jsonStr.match(/"files"\s*:\s*\{([\s\S]*?)\}/);
+      let files = {};
+      
+      if (filesMatch) {
+        // Try to extract individual file entries
+        const filePattern = /"([^"]+)"\s*:\s*"([^"\\]*(\\.[^"\\]*)*)"/g;
+        let match;
+        while ((match = filePattern.exec(filesMatch[1])) !== null) {
+          files[match[1]] = match[2].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+        }
+      }
+      
+      return {
+        thought: thoughtMatch[1],
+        messageToUser: messageMatch[1],
+        files,
+        plan: [],
+        requiresConfirmation: false
+      };
+    } catch (e) {
+      console.error('Partial extraction failed:', e);
+      return null;
+    }
   }
 
   /**
