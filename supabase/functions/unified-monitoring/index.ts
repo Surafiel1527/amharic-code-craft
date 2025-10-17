@@ -132,7 +132,7 @@ async function handleGetMetrics(params: any, supabase: any) {
 }
 
 async function handleTrackError(params: any, supabase: any) {
-  const { errorMessage, errorType, severity, context, userId } = params;
+  const { errorMessage, errorType, severity, userId } = params;
 
   const { data: error, error: insertError } = await supabase
     .from('detected_errors')
@@ -141,7 +141,6 @@ async function handleTrackError(params: any, supabase: any) {
       error_type: errorType || 'unknown',
       error_message: errorMessage,
       severity: severity || 'medium',
-      context: context || {},
       status: 'new'
     })
     .select()
