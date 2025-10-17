@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -18,16 +19,54 @@ import {
   CheckCircle2, 
   AlertTriangle,
   Play,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft,
+  Shield
 } from 'lucide-react';
 import { runAllAgentTests } from '@/test-error-detection';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 
 export default function AgentTestPage() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const { isAdmin, loading } = useUserRole(user?.id || '');
   const [testRunning, setTestRunning] = useState(false);
   const [testResults, setTestResults] = useState<any>(null);
-  const { toast } = useToast();
-  const navigate = useNavigate();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-7xl mx-auto">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/admin")}
+            className="mb-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Admin
+          </Button>
+          
+          <Alert>
+            <Shield className="h-4 w-4" />
+            <AlertDescription>
+              You need administrator privileges to access agent testing.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
 
   const runErrorDetectionTest = async () => {
     setTestRunning(true);
