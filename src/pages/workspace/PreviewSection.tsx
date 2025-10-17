@@ -49,18 +49,33 @@ export function PreviewSection({
     if (projectFiles && projectFiles.length > 0) {
       console.log('📁 Using real project files from database:', projectFiles.length);
       projectFiles.forEach(file => {
-        files[file.file_path] = file.file_content;
+        if (file && file.file_path && file.file_content !== undefined) {
+          files[file.file_path] = file.file_content || '';
+        }
       });
-      return files;
+      // Only return if we got valid files
+      if (Object.keys(files).length > 0) {
+        return files;
+      }
     }
     
     // Fallback: Generate dummy files from htmlCode for legacy single-file projects
-    // Only log warning if this is a React project (HTML projects don't use project_files)
     if (framework === 'react') {
-      console.log('⚠️ No project files found, generating dummy files from htmlCode');
-    }
-    if (framework === 'react') {
-      files['src/App.tsx'] = htmlCode;
+      console.log('⚠️ No valid project files, using fallback structure');
+      
+      // Use html_code as App.tsx if it exists and looks like React code
+      const appContent = htmlCode && htmlCode.trim().length > 0 
+        ? htmlCode 
+        : `export default function App() {
+  return (
+    <div className="p-8">
+      <h1>Welcome</h1>
+      <p>This project is loading...</p>
+    </div>
+  );
+}`;
+      
+      files['src/App.tsx'] = appContent;
       files['src/main.tsx'] = `import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -323,13 +338,14 @@ npm run build
           {conversationId ? (
             <div className="flex-1 min-h-0">
               <UniversalChatInterface
+                key={`chat-${conversationId}-${projectId}`}
                 conversationId={conversationId}
                 projectId={projectId}
                 mode="panel"
                 operationMode="enhance"
                 persistMessages={true}
                 selectedFiles={selectedFiles}
-                projectFiles={Object.entries(fileContents).map(([path, content]) => ({
+                projectFiles={projectFiles && projectFiles.length > 0 ? projectFiles : Object.entries(fileContents).map(([path, content]) => ({
                   file_path: path,
                   file_content: typeof content === 'string' ? content : ''
                 }))}
@@ -456,6 +472,7 @@ npm run build
         {conversationId ? (
           <div className="flex-1 min-h-0">
             <UniversalChatInterface
+              key={`chat-${conversationId}-${projectId}`}
               conversationId={conversationId}
               projectId={projectId}
               mode="inline"
@@ -463,7 +480,7 @@ npm run build
               height="h-full"
               persistMessages={true}
               selectedFiles={selectedFiles}
-              projectFiles={Object.entries(fileContents).map(([path, content]) => ({
+              projectFiles={projectFiles && projectFiles.length > 0 ? projectFiles : Object.entries(fileContents).map(([path, content]) => ({
                 file_path: path,
                 file_content: typeof content === 'string' ? content : ''
               }))}
