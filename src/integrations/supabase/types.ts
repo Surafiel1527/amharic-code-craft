@@ -3826,6 +3826,7 @@ export type Database = {
       detected_errors: {
         Row: {
           auto_fix_enabled: boolean | null
+          context: Json | null
           created_at: string
           error_context: Json | null
           error_message: string
@@ -3835,14 +3836,17 @@ export type Database = {
           function_name: string | null
           id: string
           line_number: number | null
+          project_id: string | null
           resolved_at: string | null
           severity: string
           source: string
           stack_trace: string | null
           status: string
+          user_id: string | null
         }
         Insert: {
           auto_fix_enabled?: boolean | null
+          context?: Json | null
           created_at?: string
           error_context?: Json | null
           error_message: string
@@ -3852,14 +3856,17 @@ export type Database = {
           function_name?: string | null
           id?: string
           line_number?: number | null
+          project_id?: string | null
           resolved_at?: string | null
           severity?: string
           source: string
           stack_trace?: string | null
           status?: string
+          user_id?: string | null
         }
         Update: {
           auto_fix_enabled?: boolean | null
+          context?: Json | null
           created_at?: string
           error_context?: Json | null
           error_message?: string
@@ -3869,13 +3876,23 @@ export type Database = {
           function_name?: string | null
           id?: string
           line_number?: number | null
+          project_id?: string | null
           resolved_at?: string | null
           severity?: string
           source?: string
           stack_trace?: string | null
           status?: string
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "detected_errors_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ensemble_decisions: {
         Row: {

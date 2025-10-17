@@ -467,59 +467,57 @@ serve(async (req) => {
     console.log('💾 Persisting conversation to database...');
     
     try {
-      // 1. Save user message with resilient insert
-      const userMsgResult = await resilientDb.insert('messages', {
-        conversation_id: conversationId,
-        role: 'user',
-        content: userRequest,
-        user_id: userId,
-        metadata: {
-          projectId,
-          timestamp: new Date().toISOString()
-        }
-      });
+      // 1. Save user message (direct insert - bypassing buggy self-healing)
+      const { error: userMsgError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          role: 'user',
+          content: userRequest,
+          user_id: userId,
+          metadata: {
+            projectId,
+            timestamp: new Date().toISOString()
+          }
+        });
       
-      if (userMsgResult.error) {
-        console.error('❌ Failed to save user message:', userMsgResult.error);
-        if (userMsgResult.healed) {
-          console.log(`✨ User message insert was healed after ${userMsgResult.attempts} attempts`);
-        }
+      if (userMsgError) {
+        console.error('❌ Failed to save user message:', userMsgError);
       } else {
         console.log('✅ User message saved to database');
       }
 
-      // 2. Save AI response (MUST be AI-generated, no templates) with resilient insert
+      // 2. Save AI response (direct insert - bypassing buggy self-healing)
       if (!result.message) {
         console.error('❌ No AI message generated! This should never happen.');
       }
       
-      const aiMsgResult = await resilientDb.insert('messages', {
-        conversation_id: conversationId,
-        role: 'assistant',
-        content: result.message,
-        user_id: userId,
-        metadata: {
-          success: result.success,
-          filesGenerated: result.filesGenerated?.length || 0,
-          duration: result.duration,
-          intent: analysis.understanding.userGoal,
-          complexity: analysis.actionPlan.codeActions?.estimatedComplexity || 
-                     (analysis.actionPlan.requiresExplanation ? 'explanation' : 'clarification'),
-          confidence: analysis.meta.confidence,
-          error: result.error ? {
-            message: typeof result.error === 'string' ? result.error : result.error.message,
-            type: 'generation_error'
-          } : undefined,
-          timestamp: new Date().toISOString(),
-          output: result.output ? JSON.stringify(result.output) : null
-        }
-      });
+      const { error: aiMsgError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          role: 'assistant',
+          content: result.message,
+          user_id: userId,
+          metadata: {
+            success: result.success,
+            filesGenerated: result.filesGenerated?.length || 0,
+            duration: result.duration,
+            intent: analysis.understanding.userGoal,
+            complexity: analysis.actionPlan.codeActions?.estimatedComplexity || 
+                       (analysis.actionPlan.requiresExplanation ? 'explanation' : 'clarification'),
+            confidence: analysis.meta.confidence,
+            error: result.error ? {
+              message: typeof result.error === 'string' ? result.error : result.error.message,
+              type: 'generation_error'
+            } : undefined,
+            timestamp: new Date().toISOString(),
+            output: result.output ? JSON.stringify(result.output) : null
+          }
+        });
       
-      if (aiMsgResult.error) {
-        console.error('❌ Failed to save AI message:', aiMsgResult.error);
-        if (aiMsgResult.healed) {
-          console.log(`✨ AI message insert was healed after ${aiMsgResult.attempts} attempts`);
-        }
+      if (aiMsgError) {
+        console.error('❌ Failed to save AI message:', aiMsgError);
       } else {
         console.log('✅ AI response saved to database');
       }
