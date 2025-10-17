@@ -8,6 +8,7 @@ import { EditModeProvider } from "@/contexts/EditModeContext";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { initErrorTracking } from "@/lib/errorTracking";
+import { ErrorCaptureProvider } from "@/components/ErrorCaptureProvider";
 import App from "./App.tsx";
 import "./index.css";
 
@@ -27,18 +28,20 @@ const queryClient = new QueryClient({
 // Main application entry point
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <LanguageProvider>
-            <EditModeProvider>
-              <App />
-              <Toaster />
-              <Sonner />
-            </EditModeProvider>
-          </LanguageProvider>
-        </ThemeProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ErrorCaptureProvider>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <LanguageProvider>
+              <EditModeProvider>
+                <App />
+                <Toaster />
+                <Sonner />
+              </EditModeProvider>
+            </LanguageProvider>
+          </ThemeProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorCaptureProvider>
   </StrictMode>
 );
