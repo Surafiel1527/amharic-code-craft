@@ -424,14 +424,26 @@ export default function Workspace() {
     if (!projectId) return;
     
     const loadProjectFiles = async () => {
+      console.log('🔍 Loading project files for projectId:', projectId);
+      
       const { data, error } = await supabase
         .from('project_files')
         .select('*')
         .eq('project_id', projectId)
         .order('file_path');
 
-      if (!error && data) {
+      if (error) {
+        console.error('❌ Error loading project files:', error);
+      } else if (data) {
+        console.log(`✅ Loaded ${data.length} project files:`, data.map(f => f.file_path));
         setProjectFiles(data);
+        
+        // Show toast if files were found
+        if (data.length > 0) {
+          toast.success(`Loaded ${data.length} project files`);
+        }
+      } else {
+        console.log('⚠️ No project files found in database');
       }
     };
 
