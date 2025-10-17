@@ -218,7 +218,7 @@ export class DeepUnderstandingAnalyzer {
                               type: 'string',
                               description: 'Why this action is needed'
                             },
-                       toolsNeeded: { 
+                          toolsNeeded: { 
                           type: 'array',
                           items: { 
                             type: 'string',
@@ -229,13 +229,20 @@ export class DeepUnderstandingAnalyzer {
                               'database_introspector',  // Check storage state
                               'storage_verifier',       // Verify files exist
                               'issue_detector',         // Detect problems
-                              'failure_analyzer',       // ✅ NEW: Query past failures
-                              'error_explainer',        // ✅ NEW: Explain what went wrong
-                              'json_validator',         // ✅ NEW: Check JSON errors
-                              'recovery_engine'         // Auto-fix and regenerate
+                              'failure_analyzer',       // Query past failures
+                              'error_explainer',        // Explain what went wrong
+                              'json_validator',         // Check JSON errors
+                              'recovery_engine',        // Auto-fix and regenerate
+                              'universal_error_detector', // ✅ NEW: Detect ALL error types
+                              'runtime_error_analyzer',   // ✅ NEW: Analyze runtime errors
+                              'auth_error_detector',      // ✅ NEW: Detect auth/RLS issues
+                              'build_error_analyzer',     // ✅ NEW: Analyze build/TS errors
+                              'edge_function_monitor',    // ✅ NEW: Monitor edge functions
+                              'performance_analyzer',     // ✅ NEW: Detect performance issues
+                              'dependency_checker'        // ✅ NEW: Check dependency conflicts
                             ]
                           },
-                          description: 'Tools/capabilities needed for this step. CRITICAL: Use failure_analyzer when user asks about missing code. Use json_validator for JSON errors. Use recovery_engine to auto-fix issues.'
+                          description: 'Tools/capabilities needed for this step. CRITICAL: Use universal_error_detector for comprehensive error analysis. Use specific analyzers for targeted diagnostics.'
                         }
                           },
                           required: ['step', 'action', 'reason', 'toolsNeeded']
@@ -456,6 +463,29 @@ YOU MUST UNDERSTAND WHERE FILES ARE STORED:
   - error_explainer: Explain what went wrong with examples
   - json_validator: Check for JSON parsing errors
   - recovery_engine: Auto-fix issues and regenerate files
+  - universal_error_detector: ✅ NEW - Detect ALL error types comprehensively
+  - runtime_error_analyzer: ✅ NEW - Analyze browser/runtime errors
+  - auth_error_detector: ✅ NEW - Detect authentication/RLS issues
+  - build_error_analyzer: ✅ NEW - Analyze TypeScript/build errors
+  - edge_function_monitor: ✅ NEW - Monitor edge function failures
+  - performance_analyzer: ✅ NEW - Detect performance/memory issues
+  - dependency_checker: ✅ NEW - Check for dependency conflicts
+
+🌍 UNIVERSAL ERROR AWARENESS:
+  The agent can now detect and handle ALL types of errors:
+  1. Runtime Errors: Unhandled promises, React errors, component crashes
+  2. Auth/RLS Errors: Permission denied, RLS policy failures, token issues
+  3. Build/Compilation Errors: TypeScript errors, syntax errors, module resolution
+  4. Edge Function Failures: Timeouts, crashes, invalid responses
+  5. Performance Issues: Memory leaks, slow queries, infinite loops
+  6. Dependency Conflicts: Circular dependencies, version conflicts, missing packages
+  7. Network/API Failures: CORS errors, API failures, fetch errors
+
+  WHEN TO USE universal_error_detector:
+  - User says "something is broken" → Run comprehensive scan
+  - User reports "errors" without specifics → Detect all error types
+  - After code generation → Proactive error check
+  - User says "app not working" → Complete diagnostic
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;

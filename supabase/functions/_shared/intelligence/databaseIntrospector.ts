@@ -13,6 +13,7 @@
  */
 
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { UniversalErrorDetector } from './universalErrorDetector.ts';
 
 export interface FileVerificationResult {
   exists: boolean;
@@ -33,10 +34,15 @@ export interface ProjectStorageState {
 }
 
 export class DatabaseIntrospector {
+  private errorDetector: UniversalErrorDetector;
+  
   constructor(
     private supabase: SupabaseClient,
-    private projectId: string
-  ) {}
+    private projectId: string,
+    private userId?: string
+  ) {
+    this.errorDetector = new UniversalErrorDetector(supabase, projectId, userId);
+  }
 
   /**
    * TOOL 1: Verify files exist in database
@@ -628,5 +634,57 @@ SELF-HEALING:
       suggestions,
       estimatedRecoveryTime
     };
+  }
+
+  /**
+   * TOOL 9: Run Universal Error Detection
+   * Detects ALL types of errors: runtime, auth, build, edge functions, performance, dependencies, network
+   */
+  async runUniversalErrorDetection(): Promise<any> {
+    console.log('🚀 [DatabaseIntrospector] Running universal error detection...');
+    return await this.errorDetector.runUniversalDetection();
+  }
+
+  /**
+   * TOOL 10: Get Comprehensive Error Context
+   * Returns detailed analysis of all error categories for agent decision-making
+   */
+  async getComprehensiveErrorContext(): Promise<string> {
+    const detection = await this.errorDetector.runUniversalDetection();
+    
+    const lines = [
+      '🔍 COMPREHENSIVE ERROR ANALYSIS:',
+      '',
+      `📊 Total Errors: ${detection.summary.totalErrors}`,
+      `🚨 Critical Issues: ${detection.summary.criticalCount}`,
+      '',
+      '📈 By Category:',
+      `  - Runtime Errors: ${detection.summary.categoryCounts.runtime}`,
+      `  - Auth/RLS Errors: ${detection.summary.categoryCounts.auth}`,
+      `  - Build Errors: ${detection.summary.categoryCounts.build}`,
+      `  - Edge Functions: ${detection.summary.categoryCounts.edgeFunctions}`,
+      `  - Performance Issues: ${detection.summary.categoryCounts.performance}`,
+      `  - Dependencies: ${detection.summary.categoryCounts.dependencies}`,
+      `  - Network/API: ${detection.summary.categoryCounts.network}`,
+      ''
+    ];
+
+    if (detection.allRecommendations.length > 0) {
+      lines.push('💡 RECOMMENDED ACTIONS:');
+      detection.allRecommendations.forEach((rec, idx) => {
+        lines.push(`  ${idx + 1}. ${rec}`);
+      });
+      lines.push('');
+    }
+
+    if (detection.criticalErrors.length > 0) {
+      lines.push('🚨 CRITICAL ISSUES REQUIRING IMMEDIATE ATTENTION:');
+      detection.criticalErrors.slice(0, 5).forEach((err, idx) => {
+        lines.push(`  ${idx + 1}. [${err.error_type}] ${err.error_message.substring(0, 100)}`);
+      });
+      lines.push('');
+    }
+
+    return lines.join('\n');
   }
 }

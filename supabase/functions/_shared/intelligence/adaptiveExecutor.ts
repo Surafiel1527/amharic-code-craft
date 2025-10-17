@@ -261,6 +261,35 @@ export class AutonomousExecutor {
       if (step.toolsNeeded.includes('recovery_engine')) {
         await this.runRecovery(context, filesGenerated, step);
       }
+      
+      // ✅ NEW: Universal error detection tools
+      if (step.toolsNeeded.includes('universal_error_detector')) {
+        await this.runUniversalErrorDetector(context, step);
+      }
+      
+      if (step.toolsNeeded.includes('runtime_error_analyzer')) {
+        await this.runRuntimeErrorAnalyzer(context, step);
+      }
+      
+      if (step.toolsNeeded.includes('auth_error_detector')) {
+        await this.runAuthErrorDetector(context, step);
+      }
+      
+      if (step.toolsNeeded.includes('build_error_analyzer')) {
+        await this.runBuildErrorAnalyzer(context, step);
+      }
+      
+      if (step.toolsNeeded.includes('edge_function_monitor')) {
+        await this.runEdgeFunctionMonitor(context, step);
+      }
+      
+      if (step.toolsNeeded.includes('performance_analyzer')) {
+        await this.runPerformanceAnalyzer(context, step);
+      }
+      
+      if (step.toolsNeeded.includes('dependency_checker')) {
+        await this.runDependencyChecker(context, step);
+      }
     }
     
     // Log what we're returning
@@ -1210,6 +1239,254 @@ CRITICAL: Output must be valid JSON with this structure:
         confidence: understanding.meta.confidence
       }
     });
+  }
+
+  /**
+   * ✅ NEW: Universal Error Detector
+   * Runs comprehensive error detection across ALL categories
+   */
+  private async runUniversalErrorDetector(
+    context: ExecutionContext,
+    step: DeepUnderstanding['actionPlan']['executionSteps'][0]
+  ): Promise<void> {
+    console.log('🌍 [UniversalErrorDetector] Running comprehensive error detection...');
+    
+    try {
+      const { DatabaseIntrospector } = await import('./databaseIntrospector.ts');
+      const introspector = new DatabaseIntrospector(
+        this.supabase,
+        context.projectId || '',
+        context.userId
+      );
+      
+      const detection = await introspector.runUniversalErrorDetection();
+      const errorContext = await introspector.getComprehensiveErrorContext();
+      
+      // Broadcast results to user
+      if (this.broadcastCallback) {
+        await this.broadcastCallback({
+          status: 'analyzing',
+          message: `🔍 Universal Error Detection Complete`,
+          metadata: {
+            totalErrors: detection.summary.totalErrors,
+            criticalCount: detection.summary.criticalCount,
+            categoryCounts: detection.summary.categoryCounts,
+            analysisDetails: errorContext
+          }
+        });
+      }
+      
+      console.log('✅ [UniversalErrorDetector] Detection complete:', {
+        totalErrors: detection.summary.totalErrors,
+        criticalCount: detection.summary.criticalCount
+      });
+      
+      // Store in context for AI to use
+      if (!context.awashContext) context.awashContext = {};
+      context.awashContext.universalErrorDetection = detection;
+      context.awashContext.errorAnalysis = errorContext;
+      
+    } catch (e) {
+      console.error('❌ [UniversalErrorDetector] Failed:', e);
+      if (this.broadcastCallback) {
+        await this.broadcastCallback({
+          status: 'error',
+          message: `Failed to run universal error detection: ${e.message}`
+        });
+      }
+    }
+  }
+  
+  /**
+   * ✅ NEW: Runtime Error Analyzer
+   */
+  private async runRuntimeErrorAnalyzer(
+    context: ExecutionContext,
+    step: DeepUnderstanding['actionPlan']['executionSteps'][0]
+  ): Promise<void> {
+    console.log('🔍 [RuntimeErrorAnalyzer] Analyzing runtime errors...');
+    
+    try {
+      const { UniversalErrorDetector } = await import('./universalErrorDetector.ts');
+      const detector = new UniversalErrorDetector(
+        this.supabase,
+        context.projectId,
+        context.userId
+      );
+      
+      const result = await detector.detectRuntimeErrors();
+      
+      if (this.broadcastCallback) {
+        await this.broadcastCallback({
+          status: 'analyzing',
+          message: `🐛 Found ${result.errorCount} runtime errors`,
+          metadata: { runtimeErrors: result }
+        });
+      }
+      
+    } catch (e) {
+      console.error('❌ [RuntimeErrorAnalyzer] Failed:', e);
+    }
+  }
+  
+  /**
+   * ✅ NEW: Auth Error Detector
+   */
+  private async runAuthErrorDetector(
+    context: ExecutionContext,
+    step: DeepUnderstanding['actionPlan']['executionSteps'][0]
+  ): Promise<void> {
+    console.log('🔒 [AuthErrorDetector] Detecting auth/RLS errors...');
+    
+    try {
+      const { UniversalErrorDetector } = await import('./universalErrorDetector.ts');
+      const detector = new UniversalErrorDetector(
+        this.supabase,
+        context.projectId,
+        context.userId
+      );
+      
+      const result = await detector.detectAuthErrors();
+      
+      if (this.broadcastCallback && result.errorCount > 0) {
+        await this.broadcastCallback({
+          status: 'analyzing',
+          message: `🔑 Found ${result.errorCount} auth/RLS errors`,
+          metadata: { authErrors: result }
+        });
+      }
+      
+    } catch (e) {
+      console.error('❌ [AuthErrorDetector] Failed:', e);
+    }
+  }
+  
+  /**
+   * ✅ NEW: Build Error Analyzer
+   */
+  private async runBuildErrorAnalyzer(
+    context: ExecutionContext,
+    step: DeepUnderstanding['actionPlan']['executionSteps'][0]
+  ): Promise<void> {
+    console.log('📘 [BuildErrorAnalyzer] Analyzing build/TypeScript errors...');
+    
+    try {
+      const { UniversalErrorDetector } = await import('./universalErrorDetector.ts');
+      const detector = new UniversalErrorDetector(
+        this.supabase,
+        context.projectId,
+        context.userId
+      );
+      
+      const result = await detector.detectBuildErrors();
+      
+      if (this.broadcastCallback && result.errorCount > 0) {
+        await this.broadcastCallback({
+          status: 'analyzing',
+          message: `⚠️ Found ${result.errorCount} build errors`,
+          metadata: { buildErrors: result }
+        });
+      }
+      
+    } catch (e) {
+      console.error('❌ [BuildErrorAnalyzer] Failed:', e);
+    }
+  }
+  
+  /**
+   * ✅ NEW: Edge Function Monitor
+   */
+  private async runEdgeFunctionMonitor(
+    context: ExecutionContext,
+    step: DeepUnderstanding['actionPlan']['executionSteps'][0]
+  ): Promise<void> {
+    console.log('⚡ [EdgeFunctionMonitor] Monitoring edge functions...');
+    
+    try {
+      const { UniversalErrorDetector } = await import('./universalErrorDetector.ts');
+      const detector = new UniversalErrorDetector(
+        this.supabase,
+        context.projectId,
+        context.userId
+      );
+      
+      const result = await detector.detectEdgeFunctionErrors();
+      
+      if (this.broadcastCallback && result.errorCount > 0) {
+        await this.broadcastCallback({
+          status: 'analyzing',
+          message: `💥 Found ${result.errorCount} edge function errors`,
+          metadata: { edgeFunctionErrors: result }
+        });
+      }
+      
+    } catch (e) {
+      console.error('❌ [EdgeFunctionMonitor] Failed:', e);
+    }
+  }
+  
+  /**
+   * ✅ NEW: Performance Analyzer
+   */
+  private async runPerformanceAnalyzer(
+    context: ExecutionContext,
+    step: DeepUnderstanding['actionPlan']['executionSteps'][0]
+  ): Promise<void> {
+    console.log('🚀 [PerformanceAnalyzer] Analyzing performance issues...');
+    
+    try {
+      const { UniversalErrorDetector } = await import('./universalErrorDetector.ts');
+      const detector = new UniversalErrorDetector(
+        this.supabase,
+        context.projectId,
+        context.userId
+      );
+      
+      const result = await detector.detectPerformanceIssues();
+      
+      if (this.broadcastCallback && result.errorCount > 0) {
+        await this.broadcastCallback({
+          status: 'analyzing',
+          message: `🐌 Found ${result.errorCount} performance issues`,
+          metadata: { performanceIssues: result }
+        });
+      }
+      
+    } catch (e) {
+      console.error('❌ [PerformanceAnalyzer] Failed:', e);
+    }
+  }
+  
+  /**
+   * ✅ NEW: Dependency Checker
+   */
+  private async runDependencyChecker(
+    context: ExecutionContext,
+    step: DeepUnderstanding['actionPlan']['executionSteps'][0]
+  ): Promise<void> {
+    console.log('📦 [DependencyChecker] Checking dependencies...');
+    
+    try {
+      const { UniversalErrorDetector } = await import('./universalErrorDetector.ts');
+      const detector = new UniversalErrorDetector(
+        this.supabase,
+        context.projectId,
+        context.userId
+      );
+      
+      const result = await detector.detectDependencyIssues();
+      
+      if (this.broadcastCallback && result.errorCount > 0) {
+        await this.broadcastCallback({
+          status: 'analyzing',
+          message: `🔄 Found ${result.errorCount} dependency issues`,
+          metadata: { dependencyIssues: result }
+        });
+      }
+      
+    } catch (e) {
+      console.error('❌ [DependencyChecker] Failed:', e);
+    }
   }
 }
 
