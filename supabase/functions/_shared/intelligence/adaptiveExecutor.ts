@@ -46,6 +46,22 @@ export class AutonomousExecutor {
   ) {}
   
   /**
+   * Log telemetry for monitoring (enterprise observability)
+   */
+  private async logTelemetry(data: any): Promise<void> {
+    try {
+      await this.supabase
+        .from('orchestration_metrics')
+        .insert({
+          ...data,
+          timestamp: new Date().toISOString()
+        });
+    } catch (e) {
+      console.warn('Failed to log telemetry:', e.message);
+    }
+  }
+  
+  /**
    * Set broadcast callback from orchestrator
    */
   setBroadcastCallback(callback: (status: any) => Promise<void>): void {
@@ -156,18 +172,32 @@ export class AutonomousExecutor {
     }
     
     // ✅ CRITICAL FIX: Ensure at least one step has code_generator
+    // ENTERPRISE FIX: Validate tool inclusion BEFORE execution
     const hasCodeGeneratorStep = understanding.actionPlan.executionSteps.some(
       step => step.toolsNeeded.includes('code_generator')
     );
     
     if (!hasCodeGeneratorStep) {
-      console.warn('⚠️ No code_generator in execution steps! Adding fallback step.');
-      understanding.actionPlan.executionSteps.push({
-        step: understanding.actionPlan.executionSteps.length + 1,
-        action: 'Generate code files',
-        reason: 'Fallback - AI did not include code_generator tool',
+      console.error('🚨 CRITICAL: No code_generator tool in plan! This will fail.');
+      // Log to telemetry for monitoring
+      await this.logTelemetry({
+        event: 'missing_tool_enforcement',
+        steps: understanding.actionPlan.executionSteps.length,
+        confidence: understanding.meta.confidence
+      });
+      
+      // Add code_generator as FIRST step (not last) for proper execution flow
+      understanding.actionPlan.executionSteps.unshift({
+        step: 0,
+        action: 'Generate code files using code_generator tool',
+        reason: 'CRITICAL: Code generation requires explicit tool usage',
         toolsNeeded: ['code_generator']
       });
+      
+      // Re-number steps
+      understanding.actionPlan.executionSteps.forEach((step, i) => step.step = i + 1);
+      
+      console.log('✅ Injected code_generator tool as primary step');
     }
     
     // Execute each step in the autonomous plan
