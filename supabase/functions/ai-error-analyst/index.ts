@@ -23,60 +23,27 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get comprehensive project context
+    // Get recent errors from database
     const { data: recentErrors } = await supabase
       .from('detected_errors')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(10);
 
-    const { data: projectFiles } = await supabase
-      .from('project_files')
-      .select('file_path, content, language')
-      .limit(100);
+    // Prepare system context
+    const systemPrompt = `You are an intelligent error analyst and autonomous agent advisor. 
+You help analyze errors, suggest fixes, and explain what the autonomous healing system should do.
 
-    const { data: recentJobs } = await supabase
-      .from('ai_generation_jobs')
-      .select('job_type, status, error_message, created_at')
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    // Build comprehensive system context
-    const fileList = projectFiles?.map(f => f.file_path).join('\n- ') || 'No files';
-    const jobSummary = recentJobs?.map(j => 
-      `${j.job_type}: ${j.status}${j.error_message ? ` - ${j.error_message}` : ''}`
-    ).join('\n- ') || 'No recent jobs';
-
-    const systemPrompt = `You are an intelligent error analyst and autonomous agent advisor with FULL PROJECT AWARENESS.
-
-CURRENT WORKSPACE STATE:
-📁 Project Files (${projectFiles?.length || 0} files):
-- ${fileList}
-
-🔄 Recent Generation Jobs (${recentJobs?.length || 0}):
-- ${jobSummary}
-
-⚠️ Recent Errors (${recentErrors?.length || 0}):
-- ${recentErrors?.map(e => `${e.error_type}: ${e.error_message || 'No message'}`).join('\n- ') || 'none'}
-
-CAPABILITIES:
-You understand the complete workspace context including:
-- All project files and their structure
-- Code generation history and patterns
-- Error patterns and healing attempts
-- System health and status
+Current system context:
+- Recent errors detected: ${recentErrors?.length || 0}
+- Error types: ${recentErrors?.map(e => e.error_type).join(', ') || 'none'}
+- System has autonomous healing capabilities
 
 Your role is to:
-1. Answer questions about the project with full context awareness
-2. Analyze errors with understanding of the codebase
-3. Suggest intelligent fixes based on actual project structure
-4. Explain autonomous healing capabilities
-5. Provide actionable, project-specific recommendations
-
-When users ask about missing code, preview issues, or functionality:
-- Reference specific files from the workspace
-- Consider recent generation attempts
-- Suggest fixes based on actual project structure`;
+1. Analyze error patterns
+2. Suggest intelligent fixes
+3. Explain how the autonomous system can heal issues
+4. Provide actionable recommendations`;
 
     let contextMessage = message;
     if (errorContext) {
