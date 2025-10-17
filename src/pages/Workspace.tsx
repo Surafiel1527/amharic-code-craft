@@ -439,10 +439,6 @@ export default function Workspace() {
         console.log(`✅ Loaded ${data.length} project files:`, data.map(f => f.file_path));
         setProjectFiles(data);
         
-        // IMPORTANT: After setting files, explicitly mark as not generating
-        console.log('📦 Files loaded, setting isGenerating to false');
-        setIsGenerating(false);
-        
         // Show toast if files were found
         if (data.length > 0) {
           toast.success(`Loaded ${data.length} project files`);
