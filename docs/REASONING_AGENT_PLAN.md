@@ -266,48 +266,92 @@ I should do Z because..."
 
 ## 🎨 How AI Capabilities Work
 
-### Available Capabilities (Tools):
+### ⚠️ CRITICAL CLARIFICATION: Capabilities Are NOT Restrictions
+
+**The capabilities list is NOT:**
+- ❌ A set of categories that limit what AI can do
+- ❌ Required actions the AI must choose from
+- ❌ A finite set of possible responses
+
+**The capabilities list IS:**
+- ✅ Available tools/functions the AI can invoke to execute actions
+- ✅ Optional - AI can respond naturally without using ANY tools
+- ✅ Combinable - AI can use multiple tools together
+- ✅ Extensible - We can add new tools as needed (implementation detail)
+
+### Examples of Free Reasoning:
 
 ```typescript
-const capabilities = {
-  // Code Operations
+// User: "add authentication"
+// AI reasons freely:
+"I need to:
+1. Generate auth components (use writeCode)
+2. Explain how it works (just respond naturally)
+3. Suggest security practices (just respond naturally)
+
+I'll write the code AND explain in my response."
+
+// User: "what color should I use for my button?"
+// AI reasons freely:
+"This is a design question, no tools needed.
+I'll respond with design advice based on project knowledge."
+
+// User: "why is my button not working?"
+// AI reasons freely:
+"I need to:
+1. Look at the button code (navigate/read files)
+2. Diagnose the issue (reason about it)
+3. Suggest a fix (maybe write code, maybe just explain)
+
+I'll investigate and decide what to do."
+
+// User: "can you sing me a song?"
+// AI reasons freely:
+"This is outside my purpose. I'll politely explain what I can help with."
+```
+
+### Available Tools (NOT Categories):
+
+These are executable functions the AI can choose to invoke:
+
+```typescript
+const tools = {
+  // Code Operations (AI can invoke these)
   writeCode: async (files) => { /* write new code */ },
   modifyCode: async (path, changes) => { /* edit existing */ },
   deleteCode: async (path) => { /* remove files */ },
+  readFiles: async (paths) => { /* read file contents */ },
   
-  // Knowledge Operations
-  explainConcept: (topic) => { /* explain how something works */ },
-  navigateCode: (query) => { /* find and show code locations */ },
-  
-  // Analysis Operations
-  debugError: (error) => { /* diagnose and fix */ },
-  suggestImprovement: () => { /* proactive suggestions */ },
-  
-  // Communication
-  respond: (message) => { /* natural language response */ }
+  // AI can also just RESPOND without using any tools
+  // AI can COMBINE multiple tools
+  // AI can REASON about whether to use tools at all
 };
 ```
 
-### AI Decides What to Use:
+### The Real Freedom:
+
 ```typescript
-// User: "add authentication"
-// AI reasons:
-"This requires:
-1. Code generation (auth components)
-2. Explanation (how it works)
-3. Suggestion (security best practices)
+// AI is NOT doing this:
+if (intent === 'question') {
+  useExplainTool();
+} else if (intent === 'code') {
+  useWriteCodeTool();
+}
 
-I'll use: writeCode + explainConcept + suggestImprovement"
-
-// User: "why is my button not working?"
-// AI reasons:
-"This is a debugging task.
-1. Navigate to button code
-2. Diagnose the issue
-3. Suggest fix
-4. Explain the problem
-
-I'll use: navigateCode + debugError + explainConcept"
+// AI IS doing this:
+function reason(fullContext) {
+  // I receive everything: project, request, available tools
+  // I THINK about what makes sense
+  // I might use tools, might not, might combine them
+  // I respond naturally
+  
+  // Examples:
+  // - Just answer a question (no tools)
+  // - Write code AND explain it (tool + natural response)
+  // - Ask clarifying question (no tools)
+  // - Debug AND suggest improvements (multiple tools)
+  // - Refuse politely if request is inappropriate (no tools)
+}
 ```
 
 ---
