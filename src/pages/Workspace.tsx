@@ -666,35 +666,55 @@ export default function Workspace() {
     
     // Check if there's actually an active job AND if conversation doesn't have messages yet
     const checkJobStatus = async () => {
-      // First check if conversation has messages - if yes, don't show banner
-      const { data: messages, count } = await supabase
-        .from('messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('conversation_id', conversationId);
-      
-      // If conversation has messages, never show generating banner
-      if (count && count > 0) {
+      try {
+        // First check if conversation has messages - if yes, don't show banner
+        const { data: messages, count, error: msgError } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('conversation_id', conversationId);
+        
+        if (msgError) {
+          console.warn('Error checking messages:', msgError);
+          // Don't block workspace if we can't check messages
+          setIsGenerating(false);
+          return;
+        }
+        
+        // If conversation has messages OR has project files, never show generating banner
+        if ((count && count > 0) || (projectFiles && projectFiles.length > 0)) {
+          console.log('✅ Workspace ready - has messages or files');
+          setIsGenerating(false);
+          return;
+        }
+        
+        // Only show if no messages AND no files AND active job exists
+        const { data: jobs, error: jobError } = await supabase
+          .from('ai_generation_jobs')
+          .select('status')
+          .eq('project_id', project.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (jobError) {
+          console.warn('Error checking jobs:', jobError);
+          setIsGenerating(false);
+          return;
+        }
+        
+        const latestJob = jobs?.[0];
+        const activeStatuses = ['queued', 'generating'];
+        const isActuallyGenerating = latestJob && activeStatuses.includes(latestJob.status);
+        
+        console.log('Generation check:', { hasMessages: count > 0, hasFiles: projectFiles?.length, latestJobStatus: latestJob?.status, isActuallyGenerating });
+        setIsGenerating(isActuallyGenerating || false);
+      } catch (error) {
+        console.error('Error in job status check:', error);
         setIsGenerating(false);
-        return;
       }
-      
-      // Only show if no messages AND active job exists
-      const { data: jobs } = await supabase
-        .from('ai_generation_jobs')
-        .select('status')
-        .eq('project_id', project.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      const latestJob = jobs?.[0];
-      const activeStatuses = ['queued', 'generating'];
-      const isActuallyGenerating = latestJob && activeStatuses.includes(latestJob.status);
-      
-      setIsGenerating(isActuallyGenerating);
     };
     
     checkJobStatus();
-  }, [project, conversationId]);
+  }, [project, conversationId, projectFiles]);
   
   if (!project) {
     return (
