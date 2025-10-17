@@ -30,43 +30,20 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(10);
 
-    // Get workspace context
-    const { data: projectFiles } = await supabase
-      .from('project_files')
-      .select('file_path, content')
-      .limit(20);
+    // Prepare system context
+    const systemPrompt = `You are an intelligent error analyst and autonomous agent advisor. 
+You help analyze errors, suggest fixes, and explain what the autonomous healing system should do.
 
-    const { data: recentGenerations } = await supabase
-      .from('ai_generation_jobs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    // Prepare system context with full project awareness
-    const systemPrompt = `You are an intelligent error analyst with full awareness of the project workspace and autonomous agent system.
-
-PROJECT CONTEXT:
-- Workspace files: ${projectFiles?.length || 0} files detected
-- File tree: ${projectFiles?.map(f => f.file_path).join(', ') || 'No files yet'}
-- Recent generations: ${recentGenerations?.length || 0} attempts
-- Recent errors: ${recentErrors?.length || 0} detected
+Current system context:
+- Recent errors detected: ${recentErrors?.length || 0}
 - Error types: ${recentErrors?.map(e => e.error_type).join(', ') || 'none'}
+- System has autonomous healing capabilities
 
-CAPABILITIES:
-You understand:
-1. The complete file structure and what exists in the workspace
-2. Code generation patterns and what was attempted
-3. Error patterns and their root causes
-4. The autonomous healing system's capabilities
-
-When users ask about missing code or preview issues:
-- Check what files actually exist in the workspace
-- Analyze what was supposed to be generated vs what exists
-- Explain the gap and why it happened
-- Provide specific steps to resolve
-- Suggest whether to regenerate, manually fix, or use the autonomous system
-
-Be conversational, intelligent, and helpful. Use the context to give accurate, specific answers.`;
+Your role is to:
+1. Analyze error patterns
+2. Suggest intelligent fixes
+3. Explain how the autonomous system can heal issues
+4. Provide actionable recommendations`;
 
     let contextMessage = message;
     if (errorContext) {
